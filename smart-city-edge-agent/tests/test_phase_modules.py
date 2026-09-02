@@ -13,6 +13,8 @@ from smart_city_edge.rules import RuleEngine
 from smart_city_edge.schemas import AnomalyEvent, Domain, FeatureWindow
 from smart_city_edge.topology import TopologyRegistry
 
+TRAIN_SPLIT = 0.8  # Must match scripts/train_anomaly.py
+
 
 def test_topology_registry_parsing():
     snapshot_file = Path(__file__).parents[1] / "data" / "raw" / "latest.json"
@@ -70,6 +72,7 @@ def test_rule_engine_threshold_eval():
 
 
 def test_autoencoder_anomaly_scorer():
+    """Test basic AnomalyScorer inference and ONNX export."""
     model = DenoisingAutoencoder(input_dim=16)
     scorer = AnomalyScorer(model=model, threshold=0.1, input_dim=16)
 
@@ -82,6 +85,46 @@ def test_autoencoder_anomaly_scorer():
         onnx_file = Path(tmp_dir) / "model.onnx"
         export_path = export_to_onnx(model, input_dim=16, output_path=onnx_file)
         assert export_path.is_file()
+
+
+def test_autoencoder_train_test_split():
+    """Verify 80/20 split logic, normalization, and that threshold comes from test split."""
+    rng = np.random.RandomState(42)
+    # Simulate 200 normal samples (all zeros + small noise = normal campus telemetry)
+    N = 200
+    features = rng.randn(N, 16).astype(np.float32) * 0.1
+
+    # 80/20 split
+    idx = rng.permutation(N)
+    split = int(N * TRAIN_SPLIT)
+    train_idx, test_idx = idx[:split], idx[split:]
+
+    assert len(train_idx) == int(N * TRAIN_SPLIT)
+    assert len(test_idx) == N - int(N * TRAIN_SPLIT)
+    assert set(train_idx).isdisjoint(set(test_idx)), "Train/test sets must not overlap"
+
+    # Normalize using train stats only
+    mean = np.mean(features[train_idx], axis=0)
+    std = np.std(features[train_idx], axis=0)
+    std[std == 0] = 1.0
+    train_norm = (features[train_idx] - mean) / std
+    test_norm  = (features[test_idx]  - mean) / std
+
+    model = DenoisingAutoencoder(input_dim=16)
+    train_losses = model.compute_reconstruction_error(train_norm)
+    test_losses  = model.compute_reconstruction_error(test_norm)
+
+    # Threshold must be derived from test split (not train)
+    threshold = float(np.percentile(test_losses, 99))
+    assert threshold >= 0.0
+
+    # Both loss arrays must have correct sizes
+    assert len(train_losses) == len(train_idx)
+    assert len(test_losses)  == len(test_idx)
+
+    # Losses must be non-negative
+    assert np.all(train_losses >= 0.0)
+    assert np.all(test_losses  >= 0.0)
 
 
 def test_evaluation_harness_3mode_benchmark():

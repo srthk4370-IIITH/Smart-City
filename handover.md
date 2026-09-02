@@ -24,85 +24,126 @@ Deploy a privacy-focused, resource-efficient, on-device AI system on Qualcomm Sn
 - **Target Device**: Qualcomm QIDK Development Kit
 - **SoC**: Qualcomm Snapdragon 8 Gen 3 (`SM8650`, HTP `V75`, Android 14)
 - **Connected Serial**: `3ce9a4e2`
-- **Device Storage**: `/data` (19 GB free), `/data/local/tmp` (5.1 GB used)
-- **Device Working Directory**: `/data/local/tmp/smart_city_edge`
-- **Host System**: Ubuntu Linux (Python 3.14, PyTorch, PyYAML, Pydantic, pytest)
+- **Device Storage**: `/data` (19 GB free), working dir: `/data/local/tmp/smart_city_edge`
+- **Host System**: Ubuntu Linux (Python 3.14, PyTorch, venv at `.venv/`)
 
 ---
 
-## 3. Dataset Architecture: SCRC-IHub Data Collection
+## 3. Dataset: SCRC-IHub Data Collection
 
-- **Dataset Path**: [`SCRC-IHub-Data Collection/`](file:///home/rishit-nanda/Documents/esw/SCRC-IHub-Data%20Collection)
-- **Size**: **6.6 GB** of real-world IIIT Hyderabad smart campus sensor telemetry across 14 CSV files & metadata:
-  - `aq.csv` (1.80 GB) — Air Quality (PM2.5, PM10, Temp, Humidity, Noise)
-  - `em.csv` (335 MB) — Energy Meters (Line Voltages, Current, Power Factor, Frequency, Total Energy)
-  - `sl.csv` (777 MB) — Street Lights (Voltage, Current, Power, Energy)
-  - `wm-wf.csv` (188 MB) — Water Flow (Flowrate, Total Flow, Line Pressure)
-  - `wm-wd.csv` (4.17 MB) — Water Quality (pH, Turbidity, TDS, Temp)
-  - `wm-wl.csv` (33.3 MB) — Water Level
-  - `we.csv` (18.1 MB) — Weather Station (Temp, RH, Wind Speed, Wind Direction, Gust)
-  - `sr_oc.csv` (59.6 MB) & `sr_ac.csv` (2.09 GB) — Smart Room Occupancy & AC Status
-  - `wn.csv` (173 MB) — Wireless Network Nodes (Signal RSSI, Latency, ETX, RPL rank)
-  - `meta data.xlsx` — Parameter specifications, units, and sensor resolutions.
+- **Dataset Path**: [`SCRC-IHub-Data/`](file:///home/rishit-nanda/Documents/esw/SCRC-IHub-Data) (renamed from `SCRC-IHub-Data Collection`)
+- **Size**: **6.6 GB** of real IIIT Hyderabad smart campus sensor telemetry, 14 CSV files:
+
+| File | Size | Contents |
+|---|---|---|
+| `aq.csv` | 1.80 GB | Air Quality (PM2.5, PM10, Temp, Humidity, Noise) |
+| `em.csv` | 335 MB | Energy Meters (Voltage, Current, Power Factor, Energy) |
+| `sl.csv` | 777 MB | Street Lights |
+| `wm-wf.csv` | 188 MB | Water Flow (Flowrate, Pressure) |
+| `wm-wd.csv` | 4.17 MB | Water Quality (pH, Turbidity, TDS, Temp) |
+| `wm-wl.csv` | 33.3 MB | Water Level |
+| `we.csv` | 18.1 MB | Weather (Temp, RH, Wind Speed, Gust) |
+| `sr_oc.csv` | 59.6 MB | Smart Room Occupancy |
+| `sr_ac.csv` | 2.09 GB | Smart Room AC Status |
+| `sr-aq.csv` | 1.08 GB | Smart Room Air Quality |
+| `sr-em.csv` | 91.8 MB | Smart Room Energy |
+| `wn.csv` | 173 MB | Wireless Network Nodes |
+| `cm.csv` | 286 KB | Campus Map metadata |
+| `meta data.xlsx` | 42 KB | Parameter specs, units, sensor resolutions |
 
 ---
 
-## 4. Completed Codebase Architecture & File Mapping
+## 4. Codebase Architecture
 
 ```text
 smart-city-edge-agent/
+├── Makefile                        # make train / test / extract / clean
 ├── configs/
-│   ├── thresholds.yaml         # Rule baseline threshold limits
-│   └── prompts.yaml            # Single-SLM & Multi-Agent domain prompt templates
+│   ├── thresholds.yaml             # Rule baseline threshold limits
+│   └── prompts.yaml                # Prompt templates
 ├── data/
-│   ├── raw/latest.json         # IIIT-H campus spatial topology registry snapshot
-│   └── processed/scrc_events.jsonl # 1,000 extracted anomaly evaluation windows
-├── models/
-│   └── anomaly/
-│       ├── model.onnx          # Binary ONNX Protobuf Denoising Autoencoder (2.5 KB)
-│       └── norm_params.json    # Scaling means/stds & 99th percentile loss threshold (0.661877)
+│   ├── raw/latest.json             # Campus topology snapshot
+│   └── processed/scrc_events.jsonl # Extracted anomaly evaluation windows
+├── models/anomaly/
+│   ├── model.onnx                  # Trained ONNX binary (80/20 split)
+│   └── norm_params.json            # Means, stds, train/test loss, threshold
 ├── reports/
-│   └── test_results.log        # Automated test execution output log (15/15 passed)
+│   └── test_results.log            # Automated test output (16/16 passed)
 ├── scripts/
-│   ├── train_anomaly.py        # PyTorch autoencoder training & ONNX exporter
-│   ├── extract_events.py       # SCRC-IHub dataset event extraction pipeline
-│   └── run_tests.sh            # Executable bash test runner script
-├── src/smart_city_edge/
-│   ├── schemas.py              # Pydantic data models & contracts
-│   ├── topology.py             # Campus topology spatial registry
-│   ├── ingestor.py             # SCRC-IHub chunked CSV streaming reader
-│   ├── rules.py                # Mode 1 Rule Engine baseline
-│   ├── anomaly_model.py        # Denoising Autoencoder & PyTorch/Numpy scorer
-│   ├── policy.py               # Anti-Hallucination & Safety Control Gate
-│   ├── prompts.py              # Single-SLM & Multi-Agent prompt builders
-│   ├── genie_runner.py         # Qualcomm Genie runtime interface wrapper
-│   └── evaluator.py            # Matched 3-Mode Evaluation Harness
-└── tests/
-    ├── test_schemas.py         # Data contract unit tests
-    ├── test_core_modules.py    # Policy gate, prompt engine & genie runner tests
-    ├── test_phase_modules.py   # Topology, rule engine, autoencoder & evaluator tests
-    └── test_ingestor.py        # SCRC-IHub CSV streaming ingestor tests
+│   ├── train_anomaly.py            # 80/20 split autoencoder trainer + ONNX exporter
+│   ├── extract_events.py           # SCRC-IHub event extraction pipeline
+│   └── run_tests.sh                # Bash test runner script
+└── src/smart_city_edge/
+    ├── schemas.py                  # Pydantic data contracts
+    ├── topology.py                 # Campus topology spatial registry
+    ├── ingestor.py                 # SCRC-IHub chunked CSV streaming reader
+    ├── rules.py                    # Mode 1 Rule Engine baseline
+    ├── anomaly_model.py            # Denoising Autoencoder & AnomalyScorer
+    ├── policy.py                   # Anti-Hallucination & Safety Policy Gate
+    ├── prompts.py                  # Single-SLM & Multi-Agent prompt builders
+    ├── genie_runner.py             # Qualcomm Genie runtime wrapper (mock fallback)
+    └── evaluator.py                # 3-Mode Evaluation Harness
 ```
 
 ---
 
-## 5. Key System Guardrails & Model Design
+## 5. Makefile Commands
 
-### 5.1 Autoencoder Anomaly Trigger (`F -> 64 -> 16 -> 64 -> F`)
-- **Bottleneck Architecture**: `Input(16) -> Linear(64) -> ReLU -> Linear(16) -> ReLU -> Linear(64) -> ReLU -> Linear(16)`.
-- **Function**: Trained exclusively on normal campus telemetry. High reconstruction loss spikes (reconstruction loss > `0.661877`) trigger an `AnomalyEvent` to wake up the main reasoning model.
+From `smart-city-edge-agent/` with venv active:
 
-### 5.2 Anti-Hallucination Evidence Gate
-- Located in [`src/smart_city_edge/policy.py`](file:///home/rishit-nanda/Documents/esw/smart-city-edge-agent/src/smart_city_edge/policy.py).
-- Cross-examines every evidence ID cited in the AI's diagnostic report against the active 60-minute sensor database. If the AI cites a non-existent evidence tag, the report is instantly rejected.
-
-### 5.3 Safety Control Gate
-- Mandatory schema rule requiring `requires_human_approval = True` on all AI output, blocking unauthorized autonomous machine control.
+| Command | What it does |
+|---|---|
+| `make train` | Train autoencoder (5,000 rows/CSV, 80/20 split) |
+| `make train-full` | Train on full 6.6 GB dataset |
+| `make train LIMIT=N` | Custom row limit per CSV |
+| `make extract` | Extract anomaly event windows (5,000 rows) |
+| `make extract-full` | Extract from full dataset |
+| `make test` | Run all 16 unit tests, save log |
+| `make test-unit` | Verbose per-test output |
+| `make clean` | Remove model, events, logs |
 
 ---
 
-## 6. Automated Unit Test Verification
+## 6. Autoencoder Training Results (5,000 rows/CSV)
 
-- Executable script: [`scripts/run_tests.sh`](file:///home/rishit-nanda/Documents/esw/smart-city-edge-agent/scripts/run_tests.sh)
-- Execution Log: [`reports/test_results.log`](file:///home/rishit-nanda/Documents/esw/smart-city-edge-agent/reports/test_results.log)
-- **Pass Status**: **15 / 15 unit tests passed in 0.20s** (`pytest -v`).
+- **Architecture**: `Input(16) → Linear(64) → ReLU → Linear(16) → ReLU → Linear(64) → ReLU → Linear(16)`
+- **Train/Test Split**: 80% / 20% (shuffled, seed=42)
+- **Normalization**: Computed from train split only (no data leakage)
+- **Anomaly threshold derived from test split 99th percentile** (correct for paper)
+
+```
+Train samples:                  12,000
+Test samples:                    3,000
+Train Reconstruction Loss:      0.265219
+Test  Reconstruction Loss:      0.259721
+Anomaly Threshold (99th pct):   0.881382
+Overfitting gap:                -0.005  ✓ (no overfitting)
+```
+
+---
+
+## 7. Key Safety Guardrails
+
+### Anti-Hallucination Evidence Gate (`policy.py`)
+Every evidence ID cited in the AI's report is cross-checked against the active sensor database. Fabricated evidence IDs cause instant rejection.
+
+### Safety Control Gate
+`requires_human_approval = True` is mandatory on all AI output. The schema enforces this at the Pydantic level, blocking autonomous machine control.
+
+---
+
+## 8. Unit Test Status
+
+- **Tests**: 16 / 16 passed
+- **New test added**: `test_autoencoder_train_test_split` — verifies disjoint train/test sets, normalization leakage, and that threshold comes from test split
+- **Log**: [`reports/test_results.log`](file:///home/rishit-nanda/Documents/esw/smart-city-edge-agent/reports/test_results.log)
+
+---
+
+## 9. What's Left (QIDK Phase)
+
+1. **Get Llama 3.2 3B Genie bundle** compiled for SM8650/V75 from [Qualcomm AI Hub](https://aihub.qualcomm.com/models/llama_v3_2_3b_instruct)
+2. **Push to device** via `adb push`
+3. **Run real 3-mode benchmark** using `evaluator.py` with `use_mock_fallback=False`
+4. **Collect metrics**: Accuracy, Macro-F1, Latency, RAM, Power, NPU utilization
+5. **Build Android app** under `android/SmartCityEdge/` with JNI bindings

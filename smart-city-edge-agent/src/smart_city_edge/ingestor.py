@@ -25,11 +25,14 @@ class SCRCIHubIngestor:
         else:
             # Check standard workspace paths
             possible_paths = [
+                Path(__file__).parents[3] / "SCRC-IHub-Data",
                 Path(__file__).parents[3] / "SCRC-IHub-Data Collection",
+                Path(__file__).parents[2] / "SCRC-IHub-Data",
                 Path(__file__).parents[2] / "SCRC-IHub-Data Collection",
+                Path("/home/rishit-nanda/Documents/esw/SCRC-IHub-Data"),
                 Path("/home/rishit-nanda/Documents/esw/SCRC-IHub-Data Collection"),
             ]
-            self.data_dir = next((p for p in possible_paths if p.is_dir()), possible_paths[-1])
+            self.data_dir = next((p for p in possible_paths if p.is_dir()), possible_paths[0])
 
     def read_aq_csv(
         self, limit: int | None = None
