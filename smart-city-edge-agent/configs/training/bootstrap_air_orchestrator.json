@@ -1,0 +1,17 @@
+{
+  "version": "1.0",
+  "source_file": "sr-aq.csv",
+  "sample_limit": 100000,
+  "seed": 42,
+  "domain_agent": "air_quality",
+  "feature_order": ["co2_ppm", "temperature_c", "relative_humidity_pct", "pm25_ug_m3", "pm10_ug_m3", "aqi"],
+  "bootstrap_trigger_policy": {"co2_ppm": 1000.0, "pm25_ug_m3": 35.0},
+  "plans": {
+    "no_call": [],
+    "air_only": ["air_quality"],
+    "air_then_weather": ["air_quality", "weather"],
+    "air_then_occupancy_energy_weather": ["air_quality", "occupancy", "energy", "weather"],
+    "air_then_weather_occupancy_energy": ["air_quality", "weather", "occupancy", "energy"]
+  },
+  "reasoning_contract": {"black_box": true, "allowed_forwarded_fields": ["co2_ppm", "temperature_c", "relative_humidity_pct", "pm25_ug_m3", "pm10_ug_m3", "aqi", "agent_triage", "agent_confidence", "evidence"]}
+}

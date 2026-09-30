@@ -1,0 +1,20 @@
+version: 0.1
+output_contract: RootCauseReport
+allowed_actions:
+  - inspect_hvac
+  - inspect_ventilation
+  - inspect_water_system
+  - request_facility_review
+rules:
+  - Cite only provided evidence identifiers.
+  - Do not infer unavailable facts.
+  - Do not initiate physical actions.
+  - Set requires_human_approval to true.
+roles:
+  energy: "Assess load against occupancy, HVAC state, and weather context."
+  air_quality: "Assess CO2, PM2.5, ventilation, occupancy, and outdoor context."
+  water: "Assess flow and pressure for persistent leak indicators."
+  weather: "Assess expected environmental contribution to energy and comfort."
+  occupancy: "Assess count and trend consistency with energy and CO2."
+  orchestrator: "Synthesize only the five analyses and shared evidence."
+

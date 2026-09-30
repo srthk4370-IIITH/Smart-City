@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.22)
+project(bootstrap_policy_runner LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 17)
+add_executable(bootstrap_policy_runner bootstrap_policy_runner.cpp)
+target_include_directories(bootstrap_policy_runner PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/generated)

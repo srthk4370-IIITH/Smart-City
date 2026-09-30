@@ -1,0 +1,21 @@
+model_id: meta-llama/Llama-3.2-3B-Instruct
+model_dir: models/base/llama-3.2-3b-instruct
+prepared_dataset: data/processed/sft/agent_occupancy.jsonl
+output_dir: models/llama-lora/occupancy-agent-3b
+seed: 42
+max_sequence_length: 384
+epochs: 1
+learning_rate: 0.0002
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 4
+logging_steps: 5
+save_steps: 25
+warmup_ratio: 0.03
+lora_rank: 16
+lora_alpha: 32
+lora_dropout: 0.05
+target_modules: [q_proj, k_proj, v_proj, o_proj]
+load_in_4bit: true
+# Occupancy & Mobility Domain Agent adapter
+max_train_examples: 300
+max_dev_examples: 50

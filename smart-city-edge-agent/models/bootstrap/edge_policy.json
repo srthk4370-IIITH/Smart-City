@@ -1,0 +1,282 @@
+{
+  "contract_version": "1.0",
+  "feature_order": [
+    "co2_ppm",
+    "temperature_c",
+    "relative_humidity_pct",
+    "pm25_ug_m3",
+    "pm10_ug_m3",
+    "aqi"
+  ],
+  "agent_class_order": [
+    "air_nominal",
+    "co2_elevated",
+    "pm25_elevated"
+  ],
+  "plans": {
+    "no_call": [],
+    "air_only": [
+      "air_quality"
+    ],
+    "air_then_weather": [
+      "air_quality",
+      "weather"
+    ],
+    "air_then_occupancy_energy_weather": [
+      "air_quality",
+      "occupancy",
+      "energy",
+      "weather"
+    ],
+    "air_then_weather_occupancy_energy": [
+      "air_quality",
+      "weather",
+      "occupancy",
+      "energy"
+    ]
+  },
+  "allowed_forwarded_fields": [
+    "co2_ppm",
+    "temperature_c",
+    "relative_humidity_pct",
+    "pm25_ug_m3",
+    "pm10_ug_m3",
+    "aqi",
+    "agent_triage",
+    "agent_confidence",
+    "evidence"
+  ],
+  "agent_tree": {
+    "imputation": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "classes": [
+      "air_nominal",
+      "co2_elevated",
+      "pm25_elevated"
+    ],
+    "nodes": [
+      {
+        "left": 1,
+        "right": 6,
+        "feature": 0,
+        "threshold": 999.5,
+        "value": [
+          0.33333333333391585,
+          0.3333333333336479,
+          0.33333333333382204
+        ]
+      },
+      {
+        "left": 2,
+        "right": 5,
+        "feature": 3,
+        "threshold": 197.0,
+        "value": [
+          0.5000000000006196,
+          0.0,
+          0.5000000000004788
+        ]
+      },
+      {
+        "left": 3,
+        "right": 4,
+        "feature": 2,
+        "threshold": 29.239999771118164,
+        "value": [
+          1.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "left": -1,
+        "right": -1,
+        "feature": -2,
+        "threshold": -2.0,
+        "value": [
+          1.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "left": -1,
+        "right": -1,
+        "feature": -2,
+        "threshold": -2.0,
+        "value": [
+          1.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "left": -1,
+        "right": -1,
+        "feature": -2,
+        "threshold": -2.0,
+        "value": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "left": 7,
+        "right": 8,
+        "feature": 1,
+        "threshold": 28.644999504089355,
+        "value": [
+          0.0,
+          1.0,
+          0.0
+        ]
+      },
+      {
+        "left": -1,
+        "right": -1,
+        "feature": -2,
+        "threshold": -2.0,
+        "value": [
+          0.0,
+          1.0,
+          0.0
+        ]
+      },
+      {
+        "left": -1,
+        "right": -1,
+        "feature": -2,
+        "threshold": -2.0,
+        "value": [
+          0.0,
+          1.0,
+          0.0
+        ]
+      }
+    ]
+  },
+  "orchestrator_tree": {
+    "imputation": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "classes": [
+      "air_then_occupancy_energy_weather",
+      "air_then_weather",
+      "no_call"
+    ],
+    "nodes": [
+      {
+        "left": 1,
+        "right": 6,
+        "feature": 0,
+        "threshold": 999.5,
+        "value": [
+          0.3333333333336479,
+          0.33333333333382204,
+          0.33333333333391585
+        ]
+      },
+      {
+        "left": 2,
+        "right": 5,
+        "feature": 5,
+        "threshold": 24.5,
+        "value": [
+          0.0,
+          0.4999999999997937,
+          0.49999999999993444
+        ]
+      },
+      {
+        "left": 3,
+        "right": 4,
+        "feature": 1,
+        "threshold": 21.355000495910645,
+        "value": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "left": -1,
+        "right": -1,
+        "feature": -2,
+        "threshold": -2.0,
+        "value": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "left": -1,
+        "right": -1,
+        "feature": -2,
+        "threshold": -2.0,
+        "value": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "left": -1,
+        "right": -1,
+        "feature": -2,
+        "threshold": -2.0,
+        "value": [
+          0.0,
+          1.0,
+          0.0
+        ]
+      },
+      {
+        "left": 7,
+        "right": 8,
+        "feature": 0,
+        "threshold": 1005.5,
+        "value": [
+          1.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "left": -1,
+        "right": -1,
+        "feature": -2,
+        "threshold": -2.0,
+        "value": [
+          1.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "left": -1,
+        "right": -1,
+        "feature": -2,
+        "threshold": -2.0,
+        "value": [
+          1.0,
+          0.0,
+          0.0
+        ]
+      }
+    ]
+  }
+}

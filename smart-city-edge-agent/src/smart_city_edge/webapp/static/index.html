@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart City Edge AI - Model Testing & Reasoning Interface</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="navbar">
+            <div class="brand">
+                <div class="brand-logo">
+                    <span class="logo-icon">⚡</span>
+                </div>
+                <div class="brand-text">
+                    <h1>Smart City Edge AI <span class="badge-tag">QIDK SM8650 NPU</span></h1>
+                    <p>Multi-Agent Anomaly Detection & Cross-Domain Reasoning Dashboard</p>
+                </div>
+            </div>
+            <div class="header-status">
+                <div class="status-indicator online">
+                    <span class="pulse-dot"></span>
+                    <span class="status-text">Hexagon NPU Active (QAIRT 2.50)</span>
+                </div>
+                <div class="latency-badge" id="warmupBadge" style="background:rgba(234,179,8,0.15);border-color:rgba(234,179,8,0.4);color:#fde047;cursor:default;font-size:0.72rem;" title="NPU warm-state status">
+                    ⏳ <span id="warmupVal">NPU warming up…</span>
+                </div>
+                <div class="latency-badge" id="latencyBadge">
+                    <span>Latency:</span> <strong id="latencyVal">-- ms</strong>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Dashboard Layout -->
+        <main class="dashboard-grid">
+            <!-- Left Control Panel: Sensor Input Controls & Presets -->
+            <section class="panel control-panel">
+                <div class="panel-header">
+                    <h2>🎛️ Telemetry Input Controls</h2>
+                    <p>Adjust environmental sensor parameters or select a test scenario:</p>
+                </div>
+
+                <!-- Presets Bar -->
+                <div class="presets-container">
+                    <label class="section-label">Quick Scenario Presets</label>
+                    <div class="presets-chips" id="presetsChips">
+                        <button class="chip chip-nominal" onclick="loadPreset('nominal')">🟢 Nominal City</button>
+                        <button class="chip chip-air" onclick="loadPreset('air_crisis')">🔴 Air Quality Emergency</button>
+                        <button class="chip chip-energy" onclick="loadPreset('energy_surge')">⚡ Energy Grid Surge</button>
+                        <button class="chip chip-water" onclick="loadPreset('water_leak')">💧 Water Pipe Burst</button>
+                        <button class="chip chip-multi" onclick="loadPreset('multi_domain_crisis')">🌐 Multi-Domain Crisis</button>
+                    </div>
+                </div>
+
+                <!-- Sliders Grid -->
+                <form id="sensorForm" class="sliders-form" onsubmit="handleFormSubmit(event)">
+                    <!-- Air Quality Group -->
+                    <div class="sensor-group">
+                        <div class="group-title">🍃 Air Quality & Atmospheric</div>
+                        
+                        <div class="input-control">
+                            <div class="control-label">
+                                <span>CO2 Concentration (PPM)</span>
+                                <span class="val-display" id="val_co2_ppm">420.0 ppm</span>
+                            </div>
+                            <input type="range" id="co2_ppm" min="300" max="3000" step="10" value="420" oninput="updateVal('co2_ppm', 'ppm')">
+                        </div>
+
+                        <div class="input-control">
+                            <div class="control-label">
+                                <span>Particulate Matter PM2.5 (µg/m³)</span>
+                                <span class="val-display" id="val_pm25_ug_m3">12.0 µg/m³</span>
+                            </div>
+                            <input type="range" id="pm25_ug_m3" min="0" max="250" step="0.5" value="12" oninput="updateVal('pm25_ug_m3', 'µg/m³')">
+                        </div>
+
+                        <div class="input-control">
+                            <div class="control-label">
+                                <span>Particulate Matter PM10 (µg/m³)</span>
+                                <span class="val-display" id="val_pm10_ug_m3">25.0 µg/m³</span>
+                            </div>
+                            <input type="range" id="pm10_ug_m3" min="0" max="350" step="1" value="25" oninput="updateVal('pm10_ug_m3', 'µg/m³')">
+                        </div>
+
+                        <div class="input-control">
+                            <div class="control-label">
+                                <span>Ambient Temperature (°C)</span>
+                                <span class="val-display" id="val_temperature_c">22.5 °C</span>
+                            </div>
+                            <input type="range" id="temperature_c" min="0" max="50" step="0.5" value="22.5" oninput="updateVal('temperature_c', '°C')">
+                        </div>
+
+                        <div class="input-control">
+                            <div class="control-label">
+                                <span>Relative Humidity (%)</span>
+                                <span class="val-display" id="val_relative_humidity_pct">45.0 %</span>
+                            </div>
+                            <input type="range" id="relative_humidity_pct" min="0" max="100" step="1" value="45" oninput="updateVal('relative_humidity_pct', '%')">
+                        </div>
+                    </div>
+
+                    <!-- Energy & Infrastructure Group -->
+                    <div class="sensor-group">
+                        <div class="group-title">⚡ Grid, Water & City Infrastructure</div>
+
+                        <div class="input-control">
+                            <div class="control-label">
+                                <span>Substation Power Draw (kW)</span>
+                                <span class="val-display" id="val_energy_kw">45.0 kW</span>
+                            </div>
+                            <input type="range" id="energy_kw" min="0" max="500" step="5" value="45" oninput="updateVal('energy_kw', 'kW')">
+                        </div>
+
+                        <div class="input-control">
+                            <div class="control-label">
+                                <span>Main Water Pipeline Flow (L/min)</span>
+                                <span class="val-display" id="val_water_flow_lpm">25.0 L/min</span>
+                            </div>
+                            <input type="range" id="water_flow_lpm" min="0" max="700" step="5" value="25" oninput="updateVal('water_flow_lpm', 'L/min')">
+                        </div>
+
+                        <div class="input-control">
+                            <div class="control-label">
+                                <span>Zone Occupancy Count</span>
+                                <span class="val-display" id="val_occupancy_count">30</span>
+                            </div>
+                            <input type="range" id="occupancy_count" min="0" max="500" step="5" value="30" oninput="updateVal('occupancy_count', '')">
+                        </div>
+
+                        <div class="input-control">
+                            <div class="control-label">
+                                <span>Ambient Noise Level (dB)</span>
+                                <span class="val-display" id="val_noise_db">42.0 dB</span>
+                            </div>
+                            <input type="range" id="noise_db" min="30" max="120" step="1" value="42" oninput="updateVal('noise_db', 'dB')">
+                        </div>
+
+                        <div class="input-control">
+                            <div class="control-label">
+                                <span>Grid Voltage Stability (V)</span>
+                                <span class="val-display" id="val_grid_voltage_v">230.0 V</span>
+                            </div>
+                            <input type="range" id="grid_voltage_v" min="180" max="260" step="1" value="230" oninput="updateVal('grid_voltage_v', 'V')">
+                        </div>
+                    </div>
+
+                    <!-- Submit CTA -->
+                    <button type="submit" class="btn-primary" id="btnSubmit">
+                        <span class="btn-text">Run Anomaly Detection & Edge AI Pipeline</span>
+                        <span class="btn-icon">🚀</span>
+                    </button>
+                </form>
+            </section>
+
+            <!-- Right Results Panel: Real-Time Diagnostics & Model Output -->
+            <section class="panel results-panel">
+                <!-- Status Banner Card -->
+                <div class="status-card" id="statusCard">
+                    <div class="status-header">
+                        <div class="status-title-group">
+                            <span class="status-badge-icon" id="statusBadgeIcon">🟢</span>
+                            <div>
+                                <h3 id="statusTitle">System Nominal</h3>
+                                <p id="statusSubtitle">All sensor parameters within baseline bounds.</p>
+                            </div>
+                        </div>
+                        <div class="score-box">
+                            <span class="score-title">Anomaly Score</span>
+                            <span class="score-number" id="scoreVal">5.0%</span>
+                        </div>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" id="scoreProgress" style="width: 5%;"></div>
+                    </div>
+                </div>
+
+                <!-- Orchestrator & Multi-Domain Pipeline View -->
+                <div class="result-card" id="orchestratorCard">
+                    <div class="card-header">
+                        <h3>🌐 Orchestrator Multi-Domain Plan</h3>
+                        <span class="tag tag-purple" id="orchPlanTag">Multi-Domain Router</span>
+                    </div>
+                    <div class="agents-flow" id="agentsFlow">
+                        <div class="flow-placeholder">No anomaly detected. Orchestrator inactive.</div>
+                    </div>
+                </div>
+
+                <!-- Active Domain Agents Execution Output -->
+                <div class="result-card" id="agentOutputsCard">
+                    <div class="card-header">
+                        <h3>🤖 Domain Agent Triage Outputs</h3>
+                        <span class="tag tag-cyan">SLM Expert Execution</span>
+                    </div>
+                    <div class="agent-cards-container" id="agentCardsContainer">
+                        <div class="placeholder-text">Execute model on elevated values to inspect agent outputs.</div>
+                    </div>
+                </div>
+
+                <!-- Qwen Cross-Domain Synthesis (Root Cause Report) -->
+                <div class="result-card synthesis-card" id="synthesisCard">
+                    <div class="card-header">
+                        <h3>🧠 Qwen Cross-Domain Root Cause Synthesis</h3>
+                        <span class="tag tag-emerald">Causal Reasoning</span>
+                    </div>
+                    <div id="synthesisContent">
+                        <div class="placeholder-text">Cross-domain reasoning results will appear here upon anomaly detection.</div>
+                    </div>
+                </div>
+
+                <!-- Execution Trace & Zero-Trust Policy Gate -->
+                <div class="result-card trace-card">
+                    <div class="card-header">
+                        <h3>⏱️ Latency & Zero-Trust Policy Trace</h3>
+                        <span class="tag tag-blue">Audit Log</span>
+                    </div>
+                    <div class="trace-timeline" id="traceTimeline">
+                        <div class="placeholder-text">Run pipeline to inspect step-by-step latency trace.</div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/static/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,80 @@
+{
+  "artifact_version": "1.0",
+  "created_at_utc": "2026-09-17T04:44:16.962643+00:00",
+  "source_file": "sr-aq.csv",
+  "source_sha256": "5a6845214f0ac1e869b6347570a7e6723076f298adf4be2bf5a3143aa7d34d5c",
+  "source_rows": 100000,
+  "feature_order": [
+    "co2_ppm",
+    "temperature_c",
+    "relative_humidity_pct",
+    "pm25_ug_m3",
+    "pm10_ug_m3",
+    "aqi"
+  ],
+  "agent_classes": [
+    "air_nominal",
+    "co2_elevated",
+    "pm25_elevated"
+  ],
+  "plans": {
+    "no_call": [],
+    "air_only": [
+      "air_quality"
+    ],
+    "air_then_weather": [
+      "air_quality",
+      "weather"
+    ],
+    "air_then_occupancy_energy_weather": [
+      "air_quality",
+      "occupancy",
+      "energy",
+      "weather"
+    ],
+    "air_then_weather_occupancy_energy": [
+      "air_quality",
+      "weather",
+      "occupancy",
+      "energy"
+    ]
+  },
+  "bootstrap_trigger_policy": {
+    "co2_ppm": 1000.0,
+    "pm25_ug_m3": 35.0
+  },
+  "class_counts": {
+    "air_nominal": 49438,
+    "co2_elevated": 623,
+    "pm25_elevated": 49939
+  },
+  "split": "chronological_70_15_15",
+  "metrics": {
+    "train": {
+      "samples": 70000,
+      "agent_accuracy": 1.0,
+      "agent_macro_f1": 1.0,
+      "orchestrator_accuracy": 1.0,
+      "orchestrator_macro_f1": 1.0
+    },
+    "dev": {
+      "samples": 15000,
+      "agent_accuracy": 1.0,
+      "agent_macro_f1": 1.0,
+      "orchestrator_accuracy": 1.0,
+      "orchestrator_macro_f1": 1.0
+    },
+    "test": {
+      "samples": 15000,
+      "agent_accuracy": 1.0,
+      "agent_macro_f1": 1.0,
+      "orchestrator_accuracy": 1.0,
+      "orchestrator_macro_f1": 1.0
+    }
+  },
+  "limits": [
+    "Metrics measure imitation of the configured operational routing policy, not root-cause accuracy.",
+    "No reasoning model was trained or invoked.",
+    "Models require QAIRT/QNN validation before QIDK deployment."
+  ]
+}

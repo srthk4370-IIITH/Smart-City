@@ -1,0 +1,20 @@
+# The base model must remain identical to the model family evaluated on QIDK.
+model_id: meta-llama/Llama-3.2-3B-Instruct
+model_dir: models/base/llama-3.2-3b-instruct
+prepared_dataset: data/processed/sft/incidents.jsonl
+output_dir: models/llama-lora/smart-city-3b
+seed: 42
+max_sequence_length: 512
+epochs: 3
+learning_rate: 0.0002
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 16
+logging_steps: 5
+save_steps: 100
+warmup_ratio: 0.03
+lora_rank: 16
+lora_alpha: 32
+lora_dropout: 0.05
+target_modules: [q_proj, k_proj, v_proj, o_proj]
+# QLoRA is required for the host RTX 4050 Laptop GPU (6 GiB VRAM).
+load_in_4bit: true
