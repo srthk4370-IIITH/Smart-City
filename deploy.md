@@ -14,7 +14,7 @@ Plug the QIDK into your laptop via USB. Confirm it shows up:
 
 ```powershell
 # In PowerShell (or use the bundled ADB)
-C:\Users\hp\Desktop\qidk\platform-tools\adb.exe devices
+C:\Users\hp\Desktop\qidk\Code\platform-tools\adb.exe devices
 ```
 
 You should see something like:
@@ -32,7 +32,7 @@ If it shows `unauthorized`, unlock the phone and tap **"Always allow from this c
 Open **WSL** (Windows Subsystem for Linux) and run:
 
 ```bash
-cd /mnt/c/Users/hp/Desktop/qidk/smart-city-edge-agent
+cd /mnt/c/Users/hp/Desktop/qidk/Code/smart-city-edge-agent
 source .venv/bin/activate
 uvicorn src.smart_city_edge.webapp.app:app --host 0.0.0.0 --port 8000
 ```
@@ -102,7 +102,7 @@ fuser -k 8000/tcp
 **Inference returns no output / timeout**
 - The model files are still on the device — check with:
   ```powershell
-  C:\Users\hp\Desktop\qidk\platform-tools\adb.exe shell "ls -lh /data/local/tmp/genie_bundle/*.bin"
+  C:\Users\hp\Desktop\qidk\Code\platform-tools\adb.exe shell "ls -lh /data/local/tmp/genie_bundle/*.bin"
   ```
 - If the device was **rebooted** (not just disconnected), `/data/local/tmp/` may have been cleared. In that case, re-push the bundle — see the original setup notes.
 

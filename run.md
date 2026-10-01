@@ -1,56 +1,52 @@
-# Smart City Edge AI — Run Guide (Other Computer)
+# Smart City Edge AI — Comprehensive Run Guide
 
-> **This guide assumes you are running on a NEW computer that has never had this project before.**
-> The model is NOT in this repo (it's 2.8 GB). You will need the QIDK device with the model already on it, OR follow the "First-time device setup" section below.
+This guide provides end-to-end instructions for cloning the repository, setting up the environment, downloading the Llama 3.2 3B Instruct model, optionally training domain agents, and deploying everything to the Qualcomm QIDK edge device.
 
 ---
 
-## Prerequisites
+## 1. Prerequisites
 
 ### Hardware Required
-- **Qualcomm QIDK** development board (Snapdragon 8 Gen 3 / SM8650) — with model already deployed
+- **Qualcomm QIDK** development board (Snapdragon 8 Gen 3 / SM8650)
 - **USB cable** to connect QIDK to laptop
 - Laptop running **Windows 10/11** (with WSL2 recommended) or Linux
 
 ### Software Required
-| Tool | Install |
-|---|---|
-| Python 3.11+ | https://www.python.org/downloads/ |
-| Git | https://git-scm.com/ |
-| WSL2 (Windows) | `wsl --install` in PowerShell (admin) |
-| ADB (Android Debug Bridge) | Bundled in `platform-tools/` — no extra install |
+- Python 3.11+
+- Git
+- WSL2 (if on Windows)
+- Qualcomm AI Hub Account (free) for model downloads
 
 ---
 
-## Step 1 — Clone the Repository
+## 2. Clone the Repository
+
+Clone the project from GitHub and navigate into the `Code/` folder where the agent lives.
 
 ```bash
-git clone https://github.com/srthk4370-IIITH/Smart-City.git
-cd Smart-City
+git clone https://github.com/ESW-M26/esw-m26-14_nasa.git
+cd esw-m26-14_nasa/Code/smart-city-edge-agent
 ```
 
 ---
 
-## Step 2 — Set Up Python Environment
+## 3. Set Up Python Environment
 
-> Run these commands in **WSL** (on Windows) or any bash terminal (on Linux).
+Run these commands in **WSL** (on Windows) or any bash terminal.
 
 ```bash
-cd smart-city-edge-agent
-
 # Create virtual environment
 python3.11 -m venv .venv
 
 # Activate it
 source .venv/bin/activate
 
-# Install dependencies
+# Install all dependencies (including training tools)
 pip install -e ".[dev]"
 ```
 
 **On Windows without WSL:**
 ```powershell
-cd smart-city-edge-agent
 python -m venv .venv
 .venv\Scripts\activate
 pip install -e ".[dev]"
@@ -58,20 +54,46 @@ pip install -e ".[dev]"
 
 ---
 
-## Step 3 — Connect QIDK and Verify
+## 4. Download and Compile the Edge Model (Llama 3.2 3B)
 
-Plug in the QIDK via USB. Then verify ADB sees it:
+The orchestration AI relies on a quantized version of Llama 3.2 3B. We download it via the Qualcomm AI Hub.
 
-**Windows (PowerShell):**
+```bash
+# Ensure your virtual environment is active
+# Downloads the Genie bundle from AI Hub
+python scripts/download_genie_bundle.py
+```
+*Note: This requires you to log in to Qualcomm AI Hub via the terminal prompt if not already authenticated.*
+
+The bundle will be saved to `models/genie_bundle/sm8650-v75/`.
+
+---
+
+## 5. (Optional) Training Domain Agents
+
+If you want to fine-tune the lightweight domain agents (e.g., Energy, Water, Occupancy) on your own anomaly data before deployment:
+
+```bash
+# Train the anomaly detection models (creates .onnx and .joblib files)
+python scripts/train_anomaly.py --domain energy
+python scripts/train_anomaly.py --domain water
+```
+The trained lightweight agents will automatically be saved to `models/bootstrap/` and picked up by the pipeline.
+
+---
+
+## 6. Connect and Verify the QIDK Device
+
+Plug in the QIDK via USB. Make sure your laptop recognizes it using the bundled ADB tool:
+
+**Windows (PowerShell, from the root of the repo):**
 ```powershell
-.\platform-tools\adb.exe devices
+.\Code\platform-tools\adb.exe devices
 ```
 
 **WSL / Linux:**
 ```bash
-/mnt/c/Users/<YourName>/Desktop/qidk/platform-tools/adb.exe devices
-# OR if adb is in PATH:
-adb devices
+../platform-tools/adb devices
 ```
 
 Expected output:
@@ -79,110 +101,23 @@ Expected output:
 List of devices attached
 3ce9a4e2    device
 ```
-
-> If it shows `unauthorized`: unlock the phone → tap **"Always allow from this computer"** on the device screen.
-
----
-
-## Step 4 — Verify the Model is on the Device
-
-```bash
-# Check that model files are present (they should be, if the device was handed to you pre-loaded)
-adb shell "ls -lh /data/local/tmp/genie_bundle/*.bin"
-```
-
-Expected:
-```
--rw-rw-rw- 1 root root  752M  llama_v3_2_3b_instruct_part_1_of_3.bin
--rw-rw-rw- 1 root root  860M  llama_v3_2_3b_instruct_part_2_of_3.bin
--rw-rw-rw- 1 root root  1.2G  llama_v3_2_3b_instruct_part_3_of_3.bin
-```
-
-**If the model is NOT on the device** → see [First-Time Device Setup](#first-time-device-setup-model-not-on-device) below.
+> If it shows `unauthorized`: unlock the QIDK screen and tap **"Always allow from this computer"**.
 
 ---
 
-## Step 5 — Start the Web Server
+## 7. Deploy the Model to the QIDK
 
-```bash
-# In WSL or any bash terminal
-cd /mnt/c/path/to/Smart-City/smart-city-edge-agent   # adjust path
-source .venv/bin/activate
-uvicorn src.smart_city_edge.webapp.app:app --host 0.0.0.0 --port 8000
-```
+Push the Llama 3.2 3B Genie bundle to the device's NPU memory (`/data/local/tmp/genie_bundle/`).
 
-You should see:
-```
-INFO:  Application startup complete.
-INFO:  Uvicorn running on http://0.0.0.0:8000
-[GenieRunner] QIDK connected. Ready for inference. (1 NPU call per request)
-```
-
----
-
-## Step 6 — Open the Dashboard
-
-Open your browser and go to: **http://localhost:8000**
-
-The header badge will turn **green (⚡ NPU Active — 1-Call Mode)** once the device is detected.
-
-### Running a Demo
-1. Pick a preset: **"🌐 Full Multi-Domain Crisis"** or **"⚡ Energy Surge"**
-2. Click **"Evaluate Sensors"**
-3. Wait ~7 seconds for on-device NPU inference
-4. View the Root Cause Report, Domain Agent outputs, and Execution Trace
-
----
-
-## Troubleshooting
-
-**Port 8000 already in use:**
-```bash
-# WSL / Linux
-fuser -k 8000/tcp
-# Then re-run uvicorn
-```
-
-**ADB not found:**
-- Use the bundled ADB: `platform-tools/adb.exe` (Windows) or install via `sudo apt install adb` (Linux)
-- If on Linux, copy `platform-tools/adb.exe` from a Windows machine, or download Android platform-tools for Linux from https://developer.android.com/tools/releases/platform-tools
-
-**"Failed to create device: 14001" in logs:**
-- The QIDK device was rebooted and `/data/local/tmp/` was wiped. Re-deploy the model (see below).
-
-**Inference timeout / no output:**
-- Check device is not thermally throttled: `adb shell dumpsys thermalservice | grep -i temperature`
-- Try a direct genie test (see First-Time Device Setup section)
-
----
-
-## First-Time Device Setup (Model NOT on Device)
-
-> Only needed if the QIDK is freshly reset or you're setting up a new device.
-
-### 1. Download the Genie Bundle
-
-```bash
-# From the project root, in WSL with venv active
-cd smart-city-edge-agent
-python scripts/download_genie_bundle.py
-```
-
-This downloads the Llama 3.2 3B Instruct Genie bundle for SM8650 from Qualcomm AI Hub.
-You will need a **Qualcomm AI Hub account** (free): https://aihub.qualcomm.com
-
-### 2. Push the Bundle to Device
-
-The model files go to `/data/local/tmp/genie_bundle/` on the device. Use the deploy script:
-
+**Using PowerShell (Windows):**
 ```powershell
-# Windows PowerShell — from the smart-city-edge-agent directory
+# From the Code/smart-city-edge-agent directory
 .\scripts\deploy_bundle.ps1
 ```
 
-Or manually via ADB:
+**Manual ADB Push (Linux/WSL):**
 ```bash
-BUNDLE=./models/genie_bundle/sm8650-v75   # adjust to your actual path
+BUNDLE=./models/genie_bundle/sm8650-v75
 
 adb shell "mkdir -p /data/local/tmp/genie_bundle"
 adb push $BUNDLE/genie-t2t-run-2.50         /data/local/tmp/genie_bundle/
@@ -196,56 +131,35 @@ adb push $BUNDLE/aarch64-android/          /data/local/tmp/genie_bundle/aarch64-
 adb push $BUNDLE/dsp_2_50/                 /data/local/tmp/genie_bundle/dsp_2_50/
 adb push $BUNDLE/htp_backend_ext_config.json /data/local/tmp/genie_bundle/
 
-# Make binary executable
+# Make the NPU inference binary executable
 adb shell "chmod +x /data/local/tmp/genie_bundle/genie-t2t-run-2.50"
 ```
 
-### 3. Verify Direct Inference Works
+---
+
+## 8. Run the Web Dashboard and Inference Pipeline
+
+Once the model is deployed on the device, you can launch the control dashboard.
 
 ```bash
-adb shell "cd /data/local/tmp/genie_bundle && \
-  LD_LIBRARY_PATH=./qairt_2_50_libs:./aarch64-android \
-  ADSP_LIBRARY_PATH='./dsp_2_50;./dsp;/vendor/dsp/cdsp;/dsp' \
-  ./genie-t2t-run-2.50 -c llama3.2-3b-sm8650-genie.json -p 'Hello'"
+# In WSL/Linux (inside Code/smart-city-edge-agent)
+uvicorn src.smart_city_edge.webapp.app:app --host 0.0.0.0 --port 8000
 ```
 
-You should see `[BEGIN]: ...response...[END]` within ~7 seconds.
+1. Open your browser and go to: **http://localhost:8000**
+2. The header badge will turn **green (⚡ NPU Active — 1-Call Mode)** once the web app confirms the QIDK is connected over ADB.
+3. Select a preset (e.g., **"🌐 Full Multi-Domain Crisis"**) and click **"Evaluate Sensors"**.
+4. The dashboard will trigger the Python anomaly rules locally, then compile the context, and send a single inference request to the QIDK's NPU.
+5. In ~7 seconds, you will receive the full Root Cause Report and AI-orchestrated plan directly from the Edge!
 
 ---
 
-## Project Structure (Quick Reference)
+## 9. Troubleshooting
 
-```
-Smart-City/
-├── platform-tools/          ← ADB binary for Windows (bundled)
-├── PRD.md                   ← Full Product Requirements Document
-├── deploy.md                ← Demo runbook (for the pre-loaded device)
-├── ppt.md                   ← Presentation guide
-├── run.md                   ← This file
-└── smart-city-edge-agent/
-    ├── src/smart_city_edge/ ← Core Python source code
-    │   ├── genie_runner.py  ← ADB↔QIDK NPU inference engine
-    │   ├── rules.py         ← Rule-based anomaly detection
-    │   ├── prompts.py       ← Prompt templates
-    │   ├── policy.py        ← Safety policy gate
-    │   └── webapp/          ← FastAPI server + web dashboard
-    ├── configs/             ← Genie config, thresholds, prompts
-    ├── scripts/             ← Setup, training, and utility scripts
-    ├── pyproject.toml       ← Python package definition
-    └── requirements-*.txt   ← Dependency lists
+**Port 8000 already in use:**
+```bash
+fuser -k 8000/tcp
 ```
 
----
-
-## Hardware & Software Versions (Tested)
-
-| Component | Version |
-|---|---|
-| QIDK SoC | Snapdragon 8 Gen 3 (SM8650) |
-| Genie Runtime | `genie-t2t-run-2.50` / libGenie.so 1.20.0 |
-| QAIRT | 2.50 |
-| Model | Llama 3.2 3B Instruct (4-bit quantized, HTP V75) |
-| Python | 3.11.9 |
-| FastAPI / Uvicorn | latest (see pyproject.toml) |
-| Host OS | Windows 11 + WSL2 Ubuntu 22.04 |
-| ADB | 35.0.2-11882874 |
+**"Failed to create device: 14001" / Model missing:**
+If the device was restarted, the `/data/local/tmp/` directory is cleared automatically by Android. You must re-run **Step 7 (Deploy)** to push the model back to the QIDK.
