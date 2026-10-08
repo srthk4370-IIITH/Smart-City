@@ -26,6 +26,8 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 _ADB_CANDIDATES = [
+    "/mnt/c/Users/hp/Desktop/qidk/Code/platform-tools/adb.exe",  # WSL path (current repo layout)
+    "C:/Users/hp/Desktop/qidk/Code/platform-tools/adb.exe",       # Windows path (current repo layout)
     "/mnt/c/Users/hp/Desktop/qidk/platform-tools/adb.exe",  # WSL path
     "C:/Users/hp/Desktop/qidk/platform-tools/adb.exe",       # Windows path
     "adb",

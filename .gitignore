@@ -28,3 +28,37 @@ Thumbs.db
 
 # Logs
 *.log
+
+# ---- Large / proprietary artifacts (never pushed; see run.md for how to get or rebuild them) ----
+# Model weights and NPU context binaries (GBs)
+*.bin
+*.bin.truncated
+*.safetensors
+*.gguf
+*.onnx.data
+*.encodings
+# Qualcomm QAIRT / Genie runtime (licensed SDK files) and the laptop restore copy of the device
+qidk_backup/runtime/
+qidk_backup/genie_bundle_ft/
+qidk_backup/app/
+# Datasets (GBs) and Python wheels
+ihub-clean-datasets/
+*.zip
+.wheels/
+*.whl
+# Fine-tuning outputs: adapter weights + their tokenizer copy (eval reports are kept)
+Code/smart-city-edge-agent/training/results/*/adapter/
+Code/smart-city-edge-agent/training/export/_tmp/
+# Build outputs (rebuilt by app/build.sh and app/android/build_apk.sh)
+Code/smart-city-edge-agent/app/device/edge-agent
+Code/smart-city-edge-agent/app/device/edge-agent-host
+Code/smart-city-edge-agent/app/android/out/
+Code/smart-city-edge-agent/app/android/build/
+*.apk
+*.idsig
+# Runtime state of the app (incident history, prompts)
+Code/smart-city-edge-agent/app/device/state/
+# Local screenshots / scratch
+error.jpeg
+# ...but the app's sensor definitions are small and required
+!Code/smart-city-edge-agent/app/device/data/
