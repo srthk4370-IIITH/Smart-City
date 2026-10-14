@@ -46,8 +46,10 @@ package main
 #include "GenieDialog.h"
 
 // Trampoline: Genie calls this C function, which calls back into Go. Declared here because cgo
-// cannot take the address of a Go function directly.
-void genieQueryCallback(const char* response, const GenieDialog_SentenceCode_t code, const void* userData);
+// cannot take the address of a Go function directly. The signature must match what cgo generates
+// for the //export below EXACTLY - cgo drops `const`, so declaring it with const qualifiers is a
+// "conflicting types" error. The cast to GenieDialog_QueryCallback_t happens at the call site.
+extern void genieQueryCallback(char* response, GenieDialog_SentenceCode_t code, void* userData);
 
 static Genie_Status_t genieQuery(GenieDialog_Handle_t dlg, const char* prompt) {
   return GenieDialog_query(dlg, prompt, GENIE_DIALOG_SENTENCE_COMPLETE,
@@ -58,6 +60,7 @@ import "C"
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -244,6 +247,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("reading config: %v", err)
 	}
+	cfg = daemonConfig(cfg)
 
 	d, err := newDialog(string(cfg))
 	if err != nil {
@@ -255,7 +259,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("listen %s: %v", *addr, err)
 	}
-	log.Printf("genied ready on %s, bundle %s", *addr, *bundle)
+	log.Printf("genied %s ready on %s, bundle %s", version, *addr, *bundle)
 
 	for {
 		c, err := ln.Accept()
@@ -266,3 +270,43 @@ func main() {
 		serve(c, d) // one at a time: there is one NPU
 	}
 }
+
+// daemonConfig adapts the shared Genie config for a LONG-LIVED process.
+//
+// "poll": true makes Genie's worker threads busy-wait on the NPU instead of sleeping. For the
+// per-call CLI that is harmless: the process exits when the answer is done, so the spinning stops.
+// In a daemon it never stops. Measured on the QIDK: genied idled at 359% CPU (four big cores pinned)
+// and drove the board to 94 C, tripping the app's thermal guard so no analysis ran at all.
+//
+// With poll off, measured over the same 28 queries (14 prompts, forward then reverse):
+//
+//	poll true   28/28 identical   mean 3686 ms   idle 359% CPU
+//	poll false  28/28 identical   mean 3670 ms   idle   0% CPU
+//
+// i.e. no measurable speed cost here (the ~5% poll benefit recorded in HANDBOOK 5 was for the CLI).
+// The shared smartcity_agent.json is left untouched, because the CLI fallback still wants poll on.
+func daemonConfig(raw []byte) []byte {
+	var c map[string]any
+	if json.Unmarshal(raw, &c) != nil {
+		return raw // not ours to fix; Genie will report a malformed config itself
+	}
+	dlg, _ := c["dialog"].(map[string]any)
+	eng, _ := dlg["engine"].(map[string]any)
+	be, _ := eng["backend"].(map[string]any)
+	htp, _ := be["QnnHtp"].(map[string]any)
+	if htp == nil {
+		return raw
+	}
+	if htp["poll"] == true {
+		log.Printf("config: forcing \"poll\": false (a daemon must idle cold; see daemonConfig)")
+	}
+	htp["poll"] = false
+	out, err := json.Marshal(c)
+	if err != nil {
+		return raw
+	}
+	return out
+}
+
+// version is logged at startup so a deployed daemon can be matched to its build.
+const version = "2026-10-14.2"

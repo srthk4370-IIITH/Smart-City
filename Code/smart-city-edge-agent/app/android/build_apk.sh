@@ -17,6 +17,14 @@ OUT=$HERE/out; mkdir -p $OUT
 # Only the Go backend is packaged. Genie + QAIRT run from the QIDK's existing runtime
 # (/data/local/tmp/genie_bundle) inside the shell-user backend, the only user allowed to use the NPU.
 cp $APP/device/edge-agent $W/pkg/lib/arm64-v8a/libedgeagent.so
+# genied: the persistent Genie dialog daemon (app/genied). Packaged alongside the backend so a
+# reinstall or a wiped /data/local/tmp cannot silently drop the fast path - EdgeService copies it
+# out on every start, exactly like libedgeagent.so. Optional: the app works without it.
+if [ -f $APP/device/genied ]; then
+  cp $APP/device/genied $W/pkg/lib/arm64-v8a/libgenied.so
+else
+  echo "  note: app/device/genied not built (app/genied/build.sh); packaging without the daemon"
+fi
 ls -la $W/pkg/lib/arm64-v8a | awk 'NR>3{print "  ", $5, $9}'
 
 # resources + assets

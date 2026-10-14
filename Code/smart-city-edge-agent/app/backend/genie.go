@@ -217,6 +217,11 @@ func (g *GenieRunner) Run(ctx context.Context, b ModelBundle, prompt, prefill st
 	gap := 250 * time.Millisecond
 	if g.lastDir != "" && g.lastDir != b.Dir {
 		gap = 2500 * time.Millisecond
+	} else if daemonUp() {
+		// The gap guards against one PROCESS's HTP teardown overlapping the next process's start.
+		// genied is one persistent process holding one dialog: there is no teardown between calls,
+		// so there is nothing to wait out.
+		gap = 0
 	}
 	if wait := gap - time.Since(g.lastEnd); !g.lastEnd.IsZero() && wait > 0 && !g.mock {
 		time.Sleep(wait)

@@ -76,8 +76,23 @@ public class EdgeService extends Service {
         AdbLocal adb = new AdbLocal(getFilesDir());
         int misses = 0, ticks = 0;
         boolean fallback = false;
+        // After an APK update a HEALTHY backend used to keep running the old binary indefinitely,
+        // because startScript only ran when the backend was unhealthy - so a new libedgeagent.so or
+        // libgenied.so shipped in the APK never took effect until something crashed. Check once at
+        // service start: if the deployed binaries differ from the ones in this APK, redeploy now.
+        boolean checkedUpdate = false;
         while (!Thread.currentThread().isInterrupted()) {
             try {
+                if (!checkedUpdate && healthy() && AdbLocal.listening()) {
+                    checkedUpdate = true;
+                    String r = adb.shell(staleScript(ext), 15000).trim();
+                    if (r.contains("STALE")) {
+                        Log.i(TAG, "APK carries a newer backend/daemon than the running one - redeploying");
+                        String out = adb.shell(startScript(ext), 30000);
+                        Log.i(TAG, "redeploy: " + out.trim());
+                        for (int i = 0; i < 25 && !healthy(); i++) Thread.sleep(1000);
+                    }
+                }
                 if (healthy()) {
                     misses = 0;
                     notifyNewIncidents();
@@ -110,6 +125,18 @@ public class EdgeService extends Service {
         }
     }
 
+    /** Prints STALE if the deployed backend, daemon or dashboard differs from what this APK ships.
+     *  The web assets matter as much as the binaries: they are copied to the served directory only
+     *  by backendStart, so without this check a new APK's UI never appeared until a crash. */
+    private String staleScript(File ext) {
+        String lib = getApplicationInfo().nativeLibraryDir;
+        String D = "/data/local/tmp/smart_city_edge";
+        String W = ext.getAbsolutePath() + "/web";
+        return "cmp -s " + lib + "/libedgeagent.so " + D + "/edge-agent || echo STALE; "
+                + "[ -f " + lib + "/libgenied.so ] && { cmp -s " + lib + "/libgenied.so " + D + "/genied || echo STALE; }; "
+                + "for f in index.html app.js styles.css sw.js; do cmp -s " + W + "/$f " + D + "/web/$f || echo STALE; done; true";
+    }
+
     /** Shell command (run as the adb shell user) that installs/refreshes and starts the NPU backend. */
     private String startScript(File ext) {
         String lib = getApplicationInfo().nativeLibraryDir;
@@ -133,7 +160,10 @@ public class EdgeService extends Service {
                 + "mkdir -p $D/state $D/data $D/web; "
                 + "cmp -s $L/libedgeagent.so $D/edge-agent || { cp $L/libedgeagent.so $D/edge-agent.new && mv $D/edge-agent.new $D/edge-agent; }; "
                 + "chmod 755 $D/edge-agent; cp -r $X/web/. $D/web/; cp $X/data/sensors.json $D/data/sensors.json; "
-                + "pkill -x edge-agent; sleep 1; "
+                // genied (persistent Genie dialog) ships in the APK too; edge-agent launches and
+                // supervises it. Kill the old one so a new APK's daemon replaces it cleanly.
+                + "if [ -f $L/libgenied.so ]; then cmp -s $L/libgenied.so $D/genied || { cp $L/libgenied.so $D/genied.new && mv $D/genied.new $D/genied; }; chmod 755 $D/genied; fi; "
+                + "pkill -x genied; pkill -x edge-agent; sleep 1; "
                 + "cd $D && (setsid nohup ./edge-agent --dir $D --genie /data/local/tmp/genie_bundle --mode 3 "
                 + "--clock-unix " + now + " > state/agent.log 2>&1 < /dev/null &); "
                 + "sleep 2; pgrep -x edge-agent >/dev/null && echo STARTED || echo FAILED";

@@ -464,7 +464,10 @@ func (r *Reasoner) Process(cands []Candidate, mode int) *Incident {
 		// first - about 1.3 s each. The answers are byte-identical to running them separately
 		// (training/export/verify_batch.py, 16/16). If the batch fails, nothing is cached and the
 		// loop below just runs normally.
-		if batchEnabled() && len(llm) > 1 {
+		// Batching and genied are alternatives, never both: genie-app loads its own copy of the
+		// model, and two resident contexts is what hits the DSP SMMU limit. When the daemon is up,
+		// every agent call already skips model init, which was batching's whole benefit.
+		if batchEnabled() && len(llm) > 1 && !daemonUp() {
 			prompts := make([]string, len(llm))
 			for k, i := range llm {
 				s := inc.Sensors[i]
@@ -517,9 +520,20 @@ func (r *Reasoner) Process(cands []Candidate, mode int) *Incident {
 		}
 		rc := r.checkReport(res, prompt+ReportPrefill, inc.Sensors)
 		rc.CallMetrics = metricsOf(res)
+		rejected := ""
+		if !rc.Valid {
+			// The gate knows this report is unsound, so do not show it to the operator. Rebuild it
+			// deterministically from the agent findings that DID pass (fallback.go); the rejected
+			// text and its errors are carried through for audit.
+			rejected = strings.Join(rc.Errors, "; ")
+			rc = fallbackReport(inc.Sensors, findings, rc)
+		}
 		r.mu.Lock()
 		inc.Final = rc
 		r.mu.Unlock()
+		if rejected != "" {
+			r.log(inc, "Synthesizer report rejected by policy ("+rejected+"); cross-domain report rebuilt from the validated agent findings")
+		}
 		r.log(inc, fmt.Sprintf("Cross-domain report in %.1fs, policy %s", res.LatencyMs/1000, okStr(rc.Valid)))
 	}
 	r.mu.Lock()

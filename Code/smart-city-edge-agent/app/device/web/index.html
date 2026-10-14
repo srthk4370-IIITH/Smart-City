@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Smart City Edge</title>
 <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#0d0b0a" media="(prefers-color-scheme: dark)">
 <meta name="color-scheme" content="light dark">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -15,10 +15,11 @@
 /* set theme before first paint (no flash) */
 (function () {
   try {
-    var t = localStorage.getItem('sce-theme');
-    if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    /* Dark is the designed look (see UI Reference): the instrument-panel theme. Light still
+       works and the toggle still switches, but we no longer follow the OS into light by default. */
+    var t = localStorage.getItem('sce-theme') || 'dark';
     document.documentElement.setAttribute('data-theme', t);
-  } catch (e) { document.documentElement.setAttribute('data-theme', 'light'); }
+  } catch (e) { document.documentElement.setAttribute('data-theme', 'dark'); }
 })();
 </script>
 </head>

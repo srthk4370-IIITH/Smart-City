@@ -11,17 +11,24 @@
   --blur-bg:rgba(242,242,247,.78); --scrim:rgba(0,0,0,.38);
   --hero:linear-gradient(135deg,#fff4e8 0%,#ffe3c7 100%); --hero-tx:#3a2008;
 }
+/* Dark theme = the "DeerFlow" instrument-panel look from UI Reference/download.jpg:
+   near-black cards floating on a warm amber-lit ground, one orange-red accent used sparingly,
+   monospace uppercase micro-labels, and dotted/stippled texture instead of heavy chrome. */
 [data-theme="dark"]{
   color-scheme:dark;
-  --bg:#000000; --card:#1c1c1e; --card2:#2a2a2d; --fill:rgba(120,120,128,.24); --fill2:rgba(120,120,128,.36);
-  --tx:#f5f5f7; --tx2:#a3a3ab; --sep:rgba(84,84,88,.55);
-  --accent:#fc8019; --accent-ink:#1d1100; --accent-tx:#ff9b4a; --accent-tint:rgba(252,128,25,.2);
-  --blue:#4da3ff; --focus:#6cb4ff;
-  --ok:#4cd98a; --warn:#ffb340; --crit:#ff7a6e; --fault:#d9a0ff; --nodata:#a3a3ab;
-  --ok-b:#34c77b; --warn-b:#ffb340; --crit-b:#ff5a4d; --fault-b:#c77dff; --nodata-b:#6e6e76;
-  --shadow:0 0 0 1px rgba(255,255,255,.04);
-  --blur-bg:rgba(0,0,0,.72); --scrim:rgba(0,0,0,.6);
-  --hero:linear-gradient(135deg,#2c1a0b 0%,#1c1c1e 100%); --hero-tx:#ffe9d3;
+  --bg:#0d0b0a; --card:#161412; --card2:#1e1b19; --fill:rgba(255,236,214,.07); --fill2:rgba(255,236,214,.13);
+  --tx:#ece6df; --tx2:#8f857a; --sep:rgba(255,236,214,.09);
+  --accent:#ff4b26; --accent-ink:#170a05; --accent-tx:#ff6a46; --accent-tint:rgba(255,75,38,.16);
+  --blue:#6fb2ff; --focus:#ff8a68;
+  --ok:#5ad39a; --warn:#ffb340; --crit:#ff5f43; --fault:#c99bff; --nodata:#8f857a;
+  --ok-b:#3fbf86; --warn-b:#ffa92e; --crit-b:#ff4b26; --fault-b:#b478f0; --nodata-b:#6b625a;
+  --shadow:0 0 0 1px rgba(255,236,214,.06),0 18px 40px rgba(0,0,0,.45);
+  --blur-bg:rgba(13,11,10,.78); --scrim:rgba(0,0,0,.66);
+  --hero:linear-gradient(145deg,#241a14 0%,#161412 60%); --hero-tx:#f0e7dd;
+  /* warm ambient wash behind everything, brightest top-left, like the reference render */
+  --amb:radial-gradient(1100px 680px at 12% -8%,rgba(214,150,96,.28),transparent 62%),
+        radial-gradient(900px 620px at 92% 8%,rgba(150,96,64,.16),transparent 60%),
+        linear-gradient(170deg,#1a1512 0%,#0d0b0a 52%);
 }
 :root{
   --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",system-ui,Roboto,"Segoe UI","Helvetica Neue",Arial,sans-serif;
@@ -461,3 +468,311 @@ details pre{margin:0;padding:12px 16px;white-space:pre-wrap;word-break:break-wor
 .cstream:empty{display:none}
 .cstream::after{content:"";display:inline-block;width:7px;height:13px;background:var(--accent);
   margin-left:2px;vertical-align:-2px;animation:blink 1s steps(2,start) infinite}
+
+/* ============================================================================
+   DeerFlow instrument-panel aesthetic (dark theme only).
+   Reference: UI Reference/download.jpg. Everything here is presentation only -
+   no layout is moved, so the markup in app.js is untouched and light mode is
+   unaffected. No external assets: the dot-matrix feel comes from monospace with
+   wide tracking plus real dotted gradients, not a webfont.
+   ========================================================================= */
+[data-theme="dark"] body{
+  background:var(--amb);
+  background-attachment:fixed;
+}
+/* Faint stipple over the whole ground, like the rendered grain in the reference.
+   z-index:-1 keeps it BEHIND content: an earlier version put it at z-index 0 and then forced
+   position:relative on .bar/.tabs/.modebar to sit above it, which destroyed their sticky/fixed
+   positioning and made the page titles render underneath the mode bar. Never restate `position`
+   on those three. */
+[data-theme="dark"] body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;
+  background-image:radial-gradient(rgba(255,236,214,.05) 1px,transparent 1px);
+  background-size:4px 4px;
+}
+/* the sticky chrome must be opaque or page content shows through it while scrolling */
+[data-theme="dark"] .bar,[data-theme="dark"] .modebar,[data-theme="dark"] .tabs{
+  background:rgba(13,11,10,.94);
+}
+
+/* ---- cards: near-black slabs, hairline edge, generous radius ---- */
+[data-theme="dark"] .card,[data-theme="dark"] .icard,[data-theme="dark"] .agent,
+[data-theme="dark"] .hero,[data-theme="dark"] .sheet{
+  border:1px solid rgba(255,236,214,.07);
+  background-image:linear-gradient(180deg,rgba(255,236,214,.03),transparent 42%);
+}
+[data-theme="dark"] .card,[data-theme="dark"] .icard{border-radius:22px}
+
+/* ---- micro-labels: mono, uppercase, widely tracked (the "01 AGENT STATUS" feel) ---- */
+[data-theme="dark"] .ltitle h1{
+  font-family:var(--mono);font-weight:500;letter-spacing:.16em;text-transform:uppercase;
+  font-size:25px;line-height:1.15;color:var(--tx);
+}
+[data-theme="dark"] .ltitle p{
+  font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx2);
+}
+[data-theme="dark"] .foot,[data-theme="dark"] .chip.stat,[data-theme="dark"] .hero-s{
+  font-family:var(--mono);letter-spacing:.07em;
+}
+/* the incident id reads as the reference's card index */
+[data-theme="dark"] .foot > span:first-child{text-transform:uppercase;letter-spacing:.12em;color:var(--tx2)}
+[data-theme="dark"] .ttl{letter-spacing:.01em}
+
+/* ---- numbers: tabular mono, the panel's headline element ---- */
+[data-theme="dark"] .hero-stats b,[data-theme="dark"] .hero-h{
+  font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:.04em;font-weight:500;
+}
+
+/* ---- pills: outlined capsules with a status dot, not filled blobs ---- */
+[data-theme="dark"] .pill{
+  background:transparent;border:1px solid color-mix(in srgb,var(--c,var(--tx2)) 42%,transparent);
+  font-family:var(--mono);font-weight:500;font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;
+  padding:5px 11px;
+}
+[data-theme="dark"] .pill::before{
+  content:"";width:6px;height:6px;border-radius:50%;background:var(--c,var(--tx2));flex:none;
+}
+[data-theme="dark"] .pill.ghost{border-color:var(--sep);color:var(--tx2)}
+[data-theme="dark"] .pill.orange,[data-theme="dark"] .pill.inj{
+  border-color:color-mix(in srgb,var(--accent) 55%,transparent);color:var(--accent-tx);background:transparent;
+}
+[data-theme="dark"] .chip{
+  background:transparent;border:1px solid var(--sep);
+  font-family:var(--mono);font-size:12px;letter-spacing:.06em;
+}
+[data-theme="dark"] .livepill{
+  font-family:var(--mono);letter-spacing:.18em;color:var(--accent-tx);
+  background:transparent;border:1px solid color-mix(in srgb,var(--accent) 50%,transparent);
+}
+
+/* ---- segmented control: flat, mono, accent underline instead of a raised thumb ---- */
+[data-theme="dark"] .seg{background:transparent;border:1px solid var(--sep);border-radius:12px}
+[data-theme="dark"] .seg button{
+  font-family:var(--mono);font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:500;color:var(--tx2);
+}
+[data-theme="dark"] .seg button.on{color:var(--tx)}
+[data-theme="dark"] .seg .thumb{
+  background:var(--accent-tint);box-shadow:inset 0 -2px 0 var(--accent);border-radius:10px;
+}
+
+/* ---- hero: warm panel with the reference's corner glow and dotted field ---- */
+[data-theme="dark"] .hero{
+  border-radius:24px;
+  background-image:
+    radial-gradient(rgba(255,236,214,.07) 1px,transparent 1px),
+    linear-gradient(145deg,#241a14 0%,#161412 62%);
+  background-size:7px 7px,auto;
+}
+[data-theme="dark"] .hero::after{
+  background:radial-gradient(circle,rgba(255,75,38,.3),transparent 68%);
+}
+[data-theme="dark"] .hero-ico{border-radius:16px;box-shadow:none}
+
+/* ---- tab rail + top bar: quieter, mono labels ---- */
+[data-theme="dark"] .tabs a{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase}
+[data-theme="dark"] .brand b{font-family:var(--mono);letter-spacing:.16em;text-transform:uppercase;font-size:14px;font-weight:500}
+[data-theme="dark"] .clk{font-family:var(--mono);letter-spacing:.08em}
+
+/* ---- live token stream: terminal green-free, warm like the rest ---- */
+[data-theme="dark"] .stream,[data-theme="dark"] .cstream{
+  background:#100e0d;border:1px solid rgba(255,236,214,.06);
+}
+
+/* ---- overflow guards for the wide mono tracking -----------------------------
+   Uppercase monospace with .1-.18em tracking is noticeably wider than the
+   proportional type it replaced, so anything that was previously a snug fit can
+   now push past its container. These keep the aesthetic but stop it overflowing. */
+[data-theme="dark"] .ltitle h1{overflow-wrap:anywhere}
+[data-theme="dark"] .hero-stats{grid-template-columns:repeat(4,minmax(0,1fr))}
+[data-theme="dark"] .hero-stats > *{min-width:0}
+[data-theme="dark"] .hero-stats b{font-size:17px;letter-spacing:.02em;overflow-wrap:anywhere}
+[data-theme="dark"] .seg{max-width:100%;overflow:hidden}
+[data-theme="dark"] .seg button{min-width:0;padding:0 8px;overflow:hidden;text-overflow:ellipsis}
+[data-theme="dark"] .mb-row{min-width:0;flex-wrap:wrap}
+[data-theme="dark"] .tabs a{min-width:0;padding:0 2px}
+[data-theme="dark"] .tabs a span,[data-theme="dark"] .tabs a i{
+  max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+[data-theme="dark"] .brand b{overflow:hidden;text-overflow:ellipsis;letter-spacing:.1em}
+[data-theme="dark"] .pill{letter-spacing:.08em;max-width:100%;overflow:hidden}
+[data-theme="dark"] .foot{min-width:0}
+[data-theme="dark"] .foot > span{min-width:0;overflow-wrap:anywhere}
+
+/* narrow phones: shed the tracking before it costs us a horizontal scrollbar */
+@media (max-width:420px){
+  [data-theme="dark"] .ltitle h1{font-size:21px;letter-spacing:.1em}
+  [data-theme="dark"] .seg button{font-size:11px;letter-spacing:.06em}
+  [data-theme="dark"] .tabs a{font-size:9.5px;letter-spacing:.04em}
+  [data-theme="dark"] .pill{letter-spacing:.05em;font-size:11px;padding:4px 8px}
+  [data-theme="dark"] .brand b{font-size:12px;letter-spacing:.06em}
+}
+
+/* ---- the whole interface is monospace, as in the reference -----------------
+   Previously only labels were mono and body copy stayed proportional, which is
+   why the screen still read as the old app with a new palette. The reference
+   has no proportional type anywhere. */
+[data-theme="dark"] body,
+[data-theme="dark"] button,[data-theme="dark"] input,[data-theme="dark"] textarea,
+[data-theme="dark"] h1,[data-theme="dark"] h2,[data-theme="dark"] h3,[data-theme="dark"] p,
+[data-theme="dark"] .ttl,[data-theme="dark"] .hero-h,[data-theme="dark"] .hero-s,
+[data-theme="dark"] .sheet-t,[data-theme="dark"] .rep-h{
+  font-family:var(--mono);
+}
+/* mono is wider than sans, so drop a step and tighten the line box */
+[data-theme="dark"] body{font-size:14.5px;line-height:1.5;letter-spacing:.01em}
+[data-theme="dark"] p,[data-theme="dark"] .muted{font-size:13px;line-height:1.55}
+[data-theme="dark"] .ttl{font-size:14px;font-weight:500;letter-spacing:.03em}
+[data-theme="dark"] h2,[data-theme="dark"] h3,[data-theme="dark"] .sheet-t,[data-theme="dark"] .rep-h b{
+  font-weight:500;letter-spacing:.1em;text-transform:uppercase;font-size:13px;
+}
+
+/* ---- cards: flat near-black slabs, no warm tint, hairline edge ---- */
+[data-theme="dark"] .card,[data-theme="dark"] .icard,[data-theme="dark"] .agent{
+  background:#121110;background-image:none;box-shadow:none;
+  border:1px solid rgba(255,236,214,.08);
+}
+/* the inline note boxes were reading as brown blocks; make them outlined instead */
+[data-theme="dark"] .note,[data-theme="dark"] .callout,[data-theme="dark"] .info,
+[data-theme="dark"] .card .tip{
+  background:transparent;border:1px solid color-mix(in srgb,var(--accent) 34%,transparent);
+}
+
+/* ---- sliders: thin track, square accent thumb (instrument, not iOS) ---- */
+[data-theme="dark"] input[type=range]{accent-color:var(--accent)}
+[data-theme="dark"] input[type=range]::-webkit-slider-thumb{
+  border-radius:3px;background:var(--accent);box-shadow:0 0 0 1px rgba(0,0,0,.6);
+}
+
+/* ---- section heading: dot-matrix rendering lives in app.js; this is its frame ---- */
+[data-theme="dark"] .ltitle{padding:18px 0 12px;border-bottom:1px solid var(--sep);margin-bottom:14px}
+[data-theme="dark"] .dotttl{display:block;width:100%;height:auto;max-width:360px}
+[data-theme="dark"] .dotttl + p{margin-top:10px}
+
+/* dot-matrix headings */
+[data-theme="dark"] .ltitle h1.is-dots{font-size:0;line-height:0}
+[data-theme="dark"] .dotttl{fill:var(--tx);display:block}
+[data-theme="dark"] .dotttl circle{fill:var(--tx)}
+
+/* ---- type scale: mono renders visually larger than sans at the same px, and the
+   first pass left everything oversized on a 1080-wide phone. The reference is small,
+   tight and dense. ---- */
+[data-theme="dark"] body{font-size:12.5px;line-height:1.5}
+[data-theme="dark"] p,[data-theme="dark"] .muted,[data-theme="dark"] .loc{font-size:11.5px;line-height:1.5}
+[data-theme="dark"] .ltitle p{font-size:10.5px}
+[data-theme="dark"] .btn{font-size:12px;letter-spacing:.06em}
+
+/* in-card headings read as instrument labels, not article headings */
+[data-theme="dark"] .sn-nm b,[data-theme="dark"] .sn-h,[data-theme="dark"] .dom-h,
+[data-theme="dark"] .row b,[data-theme="dark"] .card > b{
+  font-weight:500;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx2);
+}
+/* readouts stay large and tabular - the one thing the reference lets shout */
+[data-theme="dark"] .sn-val,[data-theme="dark"] .val,[data-theme="dark"] .big{
+  font-variant-numeric:tabular-nums;letter-spacing:.02em;
+}
+
+/* ---- the light scrollbar strip on the right edge of the screenshot ---- */
+[data-theme="dark"] *{scrollbar-width:thin;scrollbar-color:rgba(255,236,214,.18) transparent}
+[data-theme="dark"] ::-webkit-scrollbar{width:4px;height:4px}
+[data-theme="dark"] ::-webkit-scrollbar-track{background:transparent}
+[data-theme="dark"] ::-webkit-scrollbar-thumb{background:rgba(255,236,214,.16);border-radius:2px}
+
+/* buttons: outlined instrument keys rather than filled pills */
+[data-theme="dark"] .btn{
+  background:transparent;border:1px solid var(--sep);border-radius:12px;
+  text-transform:uppercase;font-weight:500;
+}
+[data-theme="dark"] .btn.primary{
+  border-color:color-mix(in srgb,var(--accent) 60%,transparent);color:var(--accent-tx);background:var(--accent-tint);
+}
+
+/* ---- status pills already carry a glyph in the markup (STATUS_GLYPH), so the
+   decorative dot added earlier produced two markers side by side ---- */
+[data-theme="dark"] .pill::before{content:none}
+
+/* ---- filter chips: outlined instrument tabs, not filled iOS capsules ---- */
+[data-theme="dark"] .fchip{
+  background:transparent;box-shadow:none;border:1px solid var(--sep);border-radius:10px;
+  min-height:34px;padding:0 12px;font-weight:500;font-size:11.5px;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--tx2);
+}
+[data-theme="dark"] .fchip.on{
+  background:var(--accent-tint);border-color:color-mix(in srgb,var(--accent) 60%,transparent);
+  color:var(--accent-tx);box-shadow:inset 0 -2px 0 var(--accent);
+}
+[data-theme="dark"] .fchip .n{
+  background:transparent;border:1px solid var(--sep);font-size:10.5px;font-weight:500;padding:0 5px;
+}
+[data-theme="dark"] .fchip.on .n{background:transparent;border-color:color-mix(in srgb,var(--accent) 50%,transparent)}
+
+/* ---- domain icons: monochrome outline tiles, not coloured app icons ---- */
+[data-theme="dark"] .dico{
+  width:34px;height:34px;border-radius:9px;background:transparent;
+  border:1px solid color-mix(in srgb,var(--cb,var(--tx2)) 55%,transparent);
+  color:var(--cb,var(--tx2));
+}
+[data-theme="dark"] .dico svg{width:18px;height:18px}
+[data-theme="dark"] .hero-ico{
+  background:transparent;border:1px solid color-mix(in srgb,var(--cb,var(--accent)) 55%,transparent);
+  color:var(--cb,var(--accent));width:44px;height:44px;
+}
+
+/* chips row: tighter, no oversized touch targets stealing the density */
+[data-theme="dark"] .chips{padding-bottom:8px;gap:6px}
+[data-theme="dark"] .chip{min-height:26px;padding:3px 9px}
+
+/* ---- incident timeline: instrument readout, not a progress hero ---- */
+[data-theme="dark"] .step .st{
+  font-weight:500;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;line-height:1.35;
+}
+[data-theme="dark"] .steps .line{width:1px;left:16px;background:var(--sep);border-radius:0}
+[data-theme="dark"] .steps .line i{background:var(--accent);border-radius:0}
+[data-theme="dark"] .step .dotc{
+  width:22px;height:22px;background:transparent;border:1px solid var(--sep);
+}
+[data-theme="dark"] .step.done .dotc{
+  background:transparent;border-color:color-mix(in srgb,var(--accent) 65%,transparent);color:var(--accent);
+}
+[data-theme="dark"] .step.done .dotc svg{width:12px;height:12px}
+[data-theme="dark"] .step.active .dotc::after{width:7px;height:7px}
+[data-theme="dark"] .step{min-height:44px;padding:5px 0}
+
+/* the headline duration readout: the one number allowed to be loud */
+[data-theme="dark"] .sum-big,[data-theme="dark"] .big-s{
+  font-variant-numeric:tabular-nums;letter-spacing:.01em;font-weight:500;
+}
+
+/* ---- hero: the panel header, in the reference's register ---- */
+[data-theme="dark"] .hero-h{
+  font-weight:500;font-size:13px;letter-spacing:.16em;text-transform:uppercase;
+}
+[data-theme="dark"] .hero-s{font-size:11.5px;letter-spacing:.06em;opacity:.8}
+[data-theme="dark"] .hero-stats > *{
+  background:transparent;border:1px solid var(--sep);border-radius:10px;
+}
+[data-theme="dark"] .hero-stats span,[data-theme="dark"] .hero-stats small{
+  font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx2);
+}
+/* system badges: outlined, mono, uppercase - not filled lozenges */
+[data-theme="dark"] .hbadge{
+  background:transparent;border:1px solid var(--sep);border-radius:8px;
+  font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:500;color:var(--tx2);
+  padding:4px 9px;
+}
+[data-theme="dark"] .hbadge b,[data-theme="dark"] .hbadge strong{font-weight:500;color:var(--tx)}
+
+/* ---- domain card icon: monochrome outline, matching .dico ---- */
+[data-theme="dark"] .dom-ico{
+  width:32px;height:32px;border-radius:9px;background:transparent;
+  border:1px solid color-mix(in srgb,var(--cb,var(--tx2)) 55%,transparent);
+  color:var(--cb,var(--tx2));
+}
+[data-theme="dark"] .dom-ico svg{width:17px;height:17px}
+
+/* info banner on the Sensors tab: an outlined annotation, not a brown block */
+[data-theme="dark"] .sn-banner{
+  background:transparent;border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);
+  border-left:2px solid var(--accent);border-radius:10px;
+}
+[data-theme="dark"] .sn-banner p{font-size:11px;letter-spacing:.03em;color:var(--tx2)}
+[data-theme="dark"] .sn-banner svg{color:var(--accent);width:16px;height:16px}

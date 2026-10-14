@@ -402,20 +402,45 @@ function sparkSvg(pts, w, h2, cssVar, occ) {
   let mn = Math.min(...vs), mx = Math.max(...vs);
   const X = (x) => ((x - x0) / (x1 - x0 || 1)) * w;
   if (occ) {
+    // occupancy is binary: a column of dots when occupied, a single baseline dot when vacant
     let out = '';
-    for (let i = 0; i < pts.length; i++) {
-      const xa = X(xs[i]), xb = i + 1 < pts.length ? X(xs[i + 1]) : w, on = vs[i] > 0;
-      out += `<rect x="${xa.toFixed(1)}" y="${on ? 4 : h2 - 8}" width="${Math.max(1, xb - xa + 0.4).toFixed(1)}" height="${on ? h2 - 8 : 4}" rx="1" style="fill:${on ? 'var(--accent)' : 'var(--fill2)'}"/>`;
+    const N = Math.max(14, Math.min(52, Math.round(w / 6)));
+    let li = 0;
+    for (let i = 0; i < N; i++) {
+      const t = i / (N - 1), xq = x0 + t * (x1 - x0);
+      while (li < pts.length - 1 && xs[li + 1] < xq) li++;
+      const cx = (t * w).toFixed(1);
+      if (vs[li] > 0) {
+        for (let y = 5; y < h2 - 3; y += 5) out += `<circle cx="${cx}" cy="${y}" r="1.25" style="fill:var(--accent)"/>`;
+      } else {
+        out += `<circle cx="${cx}" cy="${h2 - 5}" r="1" style="fill:var(--fill2)"/>`;
+      }
     }
     return out;
   }
   if (mx - mn < 1e-9) { mx += 1; mn -= 1; }
   const Y = (v) => 4 + (1 - (v - mn) / (mx - mn)) * (h2 - 8);
-  let d = '';
-  pts.forEach((p, i) => { d += (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1); });
-  const last = pts[pts.length - 1], c = 'var(' + cssVar + ')';
-  return `<path d="${d}" fill="none" style="stroke:${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>` +
-    `<circle cx="${X(last[0]).toFixed(1)}" cy="${Y(last[1]).toFixed(1)}" r="3" style="fill:${c}"/>`;
+  const c = 'var(' + cssVar + ')';
+
+  // Dot-matrix plot (see UI Reference): the series is resampled onto a fixed column grid and drawn
+  // as discrete dots rather than a stroked line, which is the signature of the reference dashboard.
+  // A faint dropline under each sample gives the stippled "instrument readout" texture.
+  const N = Math.max(14, Math.min(52, Math.round(w / 6)));
+  const base = h2 - 4;
+  let out = '';
+  let li = 0;
+  for (let i = 0; i < N; i++) {
+    const t = i / (N - 1), xq = x0 + t * (x1 - x0);
+    while (li < pts.length - 1 && xs[li + 1] < xq) li++;      // series is time-ordered
+    const v = vs[li], cx = (t * w).toFixed(1), cy = Y(v).toFixed(1);
+    const lastCol = i === N - 1;
+    // dropline: a few faint dots between the sample and the baseline
+    for (let y = +cy + 5; y < base; y += 5) {
+      out += `<circle cx="${cx}" cy="${y.toFixed(1)}" r="0.7" style="fill:${c};opacity:.18"/>`;
+    }
+    out += `<circle cx="${cx}" cy="${cy}" r="${lastCol ? 2.6 : 1.35}" style="fill:${lastCol ? 'var(--accent)' : c}${lastCol ? '' : ';opacity:.85'}"/>`;
+  }
+  return out;
 }
 const STATUS_VAR = { normal: '--ok-b', warning: '--warn-b', critical: '--crit-b', sensor_fault: '--fault-b' };
 let sparkBusy = 0;
@@ -1319,3 +1344,71 @@ function boot() {
 }
 boot();
 })();
+
+/* ---------- dot-matrix headings (UI Reference: "DEERFLOW", "THINKING...") ----
+   A 5x7 LED font rendered as SVG dots. This is the single most identifying mark
+   of the reference dashboard and cannot be had from a system font, so the glyphs
+   live here as data - no webfont, no external asset, works offline. */
+const DOT5x7 = {
+  A: '01110,10001,10001,11111,10001,10001,10001', B: '11110,10001,10001,11110,10001,10001,11110',
+  C: '01110,10001,10000,10000,10000,10001,01110', D: '11110,10001,10001,10001,10001,10001,11110',
+  E: '11111,10000,10000,11110,10000,10000,11111', F: '11111,10000,10000,11110,10000,10000,10000',
+  G: '01110,10001,10000,10111,10001,10001,01111', H: '10001,10001,10001,11111,10001,10001,10001',
+  I: '11111,00100,00100,00100,00100,00100,11111', J: '00111,00010,00010,00010,00010,10010,01100',
+  K: '10001,10010,10100,11000,10100,10010,10001', L: '10000,10000,10000,10000,10000,10000,11111',
+  M: '10001,11011,10101,10101,10001,10001,10001', N: '10001,11001,10101,10011,10001,10001,10001',
+  O: '01110,10001,10001,10001,10001,10001,01110', P: '11110,10001,10001,11110,10000,10000,10000',
+  Q: '01110,10001,10001,10001,10101,10010,01101', R: '11110,10001,10001,11110,10100,10010,10001',
+  S: '01111,10000,10000,01110,00001,00001,11110', T: '11111,00100,00100,00100,00100,00100,00100',
+  U: '10001,10001,10001,10001,10001,10001,01110', V: '10001,10001,10001,10001,10001,01010,00100',
+  W: '10001,10001,10001,10101,10101,11011,10001', X: '10001,10001,01010,00100,01010,10001,10001',
+  Y: '10001,10001,01010,00100,00100,00100,00100', Z: '11111,00001,00010,00100,01000,10000,11111',
+  0: '01110,10001,10011,10101,11001,10001,01110', 1: '00100,01100,00100,00100,00100,00100,01110',
+  2: '01110,10001,00001,00010,00100,01000,11111', 3: '11111,00010,00100,00010,00001,10001,01110',
+  4: '00010,00110,01010,10010,11111,00010,00010', 5: '11111,10000,11110,00001,00001,10001,01110',
+  6: '00110,01000,10000,11110,10001,10001,01110', 7: '11111,00001,00010,00100,01000,01000,01000',
+  8: '01110,10001,10001,01110,10001,10001,01110', 9: '01110,10001,10001,01111,00001,00010,01100',
+  '.': '00000,00000,00000,00000,00000,01100,01100', '-': '00000,00000,00000,11111,00000,00000,00000',
+  ':': '00000,01100,01100,00000,01100,01100,00000', '/': '00001,00010,00010,00100,01000,01000,10000',
+};
+
+/* Render text as an SVG grid of dots. step = pixels per dot cell. */
+function dotTextSvg(text, step, cls) {
+  const s = String(text).toUpperCase();
+  const GW = 5, GH = 7, GAP = 1;                      // glyph is 5x7 cells, 1 cell between glyphs
+  const cols = s.length * (GW + GAP) - GAP;
+  const w = Math.max(1, cols * step), h = GH * step;
+  const r = (step * 0.36).toFixed(2);
+  let dots = '';
+  let cx = 0;
+  for (const ch of s) {
+    const g = DOT5x7[ch];
+    if (g) {
+      const rows = g.split(',');
+      for (let y = 0; y < GH; y++) {
+        for (let x = 0; x < GW; x++) {
+          if (rows[y][x] === '1') {
+            dots += `<circle cx="${((cx + x) * step + step / 2).toFixed(2)}" cy="${(y * step + step / 2).toFixed(2)}" r="${r}"/>`;
+          }
+        }
+      }
+    }
+    cx += GW + GAP;
+  }
+  return `<svg class="dotttl ${cls || ''}" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="${s}">${dots}</svg>`;
+}
+
+/* Swap each page heading for its dot-matrix rendering. Keeps the original text as
+   the accessible label and leaves light mode untouched. */
+function applyDotTitles() {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.querySelectorAll('.ltitle h1').forEach((el) => {
+    if (!el.dataset.txt) el.dataset.txt = el.textContent.trim();
+    if (!dark) { el.textContent = el.dataset.txt; el.classList.remove('is-dots'); return; }
+    const step = Math.max(3, Math.min(5, Math.floor((el.clientWidth || 320) / (el.dataset.txt.length * 6))));
+    el.innerHTML = dotTextSvg(el.dataset.txt, step);
+    el.classList.add('is-dots');
+  });
+}
+addEventListener('DOMContentLoaded', applyDotTitles);
+addEventListener('hashchange', () => setTimeout(applyDotTitles, 0));
