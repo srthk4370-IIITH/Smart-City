@@ -170,7 +170,66 @@ def batch(width):
         sys.exit(1)
 
 
+LARGE = "/data/local/tmp/genie_bundle_ft_4096"
+REF_LARGE = HERE / "_daemon_ref_large.json"
+
+
+def daemon_query_large(prompt, host="127.0.0.1", port=8777, timeout=300):
+    """Like daemon_query, but sets bit 31 of the length: genied swaps in the large-context bundle."""
+    body = prompt[len(BOS):] if prompt.startswith(BOS) else prompt
+    data = body.encode("utf-8")
+    with socket.create_connection((host, port), timeout=timeout) as s:
+        s.sendall(struct.pack(">I", len(data) | (1 << 31)) + data)
+        out, t0 = [], time.time()
+        while True:
+            hdr = _recv_exact(s, 5)
+            if hdr is None:
+                break
+            kind, n = hdr[0], struct.unpack(">I", hdr[1:])[0]
+            payload = _recv_exact(s, n) if n else b""
+            if kind == 0:
+                out.append(payload.decode("utf-8", "replace"))
+            elif kind == 1:
+                break
+            elif kind == 2:
+                raise RuntimeError("daemon error: " + payload.decode("utf-8", "replace"))
+        return "".join(out), time.time() - t0
+
+
+def collect_large(prompt_file):
+    """Reference answer for a LARGE prompt from the CLI on the ctx-4096 bundle (genied stopped)."""
+    prompt = Path(prompt_file).read_text(encoding="utf-8")
+    text, m = cb.run(LARGE, prompt)
+    cont = text[len(cb.PREFILL):] if text.startswith(cb.PREFILL) else text
+    REF_LARGE.write_text(json.dumps({"prompt": prompt, "cli": norm(cont), "prompt_tok": m["prompt_tok"],
+                                     "cli_ms": m["init_ms"] + m["ttft_ms"] + m["decode_ms"]}), encoding="utf-8")
+    print(f"large reference: {m['prompt_tok']} prompt tokens, CLI {m['init_ms'] + m['ttft_ms'] + m['decode_ms']} ms")
+
+
+def windows():
+    """Gate for context-window switching: small prompts on the normal window, a large prompt on the
+    large window, and back - every answer identical to the CLI on the matching bundle."""
+    small = json.loads(REF.read_text(encoding="utf-8"))[:3]
+    large = json.loads(REF_LARGE.read_text(encoding="utf-8"))
+    seq = [("normal", small[0]), ("large", large), ("normal", small[1]), ("large", large), ("normal", small[2])]
+    same = 0
+    for kind, r in seq:
+        text, dt = daemon_query_large(r["prompt"]) if kind == "large" else daemon_query(r["prompt"])
+        ok = norm(text) == r["cli"]
+        same += ok
+        print(f"  {kind:6} window  identical={ok}  {dt * 1000:.0f} ms (includes any swap)")
+        if not ok:
+            print("     CLI   :", r["cli"][:160])
+            print("     daemon:", norm(text)[:160])
+    print(f"\nidentical: {same}/{len(seq)}")
+    if same != len(seq):
+        sys.exit(1)
+
+
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] in ("collect-large", "windows"):
+        collect_large(sys.argv[2]) if sys.argv[1] == "collect-large" else windows()
+        sys.exit(0)
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
     c = sub.add_parser("collect")

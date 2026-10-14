@@ -132,3 +132,49 @@ func fallbackReport(sensors []SensorRef, calls []AgentCall, rejected *ReportCall
 	}
 	return out
 }
+
+// surfaceDisagreements makes a conflict between an agent and the rule that raised its incident
+// visible to the operator, instead of letting either side win silently.
+//
+// Found by driving the app with random inputs (HANDBOOK 2.31): in 3 of 18 agent calls the AI said
+// "normal" about a sensor the deterministic rule had flagged warning/critical. Investigating each:
+//
+//	pump cycling      rule oscillation/warning   AI stable/normal   -> the RULE was right: the
+//	                  oscillation was only in the last hour and the window aggregates looked flat
+//	CO2 recovered     rule spike/critical        AI step_decrease/normal -> the AI was right: the
+//	                  high episode had already cleared, the rule keyed on the window maximum
+//	temp held 27.3 C  rule exp_increase/warning  AI stable/normal   -> arguably the AI
+//
+// So a blanket "rule wins" would have been wrong two times in three, and "AI wins" hides a real pump
+// fault behind "normal_operation". Neither verdict is overridden: the agent finding and report label
+// are kept, and the conflict is stated in the report the operator approves. Caller holds r.mu.
+func surfaceDisagreements(inc *Incident) {
+	if inc.Final == nil || inc.Final.Parsed == nil {
+		return
+	}
+	rule := map[string]SensorRef{}
+	for _, s := range inc.Sensors {
+		rule[s.Ref] = s
+	}
+	var notes []string
+	for i := range inc.Agents {
+		a := &inc.Agents[i]
+		s, ok := rule[a.Ref]
+		if !ok || a.Parsed == nil || !a.Valid || a.Parsed.Status != "normal" {
+			continue
+		}
+		if sevRank(s.Rule.Status) == 0 {
+			continue
+		}
+		note := fmt.Sprintf("%s (%s): the AI judged this %s/normal, but the deterministic rule that raised "+
+			"this incident found %s/%s - review before deciding.", nice[s.Metric], s.Ref,
+			strings.ReplaceAll(a.Parsed.Pattern, "_", " "), strings.ReplaceAll(s.Rule.Pattern, "_", " "), s.Rule.Status)
+		a.Repairs = append(a.Repairs, "disagreement with the rule surfaced in the report: "+note)
+		notes = append(notes, note)
+	}
+	if len(notes) > 0 {
+		rep := inc.Final.Parsed
+		rep.Explanation = strings.TrimSpace(rep.Explanation + " AI and rules disagree: " + strings.Join(notes, " "))
+		inc.Final.Repairs = append(inc.Final.Repairs, fmt.Sprintf("%d AI/rule disagreement(s) surfaced for review", len(notes)))
+	}
+}

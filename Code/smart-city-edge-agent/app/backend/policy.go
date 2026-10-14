@@ -265,6 +265,25 @@ func (r *Reasoner) checkReport(res GenieResult, prompt string, sensors []SensorR
 		}
 	}
 	if !ok {
+		// 4-bit slip seen on the QIDK: the object is closed with `]` instead of `}`
+		// (`..."explanation": "... [S1.E6,S2.E4]"]`), or the final `}` is simply missing. Both are
+		// syntax only - every field is still validated below exactly as for a well-formed answer.
+		t := strings.TrimSpace(res.Text)
+		for _, cand := range []struct{ fixed, why string }{
+			{strings.TrimSuffix(t, "]") + "}", "object closed with ']' instead of '}'"},
+			{t + "}", "missing closing '}' added"},
+		} {
+			if cand.fixed == t {
+				continue
+			}
+			if j2, ok2 := extractJSON(cand.fixed); ok2 {
+				js, ok = j2, true
+				rc.Repairs = append(rc.Repairs, cand.why)
+				break
+			}
+		}
+	}
+	if !ok {
 		rc.Errors = append(rc.Errors, "no complete JSON object in output")
 		return rc
 	}

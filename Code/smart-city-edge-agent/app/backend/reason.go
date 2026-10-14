@@ -124,14 +124,15 @@ type Reasoner struct {
 	store     string
 	notify    func(string, any)
 	seq       int
-	maxAgents int
 	active    bool
 	pending   []Candidate
+	coolWait  bool  // a runWhenCool watcher is waiting for the thermal guard to clear
+	jobs      []job // explicitly requested analyses (Analyze, Rerun), run in order after pending alerts
 	lastNPU   time.Time
 }
 
 func NewReasoner(g *GenieRunner, e *Engine, dir string, notify func(string, any)) *Reasoner {
-	r := &Reasoner{genie: g, eng: e, Mode: 3, store: filepath.Join(dir, "state", "incidents.jsonl"), notify: notify, maxAgents: 8}
+	r := &Reasoner{genie: g, eng: e, Mode: 3, store: filepath.Join(dir, "state", "incidents.jsonl"), notify: notify}
 	os.MkdirAll(filepath.Dir(r.store), 0o755)
 	r.load()
 	return r
@@ -232,24 +233,23 @@ func (r *Reasoner) HandleCandidates(cands []Candidate) {
 	r.mu.Lock()
 	if r.active {
 		// NPU busy: MERGE into the pending batch (newest reading per sensor wins), never drop an alert
-		seen := map[string]int{}
-		for i, c := range r.pending {
-			seen[key(c.Node, c.Metric)] = i
-		}
-		for _, c := range cands {
-			if i, ok := seen[key(c.Node, c.Metric)]; ok {
-				r.pending[i] = c
-			} else {
-				r.pending = append(r.pending, c)
-			}
-		}
+		r.mergePending(cands)
 		r.mu.Unlock()
 		return
 	}
 	if r.Mode != 1 {
 		if hot, npu, skin := ThermalHot(); hot {
+			// Defer for real. This used to `return` and discard the candidates - and because the event
+			// gate has already marked those sensors as alerted, they would not re-trigger until they
+			// went back to normal: a hot board silently LOST the incident. Queue it instead, and let one
+			// watcher start it once the board is below the guard.
+			r.mergePending(cands)
+			if !r.coolWait {
+				r.coolWait = true
+				go r.runWhenCool()
+			}
 			r.mu.Unlock()
-			r.notify("log", map[string]any{"msg": fmt.Sprintf("Thermal guard: NPU %.0f C, skin %.0f C - LLM analysis deferred (rules still active)", npu, skin)})
+			r.notify("log", map[string]any{"msg": fmt.Sprintf("Thermal guard: NPU %.0f C, skin %.0f C - LLM analysis queued until the board cools (rules still active)", npu, skin)})
 			return
 		}
 	}
@@ -260,16 +260,112 @@ func (r *Reasoner) HandleCandidates(cands []Candidate) {
 	go r.loop(cands, mode)
 }
 
+// mergePending folds candidates into the pending batch, newest reading per sensor winning.
+// Caller holds r.mu.
+func (r *Reasoner) mergePending(cands []Candidate) {
+	seen := map[string]int{}
+	for i, c := range r.pending {
+		seen[key(c.Node, c.Metric)] = i
+	}
+	for _, c := range cands {
+		if i, ok := seen[key(c.Node, c.Metric)]; ok {
+			r.pending[i] = c
+		} else {
+			seen[key(c.Node, c.Metric)] = len(r.pending)
+			r.pending = append(r.pending, c)
+		}
+	}
+}
+
+// Submit queues an explicitly requested analysis (dashboard Analyze, Rerun) behind whatever the
+// NPU is doing, instead of starting a pipeline of its own.
+//
+// Both used to call `go Process(...)` directly, bypassing the single-flight queue. Measured in the
+// app stress test: 8 Analyze requests at once became 8 concurrent pipelines whose NPU calls
+// INTERLEAVED (incident A's agent, then B's, then C's...), so every incident finished late - one took
+// 58.3 s for 10.8 s of model time, waiting ~80% of its life. Now requests run one incident at a
+// time, first in first out, after any pending event-gate alert (real alerts come first).
+//
+// Mode 1 is rules only and never touches the NPU, so it still answers immediately.
+func (r *Reasoner) Submit(cands []Candidate, mode int) {
+	if mode == 1 {
+		go r.Process(cands, mode)
+		return
+	}
+	r.mu.Lock()
+	if r.active || r.coolWait {
+		r.jobs = append(r.jobs, job{cands, mode})
+		r.mu.Unlock()
+		return
+	}
+	if hot, npu, skin := ThermalHot(); hot {
+		r.jobs = append(r.jobs, job{cands, mode})
+		r.coolWait = true
+		r.mu.Unlock()
+		go r.runWhenCool()
+		r.notify("log", map[string]any{"msg": fmt.Sprintf("Thermal guard: NPU %.0f C, skin %.0f C - requested analysis queued until the board cools", npu, skin)})
+		return
+	}
+	r.active = true
+	r.lastNPU = time.Now()
+	r.mu.Unlock()
+	go r.loop(cands, mode)
+}
+
+// next takes the next unit of work: a pending event-gate alert first, then requested jobs in order.
+// Caller holds r.mu. ok=false means the queue is empty.
+func (r *Reasoner) next() (cands []Candidate, mode int, ok bool) {
+	if r.pending != nil {
+		cands, mode = r.pending, r.Mode
+		r.pending = nil
+		return cands, mode, true
+	}
+	if len(r.jobs) > 0 {
+		j := r.jobs[0]
+		r.jobs = r.jobs[1:]
+		return j.cands, j.mode, true
+	}
+	return nil, 0, false
+}
+
+// runWhenCool starts the queued analysis as soon as the thermal guard clears.
+func (r *Reasoner) runWhenCool() {
+	for {
+		time.Sleep(5 * time.Second)
+		if hot, _, _ := ThermalHot(); hot {
+			continue
+		}
+		r.mu.Lock()
+		r.coolWait = false
+		if r.active {
+			// something else already picked the queue up
+			r.mu.Unlock()
+			return
+		}
+		cands, mode, ok := r.next()
+		if !ok {
+			r.mu.Unlock()
+			return
+		}
+		r.active = true
+		r.lastNPU = time.Now()
+		r.mu.Unlock()
+		r.notify("log", map[string]any{"msg": "Board cooled - running the queued analysis"})
+		r.loop(cands, mode)
+		return
+	}
+}
+
 func (r *Reasoner) loop(cands []Candidate, mode int) {
 	for {
 		r.Process(cands, mode)
 		r.mu.Lock()
-		if r.pending == nil {
+		var ok bool
+		if cands, mode, ok = r.next(); !ok {
 			r.active = false
 			r.mu.Unlock()
 			return
 		}
-		cands, r.pending, mode = r.pending, nil, r.Mode
 		r.mu.Unlock()
 	}
 }
@@ -287,10 +383,15 @@ func (r *Reasoner) sensorRef(ref string, c Candidate, ctxWhy string) SensorRef {
 
 func (r *Reasoner) newIncident(cands []Candidate, mode int) *Incident {
 	// flagged sensors: every alarming sensor in the batch (already sorted by severity), one incident
+	// Every alarming sensor stays in the incident and gets its own NPU agent - no cap (owner's
+	// decision, 2026-10-15). This loop used to stop at 8: with more alarms than that the rest were
+	// silently dropped - not analysed, not reported - and since the event gate had already marked
+	// them alerted they never came back. Latency grows with the alarm count instead (~3-5 s per
+	// agent); the synthesizer prompt that results is sized by the large context window.
 	var flagged []Candidate
 	seen := map[string]bool{}
 	for _, c := range cands {
-		if len(flagged) >= r.maxAgents || seen[key(c.Node, c.Metric)] {
+		if seen[key(c.Node, c.Metric)] {
 			continue
 		}
 		seen[key(c.Node, c.Metric)] = true
@@ -378,22 +479,28 @@ func (r *Reasoner) Process(cands []Candidate, mode int) *Incident {
 		}
 		rc := r.checkReport(res, prompt+ReportPrefill, inc.Sensors)
 		rc.CallMetrics = metricsOf(res)
+		if !rc.Valid {
+			// Same rule as the Mode 3 synthesizer: never show the operator a report the gate rejected.
+			// Mode 2 has no agents, so fallbackReport builds it from the deterministic rule findings.
+			// Seen in the app stress test: an invented label ("heat_drives_cooling_load") and an evidence
+			// "id" that was really prose ("rule view pattern=flatline status=sensor_fault").
+			rejected := strings.Join(rc.Errors, "; ")
+			rc = fallbackReport(inc.Sensors, nil, rc)
+			r.log(inc, "Single-call report rejected by policy ("+rejected+"); report rebuilt from the rule findings")
+		}
 		r.mu.Lock()
 		inc.Final = rc
 		r.mu.Unlock()
 		r.log(inc, fmt.Sprintf("Report from %s in %.1fs (first token %.1fs, %d tokens), policy %s", res.Model, res.LatencyMs/1000, res.TTFTMs/1000, res.GenTokens, okStr(rc.Valid)))
 	case 3:
 		am := r.genie.AgentModel()
-		// NPU agents: every flagged sensor + related sensors that are themselves abnormal (max maxAgents).
+		// NPU agents: every flagged sensor + related sensors that are themselves abnormal No cap.
 		// All other related sensors are covered by their deterministic context agent (already computed).
 		var llm []int
 		for i, s := range inc.Sensors {
 			if !s.Context || ((s.Rule.Status == "warning" || s.Rule.Status == "critical") && s.Role != "hvac") {
 				llm = append(llm, i)
 			}
-		}
-		if len(llm) > r.maxAgents {
-			llm = llm[:r.maxAgents]
 		}
 		isLLM := map[int]bool{}
 		for _, i := range llm {
@@ -543,6 +650,7 @@ func (r *Reasoner) Process(cands []Candidate, mode int) *Incident {
 	r.mu.Lock()
 	inc.TotalMs = float64(time.Since(t0).Milliseconds())
 	inc.State = "done"
+	surfaceDisagreements(inc)
 	if mode != 1 && (inc.Final == nil || !inc.Final.Valid) {
 		inc.State = "done_with_errors"
 	}
@@ -701,6 +809,10 @@ func singlePrompt(sensors []SensorRef) string {
 	return Llama3Prompt(fmt.Sprintf(reasonerSystem, strings.Join(ReportLabels, "|")), b.String())
 }
 
+// estTokens estimates Llama 3 tokens from characters (calibrated on device: 548 tokens / 1712 chars).
+// Used to choose the context window, never to trim a prompt: evidence is not degraded to fit.
+func estTokens(s string) int { return len(s)*100/310 + 1 }
+
 func synthPrompt(sensors []SensorRef, calls []AgentCall) string {
 	var b strings.Builder
 	b.WriteString("DOMAIN AGENT FINDINGS:\n")
@@ -749,4 +861,10 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// job is one explicitly requested analysis waiting for the NPU.
+type job struct {
+	cands []Candidate
+	mode  int
 }

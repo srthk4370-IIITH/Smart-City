@@ -120,9 +120,79 @@ func genieQueryCallback(response *C.char, code C.GenieDialog_SentenceCode_t, use
 }
 
 type dialog struct {
-	h    C.GenieDialog_Handle_t
-	slot uintptr
-	mu   sync.Mutex // one query per dialog at a time; the pool also guarantees this
+	h     C.GenieDialog_Handle_t
+	slot  uintptr
+	mu    sync.Mutex // one query per dialog at a time; the pool also guarantees this
+	large bool       // true while the LARGE-context bundle is the one loaded
+}
+
+// Two context windows, one resident at a time (HANDBOOK 2.32).
+//
+// The normal bundle is ctx 2048: KV traffic scales with the compiled context, so it decodes ~17%
+// faster than ctx 4096 (HANDBOOK 2.22). That fits every agent call (~600 tokens) and an ordinary
+// synthesizer call. A large incident does not fit: the synthesizer needs ~190 prompt tokens per
+// sensor, so "every sensor haywire" needs ~3400 tokens plus room to answer. Evidence is never trimmed
+// to make it fit; instead the large-context bundle (ctx 4096, same weights, verified byte-identical
+// outputs) is swapped in for that call. Two bundles cannot be resident together - a second model on
+// the NPU rebooted the board - so a swap frees one dialog before creating the other: ~0.7 s each
+// way, paid only on the incidents that need it.
+const largeWindowBit = uint32(1) << 31
+
+type window struct {
+	bundle, config string
+}
+
+var windows struct {
+	normal, large window
+}
+
+// useWindow makes sure the requested context window is the loaded one. Only valid with -slots 1:
+// with several dialogs sharing an engine, a swap would pull the model out from under the others.
+func (d *dialog) useWindow(large bool) error {
+	if large == d.large {
+		return nil
+	}
+	w := windows.normal
+	if large {
+		w = windows.large
+		if w.bundle == "" {
+			return fmt.Errorf("prompt needs the large context window but genied has no -large-bundle")
+		}
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	t0 := time.Now()
+	C.GenieDialog_free(d.h) // release the resident model BEFORE loading the other one
+	cfg, err := loadConfig(w)
+	if err != nil {
+		return err
+	}
+	cs := C.CString(cfg)
+	defer C.free(unsafe.Pointer(cs))
+	var ch C.GenieDialogConfig_Handle_t
+	if st := C.GenieDialogConfig_createFromJson(cs, &ch); st != 0 {
+		return fmt.Errorf("window config: status %d", int(st))
+	}
+	defer C.GenieDialogConfig_free(ch)
+	if st := C.GenieDialog_create(ch, &d.h); st != 0 {
+		return fmt.Errorf("window dialog: status %d", int(st))
+	}
+	d.large = large
+	log.Printf("context window -> %s in %v", map[bool]string{false: "normal", true: "large"}[large], time.Since(t0))
+	return nil
+}
+
+// loadConfig reads a window's config with the daemon adjustments applied. Genie resolves the
+// context binaries relative to the working directory, so this also changes into the bundle.
+func loadConfig(w window) (string, error) {
+	if err := os.Chdir(w.bundle); err != nil {
+		return "", err
+	}
+	raw, err := os.ReadFile(filepath.Join(w.bundle, w.config))
+	if err != nil {
+		return "", err
+	}
+	return string(daemonConfig(raw)), nil
 }
 
 func newDialog(configJSON string, slot uintptr) (*dialog, error) {
@@ -202,12 +272,21 @@ func serve(c net.Conn, d *dialog) {
 	if err := binary.Read(c, binary.BigEndian, &n); err != nil {
 		return
 	}
+	// Bit 31 of the length asks for the LARGE context window (see useWindow). Prompts are far below
+	// 1 MB, so the bit is free, and clients that never set it keep working unchanged.
+	large := n&largeWindowBit != 0
+	n &^= largeWindowBit
 	if n == 0 || n > 1<<20 {
 		writeFrame(c, frameError, []byte(fmt.Sprintf("bad prompt length %d", n)))
 		return
 	}
 	prompt := make([]byte, n)
 	if _, err := io.ReadFull(c, prompt); err != nil {
+		return
+	}
+	if err := d.useWindow(large); err != nil {
+		writeFrame(c, frameError, []byte(err.Error()))
+		log.Printf("window switch failed: %v", err)
 		return
 	}
 
@@ -260,8 +339,13 @@ func main() {
 		config = flag.String("config", "smartcity_agent.json", "Genie dialog config, relative to -bundle")
 		addr   = flag.String("addr", "127.0.0.1:8777", "loopback address to listen on")
 		slots  = flag.Int("slots", 1, "dialogs sharing one batching engine; 1 = one query at a time")
+		large  = flag.String("large-bundle", "", "bundle with the larger context window, swapped in for prompts that do not fit")
 	)
 	flag.Parse()
+	windows.normal = window{*bundle, *config}
+	if *large != "" && *slots == 1 {
+		windows.large = window{*large, *config}
+	}
 
 	// Genie resolves ctx-bins and tokenizer.json relative to the working directory.
 	if err := os.Chdir(*bundle); err != nil {
@@ -384,4 +468,4 @@ func daemonConfig(raw []byte) []byte {
 }
 
 // version is logged at startup so a deployed daemon can be matched to its build.
-const version = "2026-10-14.3-batch"
+const version = "2026-10-15.1-windows"

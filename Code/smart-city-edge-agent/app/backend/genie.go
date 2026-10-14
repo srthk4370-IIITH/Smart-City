@@ -367,6 +367,14 @@ func (g *GenieRunner) exec(ctx context.Context, b ModelBundle, prompt, prefill s
 	rt := g.runtime
 	cmd := exec.CommandContext(ctx, g.binary, "-c", b.Config, "--prompt_file", f)
 	cmd.Dir = b.Dir
+	// Same context-window rule as genied: a prompt that would not leave room for a full answer runs
+	// on the large-context bundle (same weights, byte-identical outputs) rather than being cut short.
+	if b.Dir == g.Tuned.Dir && needsLargeWindow(prompt) {
+		if lb := largeBundle(); lb != "" {
+			cmd.Dir = lb
+			trace("cli: prompt ~%d tokens -> large context window %s", estTokens(prompt), lb)
+		}
+	}
 	cmd.Env = append(os.Environ(),
 		"LD_LIBRARY_PATH="+envOr("SCE_GENIE_LD", rt+"/qairt_2_50_libs:"+rt+"/aarch64-android:"+rt),
 		"ADSP_LIBRARY_PATH="+envOr("SCE_GENIE_ADSP", rt+"/dsp_2_50;"+rt+"/dsp;"+rt+"/dsp/unsigned;/vendor/dsp/cdsp;/vendor/lib/rfsa/adsp;/system/lib/rfsa/adsp;/dsp"))

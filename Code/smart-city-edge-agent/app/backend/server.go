@@ -42,7 +42,7 @@ var Scenarios = []Scenario{
 	{"load_surge", "Load surge spike (KH level 04)", "Short power spike on a KH level-04 room energy meter.", []string{"power"},
 		[]Target{{"SR-EM-KH04-02", "power_kw", "spike", 8, 30, false, []string{"SR-EM-KH04-01", "SR-EM-KH04-00", "EM-CR-SB00-00"}}}},
 	{"tank_leak", "Tank level falling (possible leak)", "KH tank level drains steadily without refill.", []string{"water"},
-		[]Target{{"WM-WL-KH98-00", "level", "ramp_down", 36, 45, false, nil}}},
+		[]Target{{"WM-WL-KH98-00", "level", "ramp_down", 36, 45, true, nil}}},
 	{"pump_cycling", "Pump cycling (tank level)", "The KH tank level swings up and down repeatedly as the pump cycles on and off.", []string{"water"},
 		[]Target{{"WM-WL-KH00-00", "level", "oscillate", 36, 8, false, []string{"WM-WL-KH98-00"}}}},
 	{"stuck_sensor", "Stuck temperature sensor", "Indoor temperature freezes at one value.", []string{"air_quality"},
@@ -178,6 +178,15 @@ func zoneMax(kind string) float64 {
 
 // ThermalHot: NPU junction >= 88 C or skin >= 60 C -> defer real-data LLM incidents (thermal guard).
 func ThermalHot() (bool, float64, float64) {
+	// Test hook: the guard's queue-and-resume path cannot be exercised by heating a real board to
+	// 88 C on demand, so SCE_THERMAL_FAKE names a file containing "hot" or "cool". Unset in production.
+	if f := os.Getenv("SCE_THERMAL_FAKE"); f != "" {
+		b, _ := os.ReadFile(f)
+		if strings.TrimSpace(string(b)) == "hot" {
+			return true, 90, 61
+		}
+		return false, 40, 35
+	}
 	npu, skin := zoneMax("npu"), zoneMax("skin")
 	return npu >= 88 || skin >= 60, npu, skin
 }
@@ -305,6 +314,13 @@ func (s *Server) routes() http.Handler {
 				Note string `json:"note"`
 			}
 			readBody(r, &body)
+			// A decision before the analysis has finished would approve a recommendation the operator
+			// has not seen yet (found by the app stress test: approve on a running incident returned
+			// 200 and was recorded). The dashboard already disables the button; the API must agree.
+			if (parts[1] == "approve" || parts[1] == "dismiss") && inc.State == "running" {
+				http.Error(w, "analysis still running - decide once the report is ready", http.StatusConflict)
+				return
+			}
 			switch parts[1] {
 			case "approve":
 				s.rsn.SetApproval(inc.ID, "approved", body.Note)
@@ -326,7 +342,10 @@ func (s *Server) routes() http.Handler {
 					}
 					cands = append(cands, Candidate{sr.Node, sr.Metric, sr.Role, sr.Rule, sr.Xs, sr.End, sr.Injected})
 				}
-				go s.rsn.Process(cands, mode)
+				s.rsn.Submit(cands, mode) // queued behind current work, never interleaved with it
+			default:
+				http.Error(w, "unknown action "+parts[1]+" (approve, dismiss, rerun)", 400)
+				return
 			}
 			writeJSON(w, map[string]any{"ok": true})
 			return
@@ -499,7 +518,7 @@ func (s *Server) routes() http.Handler {
 			s.rsn.mu.RUnlock()
 		}
 		f := RuleFinding(info.Role, body.Metric, body.Node, xs, sim)
-		go s.rsn.Process([]Candidate{{body.Node, body.Metric, info.Role, f, xs, sim, false}}, body.Mode)
+		s.rsn.Submit([]Candidate{{body.Node, body.Metric, info.Role, f, xs, sim, false}}, body.Mode)
 		writeJSON(w, map[string]any{"ok": true})
 	})
 	mux.Handle("/api/events", s.hub)

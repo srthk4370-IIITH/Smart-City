@@ -89,7 +89,12 @@ func (g *GenieRunner) execViaDaemon(ctx context.Context, prompt, prefill string,
 
 	body := []byte(strings.TrimPrefix(prompt, "<|begin_of_text|>")) // same BOS rule as the CLI path
 	hdr := make([]byte, 4)
-	binary.BigEndian.PutUint32(hdr, uint32(len(body)))
+	n := uint32(len(body))
+	if needsLargeWindow(prompt) {
+		n |= 1 << 31 // genied swaps in the large-context bundle for this call
+		trace("daemon: prompt ~%d tokens needs the large context window", estTokens(prompt))
+	}
+	binary.BigEndian.PutUint32(hdr, n)
 	if _, err := c.Write(hdr); err != nil {
 		return "", st, err
 	}
@@ -206,7 +211,11 @@ func superviseDaemon(g *GenieRunner, workDir string) {
 			return
 		}
 		rt := g.runtime
-		cmd := exec.Command(bin, "-bundle", g.Tuned.Dir, "-config", g.Tuned.Config, "-addr", daemonAddr())
+		args := []string{"-bundle", g.Tuned.Dir, "-config", g.Tuned.Config, "-addr", daemonAddr()}
+		if lb := largeBundle(); lb != "" {
+			args = append(args, "-large-bundle", lb)
+		}
+		cmd := exec.Command(bin, args...)
 		cmd.Env = append(os.Environ(),
 			"LD_LIBRARY_PATH="+envOr("SCE_GENIE_LD", rt+"/qairt_2_50_libs:"+rt+"/aarch64-android:"+rt),
 			"ADSP_LIBRARY_PATH="+envOr("SCE_GENIE_ADSP", rt+"/dsp_2_50;"+rt+"/dsp;"+rt+"/dsp/unsigned;/vendor/dsp/cdsp;/vendor/lib/rfsa/adsp;/system/lib/rfsa/adsp;/dsp"))
@@ -235,4 +244,30 @@ func superviseDaemon(g *GenieRunner, workDir string) {
 			}
 		}
 	}()
+}
+
+// Context-window selection (HANDBOOK 2.32). The normal bundle is ctx 2048 - fastest, and enough for
+// every agent call and ordinary synthesizer calls. A prompt that would not leave room for a full
+// answer runs on the large-context bundle instead (ctx 4096, same weights, byte-identical outputs).
+// Nothing is trimmed to fit; the window grows instead.
+const (
+	normalWindow = 2048
+	maxAnswer    = 320 // max-num-tokens in the bundle config
+	windowMargin = 40  // estTokens is calibrated, not exact
+)
+
+// largeBundle is the ctx-4096 bundle, or "" if the device does not have one.
+func largeBundle() string {
+	d := envOr("SCE_GENIE_LARGE_BUNDLE", "/data/local/tmp/genie_bundle_ft_4096")
+	if _, err := os.Stat(filepath.Join(d, "smartcity_agent.json")); err != nil {
+		return ""
+	}
+	return d
+}
+
+// needsLargeWindow reports whether a prompt plus a full answer would overflow the normal window.
+func needsLargeWindow(prompt string) bool {
+	// estTokens ran 4% LOW on a real 25-sensor synthesizer prompt (3258 estimated, 3400 actual), so
+	// it is padded by 8% here: misjudging a prompt as "fits" would overflow the window mid-answer.
+	return estTokens(prompt)*108/100+maxAnswer+windowMargin > normalWindow
 }
