@@ -1331,7 +1331,7 @@ function boot() {
   setView(location.hash.slice(1) || 'sensors');
   refreshStatus(); refreshLive(); refreshIncidents();
   connect();
-  setInterval(sparkLoop, 150);
+  setInterval(sparkLoop, 1000); // each tick measures every tile (layout); 1 Hz is plenty for 10 s refreshes
   setInterval(() => { if (!document.hidden && Date.now() - SN.lastFetch > 4500) snFetch(); }, 1000);
   post('/api/replay', {}).then((r) => { if (r && r.poll_ms) { SN.pollMs = r.poll_ms; if (SN.pollSeg) setSeg(SN.pollSeg, r.poll_ms); } }).catch(() => {});
   setInterval(updateElapsed, 500);

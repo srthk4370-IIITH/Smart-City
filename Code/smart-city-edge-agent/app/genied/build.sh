@@ -30,6 +30,7 @@ CC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang
 [ -x "$CC" ] || { echo "no clang at $CC"; exit 1; }
 
 export PATH="$HOME/go-sdk/go/bin:$PATH"
+cd "$HERE"
 export CGO_ENABLED=1 GOOS=android GOARCH=arm64 CC="$CC"
 # $ORIGIN so the binary finds libGenie.so next to itself on the device without LD_LIBRARY_PATH
 # games for its direct dependency.

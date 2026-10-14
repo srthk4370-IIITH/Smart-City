@@ -30,6 +30,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"syscall"
@@ -206,9 +207,25 @@ func superviseDaemon(g *GenieRunner, workDir string) {
 		log.Printf("genied: not installed at %s, using the per-call CLI path", bin)
 		return
 	}
+	stuck := 0
 	start := func() {
-		if daemonUp() {
+		// probe the port directly: daemonUp() also honours the dial back-off and would report a
+		// listening daemon as down, which used to be enough to start a second one
+		if c, err := net.DialTimeout("tcp", daemonAddr(), 300*time.Millisecond); err == nil {
+			c.Close()
+			daemonDownUntil.Store(0)
+			stuck = 0
 			return
+		}
+		if len(geniedPids()) > 0 {
+			// a genied exists but is not listening (it binds before loading, so it is wedged or
+			// exiting). Never start a second one beside it; after 3 checks, kill it and start fresh.
+			if stuck++; stuck < 3 {
+				return
+			}
+			killDaemon("process alive but not listening for 3 checks")
+			stuck = 0
+			time.Sleep(2 * time.Second) // let the kernel release its NPU context
 		}
 		rt := g.runtime
 		args := []string{"-bundle", g.Tuned.Dir, "-config", g.Tuned.Config, "-addr", daemonAddr()}
@@ -219,8 +236,14 @@ func superviseDaemon(g *GenieRunner, workDir string) {
 		cmd.Env = append(os.Environ(),
 			"LD_LIBRARY_PATH="+envOr("SCE_GENIE_LD", rt+"/qairt_2_50_libs:"+rt+"/aarch64-android:"+rt),
 			"ADSP_LIBRARY_PATH="+envOr("SCE_GENIE_ADSP", rt+"/dsp_2_50;"+rt+"/dsp;"+rt+"/dsp/unsigned;/vendor/dsp/cdsp;/vendor/lib/rfsa/adsp;/system/lib/rfsa/adsp;/dsp"))
-		if f, err := os.OpenFile(filepath.Join(workDir, "state", "genied.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644); err == nil {
-			cmd.Stdout, cmd.Stderr = f, f
+		logPath := filepath.Join(workDir, "state", "genied.log")
+		if fi, err := os.Stat(logPath); err == nil && fi.Size() > 4<<20 {
+			os.Rename(logPath, logPath+".1") // keep one previous log; the file is append-only otherwise
+		}
+		lf, lerr := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+		if lerr == nil {
+			defer lf.Close() // the child holds its own copy; ours would leak one fd per restart
+			cmd.Stdout, cmd.Stderr = lf, lf
 		}
 		cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true} // survive our own restarts
 		if err := cmd.Start(); err != nil {
@@ -270,4 +293,37 @@ func needsLargeWindow(prompt string) bool {
 	// estTokens ran 4% LOW on a real 25-sensor synthesizer prompt (3258 estimated, 3400 actual), so
 	// it is padded by 8% here: misjudging a prompt as "fits" would overflow the window mid-answer.
 	return estTokens(prompt)*108/100+maxAnswer+windowMargin > normalWindow
+}
+
+// geniedPids lists running genied processes (by /proc comm), whatever their state.
+func geniedPids() []int {
+	var out []int
+	ents, _ := os.ReadDir("/proc")
+	for _, e := range ents {
+		pid, err := strconv.Atoi(e.Name())
+		if err != nil {
+			continue
+		}
+		if b, err := os.ReadFile("/proc/" + e.Name() + "/comm"); err == nil && strings.TrimSpace(string(b)) == "genied" {
+			if st, err := os.ReadFile("/proc/" + e.Name() + "/stat"); err == nil && strings.Contains(string(st), ") Z ") {
+				continue // exited, waiting to be reaped: holds no NPU context
+			}
+			out = append(out, pid)
+		}
+	}
+	return out
+}
+
+// daemonFailures counts consecutive daemon calls that connected but produced nothing.
+var daemonFailures atomic.Int32
+
+// killDaemon stops a genied that is resident but not answering, so the supervisor can start a
+// clean one. Killing it is what frees its NPU context; until then nothing else may load a model.
+func killDaemon(why string) {
+	for _, pid := range geniedPids() {
+		log.Printf("genied: killing pid %d (%s)", pid, why)
+		syscall.Kill(pid, syscall.SIGKILL)
+	}
+	daemonFailures.Store(0)
+	daemonDownUntil.Store(0)
 }

@@ -317,6 +317,21 @@ func (r *Reasoner) checkReport(res GenieResult, prompt string, sensors []SensorR
 		rc.Repairs = append(rc.Repairs, "affected_domains cleaned to real domain names")
 		rep.AffectedDomains = doms
 	}
+	// A domain whose own flagged sensor is warning/critical IS affected, whatever the model listed
+	// (stress pass 3, INC-0114: label weather_driven, domains [weather] while power, water and air
+	// quality sensors were all critical). Adding them is a fact from the rule view, not a
+	// reinterpretation; label and root cause stay the model's own.
+	var added []string
+	for _, sr := range sensors {
+		if !sr.Context && (sr.Rule.Status == "warning" || sr.Rule.Status == "critical") && okDom[sr.Role] &&
+			!contains(rep.AffectedDomains, sr.Role) {
+			rep.AffectedDomains = append(rep.AffectedDomains, sr.Role)
+			added = append(added, sr.Role)
+		}
+	}
+	if len(added) > 0 {
+		rc.Repairs = append(rc.Repairs, "affected_domains completed with abnormal flagged domains: "+strings.Join(added, ", "))
+	}
 	rep.RequiresHuman = true // structural: every report needs operator approval
 	rep.Label, rep.Action = normEnum(rep.Label), normEnum(rep.Action)
 	// documented aliases for generic wording of the same whitelisted action (report only)

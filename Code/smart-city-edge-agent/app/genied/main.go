@@ -165,17 +165,17 @@ func (d *dialog) useWindow(large bool) error {
 	C.GenieDialog_free(d.h) // release the resident model BEFORE loading the other one
 	cfg, err := loadConfig(w)
 	if err != nil {
-		return err
+		log.Fatalf("switching context window: %v (old dialog already freed; exiting so the supervisor restarts genied cleanly)", err)
 	}
 	cs := C.CString(cfg)
 	defer C.free(unsafe.Pointer(cs))
 	var ch C.GenieDialogConfig_Handle_t
 	if st := C.GenieDialogConfig_createFromJson(cs, &ch); st != 0 {
-		return fmt.Errorf("window config: status %d", int(st))
+		log.Fatalf("switching context window: config status %d (old dialog already freed; exiting so the supervisor restarts genied cleanly)", int(st))
 	}
 	defer C.GenieDialogConfig_free(ch)
 	if st := C.GenieDialog_create(ch, &d.h); st != 0 {
-		return fmt.Errorf("window dialog: status %d", int(st))
+		log.Fatalf("switching context window: dialog status %d (old dialog already freed; exiting so the supervisor restarts genied cleanly)", int(st))
 	}
 	d.large = large
 	log.Printf("context window -> %s in %v", map[bool]string{false: "normal", true: "large"}[large], time.Since(t0))
@@ -360,6 +360,15 @@ func main() {
 		cfg = batchingConfig(cfg, *slots)
 	}
 
+	// Bind BEFORE loading the model. The port is the single-instance lock: a second genied started
+	// by mistake must fail here, before it puts a second copy of the model on the NPU (two resident
+	// contexts is the configuration that crashed the board, HANDBOOK 2.12). Clients that connect
+	// during the ~1 s load simply wait in the accept backlog.
+	ln, err := net.Listen("tcp", *addr)
+	if err != nil {
+		log.Fatalf("listen %s: %v (another genied already running?)", *addr, err)
+	}
+
 	// The pool: each request borrows a free dialog. With -slots 1 this is a single dialog and
 	// requests are served strictly one at a time, exactly as before.
 	pool := make(chan *dialog, *slots)
@@ -372,10 +381,6 @@ func main() {
 		pool <- d
 	}
 
-	ln, err := net.Listen("tcp", *addr)
-	if err != nil {
-		log.Fatalf("listen %s: %v", *addr, err)
-	}
 	log.Printf("genied %s ready on %s, bundle %s, %d slot(s)", version, *addr, *bundle, *slots)
 
 	for {

@@ -40,7 +40,7 @@ if ((& $Adb shell "getprop persist.adb.tcp.port").Trim() -ne "5555") {
 Write-Host "      protecting the app against uninstall (device admin) ..."
 & $Adb shell "dpm set-active-admin --user 0 $Pkg/.AdminReceiver" 2>$null | Out-Null
 Write-Host "      on-device model backup (self-healing copy, only first time / when changed) ..."
-& $Adb shell "am start -n $Pkg/.MainActivity >/dev/null; sleep 3; B=/sdcard/Android/data/$Pkg/files/backup; mkdir -p `$B; for d in genie_bundle genie_bundle_ft; do s1=`$(stat -c %s /data/local/tmp/`$d/llama_v3_2_3b_instruct_part_3_of_3.bin); s2=`$(stat -c %s `$B/`$d/llama_v3_2_3b_instruct_part_3_of_3.bin 2>/dev/null); [ `"`$s1`" = `"`$s2`" ] && [ `$d != genie_bundle_ft -o -f `$B/`$d/VALIDATED ] || { rm -rf `$B/`$d; cp -r /data/local/tmp/`$d `$B/; echo backed-up `$d; }; done; du -sh `$B"
+& $Adb shell "am start -n $Pkg/.MainActivity >/dev/null; sleep 3; B=/sdcard/Android/data/$Pkg/files/backup; mkdir -p `$B; for d in genie_bundle genie_bundle_ft genie_bundle_ft_4096; do [ -d /data/local/tmp/`$d ] || continue;  s1=`$(stat -c %s /data/local/tmp/`$d/llama_v3_2_3b_instruct_part_3_of_3.bin); s2=`$(stat -c %s `$B/`$d/llama_v3_2_3b_instruct_part_3_of_3.bin 2>/dev/null); [ `"`$s1`" = `"`$s2`" ] && [ `$d != genie_bundle_ft -o -f `$B/`$d/VALIDATED ] || { rm -rf `$B/`$d; cp -r /data/local/tmp/`$d `$B/; echo backed-up `$d; }; done; du -sh `$B"
 Write-Host "[5/6] Saving clock correction (QIDK clock is set to 2023) ..."
 $dev = [long](& $Adb shell "date +%s").Trim()
 $off = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() - $dev

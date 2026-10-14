@@ -344,13 +344,23 @@ func (g *GenieRunner) exec(ctx context.Context, b ModelBundle, prompt, prefill s
 		text, dst, err := g.execViaDaemon(ctx, prompt, prefill, timeout, onToken)
 		switch {
 		case err == nil:
+			daemonFailures.Store(0)
 			return text, dst, nil
 		case dst.tokens > 0:
 			// it already streamed part of an answer to the dashboard; re-running on the CLI would
 			// emit those tokens a second time, so fail rather than duplicate
 			return text, dst, fmt.Errorf("daemon failed mid-answer: %w", err)
+		case len(geniedPids()) > 0:
+			// genied is resident (alive but failing, or briefly unreachable). Spawning the CLI now
+			// would put a SECOND model on the NPU - the configuration that crashed the board - so
+			// fail this call instead; the incident falls back to its rule-based report. Two such
+			// failures in a row mean it is wedged: kill it and let the supervisor start a clean one.
+			if daemonFailures.Add(1) >= 2 {
+				killDaemon("2 consecutive calls failed: " + err.Error())
+			}
+			return "", dst, fmt.Errorf("daemon resident but failed, CLI not started: %w", err)
 		default:
-			trace("daemon unavailable, falling back to the CLI: %v", err)
+			trace("daemon not running, falling back to the CLI: %v", err)
 		}
 	}
 

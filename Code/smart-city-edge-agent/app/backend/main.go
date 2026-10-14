@@ -75,5 +75,9 @@ func main() {
 	srv := &Server{eng: eng, rsn: rsn, genie: genie, hub: hub, dir: *dir, start: time.Now()}
 	log.Printf("edge-agent: %d live sensors (sliders / %s), clock from %s, agent model: %s (available=%v), listening on %s",
 		len(eng.states), "/api/ingest", eng.Meta.StartIST, genie.AgentModel().Name, genie.AgentModel().Available, *port)
-	log.Fatal(http.ListenAndServe(*port, srv.routes()))
+	// header and idle timeouts stop slow or abandoned clients holding connections open; no write
+	// timeout, because /api/events is a long-lived stream
+	hsrv := &http.Server{Addr: *port, Handler: srv.routes(), ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout: 120 * time.Second, MaxHeaderBytes: 64 << 10}
+	log.Fatal(hsrv.ListenAndServe())
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -129,7 +130,8 @@ func writeJSON(w http.ResponseWriter, v any) {
 
 func readBody(r *http.Request, v any) error {
 	defer r.Body.Close()
-	return json.NewDecoder(r.Body).Decode(v)
+	// 1 MiB is far above any real request; an unbounded body could exhaust the board's memory
+	return json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(v)
 }
 
 // Thermal zones by type (read once). NPU = nsphvx/nsphmx junctions, skin = skin-msm-therm.
@@ -281,6 +283,10 @@ func (s *Server) routes() http.Handler {
 	})
 	mux.HandleFunc("/api/incidents", func(w http.ResponseWriter, r *http.Request) {
 		list := s.rsn.List()
+		// ?limit=N returns only the newest N (the Android watchdog polls every 5 s and needs ~20)
+		if n, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && n > 0 && n < len(list) {
+			list = list[:n]
+		}
 		type sum struct {
 			ID, State, Severity, Title, CreatedWall, Approval, Label string
 			Mode, NPUCalls                                           int

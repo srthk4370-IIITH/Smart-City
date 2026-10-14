@@ -9,7 +9,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -116,19 +115,20 @@ type Incident struct {
 }
 
 type Reasoner struct {
-	mu        sync.RWMutex
-	genie     *GenieRunner
-	eng       *Engine
-	Mode      int
-	incidents []*Incident
-	store     string
-	notify    func(string, any)
-	seq       int
-	active    bool
-	pending   []Candidate
-	coolWait  bool  // a runWhenCool watcher is waiting for the thermal guard to clear
-	jobs      []job // explicitly requested analyses (Analyze, Rerun), run in order after pending alerts
-	lastNPU   time.Time
+	mu         sync.RWMutex
+	genie      *GenieRunner
+	eng        *Engine
+	Mode       int
+	incidents  []*Incident
+	store      string
+	notify     func(string, any)
+	seq        int
+	active     bool
+	pending    []Candidate
+	coolWait   bool  // a runWhenCool watcher is waiting for the thermal guard to clear
+	jobs       []job // explicitly requested analyses (Analyze, Rerun), run in order after pending alerts
+	lastNPU    time.Time
+	storeLines int // lines in the store file, guarded by storeMu (store.go)
 }
 
 func NewReasoner(g *GenieRunner, e *Engine, dir string, notify func(string, any)) *Reasoner {
@@ -138,49 +138,12 @@ func NewReasoner(g *GenieRunner, e *Engine, dir string, notify func(string, any)
 	return r
 }
 
-func (r *Reasoner) load() {
-	b, err := os.ReadFile(r.store)
-	if err != nil {
-		return
-	}
-	last := map[string]*Incident{}
-	order := []string{}
-	for _, line := range strings.Split(string(b), "\n") {
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
-		var inc Incident
-		if json.Unmarshal([]byte(line), &inc) == nil {
-			if _, ok := last[inc.ID]; !ok {
-				order = append(order, inc.ID)
-			}
-			if inc.State == "running" {
-				inc.State = "failed"
-			}
-			c := inc
-			last[inc.ID] = &c
-		}
-	}
-	for _, id := range order {
-		r.incidents = append(r.incidents, last[id])
-	}
-	r.seq = len(r.incidents)
-}
-
-func (r *Reasoner) persist(inc *Incident) {
-	b, _ := json.Marshal(inc)
-	f, err := os.OpenFile(r.store, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
-	if err == nil {
-		f.Write(append(b, '\n'))
-		f.Close()
-	}
-}
-
 func (r *Reasoner) List() []*Incident {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	out := append([]*Incident(nil), r.incidents...)
-	sort.Slice(out, func(i, j int) bool { return out[i].CreatedWall > out[j].CreatedWall })
+	// newest first by ID, not by wall clock: the device clock can jump back years after a power loss
+	sort.Slice(out, func(i, j int) bool { return incNum(out[i].ID) > incNum(out[j].ID) })
 	return out
 }
 

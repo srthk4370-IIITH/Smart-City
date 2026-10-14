@@ -93,7 +93,22 @@ public class EdgeService extends Service {
                         for (int i = 0; i < 25 && !healthy(); i++) Thread.sleep(1000);
                     }
                 }
-                if (healthy()) {
+                if (fallback && AdbLocal.listening()) {
+                    // adbd came back (it can take minutes after boot): leave rules-only mode. Without
+                    // this the board stayed in Mode 1 until the app was restarted by hand.
+                    Log.i(TAG, "local adbd available again - replacing the in-app backend with the NPU backend");
+                    if (proc != null) {
+                        proc.destroy();
+                        proc.waitFor(5, java.util.concurrent.TimeUnit.SECONDS);
+                        if (proc.isAlive()) proc.destroyForcibly();
+                        proc = null;
+                    }
+                    fallback = false;
+                    misses = 0;
+                    String out = adb.shell(startScript(ext), 30000);
+                    Log.i(TAG, "NPU backend start via local adbd: " + out.trim());
+                    for (int i = 0; i < 25 && !healthy(); i++) Thread.sleep(1000);
+                } else if (healthy()) {
                     misses = 0;
                     notifyNewIncidents();
                     if (++ticks % 60 == 0 && AdbLocal.listening()) { // every ~5 min: model files intact?
@@ -104,7 +119,8 @@ public class EdgeService extends Service {
                     String out = adb.shell(startScript(ext), 30000);
                     Log.i(TAG, "NPU backend start via local adbd: " + out.trim());
                     for (int i = 0; i < 25 && !healthy(); i++) Thread.sleep(1000);
-                } else if (++misses >= 12 && !fallback) {
+                } else if (++misses >= 12 && (!fallback || proc == null || !proc.isAlive())) {
+                    // first fallback, or the in-app backend itself died: (re)start it
                     // adbd on 127.0.0.1:5555 not reachable for ~1 min: run the backend inside the app.
                     // Apps cannot open the NPU on this firmware, so it runs in Mode 1 (rules only).
                     Log.w(TAG, "local adbd unavailable - starting in-app backend (rules only, NPU offline)");
@@ -148,7 +164,7 @@ public class EdgeService extends Service {
 
     private String healScript(File ext) {
         return "K=" + new File(ext.getParentFile(), "backup").getAbsolutePath() + "; T=/data/local/tmp; "
-                + "for d in genie_bundle genie_bundle_ft; do [ -d $K/$d ] || continue; bad=0; "
+                + "for d in genie_bundle genie_bundle_ft genie_bundle_ft_4096; do [ -d $K/$d ] || continue; bad=0; "
                 + "for f in llama_v3_2_3b_instruct_part_1_of_3.bin llama_v3_2_3b_instruct_part_2_of_3.bin "
                 + "llama_v3_2_3b_instruct_part_3_of_3.bin smartcity_agent.json tokenizer.json; do "
                 + "[ \"$(stat -c %s $T/$d/$f 2>/dev/null)\" = \"$(stat -c %s $K/$d/$f 2>/dev/null)\" ] || bad=1; done; "
@@ -176,7 +192,7 @@ public class EdgeService extends Service {
     private void notifyNewIncidents() {
         try {
             java.net.HttpURLConnection c = (java.net.HttpURLConnection)
-                    new java.net.URL("http://127.0.0.1:8000/api/incidents").openConnection();
+                    new java.net.URL("http://127.0.0.1:8000/api/incidents?limit=50").openConnection();
             c.setConnectTimeout(800);
             c.setReadTimeout(3000);
             String body;
