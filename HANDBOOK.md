@@ -1092,6 +1092,61 @@ append-only, so the newest line per incident is authoritative.
 First real run: one approved incident gave 2 SFT positives and 1 DPO pair (the synthesizer put
 non-domain names in `affected_domains` and evidence text inside its ids; policy fixed both).
 
+## 2.29 Where the app's time really went: the batch window, not the analysis (2026-10-14)
+
+With `SCE_GENIE_TRACE=1` the orchestrator now logs millisecond phase marks. A real 3-call incident:
+
+```
+agents  2617 + 4488 ms  ->  phase took 7112 ms   (overhead ~8 ms)
+synth          4454 ms  ->  phase took 4457 ms   (overhead ~3 ms)
+total 11570 ms, of which non-model time ~11 ms
+```
+
+So inside the analysis there is nothing left to optimise in the app - genied and the zero gap removed
+it. The time was BEFORE the analysis starts. The event gate needs 8 abnormal readings (~16 s at the
+2 s poll; deliberate false-alarm suppression, left alone), and then the batch window waited
+**3 more readings unconditionally** (~6 s) so co-occurring sensors could join one incident - even
+when no other sensor was abnormal at all.
+
+`batchEvents` now closes the window after one reading when no other sensor is abnormal-but-young,
+and otherwise behaves exactly as before. Measured from the gate's own trace (`gate: batch opened` /
+`closed`):
+
+| incident | window before | window after | sensors |
+|---|---|---|---|
+| `power_throttling` (isolated) | 3 readings, 6.0 s | **1 reading, 2.0 s** | 1 |
+| `ventilation_failure` (isolated) | 6.0 s | **2.0 s** | 1 |
+| `crowded_room` (cross-domain) | >= 6.0 s | **2 readings, 4.0 s** | **2, still one incident** |
+
+**-4 s on every isolated incident, -2 s here on the cross-domain one, Mode 3 batching intact.**
+Trade-off to know: a correlated sensor that is not yet abnormal AT ALL one reading after the first
+one matures will now form its own incident instead of joining. The scenario catalogue's only
+multi-target scenario still batches correctly.
+
+Note for measuring: end-to-end "inject -> analysis" times are dominated by how fast each scenario
+crosses its threshold (tank_leak varied 93-129 s between identical runs). Measure gate changes from
+the gate trace, and reset first with `POST /api/replay {"restart":true,"clock":"10:00"}` - otherwise
+the sim drifts into off-hours and spurious occupancy incidents get measured instead.
+
+## 2.30 Thermals, and a stale-UI bug that hid UI changes (2026-10-14)
+
+**Board heat, measured:** idle on every dashboard tab 50 C steady, app + WebView ~10% of ONE core,
+genied 0%. Mid-inference the WebView is ~0% and genied ~46% (real work). After three back-to-back
+incidents: 39 C CPU / 38 C NPU at rest, 63-69 C immediately after inference. The earlier 94 C was
+entirely genied's poll busy-wait (2.24). The UI does not heat the board.
+
+**Stale UI across APK updates.** A fixed incident title stayed unchanged across two installs and
+relaunches although the backend served the new app.js and the WebView uses LOAD_NO_CACHE. Cause: the
+dashboard's service worker keeps its own Cache Storage and registration, which survive app updates
+and are outside the HTTP cache. Fixed three ways: MainActivity wipes WebView web storage once per
+APK install (keyed on lastUpdateTime); the backend sends `Cache-Control: no-cache` for the dashboard
+(the board's clock resets to 2023 at boot, so Last-Modified freshness is meaningless); and the
+service worker fetches the shell with `cache: 'no-cache'`/`'reload'`. Verified on device.
+
+Also fixed in the UI: the incident title inherited the page-heading treatment (uppercase, wide
+tracking) and filled half the sheet; it would also have been turned into dot-matrix by a tab change.
+It is now `.inc-title`, excluded from both.
+
 ## 3. If something goes wrong
 
 **Golden rule: just run the same `train.ps1` command again.** It continues where it stopped: training resumes

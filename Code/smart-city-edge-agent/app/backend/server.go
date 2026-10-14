@@ -504,7 +504,14 @@ func (s *Server) routes() http.Handler {
 	})
 	mux.Handle("/api/events", s.hub)
 	web := http.FileServer(http.Dir(filepath.Join(s.dir, "web")))
-	mux.Handle("/", web)
+	// Always revalidate the dashboard files. Without this the WebView judged freshness from
+	// Last-Modified, which is meaningless here: the board's clock resets to 2023 on every boot while
+	// the files carry 2026 timestamps, so a new APK's UI could keep showing the previous version
+	// even after the service worker was bumped. "no-cache" still allows a cheap 304 when unchanged.
+	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache")
+		web.ServeHTTP(w, r)
+	}))
 	return mux
 }
 

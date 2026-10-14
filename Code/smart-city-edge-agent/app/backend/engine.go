@@ -86,6 +86,7 @@ type Engine struct {
 	ClockMin     int     // sensor time-of-day (minutes after midnight IST) at (re)start; default 09:00
 	batchUntil   int64   // sensor time when the open incident batch closes (0 = none)
 	batchOpen    int64   // sensor time the open batch started
+	batchOpenWall time.Time // wall clock the open batch started (latency tracing only)
 	rng          *rand.Rand
 	series       map[string]map[int64]float64 // node|metric -> bucket -> value
 	sim          int64
@@ -548,12 +549,25 @@ func (e *Engine) batchEvents(abnormal map[string]Candidate) []Candidate {
 			if st := e.states[k]; !st.alerted && st.same >= persistReadings {
 				e.batchOpen = e.sim
 				e.batchUntil = e.sim + batchReadings*bucketSec
+				e.batchOpenWall = time.Now()
+				trace("gate: batch opened by %s", k)
 				break
 			}
 		}
 	}
-	if e.batchUntil == 0 || e.sim < e.batchUntil {
+	if e.batchUntil == 0 {
 		return nil
+	}
+	if e.sim < e.batchUntil {
+		// The window exists so co-occurring sensors land in ONE incident (Mode 3's cross-domain
+		// case). It used to run its full batchReadings unconditionally, which on an isolated event
+		// was ~6 s (3 readings at the 2 s poll) of waiting for nobody - measured as the largest
+		// non-model delay in the whole pipeline (HANDBOOK 2.29). Close it early only when that is
+		// provably safe: at least one reading has passed AND no other sensor is abnormal at all. If
+		// anything else is abnormal, even far from maturity, keep the full window as before.
+		if e.sim < e.batchOpen+bucketSec || anyOtherAbnormal(e, abnormal) {
+			return nil
+		}
 	}
 	if e.sim < e.batchOpen+batchMaxReadings*bucketSec {
 		for k := range abnormal {
@@ -562,6 +576,7 @@ func (e *Engine) batchEvents(abnormal map[string]Candidate) []Candidate {
 			}
 		}
 	}
+	trace("gate: batch closed after %v wall (%d readings)", time.Since(e.batchOpenWall).Round(time.Millisecond), (e.sim-e.batchOpen)/bucketSec)
 	e.batchUntil, e.batchOpen = 0, 0
 	var out []Candidate
 	for k, c := range abnormal {
@@ -704,4 +719,16 @@ func (e *Engine) Series(node, metric string, hours int) SeriesOut {
 		}
 	}
 	return out
+}
+
+// anyOtherAbnormal reports whether some abnormal sensor has not yet reached persistReadings - i.e.
+// there is a plausible late joiner the batch window should wait for. Mature, already-qualifying
+// sensors are exactly the ones the batch will report, so they are not a reason to keep waiting.
+func anyOtherAbnormal(e *Engine, abnormal map[string]Candidate) bool {
+	for k := range abnormal {
+		if st := e.states[k]; st != nil && !st.alerted && st.same < persistReadings {
+			return true
+		}
+	}
+	return false
 }

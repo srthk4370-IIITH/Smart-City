@@ -478,12 +478,14 @@ func (r *Reasoner) Process(cands []Candidate, mode int) *Incident {
 				r.tokenSink(inc, inc.Sensors[llm[k]].Ref)(chunk)
 			})
 		}
+		trace("phase %s agents-start +%dms (%d agents)", inc.ID, time.Since(t0).Milliseconds(), len(llm))
 		for _, i := range llm {
 			runAgent(i, false)
 		}
 		for _, i := range npuDown {
 			runAgent(i, true)
 		}
+		trace("phase %s agents-done +%dms", inc.ID, time.Since(t0).Milliseconds())
 		r.mu.Lock()
 		for i := range inc.Sensors {
 			if !isLLM[i] {
@@ -513,7 +515,9 @@ func (r *Reasoner) Process(cands []Candidate, mode int) *Incident {
 		}
 		prompt := synthPrompt(inc.Sensors, findings)
 		r.log(inc, fmt.Sprintf("Synthesizer combining %d domains on NPU", len(doms)))
+		trace("phase %s synth-start +%dms", inc.ID, time.Since(t0).Milliseconds())
 		res := r.genie.Run(ctx, r.genie.AgentModel(), prompt+ReportPrefill, ReportPrefill, 120*time.Second, r.tokenSink(inc, "final"))
+		trace("phase %s synth-done +%dms (call %.0fms)", inc.ID, time.Since(t0).Milliseconds(), res.LatencyMs)
 		res.Text = ReportPrefill + res.Text
 		if !res.Cached {
 			inc.NPUCalls++
@@ -543,6 +547,7 @@ func (r *Reasoner) Process(cands []Candidate, mode int) *Incident {
 		inc.State = "done_with_errors"
 	}
 	r.mu.Unlock()
+	trace("phase %s done +%dms", inc.ID, time.Since(t0).Milliseconds())
 	r.log(inc, fmt.Sprintf("Finished in %.1fs, %d NPU call(s)", inc.TotalMs/1000, inc.NPUCalls))
 	r.persist(inc)
 	return inc

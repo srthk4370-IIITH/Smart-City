@@ -1,9 +1,9 @@
 /* Service worker: caches the static shell only. /api/* is never cached. */
-const CACHE = 'sce-shell-v14';
+const CACHE = 'sce-shell-v16';
 const SHELL = ['/', '/index.html', '/app.js', '/styles.css', '/manifest.json', '/icon.svg', '/icon-192.png'];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', (e) => {
   e.waitUntil(
@@ -18,7 +18,7 @@ self.addEventListener('fetch', (e) => {
   if (url.pathname.startsWith('/api/')) return; // network only, never cached
   // network-first for the shell so updates show up; fall back to cache offline
   e.respondWith(
-    fetch(req).then((res) => {
+    fetch(req, { cache: 'no-cache' }).then((res) => {   // never let the HTTP cache answer for the shell
       if (res && res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }
       return res;
     }).catch(() => caches.match(req).then((r) => r || caches.match('/index.html')))

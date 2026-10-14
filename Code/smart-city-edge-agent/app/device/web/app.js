@@ -920,7 +920,7 @@ function renderIncDetail() {
   parts.push(h('div', { class: 'ltitle', style: 'padding-top:2px' },
     h('div', { class: 'rep-h', style: 'margin-bottom:8px' }, pill(inc.severity), h('span', { class: 'pill ghost', text: 'Mode ' + inc.mode }),
       running ? h('span', { class: 'livepill', text: 'LIVE' }) : null, multiFlag(inc)),
-    h('h1', { style: 'font-size:26px;line-height:1.2', text: inc.title }),
+    h('h1', { class: 'inc-title', style: 'font-size:26px;line-height:1.2', text: inc.title }),
     h('p', { text: 'Sensor time ' + (inc.created_sim ? dhm(inc.created_sim) + ' IST' : '-') + ' · analysed ' + (inc.created_wall ? inc.created_wall.slice(-8) : '-') + ' · ' + (inc.sensors || []).length + ' sensors · ' + inc.npu_calls + ' NPU calls' })));
   parts.push(trackCard(inc));
   // cross-domain report
@@ -1402,7 +1402,8 @@ function dotTextSvg(text, step, cls) {
    the accessible label and leaves light mode untouched. */
 function applyDotTitles() {
   const dark = document.documentElement.getAttribute('data-theme') === 'dark';
-  document.querySelectorAll('.ltitle h1').forEach((el) => {
+  // page headings only: never the incident title, which also lives in an .ltitle and is long
+  document.querySelectorAll('.ltitle h1:not(.inc-title)').forEach((el) => {
     if (!el.dataset.txt) el.dataset.txt = el.textContent.trim();
     if (!dark) { el.textContent = el.dataset.txt; el.classList.remove('is-dots'); return; }
     const step = Math.max(3, Math.min(5, Math.floor((el.clientWidth || 320) / (el.dataset.txt.length * 6))));

@@ -776,3 +776,16 @@ details pre{margin:0;padding:12px 16px;white-space:pre-wrap;word-break:break-wor
 }
 [data-theme="dark"] .sn-banner p{font-size:11px;letter-spacing:.03em;color:var(--tx2)}
 [data-theme="dark"] .sn-banner svg{color:var(--accent);width:16px;height:16px}
+
+/* incident title inside the detail sheet: it shares .ltitle with the page headings but is a long
+   sentence, so it must NOT get their uppercase/wide tracking (that made it fill half the screen) */
+[data-theme="dark"] .ltitle h1.inc-title{
+  font-size:16px!important;line-height:1.35!important;text-transform:none;letter-spacing:.02em;
+  font-weight:500;overflow-wrap:anywhere;
+}
+/* multi-domain markers: monochrome outline, like every other icon in the theme */
+[data-theme="dark"] .mflag .mi{
+  background:transparent;border:1px solid color-mix(in srgb,var(--cb,var(--tx2)) 55%,transparent);
+  color:var(--cb,var(--tx2));
+}
+[data-theme="dark"] .mflag{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--tx2)}

@@ -37,6 +37,7 @@ public class MainActivity extends Activity {
         s.setDomStorageEnabled(true);
         s.setCacheMode(WebSettings.LOAD_NO_CACHE);
         s.setMediaPlaybackRequiresUserGesture(false);
+        freshUiAfterUpdate();
         web.setWebViewClient(new WebViewClient() {
             @Override
             public void onReceivedError(WebView v, WebResourceRequest r, WebResourceError e) {
@@ -50,6 +51,30 @@ public class MainActivity extends Activity {
                 + "<div><b style='color:#fff;font-size:26px'>Smart City Edge</b><br><br>Starting on-device "
                 + "monitor and NPU agents&hellip;</div></body></html>", "text/html", "utf-8");
         waitAndLoad();
+    }
+
+    /**
+     * After an APK update, drop the WebView's web storage once so the new dashboard actually shows.
+     *
+     * LOAD_NO_CACHE only governs the HTTP cache. The dashboard's service worker keeps its own Cache
+     * Storage and registration, which survive app updates and could keep serving the previous app.js
+     * (observed: a fixed incident title and CSS stayed stale across two APK installs and relaunches,
+     * even with Cache-Control: no-cache from the backend). deleteAllData() clears service workers,
+     * Cache Storage and localStorage; the only preference kept there is the theme, whose default is
+     * the designed one. Runs once per install, keyed on the APK's lastUpdateTime.
+     */
+    private void freshUiAfterUpdate() {
+        try {
+            long installed = getPackageManager().getPackageInfo(getPackageName(), 0).lastUpdateTime;
+            android.content.SharedPreferences p = getSharedPreferences("ui", MODE_PRIVATE);
+            if (p.getLong("uiFor", 0) != installed) {
+                android.webkit.WebStorage.getInstance().deleteAllData();
+                web.clearCache(true);
+                p.edit().putLong("uiFor", installed).apply();
+            }
+        } catch (Exception ignored) {
+            // never block the dashboard over cache housekeeping
+        }
     }
 
     /** Polls the local backend until it answers, then loads the dashboard. */
