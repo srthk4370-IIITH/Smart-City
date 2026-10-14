@@ -26,6 +26,12 @@ func StatusOf(role, metric, pattern string, st Stats, baseMean float64) string {
 		}
 		return "normal"
 	}
+	// Physical plausibility (not in the training rules, added after the app stress test): indoor CO2
+	// cannot sit below outdoor air (~420 ppm), so a reading under 350 ppm is a sensor fault. Without
+	// this a drop to 270 ppm read as a harmless "step decrease" and raised nothing.
+	if role == "air_quality" && metric == "co2" && st.Last < 350 {
+		return "sensor_fault"
+	}
 	if pattern == "erratic" && role != "power" {
 		return "sensor_fault"
 	}
@@ -94,6 +100,9 @@ func StatusOf(role, metric, pattern string, st Stats, baseMean float64) string {
 }
 
 func CauseOf(role, metric, pattern, status string, offHours, indoor, zero bool) string {
+	if status == "sensor_fault" {
+		return "sensor_fault" // whatever the shape, a faulty reading has one cause (as for flatline/erratic)
+	}
 	up := inSet(pattern, "gradual_increase", "step_increase", "exponential_increase", "throttling")
 	down := inSet(pattern, "gradual_decrease", "step_decrease", "dip")
 	if pattern == "flatline" {

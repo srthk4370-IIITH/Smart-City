@@ -1133,7 +1133,7 @@ the sim drifts into off-hours and spurious occupancy incidents get measured inst
 **Board heat, measured:** idle on every dashboard tab 50 C steady, app + WebView ~10% of ONE core,
 genied 0%. Mid-inference the WebView is ~0% and genied ~46% (real work). After three back-to-back
 incidents: 39 C CPU / 38 C NPU at rest, 63-69 C immediately after inference. The earlier 94 C was
-entirely genied's poll busy-wait (2.24). The UI does not heat the board.
+entirely genied's poll busy-wait (2.24). The UI did not heat the board - until the DeerFlow redesign, see 2.35.
 
 **Stale UI across APK updates.** A fixed incident title stayed unchanged across two installs and
 relaunches although the backend served the new app.js and the WebView uses LOAD_NO_CACHE. Cause: the
@@ -1146,6 +1146,74 @@ service worker fetches the shell with `cache: 'no-cache'`/`'reload'`. Verified o
 Also fixed in the UI: the incident title inherited the page-heading treatment (uppercase, wide
 tracking) and filled half the sheet; it would also have been turned into dot-matrix by a tab change.
 It is now `.inc-title`, excluded from both.
+
+## 2.31 Stress testing through the app; one queue; no agent cap (2026-10-14/15)
+
+Everything is now tested the way an operator would use it: `app/tools/stress_app.py` drives only the
+app's own API (sliders, scenarios, approve/dismiss/rerun, mode switches) with random values, random
+sensor faults and "every sensor haywire" chaos rounds, and checks the board (backend + genied alive,
+temperature, thermal guard) after each phase. `--only quiet,faults,scenarios,chaos,operator,load`.
+
+- **Analyze/Rerun interleaved.** Each request ran its own pipeline, so 8 requests interleaved their
+  NPU calls; one incident took 58 s for 10.8 s of model time. `Reasoner.Submit` now queues requests
+  FIFO behind pending event-gate alerts (alerts first). Bounded at 16 waiting requests, identical
+  requests de-duplicated; a full queue answers HTTP 429.
+- **No agent cap.** Every alarming sensor gets its own NPU agent (chaos: 13 agents + synthesizer in
+  48.9 s, 9 agents in 40.8 s). The thermal guard queues work until the board cools instead of dropping.
+- **Results, pass 3:** 238/240 checks; Mode 3 analysis min 2.3 s, median 4.1 s, max 48.9 s (chaos).
+
+## 2.32 Two context windows (ctx 2048 + ctx 4096)
+
+The live bundle is ctx 2048 (fastest). A chaos-scale synthesizer prompt (18+ sensors) does not fit,
+so a second bundle with the same weights and ctx 4096 lives at `/data/local/tmp/genie_bundle_ft_4096`.
+The backend sets bit 31 of genied's length field when `estTokens*1.08 + 320 + 40 > 2048`; genied frees
+the normal dialog and loads the large one (~0.9 s), never both. Outputs are byte-identical on the gate
+(5/5). Nothing is trimmed to fit: the window grows instead. If the swap fails after the old dialog is
+freed, genied exits (supervisor restarts it on the normal window) rather than keep a dangling handle.
+
+## 2.33 When the AI and the rules disagree; fallback reports
+
+Decision: surface the disagreement, neither side overrides. If an agent says "normal" while the rule
+view of the same sensor is warning/critical, the report explanation says so (`surfaceDisagreements`).
+If the synthesizer's answer fails policy, a report is assembled from the agents' own findings
+(Mode 3) or from rule findings (Mode 2) and marked as such - an operator always gets a report.
+Policy also completes `affected_domains` with every flagged domain whose own sensor is
+warning/critical (chaos INC-0114 listed only `weather` while power, water and air quality were
+critical); the label and root cause stay the model's.
+
+## 2.34 Reboots: power, not code; the clock
+
+The board rebooted during chaos (peak load). Boot reason "reboot" (not thermal), and it reports
+AC/USB online = false: a brownout on the USB supply. **Use the DC adapter for the evaluation.** After
+any reboot the RTC is back to 2023; the app passes its saved offset (`--clock-unix`), and incidents are
+now ordered by ID, not wall clock, so a clock jump can never reorder the list. A power cut mid-write
+can tear the last line of `incidents.jsonl`; see 2.35 for how the store survives that.
+
+## 2.35 Night-run hardening (2026-10-15)
+
+- **The dashboard was the heater.** With the DeerFlow redesign, app + WebView used ~220% CPU at idle
+  and held the board at 75 C - hotter than a 13-agent incident. Cause: 22 px backdrop blurs
+  re-rasterised every frame under 60 fps infinite animations. Bars are now solid, endless indicators
+  step at 2 frames/s, the sparkline loop runs at 1 Hz. Measured: 5-11% on every tab, board 43 C idle.
+- **Incident store** (`backend/store.go`): one line per version used to be kept forever, every
+  incident in RAM. Now compacted (temp file + fsync + rename), newest 1000 kept
+  (`SCE_MAX_INCIDENTS`), older ones moved to `incidents.archive.jsonl` (the self-learning export reads
+  both), next ID from the highest ID seen so a torn line never reuses an ID. Test: `store_test.go`.
+- **Never two models on the NPU.** genied binds its port before loading the model, so the port is a
+  single-instance lock. The backend never spawns the CLI while any genied process is resident (only
+  when none exists); two failed calls in a row, or 3 checks alive-but-not-listening, kill genied so
+  the supervisor starts a clean one. Zombies are ignored. genied.log rotates at 4 MB; the parent's
+  log fd no longer leaks per restart.
+- **Watchdog (EdgeService):** returns from rules-only fallback to the NPU backend when local adbd
+  comes back (previously stuck in Mode 1 until restarted by hand); restarts a dead in-app backend;
+  polls `/api/incidents?limit=50`; the ctx-4096 bundle is backed up and self-healed like the others.
+- **API:** 1 MiB request bodies, 10 s header timeout, 120 s idle timeout (no write timeout: SSE);
+  at most 16 queued analysis requests, duplicates merged, HTTP 429 beyond. Dashboard lists the newest
+  300 incidents, sorted numerically (string order broke past INC-9999).
+- **Physical plausibility:** indoor CO2 below 350 ppm (under outdoor air) is a sensor fault. The
+  stress test drove CO2 to 270 ppm and the training-parity rules called it a harmless step decrease;
+  this one check is outside the training rules and documented as such in `rules.go`.
+- **Memory:** edge-agent 15 MB RSS, genied 81 MB after 24 min of stress; re-checked after the run.
 
 ## 3. If something goes wrong
 

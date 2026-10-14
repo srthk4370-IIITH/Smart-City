@@ -348,7 +348,10 @@ func (s *Server) routes() http.Handler {
 					}
 					cands = append(cands, Candidate{sr.Node, sr.Metric, sr.Role, sr.Rule, sr.Xs, sr.End, sr.Injected})
 				}
-				s.rsn.Submit(cands, mode) // queued behind current work, never interleaved with it
+				if !s.rsn.Submit(cands, mode) { // queued behind current work, never interleaved with it
+					http.Error(w, "analysis queue full, try again shortly", http.StatusTooManyRequests)
+					return
+				}
 			default:
 				http.Error(w, "unknown action "+parts[1]+" (approve, dismiss, rerun)", 400)
 				return
@@ -514,7 +517,11 @@ func (s *Server) routes() http.Handler {
 		xs, wok := s.eng.Window(body.Node, body.Metric, s.eng.sim)
 		sim := s.eng.sim
 		s.eng.mu.RUnlock()
-		if !ok || !wok || info.Role == "hvac" {
+		if ok && info.Role == "hvac" {
+			http.Error(w, "HVAC readings are context for the other agents; there is no HVAC agent to analyse them", 400)
+			return
+		}
+		if !ok || !wok {
 			http.Error(w, "no 4-hour window available for this sensor", 400)
 			return
 		}
@@ -524,7 +531,10 @@ func (s *Server) routes() http.Handler {
 			s.rsn.mu.RUnlock()
 		}
 		f := RuleFinding(info.Role, body.Metric, body.Node, xs, sim)
-		s.rsn.Submit([]Candidate{{body.Node, body.Metric, info.Role, f, xs, sim, false}}, body.Mode)
+		if !s.rsn.Submit([]Candidate{{body.Node, body.Metric, info.Role, f, xs, sim, false}}, body.Mode) {
+			http.Error(w, "analysis queue full, try again shortly", http.StatusTooManyRequests)
+			return
+		}
 		writeJSON(w, map[string]any{"ok": true})
 	})
 	mux.Handle("/api/events", s.hub)

@@ -250,29 +250,31 @@ func (r *Reasoner) mergePending(cands []Candidate) {
 // time, first in first out, after any pending event-gate alert (real alerts come first).
 //
 // Mode 1 is rules only and never touches the NPU, so it still answers immediately.
-func (r *Reasoner) Submit(cands []Candidate, mode int) {
+// Returns false when the request queue is full (maxJobs); the API answers 429.
+func (r *Reasoner) Submit(cands []Candidate, mode int) bool {
 	if mode == 1 {
 		go r.Process(cands, mode)
-		return
+		return true
 	}
 	r.mu.Lock()
 	if r.active || r.coolWait {
-		r.jobs = append(r.jobs, job{cands, mode})
+		ok := r.enqueue(cands, mode)
 		r.mu.Unlock()
-		return
+		return ok
 	}
 	if hot, npu, skin := ThermalHot(); hot {
-		r.jobs = append(r.jobs, job{cands, mode})
+		ok := r.enqueue(cands, mode)
 		r.coolWait = true
 		r.mu.Unlock()
 		go r.runWhenCool()
 		r.notify("log", map[string]any{"msg": fmt.Sprintf("Thermal guard: NPU %.0f C, skin %.0f C - requested analysis queued until the board cools", npu, skin)})
-		return
+		return ok
 	}
 	r.active = true
 	r.lastNPU = time.Now()
 	r.mu.Unlock()
 	go r.loop(cands, mode)
+	return true
 }
 
 // next takes the next unit of work: a pending event-gate alert first, then requested jobs in order.
@@ -830,4 +832,32 @@ func min(a, b int) int {
 type job struct {
 	cands []Candidate
 	mode  int
+}
+
+// maxJobs bounds explicitly requested analyses waiting for the NPU. Each costs seconds of NPU time,
+// so an unbounded queue (a script hammering /api/analyze, an operator tapping "rerun") would build
+// up hours of work and memory; the API answers 429 instead.
+const maxJobs = 16
+
+// enqueue adds a requested analysis unless the same sensors in the same mode are already waiting.
+// Caller holds r.mu. false = queue full.
+func (r *Reasoner) enqueue(cands []Candidate, mode int) bool {
+	sig := func(cs []Candidate) string {
+		var b strings.Builder
+		for _, c := range cs {
+			b.WriteString(key(c.Node, c.Metric) + ";")
+		}
+		return b.String()
+	}
+	s := sig(cands)
+	for _, j := range r.jobs {
+		if j.mode == mode && sig(j.cands) == s {
+			return true // already queued: one analysis will answer both requests
+		}
+	}
+	if len(r.jobs) >= maxJobs {
+		return false
+	}
+	r.jobs = append(r.jobs, job{cands, mode})
+	return true
 }

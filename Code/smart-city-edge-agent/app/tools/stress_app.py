@@ -377,7 +377,8 @@ def phase_chaos(rounds, staggered=False):
 
 def phase_operator():
     print("\n== operator actions ==")
-    ids = incident_ids()
+    # act on a FINISHED incident: approve/dismiss are refused (409) while one is still running
+    ids = [i["id"] for i in req("/api/incidents")[1] if i.get("state") != "running"]
     if not ids:
         return check("operator: an incident exists to act on", False, "none")
     iid = ids[0]
@@ -426,7 +427,7 @@ def phase_load():
     bad = [c for c in codes if c != 200]
     check(f"240 concurrent requests during analysis all succeed ({dt:.1f}s)", not bad, f"non-200: {len(bad)}")
     # hammer analyze: the app must queue, not crash or run NPU sessions in parallel
-    ss = [s for s in sensors() if s["metric"] not in ("occ", "ac_units_on")]
+    ss = [s for s in sensors() if s["metric"] not in ("occ", "ac_units_on") and s.get("role") != "hvac"]
     with cf.ThreadPoolExecutor(8) as ex:
         codes = list(ex.map(lambda s: req("/api/analyze", {"node": s["node"], "metric": s["metric"], "mode": 3})[0],
                             rng.sample(ss, min(8, len(ss)))))

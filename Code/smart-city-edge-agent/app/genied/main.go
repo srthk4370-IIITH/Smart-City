@@ -73,6 +73,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unsafe"
 )
@@ -124,6 +125,15 @@ type dialog struct {
 	slot  uintptr
 	mu    sync.Mutex // one query per dialog at a time; the pool also guarantees this
 	large bool       // true while the LARGE-context bundle is the one loaded
+
+	// Abort bookkeeping. GenieDialog_signal(ABORT) on a dialog that is NOT mid-query is not a
+	// no-op: the next query then fails at once with zero tokens ("Context Size was exceeded" in the
+	// log). That happened when the backend's early-stop abort byte arrived just as a query finished
+	// on its own - the following synthesizer call died in 19-448 ms (stress pass 5). So an abort is
+	// only signalled while the query it was meant for is still running.
+	am    sync.Mutex
+	qid   uint64 // id of the running query, 0 when idle
+	nextQ uint64
 }
 
 // Two context windows, one resident at a time (HANDBOOK 2.32).
@@ -216,7 +226,7 @@ func newDialog(configJSON string, slot uintptr) (*dialog, error) {
 
 // query runs one prompt. onChunk is called from the Genie callback on this goroutine's thread.
 // Returns when generation ends or is aborted.
-func (d *dialog) query(prompt string, onChunk func(string)) error {
+func (d *dialog) query(prompt string, onChunk func(string), started func(q uint64)) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -235,7 +245,15 @@ func (d *dialog) query(prompt string, onChunk func(string)) error {
 	cp := C.CString(prompt)
 	defer C.free(unsafe.Pointer(cp))
 
+	d.am.Lock()
+	d.nextQ++
+	d.qid = d.nextQ
+	started(d.qid)
+	d.am.Unlock()
 	st := C.genieQuery(d.h, cp, C.uintptr_t(d.slot))
+	d.am.Lock()
+	d.qid = 0
+	d.am.Unlock()
 	// positive statuses are warnings, not failures: 1 = ABORTED, which is the normal result when
 	// the backend stops us early because the JSON object closed
 	if int(st) < 0 {
@@ -245,8 +263,20 @@ func (d *dialog) query(prompt string, onChunk func(string)) error {
 }
 
 // abort stops an in-flight query. Documented as safe to call concurrently with query.
-func (d *dialog) abort() {
+func (d *dialog) abort(q uint64) {
+	d.am.Lock()
+	defer d.am.Unlock()
+	if q == 0 || d.qid != q {
+		return // that query already finished; signalling now would kill the next one
+	}
 	C.GenieDialog_signal(d.h, C.GENIE_DIALOG_ACTION_ABORT)
+}
+
+// running returns the id of the query in flight (0 if none).
+func (d *dialog) running() uint64 {
+	d.am.Lock()
+	defer d.am.Unlock()
+	return d.qid
 }
 
 func (d *dialog) free() { C.GenieDialog_free(d.h) }
@@ -293,6 +323,8 @@ func serve(c net.Conn, d *dialog) {
 	// Watch for the abort byte while the query runs. The read ends on its own when the handler
 	// closes the connection.
 	done := make(chan struct{})
+	var ourQ atomic.Uint64 // id of this connection's query, so a late abort cannot hit the next one
+	var abortAsked atomic.Bool
 	go func() {
 		b := make([]byte, 1)
 		for {
@@ -300,7 +332,8 @@ func serve(c net.Conn, d *dialog) {
 				return
 			}
 			if b[0] == abortByte {
-				d.abort()
+				abortAsked.Store(true)
+				d.abort(ourQ.Load())
 				return
 			}
 			select {
@@ -313,11 +346,22 @@ func serve(c net.Conn, d *dialog) {
 
 	var werr error
 	t0 := time.Now()
-	err := d.query(string(prompt), func(chunk string) {
-		if werr == nil {
-			werr = writeFrame(c, frameChunk, []byte(chunk))
-		}
-	})
+	chunks := 0
+	run := func() error {
+		return d.query(string(prompt), func(chunk string) {
+			chunks++
+			if werr == nil {
+				werr = writeFrame(c, frameChunk, []byte(chunk))
+			}
+		}, func(q uint64) { ourQ.Store(q) })
+	}
+	err := run()
+	if err == nil && chunks == 0 && !abortAsked.Load() {
+		// nothing generated and nobody asked us to stop: a spurious failure of the dialog (seen as
+		// "Context Size was exceeded" on a 1.1k-token prompt). Reset and try once more.
+		log.Printf("query produced no tokens after %v; retrying once", time.Since(t0))
+		err = run()
+	}
 	close(done)
 
 	if err != nil {

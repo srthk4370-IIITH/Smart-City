@@ -208,8 +208,10 @@ function indexLive() {
 }
 async function refreshIncidents() {
   try {
-    const l = await api('/api/incidents');
-    S.incs = (Array.isArray(l) ? l : []).sort((a, b) => b.id.localeCompare(a.id));
+    const l = await api('/api/incidents?limit=300');
+    // numeric: 'INC-10000' must sort above 'INC-9999'. The newest 300 are plenty for a phone list;
+    // older incidents stay in the store and the archive.
+    S.incs = (Array.isArray(l) ? l : []).sort((a, b) => (+b.id.slice(4) || 0) - (+a.id.slice(4) || 0));
     S.lastIncList = Date.now();
     renderIncList();
     if (S.pendingNewest) {

@@ -805,3 +805,12 @@ details pre{margin:0;padding:12px 16px;white-space:pre-wrap;word-break:break-wor
 .dot.busy,.step.active .dotc{animation:none!important;box-shadow:0 0 0 3px rgba(252,128,25,.35)!important}
 .prog::after{animation:slide 1.2s steps(6,end) infinite!important}
 .spin{animation:spin 1s steps(8,end) infinite!important}
+/* The ground stipple is a full-screen layer of 4px radial gradients. With background-attachment:fixed
+   and a non-composited ::before, every small update anywhere (a clock tick, a status dot, a streamed
+   token) re-rasterised the whole screen of gradients: ~185% CPU with an incident sheet open. Promote
+   the stipple to its own compositor layer (rasterised once) and let the ground scroll normally. */
+[data-theme="dark"] body{background-attachment:scroll!important}
+[data-theme="dark"] body::before{will-change:transform;transform:translateZ(0)}
+.sheet{contain:layout paint}
+/* the page under an open sheet is covered: skip rendering it (state and scroll are kept) */
+body.noscroll #main{content-visibility:hidden}
