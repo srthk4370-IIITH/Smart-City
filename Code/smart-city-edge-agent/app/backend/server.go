@@ -36,7 +36,7 @@ var Scenarios = []Scenario{
 	{"ventilation_failure", "Ventilation failure (KH level 03)", "CO2 rises exponentially in a room on KH level 03.", []string{"air_quality"},
 		[]Target{{"SR-AQ-KH03-03", "co2", "exp_rise", 30, 1300, false, nil}}},
 	{"pm_spike", "Outdoor PM2.5 spike", "Short burst of PM2.5 at the VN outdoor air station (e.g. nearby burning).", []string{"air_quality"},
-		[]Target{{"AQ-VN90-00", "pm25", "spike", 8, 120, false, nil}}},
+		[]Target{{"AQ-VN90-00", "pm25", "spike", 8, 120, false, []string{"AQ-KN00-00"}}}},
 	{"power_throttling", "Load hits a ceiling (throttling)", "Room load on KH level 04 climbs and then flat-lines at a cap.", []string{"power"},
 		[]Target{{"SR-EM-KH04-01", "power_kw", "throttle", 30, 18, false, nil}}},
 	{"load_surge", "Load surge spike (KH level 04)", "Short power spike on a KH level-04 room energy meter.", []string{"power"},
@@ -46,13 +46,16 @@ var Scenarios = []Scenario{
 	{"pump_cycling", "Pump cycling (tank level)", "The KH tank level swings up and down repeatedly as the pump cycles on and off.", []string{"water"},
 		[]Target{{"WM-WL-KH00-00", "level", "oscillate", 36, 8, false, []string{"WM-WL-KH98-00"}}}},
 	{"stuck_sensor", "Stuck temperature sensor", "Indoor temperature freezes at one value.", []string{"air_quality"},
-		[]Target{{"SR-AQ-KH00-02", "temp", "flatline", 30, 0, false, nil}}},
+		[]Target{{"SR-AQ-KH00-02", "temp", "flatline", 30, 0, false, []string{"SR-AQ-KH03-03"}}}},
 	{"heat_buildup", "Heat build-up", "Outdoor temperature climbs steadily at the rooftop station.", []string{"weather"},
 		[]Target{{"WE-VN04-00", "temp", "ramp_up", 36, 8, false, nil}}},
 	{"off_hours_presence", "Presence at night", "A KH room reports occupancy (best demonstrated when the replay clock is 22:00-06:00).", []string{"occupancy"},
-		[]Target{{"SR-OC-GW-KH95-22", "occ", "set", 24, 1, false, nil}}},
+		[]Target{{"SR-OC-GW-KH95-22", "occ", "set", 24, 1, false, []string{"SR-OC-GW-KH95-01"}}}},
 	{"crowded_room", "Crowded room (cross-domain)", "Occupancy turns on, CO2 climbs and room power steps up together.", []string{"occupancy", "air_quality", "power"},
-		[]Target{{"SR-OC-GW-KH95-01", "occ", "set", 36, 1, false, nil}, {"SR-AQ-KH95-00", "co2", "ramp_up", 36, 900, false, nil},
+		[]Target{{"SR-OC-GW-KH95-01", "occ", "set", 36, 1, false, nil},
+			// SR-AQ-KH95-00 is not present in every topology; fall back to the KH03 AQ node so the
+			// cross-domain scenario stays injectable (PickTargets only remaps via Alt).
+			{"SR-AQ-KH95-00", "co2", "ramp_up", 36, 900, false, []string{"SR-AQ-KH03-03"}},
 			{"SR-EM-KH04-01", "power_kw", "step_up", 36, 6, false, []string{"SR-EM-KH04-02", "SR-EM-KH04-00"}}}},
 }
 
@@ -214,7 +217,10 @@ func (s *Server) routes() http.Handler {
 			"mode": mode, "replay": replay, "injections": inj,
 			"models": map[string]any{"agent": s.genie.AgentModel(), "reasoner": s.genie.Base, "base": s.genie.Base, "tuned": s.genie.Tuned},
 			"npu":    s.genie.Status(), "device": deviceStats(), "incidents": n, "uptime_s": int(time.Since(s.start).Seconds()),
-			"running_on": runningOn(),
+			// whether the persistent-dialog fast path is live, so a silent fallback to the
+			// per-call CLI (which costs ~700 ms of model init per request) is visible
+			"genie_daemon": daemonStatus(),
+			"running_on":   runningOn(),
 		})
 	})
 	mux.HandleFunc("/api/live", func(w http.ResponseWriter, r *http.Request) {

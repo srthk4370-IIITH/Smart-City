@@ -1,0 +1,19 @@
+[wsl2]
+# Return the VM's memory to Windows after one minute of real inactivity.
+vmIdleTimeout=60000
+networkingMode=mirrored
+# Retain enough room for Windows on this 16-GB host while allowing the observed
+# 6.6-GB training merge peak. Keep swap bounded because C: is space-constrained.
+memory=8GB
+swap=8GB
+# 8 of 12 logical cores: leaves cores for Windows and reduces heat during training.
+processors=8
+
+[experimental]
+# Return freed memory to Windows instead of holding it.
+autoMemoryReclaim=gradual
+sparseVhd=true
+
+[general]
+# Use WSL's documented default rather than keeping distributions alive forever.
+instanceIdleTimeout=15000

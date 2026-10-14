@@ -458,6 +458,23 @@ func (r *Reasoner) Process(cands []Candidate, mode int) *Incident {
 			}
 			r.log(inc, fmt.Sprintf("%s agent done %s: %s (policy %s)", title(s.Role), src, pat, okStr(call.Valid)))
 		}
+		// Optional (SCE_GENIE_BATCH=1): answer every agent's prompt in ONE NPU process first and
+		// park the answers in the prompt cache, so each runAgent below finds its own already done.
+		// Saves the ~695 ms model init and the 600 ms inter-call gap on every agent after the
+		// first - about 1.3 s each. The answers are byte-identical to running them separately
+		// (training/export/verify_batch.py, 16/16). If the batch fails, nothing is cached and the
+		// loop below just runs normally.
+		if batchEnabled() && len(llm) > 1 {
+			prompts := make([]string, len(llm))
+			for k, i := range llm {
+				s := inc.Sensors[i]
+				prompts[k] = BuildAgentPrompt(s.Role, s.Node, s.Location, s.Metric, s.Xs, s.End).Prompt + AgentPrefill
+			}
+			r.log(inc, fmt.Sprintf("Orchestrator: running all %d NPU agents in one model load (batched)", len(llm)))
+			r.genie.Prefetch(ctx, am, prompts, AgentPrefill, func(k int, chunk string) {
+				r.tokenSink(inc, inc.Sensors[llm[k]].Ref)(chunk)
+			})
+		}
 		for _, i := range llm {
 			runAgent(i, false)
 		}

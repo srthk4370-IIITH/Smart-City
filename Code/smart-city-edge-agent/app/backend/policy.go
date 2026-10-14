@@ -201,12 +201,22 @@ func checkAgent(s SensorRef, res GenieResult, prompt string) AgentCall {
 	if !contains(Causes[s.Role], f.LikelyCause) {
 		call.Errors = append(call.Errors, "cause '"+f.LikelyCause+"' not allowed for "+s.Role)
 	}
-	if f.Action == "" && contains(Causes[s.Role], f.LikelyCause) {
-		// The model dropped the action field but gave a valid cause. Action is a deterministic function
-		// of (cause, status) in our taxonomy - the same mapping that generated the training targets - so
-		// fill it in and record the repair rather than discarding an otherwise sound finding.
-		f.Action = ActionOf(f.LikelyCause, f.Status)
-		call.Repairs = append(call.Repairs, "action missing, derived from cause '"+f.LikelyCause+"' by policy")
+	// Action is a deterministic function of (cause, status) in our taxonomy - the very mapping that
+	// generated the training targets - so we always derive it instead of trusting the generated field.
+	// Measured on the 54-window device set: the model's own action was right 77.8% of the time while
+	// its cause was right 81.5%, i.e. it sometimes picked the wrong action from a correct cause.
+	// Deriving makes action track cause exactly. The model's raw value stays in call.Raw for audit, and
+	// a disagreement is recorded because it is a useful drift signal, not an error.
+	if contains(Causes[s.Role], f.LikelyCause) {
+		derived := ActionOf(f.LikelyCause, f.Status)
+		if f.Action != "" && f.Action != derived {
+			call.Repairs = append(call.Repairs, "action '"+f.Action+"' replaced by '"+derived+"', derived from cause '"+f.LikelyCause+"'")
+		} else if f.Action == "" && !trimAction() {
+			// With SCE_TRIM_ACTION=1 the field is absent on purpose - generation is stopped before
+			// it, because this line is about to overwrite it anyway - so its absence is not a repair.
+			call.Repairs = append(call.Repairs, "action missing, derived from cause '"+f.LikelyCause+"' by policy")
+		}
+		f.Action = derived
 	}
 	if !contains(Actions, f.Action) {
 		call.Errors = append(call.Errors, "action '"+f.Action+"' not whitelisted")

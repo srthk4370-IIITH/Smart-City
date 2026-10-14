@@ -41,6 +41,10 @@ type GenieResult struct {
 	FineTuned    bool    `json:"fine_tuned"`
 	Backend      string  `json:"backend"`
 	Error        string  `json:"error,omitempty"`
+	// Prefetched marks a result that was produced by a batched NPU run earlier in this same
+	// incident (see genieapp.go). It lives in the prompt cache like any other entry, but it is a
+	// real NPU call for this window, not a reused answer, so Run must not report it as Cached.
+	Prefetched bool `json:"-"`
 }
 
 type GenieRunner struct {
@@ -169,6 +173,16 @@ func (g *GenieRunner) AgentModel() ModelBundle {
 func (g *GenieRunner) Run(ctx context.Context, b ModelBundle, prompt, prefill string, timeout time.Duration, onToken func(string)) GenieResult {
 	ck := sha256.Sum256([]byte(b.Dir + "|" + b.Config + "|" + prompt))
 	if hit, ok := g.cacheGet(ck); ok {
+		if hit.Prefetched {
+			// answered by this incident's batch: keep its real timings, and drop the mark so a
+			// genuine repeat of the same prompt later still counts as a cache hit
+			hit.Prefetched = false
+			g.cachePut(ck, hit)
+			if onToken != nil {
+				onToken(hit.Text)
+			}
+			return hit
+		}
 		hit.Cached, hit.LatencyMs = true, 0
 		if onToken != nil {
 			onToken(hit.Text)
@@ -180,11 +194,27 @@ func (g *GenieRunner) Run(ctx context.Context, b ModelBundle, prompt, prefill st
 	g.queue.Add(-1)
 	g.busy.Store(true)
 	defer func() { g.lastEnd = time.Now(); g.busy.Store(false); g.mu.Unlock() }()
-	// Measured on the QIDK: a Genie session started < 0.5 s after the previous one exits overlaps the
-	// previous session's HTP teardown and decodes at ~9 tok/s instead of ~19 tok/s. Keep a 0.6 s gap,
-	// and a longer one when the model bundle changes: loading a different set of context binaries
-	// straight after a teardown intermittently fails with "Could not create context from binary".
-	gap := 600 * time.Millisecond
+	// The gap exists because of a measurement from 2026-10-07: a Genie session started < 0.5 s after
+	// the previous one exited overlapped the previous session's HTP teardown and decoded at ~9 tok/s
+	// instead of ~19. That was the BASE model, 200-token generations, and before
+	// "allow-async-init": true was added to the config.
+	//
+	// Re-measured 2026-10-14 on the fine-tuned bundle, two passes with the gaps in ascending and then
+	// descending order (so temperature drift could not favour one end), 10 samples:
+	//
+	//   gap   0.0s   0.2s   0.3s   0.4s   0.6s   1.0s
+	//   up    22.53  22.20  21.94  22.31  22.31  22.29   tok/s on the SECOND call
+	//   down  22.43    -    22.42    -    22.44  22.10
+	//
+	// The cliff is gone - even back-to-back with no gap at all. Init is slightly LOWER back-to-back
+	// (586-631 ms vs the usual ~690). So 600 ms was costing us that much per extra NPU call for
+	// nothing. Dropped to 250 ms rather than 0: the regression if this is ever wrong is decode
+	// halving, which is far worse than 250 ms, and nothing was measured between 0 and 250.
+	//
+	// The bundle-change gap is NOT reduced: that one guards a different failure (loading a different
+	// set of context binaries straight after a teardown intermittently fails with "Could not create
+	// context from binary"), which was never re-tested.
+	gap := 250 * time.Millisecond
 	if g.lastDir != "" && g.lastDir != b.Dir {
 		gap = 2500 * time.Millisecond
 	}
@@ -253,6 +283,7 @@ type streamStats struct {
 	ttftMs, genSec float64
 	tokens         int
 	early          bool
+	trimmed        bool
 }
 
 // jsonScanner tracks brace depth outside strings so we know when the answer object is complete.
@@ -291,8 +322,33 @@ func (j *jsonScanner) feed(s string) (doneAt int) {
 	return -1
 }
 
+// trace prints per-stage timings when SCE_GENIE_TRACE=1, for latency debugging only.
+func trace(f string, a ...any) {
+	if os.Getenv("SCE_GENIE_TRACE") == "1" {
+		log.Printf("[trace] "+f, a...)
+	}
+}
+
 func (g *GenieRunner) exec(ctx context.Context, b ModelBundle, prompt, prefill string, timeout time.Duration, onToken func(string)) (string, streamStats, error) {
 	var st streamStats
+
+	// Fast path: a persistent dialog that has already paid the ~700 ms model init (genieclient.go).
+	// Only for the bundle the daemon was started against; anything else, or any failure, falls
+	// through to spawning the CLI below, which is exactly the behaviour we had before genied.
+	if daemonEnabled() && b.Dir == envOr("SCE_GENIE_DAEMON_BUNDLE", g.Tuned.Dir) {
+		text, dst, err := g.execViaDaemon(ctx, prompt, prefill, timeout, onToken)
+		switch {
+		case err == nil:
+			return text, dst, nil
+		case dst.tokens > 0:
+			// it already streamed part of an answer to the dashboard; re-running on the CLI would
+			// emit those tokens a second time, so fail rather than duplicate
+			return text, dst, fmt.Errorf("daemon failed mid-answer: %w", err)
+		default:
+			trace("daemon unavailable, falling back to the CLI: %v", err)
+		}
+	}
+
 	f := filepath.Join(g.promptDir, fmt.Sprintf("p_%d.txt", time.Now().UnixNano()))
 	// Genie's tokenizer adds BOS itself (verified: a prompt starting with <|begin_of_text|> becomes 1 token
 	// longer than on the host). Our prompts carry BOS to stay byte-identical to training, so strip it here,
@@ -319,10 +375,17 @@ func (g *GenieRunner) exec(ctx context.Context, b ModelBundle, prompt, prefill s
 	if err := cmd.Start(); err != nil {
 		return "", st, err
 	}
-	// the JSON object starts inside the prefill (assistant turn already contains `{"pattern": "`)
-	var js jsonScanner
-	js.feed(prefill)
-	var raw, gen strings.Builder
+	var raw strings.Builder
+	// every stop decision lives in answerScanner, shared with the daemon path (answerscan.go)
+	scan := newAnswerScanner(prefill, onToken)
+	// stopGenie ends generation early. SIGINT first so Genie releases the HTP cleanly.
+	stopGenie := func() {
+		tStop := time.Now()
+		cmd.Process.Signal(os.Interrupt)
+		go func(p *os.Process) { time.Sleep(1500 * time.Millisecond); p.Kill() }(cmd.Process)
+		io.Copy(io.Discard, stdout)
+		trace("earlystop: signal->drain %v", time.Since(tStop))
+	}
 	begun := false
 	var firstTok time.Time
 	buf := make([]byte, 512)
@@ -348,23 +411,12 @@ func (g *GenieRunner) exec(ctx context.Context, b ModelBundle, prompt, prefill s
 					firstTok = time.Now()
 					st.ttftMs = float64(firstTok.Sub(t0).Microseconds()) / 1000
 				}
-				if at := js.feed(chunk); at >= 0 && prefill != "" {
-					gen.WriteString(chunk[:at])
-					st.tokens++
-					if onToken != nil {
-						onToken(chunk[:at])
-					}
-					st.early = true
-					// answer complete: stop generating (SIGINT first so Genie can release the HTP cleanly)
-					cmd.Process.Signal(os.Interrupt)
-					go func(p *os.Process) { time.Sleep(1500 * time.Millisecond); p.Kill() }(cmd.Process)
-					io.Copy(io.Discard, stdout)
-					break
-				}
-				gen.WriteString(chunk)
 				st.tokens++
-				if onToken != nil {
-					onToken(chunk)
+				if scan.feed(chunk) {
+					st.early = true
+					st.trimmed = scan.Trimmed
+					stopGenie()
+					break
 				}
 			}
 		}
@@ -372,12 +424,15 @@ func (g *GenieRunner) exec(ctx context.Context, b ModelBundle, prompt, prefill s
 			break
 		}
 	}
+	tWait := time.Now()
 	werr := cmd.Wait()
+	trace("cmd.Wait %v | total exec %v | ttft %.0fms tokens %d", time.Since(tWait), time.Since(t0), st.ttftMs, st.tokens)
 	if !firstTok.IsZero() {
 		st.genSec = time.Since(firstTok).Seconds()
 	}
+	final := scan.Done() // releases whatever the holdback was still sitting on
 	if ctx.Err() == context.DeadlineExceeded {
-		return gen.String(), st, fmt.Errorf("genie timeout after %s", timeout)
+		return final, st, fmt.Errorf("genie timeout after %s", timeout)
 	}
 	if !begun {
 		tail := raw.String() + stderr.String()
@@ -386,7 +441,7 @@ func (g *GenieRunner) exec(ctx context.Context, b ModelBundle, prompt, prefill s
 		}
 		return "", st, fmt.Errorf("genie failed: %v: %s", werr, tail)
 	}
-	out := strings.TrimSpace(gen.String())
+	out := strings.TrimSpace(final)
 	if i := strings.Index(out, "[END"); i >= 0 {
 		out = strings.TrimSpace(out[:i])
 	}

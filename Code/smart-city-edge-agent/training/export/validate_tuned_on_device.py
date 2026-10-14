@@ -72,6 +72,15 @@ def score(role, gold, text):
     norm = lambda v: str(v).strip().lower().replace(" ", "_").replace("-", "_")
     for k in ("pattern", "status", "likely_cause", "action"):
         r[k] = norm(p.get(k, "")) == gold[k]
+    # action is a deterministic function of (cause, status) - the same mapping that generated the
+    # training targets - so also score the action we would DERIVE instead of the one generated.
+    try:
+        from generate_dataset import action_of as _action_of
+        r["action_derived"] = _action_of(norm(p.get("likely_cause", "")), norm(p.get("status", ""))) == gold["action"]
+    except Exception:
+        r["action_derived"] = r.get("action", False)
+    r["_pred"] = {k: norm(p.get(k, "")) for k in ("pattern", "status", "likely_cause", "action")}
+    r["_gold"] = {k: gold[k] for k in ("pattern", "status", "likely_cause", "action")}
     obs = p.get("observations") or []
     ids = re.findall(r"\bE\d+\b", " ".join(map(str, obs)))
     valid = {f"E{i}" for i in range(1, 9)}
@@ -86,6 +95,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--bundle", help="local folder with the 3 tuned .bin files")
     ap.add_argument("--skip-push", action="store_true")
+    ap.add_argument("--tuned-only", action="store_true", help="skip the base-model control run")
     ap.add_argument("--per-role", type=int, default=4)
     ap.add_argument("--min-policy", type=float, default=0.6, help="tuned policy-pass rate needed to validate")
     a = ap.parse_args()
@@ -139,7 +149,8 @@ def main():
     for n, r in enumerate(pick, 1):
         gold = json.loads(r["completion"].replace("<|eot_id|>", ""))
         prompt = r["prompt"] + PREFILL
-        for name, d in (("tuned", FT), ("base", BASE)):
+        models = (("tuned", FT),) if a.tuned_only else (("tuned", FT), ("base", BASE))
+        for name, d in models:
             text, dt, err = run_genie(d, prompt)
             s = score(r["role"], gold, text)
             s["latency_s"] = round(dt, 1)
@@ -149,18 +160,25 @@ def main():
     summary = {}
     for name in res:
         allr = [x for v in res[name].values() for x in v]
+        if not allr:
+            continue
         summary[name] = {k: round(sum(1 for x in allr if x.get(k)) / len(allr), 3)
-                         for k in ("json", "pattern", "status", "likely_cause", "action", "evidence", "policy")}
+                         for k in ("json", "pattern", "status", "likely_cause", "action", "action_derived", "evidence", "policy")}
         summary[name]["mean_latency_s"] = round(sum(x["latency_s"] for x in allr) / len(allr), 1)
-    ok = summary["tuned"]["policy"] >= a.min_policy and summary["tuned"]["pattern"] >= summary["base"]["pattern"]
+    ok = summary["tuned"]["policy"] >= a.min_policy and (a.tuned_only or summary["tuned"]["pattern"] >= summary["base"]["pattern"])
     out = ROOT / "training" / "results" / "device_eval.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps({"summary": summary, "validated": ok, "n": len(pick)}, indent=1))
+    with open(out.with_name("device_eval_samples.jsonl"), "w", encoding="utf-8") as fh:
+        for name in res:
+            for role, rows in res[name].items():
+                for x in rows:
+                    fh.write(json.dumps({"model": name, "role": role, **x}) + "\n")
     lines = ["# On-device evaluation (QIDK NPU, w4a16, held-out Nov-Dec windows)", "",
-             "| model | JSON | pattern | status | cause | action | evidence | policy pass | latency s |", "|---|---|---|---|---|---|---|---|---|"]
-    for name in ("tuned", "base"):
+             "| model | JSON | pattern | status | cause | action (generated) | action (derived) | evidence | policy pass | latency s |", "|---|---|---|---|---|---|---|---|---|---|"]
+    for name in [n for n in ("tuned", "base") if n in summary]:
         m = summary[name]
-        lines.append(f"| {name} | {m['json']} | {m['pattern']} | {m['status']} | {m['likely_cause']} | {m['action']} | {m['evidence']} | {m['policy']} | {m['mean_latency_s']} |")
+        lines.append(f"| {name} | {m['json']} | {m['pattern']} | {m['status']} | {m['likely_cause']} | {m['action']} | {m['action_derived']} | {m['evidence']} | {m['policy']} | {m['mean_latency_s']} |")
     (out.with_suffix(".md")).write_text("\n".join(lines) + f"\n\nValidated for the app: {ok}\n")
     print("\n".join(lines))
     if ok:

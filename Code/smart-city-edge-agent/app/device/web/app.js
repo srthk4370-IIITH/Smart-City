@@ -127,7 +127,7 @@ const S = {
   status: null, live: null, topo: null, incs: [], incId: null, incText: '', inc: null,
   view: 'sensors', sensorMap: new Map(), drawer: null, open: new Set(), draft: {}, sse: false,
   pendingNewest: null, lastLiveEv: 0, lastLive: 0, lastStatus: 0, lastDrawer: 0, lastIncList: 0,
-  filter: 'all', incFilter: 'all', stream: {}, trkPct: {}, modeTimer: 0,
+  filter: 'all', incFilter: 'all', stream: {}, cardStream: {}, autoOpened: {}, trkPct: {}, modeTimer: 0,
 };
 
 /* ============================== theme + segmented ============================== */
@@ -728,6 +728,9 @@ function renderIncList() {
               running ? h('span', { class: 'livepill', text: 'LIVE' }) : null,
               h('span', { class: 'chip', text: nice(i.label) }), multiFlag(i)))),
         running ? h('div', { class: 'prog' }) : null,
+        // live token preview, so a running incident visibly streams from the list view too.
+        // Seeded from S.cardStream because the card is rebuilt whenever the incident JSON changes.
+        running ? h('pre', { class: 'cstream', 'data-cs': i.id, text: S.cardStream[i.id] || '' }) : null,
         h('div', { class: 'foot' },
           h('span', { text: i.id + ' · sensor time ' + (i.created_sim_ist || '-') }),
           h('span', { text: i.npu_calls + ' NPU call' + (i.npu_calls === 1 ? '' : 's') + (running ? '' : ' · ' + (i.total_ms / 1000).toFixed(1) + ' s') }),
@@ -844,6 +847,12 @@ function onToken(d) {
   if (!d || !d.incident || !d.ref) return;
   const k = streamKeyOf(d.incident, d.ref);
   S.stream[k] = (S.stream[k] || '') + (d.text || '');
+  // The card preview is updated whether or not the incident is open, so the list itself shows the
+  // model thinking. Without this, tokens were only ever painted into an already-open detail sheet,
+  // so from the incident list the answer simply appeared all at once after ~17 s.
+  S.cardStream[d.incident] = ((S.cardStream[d.incident] || '') + (d.text || '')).slice(-240);
+  const cs = $('.cstream[data-cs="' + d.incident + '"]');
+  if (cs) { cs.textContent = S.cardStream[d.incident]; cs.scrollTop = cs.scrollHeight; }
   if (S.incId !== d.incident) return;
   const el = $('#inc-detail [data-s="' + d.ref + '"]');
   if (el) { el.textContent = S.stream[k]; el.scrollTop = el.scrollHeight; }
@@ -1269,6 +1278,13 @@ function connect() {
     const d = J(e);
     refreshIncidents();
     if (d.id && d.id === S.incId) refreshIncDetail(false);
+    // Open a newly running incident so the agents are seen thinking, which is the whole point of
+    // streaming tokens. Only when nothing else is open, so this can never steal the view from
+    // someone reading another incident or working on the sensors tab.
+    if (d.id && d.state === 'running' && !S.autoOpened[d.id] && !$('.sheet.open')) {
+      S.autoOpened[d.id] = 1;
+      selectIncident(d.id);
+    }
     refreshStatus();
   });
   es.addEventListener('token', (e) => onToken(J(e)));
