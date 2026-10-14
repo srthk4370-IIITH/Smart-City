@@ -173,23 +173,55 @@ func (d *dialog) useWindow(large bool) error {
 	defer d.mu.Unlock()
 	t0 := time.Now()
 	C.GenieDialog_free(d.h) // release the resident model BEFORE loading the other one
-	cfg, err := loadConfig(w)
+	// The HTP frees the old context asynchronously: creating the next one straight away has failed
+	// with err 5005 under load (stress pass 7, large -> normal), so retry with backoff. If the
+	// requested window still cannot be loaded, fall back to the normal one so the agents keep
+	// working; only if no window loads at all is the process restarted.
+	try := func(w window) (C.GenieDialog_Handle_t, error) {
+		var h C.GenieDialog_Handle_t
+		var err error
+		for i, wait := range []time.Duration{0, 500 * time.Millisecond, time.Second, 2 * time.Second} {
+			time.Sleep(wait)
+			if h, err = createDialog(w); err == nil {
+				return h, nil
+			}
+			log.Printf("context window create attempt %d failed: %v", i+1, err)
+		}
+		return h, err
+	}
+	h, err := try(w)
+	if err != nil && large {
+		if h2, err2 := try(windows.normal); err2 == nil {
+			d.h, d.large = h2, false
+			return fmt.Errorf("large context window unavailable (%v); normal window restored", err)
+		}
+	}
 	if err != nil {
 		log.Fatalf("switching context window: %v (old dialog already freed; exiting so the supervisor restarts genied cleanly)", err)
+	}
+	d.h, d.large = h, large
+	log.Printf("context window -> %s in %v", map[bool]string{false: "normal", true: "large"}[large], time.Since(t0))
+	return nil
+}
+
+// createDialog loads one window's dialog.
+func createDialog(w window) (C.GenieDialog_Handle_t, error) {
+	var h C.GenieDialog_Handle_t
+	cfg, err := loadConfig(w)
+	if err != nil {
+		return h, err
 	}
 	cs := C.CString(cfg)
 	defer C.free(unsafe.Pointer(cs))
 	var ch C.GenieDialogConfig_Handle_t
 	if st := C.GenieDialogConfig_createFromJson(cs, &ch); st != 0 {
-		log.Fatalf("switching context window: config status %d (old dialog already freed; exiting so the supervisor restarts genied cleanly)", int(st))
+		return h, fmt.Errorf("window config: status %d", int(st))
 	}
 	defer C.GenieDialogConfig_free(ch)
-	if st := C.GenieDialog_create(ch, &d.h); st != 0 {
-		log.Fatalf("switching context window: dialog status %d (old dialog already freed; exiting so the supervisor restarts genied cleanly)", int(st))
+	if st := C.GenieDialog_create(ch, &h); st != 0 {
+		return h, fmt.Errorf("window dialog: status %d", int(st))
 	}
-	d.large = large
-	log.Printf("context window -> %s in %v", map[bool]string{false: "normal", true: "large"}[large], time.Since(t0))
-	return nil
+	return h, nil
 }
 
 // loadConfig reads a window's config with the daemon adjustments applied. Genie resolves the

@@ -554,7 +554,7 @@ func (s *Server) routes() http.Handler {
 		w.Header().Set("Cache-Control", "no-cache")
 		web.ServeHTTP(w, r)
 	}))
-	return mux
+	return s.guard(mux)
 }
 
 var runningOnCache string

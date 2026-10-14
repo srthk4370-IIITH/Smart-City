@@ -1339,6 +1339,11 @@ function boot() {
   setInterval(updateElapsed, 500);
   setInterval(() => {
     if (!S.sse || Date.now() - S.lastLiveEv > 15000) { refreshStatus(); refreshLive(); }
+    // Backend unreachable (restart, crash, reboot): say so instead of silently showing stale data.
+    const seen = Math.max(S.lastStatus || 0, S.lastLiveEv || 0), off = seen > 0 && Date.now() - seen > 12000;
+    let ob = document.getElementById('offline');
+    if (off && !ob) { ob = h('div', { id: 'offline', role: 'status', text: 'Reconnecting to the on-device backend ... values shown may be stale' }); document.body.appendChild(ob); }
+    else if (!off && ob) ob.remove();
     if (Date.now() - S.lastIncList > 15000) refreshIncidents();
     if (S.inc && S.inc.state === 'running') refreshIncDetail(false);
   }, 3000);

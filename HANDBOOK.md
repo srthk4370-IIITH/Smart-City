@@ -1207,6 +1207,9 @@ can tear the last line of `incidents.jsonl`; see 2.35 for how the store survives
 - **Watchdog (EdgeService):** returns from rules-only fallback to the NPU backend when local adbd
   comes back (previously stuck in Mode 1 until restarted by hand); restarts a dead in-app backend;
   polls `/api/incidents?limit=50`; the ctx-4096 bundle is backed up and self-healed like the others.
+- **Off-device writes need a token.** The backend listens on 0.0.0.0 for Wi-Fi sensors; any POST
+  from a non-loopback address needs `X-API-Token` (`SCE_API_TOKEN` or `state/api_token`), else 403.
+  Reads stay open; the app (WebView) and the laptop via adb forward are loopback and unaffected.
 - **API:** 1 MiB request bodies, 10 s header timeout, 120 s idle timeout (no write timeout: SSE);
   at most 16 queued analysis requests, duplicates merged, HTTP 429 beyond. Dashboard lists the newest
   300 incidents, sorted numerically (string order broke past INC-9999).
@@ -1220,6 +1223,15 @@ can tear the last line of `incidents.jsonl`; see 2.35 for how the store survives
 - **Incident sheet power.** The fixed full-screen stipple re-rasterised on every small update; with
   a sheet open (new incidents open themselves) the app used ~185% CPU. Stipple on its own layer, the
   page under an open sheet not rendered: ~10%.
+- **Fault injection on the device** (each verified through the app):
+  | injected | before | now |
+  |---|---|---|
+  | `kill -9 genied` mid-answer | EOF read as a normal end, truncated text "answered", policy rejected | error; no genied left, so the CLI re-runs the call with the streamed prefix held back (valid answer, 4.9 s); genied back in <=15 s |
+  | `kill -9 edge-agent` | - | watchdog restarts it in 8 s; incidents intact; one genied |
+  | kill backend mid-analysis | the running incident vanished (persisted only at the end) | persisted at creation; reloads as `failed`; approve refused (409), rerun allowed, dashboard says "interrupted - rerun" |
+  | torn last line in incidents.jsonl | (newer line glued to the torn one on next append) | skipped, logged, store compacted on load |
+- Analyze/Rerun now answer `queued_ahead`, shown as "queued, N ahead" - a rerun queued behind
+  event-gate alerts used to give no sign of life for a minute.
 - **Physical plausibility:** indoor CO2 below 350 ppm (under outdoor air) is a sensor fault. The
   stress test drove CO2 to 270 ppm and the training-parity rules called it a harmless step decrease;
   this one check is outside the training rules and documented as such in `rules.go`.
@@ -1363,7 +1375,9 @@ The app has **no recorded data**. Every sensor value comes from you: the **Senso
 on/off switch) per sensor. Every poll (default every 2 s) the app takes each slider's current value as that
 sensor's next 5-minute reading, with a little realistic measurement jitter, then runs exactly the same
 pipeline a physical sensor would: 4-hour window, SMA/EMA/trend, rule pattern, event gate, Mode 1/2/3 agents.
-A real device can do the same over Wi-Fi: `POST http://<qidk-ip>:8000/api/ingest {"node","metric","value"}`.
+A real device can do the same over Wi-Fi: `POST http://<qidk-ip>:8000/api/ingest {"node","metric","value"}` with header
+`X-API-Token: <token>` (token in `SCE_API_TOKEN` or `state/api_token`; off-device writes are refused
+without it, reads stay open - see 2.35).
 
 1. **Header:** "Running on QIDK, standalone", NPU status, model badge, temperatures. Unplug USB to prove it.
 2. **Sensors tab:** everything steady at normal values -> no incidents (event gate stays quiet).

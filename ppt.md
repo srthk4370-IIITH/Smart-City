@@ -216,6 +216,10 @@ fewer tokens, or several tokens per weight sweep.
 | dashboard redesign used ~220 % CPU at idle (185 % with an incident open), board at 75 °C | solid bars, stepped animations, composited background: 5–11 %, 43 °C |
 | a late early-stop abort killed the next NPU query (synthesizer got 0 tokens) | aborts tied to their query id; zero-token query retried once |
 | CO2 at 270 ppm (below outdoor air) raised nothing | plausibility rule: sensor fault; AI disagreement surfaced |
+| genied killed mid-answer: truncated text treated as an answer | detected; CLI re-runs the call (model no longer resident); daemon back in 15 s |
+| backend killed mid-analysis: the alert vanished | persisted at creation, reloads as "interrupted - rerun" |
+| anyone on the Wi-Fi could approve incidents or inject values | off-device writes need an API token; reads stay open |
+| dashboard silently showed stale data while the backend restarted | "reconnecting" banner |
 | incident log kept every version forever, all in RAM | compaction, retention 1000 + archive, crash-safe IDs |
 | a failing daemon could make the CLI load a 2nd model (reboots the board) | never two models: port lock, no CLI while genied lives, wedged daemon killed |
 | watchdog stayed in rules-only mode after adbd came back | returns to the NPU backend automatically |
