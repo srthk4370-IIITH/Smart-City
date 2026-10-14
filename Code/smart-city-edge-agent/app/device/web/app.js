@@ -628,7 +628,7 @@ function renderDrawer() {
   const btn = h('button', { class: 'btn primary', type: 'button', style: 'width:100%', disabled: canAnalyze ? null : true,
     onclick: async () => {
       btn.disabled = true;
-      try { S.pendingNewest = new Set(S.incs.map((i) => i.id)); await post('/api/analyze', { node: d.node, metric: d.metric }); toast('AI agents are on it (mode ' + (S.status ? S.status.mode : '?') + ')'); setTimeout(refreshIncidents, 500); setTimeout(refreshIncidents, 1500); }
+      try { S.pendingNewest = new Set(S.incs.map((i) => i.id)); const r = await post('/api/analyze', { node: d.node, metric: d.metric }); toast(r && r.queued_ahead ? 'Queued: ' + r.queued_ahead + ' analysis ahead on the NPU' : 'AI agents are on it (mode ' + (S.status ? S.status.mode : '?') + ')'); setTimeout(refreshIncidents, 500); setTimeout(refreshIncidents, 1500); }
       catch (e) { S.pendingNewest = null; toast('Analyse: ' + e.message, true); btn.disabled = false; }
     } }, icon('multi'), 'Analyse with AI agents');
   const body = [
@@ -840,7 +840,7 @@ function trackModel(inc) {
   let done = 0; steps.forEach((x) => { if (x.st === 'done' || x.st === 'skip') done += 1; else if (x.st === 'active') done += 0.5; else if (x.st === 'fail') done += 1; });
   const rejected = mode !== 1 && !run && (!f || !f.valid);
   const title = run ? (mode === 1 ? 'Running the rules ...' : mode === 2 ? 'The model is reading your sensors ...' : na < ns ? 'Agents are thinking ...' : 'Writing the report ...')
-    : inc.approval === 'approved' ? 'Approved' : inc.approval === 'dismissed' ? 'Dismissed' : rejected ? 'Done, but the safety check flagged it' : 'Ready for your decision';
+    : inc.state === 'failed' ? 'Interrupted (the app restarted mid-analysis) - rerun it' : inc.approval === 'approved' ? 'Approved' : inc.approval === 'dismissed' ? 'Dismissed' : rejected ? 'Done, but the safety check flagged it' : 'Ready for your decision';
   return { steps, pct: Math.min(100, (done / steps.length) * 100), title, run };
 }
 function trackCard(inc) {
@@ -905,10 +905,10 @@ function renderIncFoot(inc) {
     try { await post('/api/incidents/' + inc.id + '/' + kind, { note }); toast(kind === 'approve' ? 'Approved. Decision recorded' : 'Dismissed'); delete S.draft[inc.id]; await Promise.all([refreshIncidents(), refreshIncDetail(true), refreshStatus()]); }
     catch (e) { toast(kind + ': ' + e.message, true); }
   };
-  f.replaceChildren(h('p', { class: 'foot-hint', text: running ? 'Waiting for the analysis to finish ...' : 'Requires human approval — no automatic actuation.' }), ta,
+  f.replaceChildren(h('p', { class: 'foot-hint', text: running ? 'Waiting for the analysis to finish ...' : inc.state === 'failed' ? 'No report: rerun this incident from the menu, or dismiss it with a note.' : 'Requires human approval — no automatic actuation.' }), ta,
     h('div', { class: 'foot-row', style: 'margin-top:10px' },
       h('button', { class: 'btn danger', type: 'button', text: 'Dismiss', onclick: () => act('dismiss') }),
-      h('button', { class: 'btn primary', type: 'button', disabled: running ? true : null, text: 'Approve', onclick: () => act('approve') })));
+      h('button', { class: 'btn primary', type: 'button', disabled: running || inc.state === 'failed' ? true : null, text: 'Approve', onclick: () => act('approve') })));
 }
 
 function renderIncDetail() {
@@ -948,7 +948,7 @@ function renderIncDetail() {
   parts.push(fc);
   // compare
   const seg = makeSeg([{ v: 1, t: 'Rules' }, { v: 2, t: 'Single' }, { v: 3, t: 'Agents' }], async (m) => {
-    try { S.pendingNewest = new Set(S.incs.map((i) => i.id)); await post('/api/incidents/' + inc.id + '/rerun?mode=' + m); toast('Re-running ' + inc.id + ' in mode ' + m); setTimeout(refreshIncidents, 400); setTimeout(refreshIncidents, 1500); }
+    try { S.pendingNewest = new Set(S.incs.map((i) => i.id)); const r = await post('/api/incidents/' + inc.id + '/rerun?mode=' + m); toast(r && r.queued_ahead ? 'Rerun queued: ' + r.queued_ahead + ' ahead on the NPU' : 'Re-running ' + inc.id + ' in mode ' + m); setTimeout(refreshIncidents, 400); setTimeout(refreshIncidents, 1500); }
     catch (e) { S.pendingNewest = null; toast('Rerun: ' + e.message, true); }
   }, 'Re-run in another mode');
   setSeg(seg, inc.mode); $$('button', seg).forEach((b) => b.setAttribute('aria-pressed', 'false'));

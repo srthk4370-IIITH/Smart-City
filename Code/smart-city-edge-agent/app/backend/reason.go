@@ -425,6 +425,9 @@ func (r *Reasoner) log(inc *Incident, msg string) {
 // Process runs the selected mode for one incident.
 func (r *Reasoner) Process(cands []Candidate, mode int) *Incident {
 	inc := r.newIncident(cands, mode)
+	// persisted as "running" straight away: if the process dies mid-analysis the alert is not lost -
+	// it reloads as "failed" and the operator can rerun it (found by killing the backend mid-run)
+	r.persist(inc)
 	t0 := time.Now()
 	r.log(inc, fmt.Sprintf("Event gated: %d sensor(s) flagged, mode %d", len(inc.Sensors), mode))
 	ctx := context.Background()
@@ -860,4 +863,20 @@ func (r *Reasoner) enqueue(cands []Candidate, mode int) bool {
 	}
 	r.jobs = append(r.jobs, job{cands, mode})
 	return true
+}
+
+// QueueAhead is how much NPU work is waiting or running: the in-flight incident, pending event-gate
+// alerts and requested analyses. Returned by Analyze/Rerun so the operator sees "queued, N ahead"
+// instead of nothing until their request starts.
+func (r *Reasoner) QueueAhead() int {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	n := len(r.jobs)
+	if r.active {
+		n++
+	}
+	if r.pending != nil {
+		n++
+	}
+	return n
 }

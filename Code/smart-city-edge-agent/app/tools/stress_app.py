@@ -407,7 +407,7 @@ def phase_operator():
         for m in (1, 2, 3):
             n_before = set(incident_ids())
             code, _ = req(f"/api/incidents/{iid2}/rerun?mode={m}", {})
-            nid, _ = wait_new_incident(n_before, 30)
+            nid, _ = wait_new_incident(n_before, 150)  # may queue behind event-gate alerts
             done = wait_done(nid) if nid else None
             check(f"rerun of {iid2} in Mode {m} completes", done and done["state"] in ("done", "done_with_errors"),
                   str(done and done.get("state")))

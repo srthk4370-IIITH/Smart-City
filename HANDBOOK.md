@@ -1210,6 +1210,16 @@ can tear the last line of `incidents.jsonl`; see 2.35 for how the store survives
 - **API:** 1 MiB request bodies, 10 s header timeout, 120 s idle timeout (no write timeout: SSE);
   at most 16 queued analysis requests, duplicates merged, HTTP 429 beyond. Dashboard lists the newest
   300 incidents, sorted numerically (string order broke past INC-9999).
+- **Stale abort killed the next query.** The backend stops a query early (abort byte) once the JSON
+  closes. When that byte arrived just after the query had finished on its own, `GenieDialog_signal`
+  hit the idle dialog and the NEXT query - usually the synthesizer - returned zero tokens in
+  19-448 ms with "Context Size was exceeded" (on a 1.1k-token prompt). Before 2.35's no-CLI rule
+  this fell back to the CLI, i.e. a second model on the NPU beside genied. Now each abort carries the
+  query id and is dropped if that query is over; a query that yields no tokens without being
+  aborted is reset and retried once.
+- **Incident sheet power.** The fixed full-screen stipple re-rasterised on every small update; with
+  a sheet open (new incidents open themselves) the app used ~185% CPU. Stipple on its own layer, the
+  page under an open sheet not rendered: ~10%.
 - **Physical plausibility:** indoor CO2 below 350 ppm (under outdoor air) is a sensor fault. The
   stress test drove CO2 to 270 ppm and the training-parity rules called it a harmless step decrease;
   this one check is outside the training rules and documented as such in `rules.go`.

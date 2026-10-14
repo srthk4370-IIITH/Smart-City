@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -341,11 +342,22 @@ func (g *GenieRunner) exec(ctx context.Context, b ModelBundle, prompt, prefill s
 	// Only for the bundle the daemon was started against; anything else, or any failure, falls
 	// through to spawning the CLI below, which is exactly the behaviour we had before genied.
 	if daemonEnabled() && b.Dir == envOr("SCE_GENIE_DAEMON_BUNDLE", g.Tuned.Dir) {
-		text, dst, err := g.execViaDaemon(ctx, prompt, prefill, timeout, onToken)
+		var streamed strings.Builder // what the dashboard has already been shown
+		tok := onToken
+		if onToken != nil {
+			tok = func(s string) { streamed.WriteString(s); onToken(s) }
+		}
+		text, dst, err := g.execViaDaemon(ctx, prompt, prefill, timeout, tok)
 		switch {
 		case err == nil:
 			daemonFailures.Store(0)
 			return text, dst, nil
+		case errors.Is(err, errDaemonDied) && len(geniedPids()) == 0:
+			// genied died mid-answer (crash, OOM kill) and nothing holds the model any more, so the
+			// CLI can run this call without a second resident model. Decoding is greedy, so the CLI
+			// repeats the same tokens: hold back the part the dashboard already shows.
+			trace("daemon died after %d tokens, re-running on the CLI", dst.tokens)
+			onToken = skipStreamed(onToken, streamed.Len())
 		case dst.tokens > 0:
 			// it already streamed part of an answer to the dashboard; re-running on the CLI would
 			// emit those tokens a second time, so fail rather than duplicate

@@ -23,6 +23,7 @@ package main
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -47,6 +48,9 @@ const (
 // daemonDownUntil suppresses dial attempts for a while after a failure, so a request does not pay
 // a connect timeout per call when the daemon simply is not running.
 var daemonDownUntil atomic.Int64
+
+// errDaemonDied: the connection closed without an end frame - the daemon process went away.
+var errDaemonDied = errors.New("genied died mid-answer")
 
 func daemonAddr() string { return envOr("SCE_GENIE_DAEMON", "127.0.0.1:8777") }
 
@@ -111,7 +115,8 @@ func (g *GenieRunner) execViaDaemon(ctx context.Context, prompt, prefill string,
 	for {
 		if _, err := io.ReadFull(c, fh); err != nil {
 			if err == io.EOF || err == io.ErrUnexpectedEOF {
-				break
+				// the protocol always ends with an end or error frame: EOF means genied died mid-answer
+				return scan.Done(), st, fmt.Errorf("%w after %d tokens", errDaemonDied, st.tokens)
 			}
 			return scan.Done(), st, err
 		}
@@ -260,7 +265,7 @@ func superviseDaemon(g *GenieRunner, workDir string) {
 	}
 	start()
 	go func() {
-		for range time.Tick(60 * time.Second) {
+		for range time.Tick(15 * time.Second) { // one loopback dial; a dead daemon is back within ~15 s
 			// never restart it underneath an in-flight NPU call
 			if !g.busy.Load() {
 				start()
@@ -326,4 +331,24 @@ func killDaemon(why string) {
 	}
 	daemonFailures.Store(0)
 	daemonDownUntil.Store(0)
+}
+
+// skipStreamed wraps onToken so the first n bytes of a re-run's stream are not shown again.
+func skipStreamed(onToken func(string), n int) func(string) {
+	if onToken == nil || n == 0 {
+		return onToken
+	}
+	var acc strings.Builder
+	passed := false
+	return func(s string) {
+		if passed {
+			onToken(s)
+			return
+		}
+		acc.WriteString(s)
+		if acc.Len() > n {
+			passed = true
+			onToken(acc.String()[n:])
+		}
+	}
 }

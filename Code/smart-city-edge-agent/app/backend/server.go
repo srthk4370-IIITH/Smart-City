@@ -323,10 +323,15 @@ func (s *Server) routes() http.Handler {
 			// A decision before the analysis has finished would approve a recommendation the operator
 			// has not seen yet (found by the app stress test: approve on a running incident returned
 			// 200 and was recorded). The dashboard already disables the button; the API must agree.
+			if parts[1] == "approve" && inc.State == "failed" {
+				http.Error(w, "this analysis was interrupted and has no report - rerun it first (dismiss is allowed)", http.StatusConflict)
+				return
+			}
 			if (parts[1] == "approve" || parts[1] == "dismiss") && inc.State == "running" {
 				http.Error(w, "analysis still running - decide once the report is ready", http.StatusConflict)
 				return
 			}
+			out := map[string]any{"ok": true}
 			switch parts[1] {
 			case "approve":
 				s.rsn.SetApproval(inc.ID, "approved", body.Note)
@@ -348,6 +353,7 @@ func (s *Server) routes() http.Handler {
 					}
 					cands = append(cands, Candidate{sr.Node, sr.Metric, sr.Role, sr.Rule, sr.Xs, sr.End, sr.Injected})
 				}
+				out["queued_ahead"] = s.rsn.QueueAhead()
 				if !s.rsn.Submit(cands, mode) { // queued behind current work, never interleaved with it
 					http.Error(w, "analysis queue full, try again shortly", http.StatusTooManyRequests)
 					return
@@ -356,7 +362,7 @@ func (s *Server) routes() http.Handler {
 				http.Error(w, "unknown action "+parts[1]+" (approve, dismiss, rerun)", 400)
 				return
 			}
-			writeJSON(w, map[string]any{"ok": true})
+			writeJSON(w, out)
 			return
 		}
 		writeJSON(w, inc)
@@ -531,11 +537,12 @@ func (s *Server) routes() http.Handler {
 			s.rsn.mu.RUnlock()
 		}
 		f := RuleFinding(info.Role, body.Metric, body.Node, xs, sim)
+		ahead := s.rsn.QueueAhead()
 		if !s.rsn.Submit([]Candidate{{body.Node, body.Metric, info.Role, f, xs, sim, false}}, body.Mode) {
 			http.Error(w, "analysis queue full, try again shortly", http.StatusTooManyRequests)
 			return
 		}
-		writeJSON(w, map[string]any{"ok": true})
+		writeJSON(w, map[string]any{"ok": true, "queued_ahead": ahead})
 	})
 	mux.Handle("/api/events", s.hub)
 	web := http.FileServer(http.Dir(filepath.Join(s.dir, "web")))
