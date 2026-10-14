@@ -227,6 +227,20 @@ func (g *GenieRunner) Run(ctx context.Context, b ModelBundle, prompt, prefill st
 	if wait := gap - time.Since(g.lastEnd); !g.lastEnd.IsZero() && wait > 0 && !g.mock {
 		time.Sleep(wait)
 	}
+	// Thermal pacing inside an incident. The thermal guard only holds work BETWEEN incidents; a
+	// 13-agent chaos incident is one unit of work and drove the NPU junction to 94 C (stress pass 8).
+	// At the guard threshold (88 C) we let it cool to 82 C before the next call, at most 15 s per call. This costs latency
+	// only at the extreme and never changes what the model sees.
+	if !g.mock {
+		if _, npu, _ := ThermalHot(); npu >= 88 {
+			t := time.Now()
+			for npu >= 82 && time.Since(t) < 15*time.Second {
+				time.Sleep(time.Second)
+				_, npu, _ = ThermalHot()
+			}
+			log.Printf("[GenieRunner] thermal pacing: waited %v for the NPU to cool (now %.0f C)", time.Since(t).Round(100*time.Millisecond), npu)
+		}
+	}
 	g.lastDir = b.Dir
 	t0 := time.Now()
 	res := GenieResult{Model: b.Name, FineTuned: b.FineTuned, Backend: "qidk_htp"}

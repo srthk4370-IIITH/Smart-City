@@ -248,9 +248,16 @@ The app survives a cold reboot: backend and NPU daemon back in ~10 s with no lap
 
 - Agent diagnoses matching the injected scenario: **8/10** (the two misses were the water tank —
   one was the scenario refilling itself, now fixed; one a genuine miss, now surfaced to the operator).
-- Mode 3 analysis across stress incidents: min 2.5 s · **median 4.4 s** · max 13.8 s.
-- Chaos (every sensor failing, uncapped): see `stress_report.json` for the run's figures.
-- Board under sustained load: back to ~39 °C at rest; thermal guard holds work rather than dropping it.
+- Full app stress test (240 checks, ~23 min): **237/240** on the final builds (passes 6 and 7). The
+  three misses are heat at the peak of back-to-back chaos (85–94 °C junction), not wrong answers.
+- Mode 3 analysis across stress incidents: min 2.4 s · **median 3.6 s** · max 57 s (chaos).
+- Chaos, every sensor failing, uncapped: **11–13 NPU agents + synthesizer in 41–57 s**, one incident,
+  every agent and the report passing policy.
+- NPU errors in the final passes: **0** (two per pass before the stale-abort fix).
+- Soak: backend 24–27 MB, NPU daemon 77 MB (237 MB with the large window), no growth.
+- Recovery: backend killed → back in **8 s**; NPU daemon killed mid-answer → call completed on the
+  CLI, daemon back in ≤15 s; interrupted incidents survive as "rerun".
+- Board: idle ~43 °C with the dashboard open (was 75 °C before the UI power fix).
 
 ---
 
@@ -287,6 +294,10 @@ The first real incident already produced a preference pair for the synthesizer.
 - **Recent-onset awareness**: a "last hour" evidence line and onset examples, fixing the one
   systematic miss (subtle anomalies diluted by 4-hour aggregates).
 - **Causal discovery across sensors** (PCMCI) as evidence the synthesizer can cite.
+- **Physics-aware training examples**: impossible readings (indoor CO2 under outdoor air) are now a
+  rule-level sensor fault, but the agent still calls them normal - add such examples to the next run.
+- **Deployment hardware**: DC supply (USB brownouts rebooted the board at peak load) and a heatsink
+  (back-to-back chaos reaches 85–94 °C junction; pacing and the guard hold it there).
 
 ---
 
@@ -298,6 +309,9 @@ The first real incident already produced a preference pair for the synthesizer.
    a scenario aimed at a sensor that did not exist.
 3. **Test through the product** — a stress harness on the real app found what unit tests could not.
 4. **Keep the human in the loop** — and give them the disagreement, not a confident wrong answer.
+5. **Break it on purpose** — killing the daemon, the backend and the power mid-run found the bugs
+   that matter in the field: a truncated answer accepted as real, a lost alert, a stray abort.
+6. **The UI is part of the thermal budget** — a pretty background cost more heat than 13 NPU agents.
 
 ---
 

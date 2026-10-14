@@ -1232,6 +1232,9 @@ can tear the last line of `incidents.jsonl`; see 2.35 for how the store survives
   | torn last line in incidents.jsonl | (newer line glued to the torn one on next append) | skipped, logged, store compacted on load |
 - Analyze/Rerun now answer `queued_ahead`, shown as "queued, N ahead" - a rerun queued behind
   event-gate alerts used to give no sign of life for a minute.
+- **Thermal pacing inside an incident.** The guard holds work only between incidents; one 13-agent
+  chaos incident reached 94 C. Before each NPU call at >= 88 C the runner waits (<= 15 s) for 82 C.
+  Latency at the extreme only; prompts unchanged. Chaos peak after: ~90 C. Use a heatsink in the field.
 - **Physical plausibility:** indoor CO2 below 350 ppm (under outdoor air) is a sensor fault. The
   stress test drove CO2 to 270 ppm and the training-parity rules called it a harmless step decrease;
   this one check is outside the training rules and documented as such in `rules.go`.
