@@ -248,9 +248,9 @@ The app survives a cold reboot: backend and NPU daemon back in ~10 s with no lap
 
 - Agent diagnoses matching the injected scenario: **8/10** (the two misses were the water tank —
   one was the scenario refilling itself, now fixed; one a genuine miss, now surfaced to the operator).
-- Full app stress test (240 checks, ~23 min): **237/240** on the final builds (passes 6 and 7). The
-  three misses are heat at the peak of back-to-back chaos (85–94 °C junction), not wrong answers.
-- Mode 3 analysis across stress incidents: min 2.4 s · **median 3.6 s** · max 57 s (chaos).
+- Full app stress test (240 checks, ~22 min): **238/240** on the final build. The two misses are
+  heat at the peak of back-to-back chaos (83–84 °C junction, down from 94 °C before thermal pacing).
+- Mode 3 analysis across stress incidents: min 2.4 s · **median 3.5 s** · max 53 s (chaos).
 - Chaos, every sensor failing, uncapped: **11–13 NPU agents + synthesizer in 41–57 s**, one incident,
   every agent and the report passing policy.
 - NPU errors in the final passes: **0** (two per pass before the stale-abort fix).
@@ -258,6 +258,7 @@ The app survives a cold reboot: backend and NPU daemon back in ~10 s with no lap
 - Recovery: backend killed → back in **8 s**; NPU daemon killed mid-answer → call completed on the
   CLI, daemon back in ≤15 s; interrupted incidents survive as "rerun".
 - Board: idle ~43 °C with the dashboard open (was 75 °C before the UI power fix).
+- Cold reboot: backend and NPU daemon answering **5 s after boot completes**, incidents intact.
 
 ---
 
