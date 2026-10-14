@@ -320,6 +320,10 @@ func (s *Server) routes() http.Handler {
 				Note string `json:"note"`
 			}
 			readBody(r, &body)
+			if len(body.Note) > 500 {
+				http.Error(w, "note too long (max 500 characters)", 400)
+				return
+			}
 			// A decision before the analysis has finished would approve a recommendation the operator
 			// has not seen yet (found by the app stress test: approve on a running incident returned
 			// 200 and was recorded). The dashboard already disables the button; the API must agree.
