@@ -51,9 +51,12 @@ package main
 // "conflicting types" error. The cast to GenieDialog_QueryCallback_t happens at the call site.
 extern void genieQueryCallback(char* response, GenieDialog_SentenceCode_t code, void* userData);
 
-static Genie_Status_t genieQuery(GenieDialog_Handle_t dlg, const char* prompt) {
+// slot travels through Genie's userData so the callback can route text to the right request when
+// several dialogs are generating at once (continuous batching). It is an integer, never a Go
+// pointer, which keeps this within cgo's pointer-passing rules.
+static Genie_Status_t genieQuery(GenieDialog_Handle_t dlg, const char* prompt, uintptr_t slot) {
   return GenieDialog_query(dlg, prompt, GENIE_DIALOG_SENTENCE_COMPLETE,
-                           (GenieDialog_QueryCallback_t)genieQueryCallback, NULL);
+                           (GenieDialog_QueryCallback_t)genieQueryCallback, (const void*)slot);
 }
 */
 import "C"
@@ -81,28 +84,48 @@ const (
 	abortByte  = 0xFF
 )
 
-// Only one query runs at a time (one NPU, and the C API is not thread safe), so a single global
-// sink is enough to route callback output back to the active request.
+// Per-slot output routing. With -slots 1 there is one dialog and this behaves exactly like the
+// original single-sink daemon. With -slots N there are N dialogs sharing ONE engine whose scheduler
+// fuses their decode steps into shared NPU passes, so N callbacks can be live at once; each one
+// carries its slot index in userData and lands in its own sink.
 var (
-	dialogMu sync.Mutex
-	sink     func(string)
+	sinkMu sync.RWMutex
+	sinks  = map[uintptr]func(string){}
 )
+
+func setSink(slot uintptr, f func(string)) {
+	sinkMu.Lock()
+	if f == nil {
+		delete(sinks, slot)
+	} else {
+		sinks[slot] = f
+	}
+	sinkMu.Unlock()
+}
 
 //export genieQueryCallback
 func genieQueryCallback(response *C.char, code C.GenieDialog_SentenceCode_t, userData unsafe.Pointer) {
-	if response == nil || sink == nil {
+	if response == nil {
+		return
+	}
+	sinkMu.RLock()
+	f := sinks[uintptr(userData)]
+	sinkMu.RUnlock()
+	if f == nil {
 		return
 	}
 	if s := C.GoString(response); s != "" {
-		sink(s)
+		f(s)
 	}
 }
 
 type dialog struct {
-	h C.GenieDialog_Handle_t
+	h    C.GenieDialog_Handle_t
+	slot uintptr
+	mu   sync.Mutex // one query per dialog at a time; the pool also guarantees this
 }
 
-func newDialog(configJSON string) (*dialog, error) {
+func newDialog(configJSON string, slot uintptr) (*dialog, error) {
 	cs := C.CString(configJSON)
 	defer C.free(unsafe.Pointer(cs))
 
@@ -117,15 +140,15 @@ func newDialog(configJSON string) (*dialog, error) {
 	if st := C.GenieDialog_create(cfg, &h); st != 0 {
 		return nil, fmt.Errorf("GenieDialog_create: status %d", int(st))
 	}
-	log.Printf("dialog created in %v (this is the init cost we now pay once)", time.Since(t0))
-	return &dialog{h: h}, nil
+	log.Printf("dialog %d created in %v (model init is paid once, by the first dialog)", slot, time.Since(t0))
+	return &dialog{h: h, slot: slot}, nil
 }
 
 // query runs one prompt. onChunk is called from the Genie callback on this goroutine's thread.
 // Returns when generation ends or is aborted.
 func (d *dialog) query(prompt string, onChunk func(string)) error {
-	dialogMu.Lock()
-	defer dialogMu.Unlock()
+	d.mu.Lock()
+	defer d.mu.Unlock()
 
 	// Genie's HTP backend keeps per-thread FastRPC state; pin so the Go scheduler cannot move us
 	// mid-query.
@@ -136,13 +159,13 @@ func (d *dialog) query(prompt string, onChunk func(string)) error {
 		return fmt.Errorf("GenieDialog_reset: status %d", int(st))
 	}
 
-	sink = onChunk
-	defer func() { sink = nil }()
+	setSink(d.slot, onChunk)
+	defer setSink(d.slot, nil)
 
 	cp := C.CString(prompt)
 	defer C.free(unsafe.Pointer(cp))
 
-	st := C.genieQuery(d.h, cp)
+	st := C.genieQuery(d.h, cp, C.uintptr_t(d.slot))
 	// positive statuses are warnings, not failures: 1 = ABORTED, which is the normal result when
 	// the backend stops us early because the JSON object closed
 	if int(st) < 0 {
@@ -236,6 +259,7 @@ func main() {
 		bundle = flag.String("bundle", "/data/local/tmp/genie_bundle_ft", "directory holding the config and context binaries")
 		config = flag.String("config", "smartcity_agent.json", "Genie dialog config, relative to -bundle")
 		addr   = flag.String("addr", "127.0.0.1:8777", "loopback address to listen on")
+		slots  = flag.Int("slots", 1, "dialogs sharing one batching engine; 1 = one query at a time")
 	)
 	flag.Parse()
 
@@ -248,18 +272,27 @@ func main() {
 		log.Fatalf("reading config: %v", err)
 	}
 	cfg = daemonConfig(cfg)
-
-	d, err := newDialog(string(cfg))
-	if err != nil {
-		log.Fatalf("creating dialog: %v", err)
+	if *slots > 1 {
+		cfg = batchingConfig(cfg, *slots)
 	}
-	defer d.free()
+
+	// The pool: each request borrows a free dialog. With -slots 1 this is a single dialog and
+	// requests are served strictly one at a time, exactly as before.
+	pool := make(chan *dialog, *slots)
+	for i := 0; i < *slots; i++ {
+		d, err := newDialog(string(cfg), uintptr(i+1))
+		if err != nil {
+			log.Fatalf("creating dialog %d: %v", i+1, err)
+		}
+		defer d.free()
+		pool <- d
+	}
 
 	ln, err := net.Listen("tcp", *addr)
 	if err != nil {
 		log.Fatalf("listen %s: %v", *addr, err)
 	}
-	log.Printf("genied %s ready on %s, bundle %s", version, *addr, *bundle)
+	log.Printf("genied %s ready on %s, bundle %s, %d slot(s)", version, *addr, *bundle, *slots)
 
 	for {
 		c, err := ln.Accept()
@@ -267,8 +300,50 @@ func main() {
 			log.Printf("accept: %v", err)
 			continue
 		}
-		serve(c, d) // one at a time: there is one NPU
+		go func(c net.Conn) {
+			d := <-pool // blocks while every slot is busy
+			defer func() { pool <- d }()
+			serve(c, d)
+		}(c)
 	}
+}
+
+// batchingConfig turns on Genie's continuous batching for N concurrent dialogs.
+//
+// Traced in the Genie source (QAIRT 2.50, examples/Genie/Genie/src): a dialog whose engine has
+// QnnHtp "shared-engine": true is resolved through a registry keyed on the engine config, so N
+// dialogs created from the same config share ONE loaded engine instead of loading N copies. Each
+// dialog takes a scheduler slot, and the engine-level "batching" block (passed through by
+// Engine.cpp) lets the InferenceScheduler fuse the slots' decode tokens into a single graph fire -
+// the weights are read once for several tokens, which is the only lever left once decode is at the
+// memory-bandwidth roof (HANDBOOK 2.15). "allow-async-init" must be true for a shared engine; our
+// config already has it. A plain dialog config or genie-app cannot enable this: it needs N dialogs
+// in one process, which is exactly what genied is.
+func batchingConfig(raw []byte, slots int) []byte {
+	var c map[string]any
+	if json.Unmarshal(raw, &c) != nil {
+		return raw
+	}
+	dlg, _ := c["dialog"].(map[string]any)
+	eng, _ := dlg["engine"].(map[string]any)
+	be, _ := eng["backend"].(map[string]any)
+	htp, _ := be["QnnHtp"].(map[string]any)
+	if htp == nil || eng == nil {
+		return raw
+	}
+	htp["shared-engine"] = true
+	htp["allow-async-init"] = true
+	eng["batching"] = map[string]any{
+		"max-slots":            slots,
+		"mixed-prefill-decode": true, // one request's prefill can share a fire with another's decode
+		"coalesce-window-us":   2000, // wait up to 2 ms for other slots to join a fire
+	}
+	out, err := json.Marshal(c)
+	if err != nil {
+		return raw
+	}
+	log.Printf("config: continuous batching on, %d slots sharing one engine", slots)
+	return out
 }
 
 // daemonConfig adapts the shared Genie config for a LONG-LIVED process.
@@ -309,4 +384,4 @@ func daemonConfig(raw []byte) []byte {
 }
 
 // version is logged at startup so a deployed daemon can be matched to its build.
-const version = "2026-10-14.2"
+const version = "2026-10-14.3-batch"

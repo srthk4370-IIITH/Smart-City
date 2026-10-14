@@ -132,11 +132,51 @@ def check():
         sys.exit(1)
 
 
+def batch(width):
+    """Continuous-batching gate: send `width` prompts to genied AT THE SAME TIME (it must be running
+    with -slots >= width) and require every answer to still equal the CLI's. Then compare the wall
+    time of each concurrent group against the same prompts sent one after another."""
+    import concurrent.futures as cf
+
+    ref = json.loads(REF.read_text(encoding="utf-8"))
+    groups = [ref[i:i + width] for i in range(0, len(ref) - width + 1, width)]
+    same = total = 0
+    t_seq = t_par = 0.0
+    for g in groups:
+        t0 = time.time()
+        for r in g:
+            daemon_query(r["prompt"])
+        t_seq += time.time() - t0
+
+        t0 = time.time()
+        with cf.ThreadPoolExecutor(len(g)) as ex:
+            outs = list(ex.map(lambda r: daemon_query(r["prompt"])[0], g))
+        dt = time.time() - t0
+        t_par += dt
+        ok = [norm(o) == r["cli"] for o, r in zip(outs, g)]
+        same += sum(ok)
+        total += len(ok)
+        print(f"group of {len(g)}: {dt * 1000:.0f} ms concurrent, identical {sum(ok)}/{len(ok)} "
+              f"({', '.join(r['pattern'] for r in g)})", flush=True)
+        for o, r, k in zip(outs, g, ok):
+            if not k:
+                print(f"   {r['pattern']}: CLI    {r['cli'][:150]}")
+                print(f"   {r['pattern']}: batch  {norm(o)[:150]}")
+    print(f"\nidentical: {same}/{total}")
+    print(f"same prompts: one-at-a-time {t_seq:.1f} s  ->  concurrent {t_par:.1f} s  "
+          f"({(1 - t_par / t_seq) * 100:.0f}% less)")
+    if same != total:
+        print("\nMISMATCH - batching changes answers")
+        sys.exit(1)
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
     c = sub.add_parser("collect")
     c.add_argument("-n", type=int, default=14)
     sub.add_parser("check")
+    b = sub.add_parser("batch")
+    b.add_argument("-w", type=int, default=3)
     a = ap.parse_args()
-    collect(a.n) if a.cmd == "collect" else check()
+    {"collect": lambda: collect(a.n), "check": check, "batch": lambda: batch(a.w)}[a.cmd]()

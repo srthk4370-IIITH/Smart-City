@@ -1017,6 +1017,81 @@ view from someone reading another incident.
 `"type":"token"` when the SSE wire format is `event: token`. The pipeline was never broken. Check
 the wire format before concluding a feature is missing.
 
+## 2.24 genied in production: the persistent dialog, and what it took (2026-10-14)
+
+`genied` (app/genied) holds one GenieDialog for the life of the process; the backend talks to it over
+127.0.0.1:8777 and falls back to the per-call CLI if it is absent.
+
+- **Gate:** `training/export/verify_daemon.py` sends 14 prompts twice, forward then reverse, so each
+  prompt follows a different predecessor the second time. 28/28 byte-identical to the CLI -
+  `GenieDialog_reset` is a clean state wipe. Single agent call 3640 -> 2543 ms, TTFT ~1.2 s -> 312 ms.
+- **`"poll": true` must be off in a daemon.** Genie busy-waits on the NPU. The CLI exits after each
+  answer so the spinning stops; a daemon never does. genied idled at **359% CPU** and drove the board
+  to 94 C, tripping the thermal guard so no analysis ran at all. genied forces poll off for itself:
+  0% idle CPU, still 28/28, same speed (3670 vs 3686 ms). The shared config keeps poll on for the CLI.
+- **Batching (genie-app) is off while genied is up**: it loads a second model copy, and two resident
+  models is what hits the DSP SMMU limit and (see 2.27) reboots the board.
+- **Inter-call gap is 0 for daemon calls**: it guarded one process's NPU teardown against the next
+  process's start, and one persistent process has no teardown.
+
+**App pipeline.** `build_apk.sh` packages genied as `libgenied.so`; `EdgeService.backendStart` copies
+it out like `libedgeagent.so`, and edge-agent launches and supervises it (`superviseDaemon`, restarts
+it if it dies, never under an in-flight call). Two update gaps fixed in EdgeService: a HEALTHY backend
+used to keep the old binary and the old dashboard after an APK update until something crashed. It now
+compares the APK's backend, daemon and web files with what is deployed at service start and redeploys
+on any difference (`staleScript`). Verified by shipping a newer genied and newer CSS through a plain
+`adb install -r`. Also verified: after a cold reboot the app restores edge-agent and genied in ~10 s.
+
+## 2.25 Continuous batching: REJECTED on QAIRT 2.50 (2026-10-14)
+
+Traced in the Genie source: dialogs whose engine has QnnHtp `"shared-engine": true` resolve to ONE
+engine via a registry, each takes a scheduler slot, and an engine-level `"batching"` block
+(`max-slots`, `mixed-prefill-decode`, `coalesce-window-us`, `prefill-chunk-size`) lets the
+InferenceScheduler fuse slots' decode tokens into one graph fire. genied implements this behind
+`-slots N`. Sharing works - dialogs 2 and 3 attached in ~0.2 ms with no reload.
+
+**But it truncates answers.** Three prompts concurrently: 1/12 identical, most answers cut after a few
+tokens (`"spike"` -> `"sp"`, some empty). The 76% "speedup" was answers stopping early. Then
+**sequentially** on the same shared-engine daemon: every answer truncated in 300-480 ms. So it is not
+thread safety - shared-engine slot mode itself ends generation early under our reset-then-query
+pattern. Not shippable. `-slots` stays in genied, default 1 (re-verified 28/28). The ar4 re-export,
+which only existed to feed batching, was cancelled.
+
+## 2.26 Runtime knobs, measured: nothing left here (2026-10-14)
+
+On the live ctx-2048 bundle, 3 runs each with Genie's profiler: `mmap-budget` 0 -> 25 changed init by
+noise only (633-671 vs 648-695 ms), decode unchanged. `direct-io: true` failed to produce output at
+all (SELinux on the dma-heap, or the config edit); since genied pays init once, not worth pursuing.
+
+## 2.27 A second model next to the 3B reboots the board (2026-10-14)
+
+With genied holding the fine-tuned 3B, loading the base 3B in a second process dropped the device off
+USB and rebooted it (`up 0 min`), as on 2026-10-07. Free RAM was 5.8 GB beforehand, so a free-memory
+check is NOT a sufficient guard. **Two full models cannot be resident.** The separate cross-domain
+reasoner (owner's decision: a distinct, self-improving model, Qwen3-1.7B preferred) is therefore a
+**swap per incident**: agents on the resident 3B, then genied releases it, the reasoner loads, reasons
+and exits, the 3B reloads - about +1.5 s per multi-domain incident; single-domain incidents skip it.
+
+**Parked until after the eval** because of the network: Qualcomm's pre-quantized Qwen3-1.7B asset
+(8.28 GB) is only on S3 us-west-2, which this connection reaches at **~18 KB/s**; HuggingFace is 72x
+faster (1.36 MB/s) but unquantized. Next step: download the asset on another network, or self-quantize.
+
+## 2.28 Self-learning: the data is already being captured (2026-10-14)
+
+Every LLM call persists `prompt`, `raw` (model output BEFORE policy repair), `parsed`, `valid`,
+`errors`, `repairs`; every incident persists the operator's `approval` and `approval_note`. The log is
+append-only, so the newest line per incident is authoritative.
+`training/feedback/export_feedback.py` turns it into:
+
+- `sft_positive.jsonl` - operator-approved calls that passed policy with no repairs;
+- `dpo_pairs.jsonl` - calls policy repaired: chosen = policy-corrected output (in trained field
+  order, policy-only fields like `requires_human_approval` removed), rejected = the raw output. These
+  need no human labelling, so they accumulate from day one;
+- `dismissed.jsonl` - dismissed incidents with the operator's note, for review.
+
+First real run: one approved incident gave 2 SFT positives and 1 DPO pair (the synthesizer put
+non-domain names in `affected_domains` and evidence text inside its ids; policy fixed both).
+
 ## 3. If something goes wrong
 
 **Golden rule: just run the same `train.ps1` command again.** It continues where it stopped: training resumes
