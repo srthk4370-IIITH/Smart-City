@@ -1240,6 +1240,269 @@ can tear the last line of `incidents.jsonl`; see 2.35 for how the store survives
   this one check is outside the training rules and documented as such in `rules.go`.
 - **Memory:** edge-agent 15 MB RSS, genied 81 MB after 24 min of stress; re-checked after the run.
 
+## 2.36 After the mid-evaluation: evidence plan, GPU study, proofs and website (2026-10-16)
+
+**Nothing below has been run or changed yet.** It is the plan agreed with the team; work starts when they say go.
+
+### What the evaluators asked, and why we could not answer
+1. *"Against what did you measure accuracy, why does it matter, why is it better than the status quo?
+   Show data, plots, comparisons."*
+   - We had aggregate numbers, but no saved per-sample predictions and no confidence intervals.
+   - There was no comparison of Mode 1/2/3 on labelled data.
+   - We had not measured any status-quo baseline.
+2. *"Run the agents in parallel on the GPU; measure power, limits and latency; try GPU only, NPU only,
+   hybrid."* We had never tried it.
+3. *"Give us the data and test cases you measured against."* They exist, but they are scattered,
+   mostly gitignored, and partly not reproducible.
+
+### Decisions (team, via Q&A)
+| Topic | Decision |
+|---|---|
+| Ground truth | **Injected known faults** now. **Real events from facility logs** when the new raw data arrives. |
+| Root-cause truth | **Cross-domain injections** where the cause is known by construction. Examples: occupancy arrival + CO2 rise + power rise = occupancy-driven load; a night-time tank level drop with no occupancy = leak. Real log events later. |
+| Comparisons | Mode 2 (single LLM call) vs Mode 3 (multi-agent); **generalist** (base Llama, one domain-agnostic prompt) vs **specialists** (5 roles); fine-tuned vs base; rules. All on the same labelled grid. |
+| Grid size | **About 600 incidents** on the QIDK (scenarios × ~20 variations × modes/arms). Takes ~2–3 h, on DC power. |
+| Status-quo measurements | **All of them:** alert-flood reduction, sub-threshold detection, explanation + evidence rate, edge vs cloud. |
+| GPU | **Run the full matrix regardless.** The production decision comes only from the data. First runtime: **llama.cpp OpenCL**. |
+| Power measurement | **Free methods only:** Perfetto/ODPM power rails if the board exposes them, otherwise the battery fuel gauge plus thermal zones. |
+| Data policy | **Keep most things private.** Raw CSVs, data splits and per-room occupancy never go on git or the site. Publish plots and aggregates only. |
+| Website | **Cloudflare** (Pages + Access login) with **encrypted** content. Fully static. The deck is uploaded in the browser and forgotten on reload. **All plots live on the site, none in the deck.** |
+| Order | **Laptop accuracy re-runs in parallel with the 600-incident grid on the QIDK**, then the GPU matrix. |
+| Repo cleanup | About 2.1 GB of `tmp_pack`/`tmp_obj` garbage in `.git`. Clean it **later, with the team's OK**. |
+
+### What we found while planning (read-only audit)
+
+**Ground truth is honest only for the pattern, and only on 4 of the 5 roles.**
+- **Continuous roles (air, water, power, weather): the comparison is fair.**
+  - Each test case is a real, calm 4-hour window with one synthetic pattern injected, so the label is
+    exact (`training/generate_dataset.py`, `inject`).
+  - The rule detector never sees the injection, so *fine-tuned 94% vs rules 68.6% pattern accuracy* is
+    a fair comparison. The 68.6% was re-computed on all 900 test windows.
+- **Occupancy pattern labels are circular.**
+  - They come from `occ_label`, which is the same logic as the rules, so the rules score 100% by
+    construction.
+  - Leave occupancy out of the rules-vs-LLM claim, or say so explicitly.
+- **Status, cause and action labels are circular too.**
+  - The teacher rules produce them from the true pattern, and Mode 1 runs those same rules
+    (`rules.go`).
+  - So the LLM's 93% on cause means it imitates the rule taxonomy well. It is not independent
+    reasoning.
+  - **What we can claim:** the gain is in pattern recognition (94% vs 69% on the laptop, ~85% on the
+    NPU), and that gain carries through to cause and action.
+  - An independent "why" ground truth needs the cross-domain injections or the real log events above.
+- **The confidence field is not a probability.** It is a formula of injection amplitude, so do not
+  plot calibration.
+- **The data split is temporal only.**
+  - Train is Jan–Aug, dev is Sep–Oct, test is Nov–Dec 2025, with the same sensor nodes in every split.
+  - Early-September windows overlap August by up to 4 h; add a purge gap.
+  - The test set is class-balanced, not natural prevalence.
+  - The water test set uses only 31 calm base windows.
+
+**Numbers we quote but cannot back with saved data:**
+- `eval_agents.py` keeps only aggregates. Without laptop per-sample predictions there are no confusion
+  matrices, CIs or McNemar tests.
+- The base model's on-device run (45% vs 20%) was overwritten.
+- Five of the seven quantisation-waterfall steps exist only as prose.
+- The 54-window device set has **n = 1 per class**, so overall 85.2% carries a ±~10-point 95% CI. Use
+  the 150- and 900-window sets for claims.
+- The flag used for the 46- and 54-window runs was not recorded.
+- `stress_app.py` does not save Mode 1 output.
+- Incidents keep only `total_ms`; there is no per-call time-to-first-token or decode time.
+
+**Data hygiene issues:**
+- The raw data in `ihub-clean-datasets/` (14 CSVs, 4.6 GB) mixes `+00:00` and `+05:30` timestamps.
+- `data/manifests/dataset_manifest.json` is stale (old paths and file names).
+- The root `.gitignore` rule `data/` hides `data/series` and `data/sft` everywhere, so they exist only
+  on this laptop.
+- `WL` and `WM-WL` look like duplicate files.
+
+**GPU physics (estimates; the matrix will confirm or refute them):**
+- **Shared memory bandwidth limits concurrency.**
+  - Decode is limited by memory bandwidth on both the NPU and the GPU, and both share the same
+    LPDDR5X memory.
+  - The NPU already uses ~49 of ~68 GB/s. Qualcomm's own Adreno 750 llama.cpp figures imply ~46 GB/s.
+  - Running NPU and GPU at once: at best ~1.3–1.4× total throughput, and each engine slows down.
+- **GPU prefill is slow.**
+  - Reading the prompt on the GPU is ~4× slower than on the NPU (~250–300 vs ~1160 tokens/s).
+  - So one agent call takes ~5.8 s on the GPU vs 2.5 s on the NPU.
+- **Expected gain on a 13-sensor incident: 15–25%, not 2–3×.**
+- **The realistic wins are elsewhere:**
+  - **Batching on the GPU:** one pass over the weights serves 3–4 agents, for ~2–2.5× decode
+    throughput.
+  - **A different model on the GPU** (the future cross-domain reasoner), which would remove the
+    planned ~1.5 s model swap.
+- **Any GPU path changes accuracy.** llama.cpp's Q4_0 quantisation is not GPTQ, so accuracy must be
+  re-measured on the same set. Try Q4_0 with a Q8_0 output layer and/or `--imatrix`.
+- HeteroLLM (arXiv 2501.14794) reports that naive GPU+NPU parallelism on the 8 Gen 3 can be *slower*.
+
+### Plan
+
+**A. Accuracy evidence (laptop, no device)**
+1. Add a per-sample dump to `eval_agents.py`. Run fine-tuned, base and rules on **all 900** test
+   windows. Feed the rules' pattern through the full rule pipeline (status, cause, action) so the rules
+   get a fair end-to-end number.
+2. Statistics:
+   - per-role confusion matrices, per-class precision/recall/F1, macro-F1;
+   - Wilson and bootstrap 95% CIs;
+   - paired McNemar tests: fine-tuned vs rules, fine-tuned vs base, and laptop vs device on the shared
+     subset.
+   
+   Report occupancy separately, since its labels are circular.
+3. Re-run the laptop quantisation steps with dumps (bf16, NF4, int4 fake-quant, GPTQ). The device
+   steps stay cited from HANDBOOK until the old bundles are re-validated.
+
+**B. System grid (QIDK, ~600 incidents, safe to run overnight)**
+- **Cases:**
+  - the 10 single-domain scenarios;
+  - new **cross-domain scenarios** with a known root cause;
+  - ~20 variations of each: amplitude, onset, target sensor, time of day.
+- **Arms**, all paired on identical cases:
+  - Mode 1 rules;
+  - Mode 2 single LLM call;
+  - Mode 3 multi-agent with the fine-tuned model;
+  - Mode 3 with the base model;
+  - **generalist**: base model, one prompt.
+- **Save the full incident JSON for every case:**
+  - Mode 1 report, every agent, and the final report;
+  - per-call time-to-first-token and decode time;
+  - repairs and fallbacks;
+  - temperatures.
+- **Metrics:**
+  - pattern, root-cause label, affected domains;
+  - evidence validity, policy pass and fallback rate;
+  - latency distribution, energy.
+- **Statistics:** Cochran's Q across arms, pairwise McNemar, bootstrap CIs.
+
+**C. Status quo (laptop, mock LLM, repeatable)**
+- **Alert flood:** replay 24–72 h of real Nov–Dec data with no injections. Count raw threshold
+  crossings vs debounced alerts vs incidents, and false alarms per hour.
+- **Sub-threshold detection:** recall on leaks, flatlines and oscillations that stay below the limits.
+  Plain thresholds score ~0 here by design.
+- **Explanation and evidence:** the share of incidents, by mode, with a cited, policy-valid
+  explanation.
+- **Edge vs cloud:** latency, energy and bytes leaving campus vs a cloud LLM call (an argument plus one
+  measurement).
+
+**D. GPU matrix (QIDK, DC power, after B)**
+- **Configurations:**
+
+  | ID | What runs where |
+  |---|---|
+  | C0 | NPU, agents in sequence (baseline) |
+  | C1 | GPU, agents in sequence (llama.cpp Q4_0) |
+  | C2 | GPU, batched agents (N = 2/3/4/6) |
+  | C3 | Agents batched on GPU + synthesizer on NPU |
+  | C4 | Agents on NPU + synthesizer on GPU |
+  | C5 | NPU and GPU sharing the agents |
+  | C6 | CPU only (reference) |
+  | C7 | A second model on the GPU next to the NPU fine-tune |
+
+- **Metrics:**
+  - time to first token, prefill and decode tokens/s;
+  - per-call p50 and p95 latency;
+  - incident wall time for 1, 5 and 13 sensors;
+  - accuracy on the same set, and a byte-diff vs N = 1;
+  - truncation;
+  - energy (J per incident, J per token), peak temperature, RAM;
+  - reboots during a 30-minute soak.
+- **Before starting:**
+  - Run `llama-bench` and `llama-batched-bench`.
+  - Check that `libOpenCL.so` loads from the shell *and* from the app (`/vendor/etc/public.libraries.txt`).
+  - If the app can reach the GPU directly, that is a bonus: it cannot reach the NPU.
+- **Safety:**
+  - One change at a time.
+  - Abort below 1.5 GB free RAM or above 85 °C.
+  - Cool to under 45 °C between cells.
+  - 5 runs per cell; discard the first.
+- **Success:**
+  - at least 20% off the 13-sensor wall time;
+  - accuracy within the CI of C0;
+  - no truncation, no reboot;
+  - peak temperature no more than 5 °C above C0.
+  
+  A negative result with the contention data is also a valid answer.
+- **Power (free methods):**
+  - Use `dumpsys android.hardware.power.stats.IPowerStats/default` and the Perfetto `android.power`
+    rails if present.
+  - Otherwise use the fuel gauge (`current_now` × `voltage_now`), only when a battery is present and
+    not charging, and report idle-subtracted differences.
+  - Log `thermal_zone*` at 1 Hz.
+
+**E. Proofs folder (start using it on the first run)**
+```
+proofs/
+  INDEX.md                          one line per run, newest first
+  datasets/<id>/manifest.json       sha256 per file, schema, date range, coverage; plots/
+  YYYY-MM-DD_<area>_<slug>/         area = accuracy|grid|statusquo|latency|gpu|power|thermal|stress|data
+    manifest.json  command.txt  samples.jsonl  summary.json  log.txt  plots/*.svg
+```
+Every run saves:
+- git commit and dirty flag;
+- model bundle and adapter hashes;
+- dataset hash and the exact sample IDs;
+- device, QAIRT/Genie version, sampler (greedy), context length;
+- start and end time and temperature;
+- the exact command;
+- **raw per-sample rows**, failures included;
+- n and CIs;
+- the baselines from the same run.
+
+Never overwrite a run; a re-run gets a new folder. Raw data stays out of `proofs/` (private).
+
+**F. New raw data (when it arrives)**
+1. Land it read-only in `raw/<date>/` and hash every file.
+2. Validate the schema, normalise all timestamps to UTC, and enforce units per metric from one
+   plausibility table.
+3. Make coverage heatmaps and plot the raw series for each sensor.
+4. Re-score on the **old** test split (for comparability) **and** on a **new future-months split** with
+   a 4-hour purge gap.
+5. Match facility-log events to timestamps, to build the real-event ground truth.
+6. The dataset ID is the hash of the file-hash list. Old splits stay frozen by hash.
+
+**G. Website (only when the team says go)**
+- **Hosting:** Cloudflare Pages behind Cloudflare Access (email one-time-password login, free up to 50
+  users), with the content also encrypted.
+- **Build:** one `make_site.py` builds everything from `proofs/*/samples.jsonl`. Plots are matplotlib
+  SVGs; use Plotly only for long raw series, downsampled.
+- **Deck:** export the PPT to PDF; a file picker reads it in the browser (pdf.js), keeps it in memory
+  only, and forgets it on reload. In-browser PPTX renderers break charts and SmartArt.
+- **Never on the site:** raw data and per-room occupancy series.
+
+### How to handle the problems we are likely to hit
+- **Circularity questions will come back.**
+  - Lead with pattern accuracy, which is not circular.
+  - Show the rule pipeline's end-to-end numbers *next to* the LLM's.
+  - Independent "why" truth comes from cross-domain injections first, then real logs.
+- **Small-n challenges.** Never quote a number without n and a CI. Prefer paired tests on identical
+  cases over separate runs.
+- **"Synthetic injections aren't real."**
+  - The injections ride on real calm windows from real sensors.
+  - Add a real-event set built from the new data plus facility logs.
+  - If possible, have two people hand-label ~200 real windows (report Cohen's kappa) for one external
+    check.
+- **Generalist arm fairness.** The agreed baseline is the base model with a generic prompt. A trained
+  generalist adapter would be fairer but costs a full training and export cycle; state this as a
+  limitation.
+- **Device time and heat.**
+  - 600 incidents is ~2–3 h, with chaos-size cases at ~50 s plus thermal pacing.
+  - Run overnight on DC power and cool between blocks.
+  - Log thermals so latency outliers can be explained.
+- **The GPU work may not pay off.**
+  - Expect 15–25% at best from running both at once.
+  - Batching and keeping a second model resident on the GPU are the real wins.
+  - Report the bandwidth contention numbers either way.
+- **Surprises in new data:** timezone mix, unit changes (W vs kW), duplicate files, sensor renames.
+  Validate before scoring, or accuracy will shift for the wrong reason.
+- **Privacy.** Occupancy by room and time reveals people's presence. Keep raw data private, and check
+  with SCRC before showing even plots of individual rooms.
+- **Keeping results credible over the weeks.**
+  - Generate every plot from saved samples, using one script.
+  - Pin dataset and model hashes.
+  - Never regenerate old splits in place.
+- **Repo size.**
+  - Clean the `.git` garbage, with the team's OK.
+  - Never commit model bundles, raw data or large PNGs; prefer SVG.
+
 ## 3. If something goes wrong
 
 **Golden rule: just run the same `train.ps1` command again.** It continues where it stopped: training resumes
