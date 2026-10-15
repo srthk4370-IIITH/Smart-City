@@ -1,9 +1,8 @@
-# Agentic Edge AI for Smart Cities — presentation script
+# Agentic Edge AI for Smart Cities — mid-evaluation
 
-Slide-by-slide content with speaker notes. Every number here was measured on the Qualcomm QIDK
-(Snapdragon 8 Gen 3, Hexagon V75 NPU) unless marked otherwise; HANDBOOK.md has the raw evidence.
-The mid-evaluation deck this replaces is kept as `ppt_mideval.md`. `Presentation/ppt.md` predates
-the build and describes a Llama + Qwen design that was never shipped.
+Mid-evaluation deck: slide-by-slide content with speaker notes. Every number here was measured on
+the Qualcomm QIDK (Snapdragon 8 Gen 3, Hexagon V75 NPU) unless marked otherwise; HANDBOOK.md has the
+raw evidence. It reports the system as it stands at mid-evaluation and the plan to the final one.
 
 ---
 
@@ -13,6 +12,7 @@ the build and describes a Llama + Qwen design that was never shipped.
 Multi-agent reasoning over live campus sensors — entirely on a phone-class NPU, no cloud.
 
 IIIT Hyderabad · Qualcomm QIDK (SM8650) · Llama 3.2 3B, fine-tuned, running on the Hexagon NPU
+Mid-evaluation
 
 > Notes: one sentence — "A campus monitor that notices problems, reasons about *why* across
 > buildings and utilities, and asks a human before anything happens, all on one small device."
@@ -225,7 +225,7 @@ fewer tokens, or several tokens per weight sweep.
 | watchdog stayed in rules-only mode after adbd came back | returns to the NPU backend automatically |
 | unbounded request queue / request bodies | 16 queued requests (429 beyond), 1 MiB bodies, timeouts |
 
-The app survives a cold reboot: backend and NPU daemon back in ~10 s with no laptop.
+The app survives a cold reboot: backend and NPU daemon answering ~5 s after boot completes, no laptop.
 
 ---
 
@@ -244,16 +244,16 @@ The app survives a cold reboot: backend and NPU daemon back in ~10 s with no lap
 
 ---
 
-## 16. Results
+## 16. Results so far
 
 - Agent diagnoses matching the injected scenario: **8/10** (the two misses were the water tank —
   one was the scenario refilling itself, now fixed; one a genuine miss, now surfaced to the operator).
-- Full app stress test (240 checks, ~22 min): **238/240** on the final build. The two misses are
+- Full app stress test (240 checks, ~22 min): **238/240** on the current build. The two misses are
   heat at the peak of back-to-back chaos (83–84 °C junction, down from 94 °C before thermal pacing).
 - Mode 3 analysis across stress incidents: min 2.4 s · **median 3.5 s** · max 53 s (chaos).
 - Chaos, every sensor failing, uncapped: **11–13 NPU agents + synthesizer in 41–57 s**, one incident,
   every agent and the report passing policy.
-- NPU errors in the final passes: **0** (two per pass before the stale-abort fix).
+- NPU errors in the latest passes: **0** (two per pass before the stale-abort fix).
 - Soak: backend 24–27 MB, NPU daemon 77 MB (237 MB with the large window), no growth.
 - Recovery: backend killed → back in **8 s**; NPU daemon killed mid-answer → call completed on the
   CLI, daemon back in ≤15 s; interrupted incidents survive as "rerun".
@@ -285,7 +285,17 @@ The first real incident already produced a preference pair for the synthesizer.
 
 ---
 
-## 19. What's next
+## 19. Status at mid-evaluation
+
+| | |
+|---|---|
+| **Done** | fine-tuned 3B on the NPU (85 % pattern accuracy on device); 3 reasoning modes; multi-agent orchestration with no agent cap; policy gate; native app that runs standalone and recovers from crashes and reboots; two context windows; app-level stress testing (238/240) |
+| **In progress** | operator-feedback capture for self-learning (being collected); the remaining host (94 %) vs device (85 %) accuracy gap |
+| **Before the final evaluation** | dedicated cross-domain reasoner in place of the synthesizer; Mode 1 vs 2 vs 3 comparison on the full scenario set; onset and physics-aware training examples |
+
+---
+
+## 20. What's next (to the final evaluation)
 
 - **A dedicated cross-domain reasoner** (Qwen3-1.7B preferred): separate from the five agents so
   cross-domain reasoning cannot degrade them, and improvable on its own from operator feedback.
@@ -298,11 +308,11 @@ The first real incident already produced a preference pair for the synthesizer.
 - **Physics-aware training examples**: impossible readings (indoor CO2 under outdoor air) are now a
   rule-level sensor fault, but the agent still calls them normal - add such examples to the next run.
 - **Deployment hardware**: DC supply (USB brownouts rebooted the board at peak load) and a heatsink
-  (back-to-back chaos reaches 85–94 °C junction; pacing and the guard hold it there).
+  (back-to-back chaos peaks at ~84 °C junction with thermal pacing; 94 °C without it).
 
 ---
 
-## 20. Lessons
+## 21. Lessons so far
 
 1. **Measure before believing** — several "obvious" wins (LADE, grammar decoding, batching) were
    faster *and wrong*. Gate every change on output identity, not just speed.
@@ -316,7 +326,7 @@ The first real incident already produced a preference pair for the synthesizer.
 
 ---
 
-## 21. Demo script
+## 22. Demo script
 
 1. Live tab: 18 sensors, dot-matrix charts, rules updating every reading.
 2. Inject *Crowded room*: power and CO2 alarm together → one incident opens itself.
