@@ -1,0 +1,25 @@
+NOT applied to the shipped libGenie.so. See NOTES.md section 2 (F2) before using.
+Swaps Dialog::reset() so resetSlot() (which zeroes the slot's KV rows) runs while
+the slot still lists its positions. Correct ordering, but the zeroing is not needed
+for correctness and, done from a dialog thread while the dispatch thread reshapes
+the shared cache, can corrupt other slots' KV.
+
+--- a/examples/Genie/Genie/src/qualla/dialog.cpp
++++ b/examples/Genie/Genie/src/qualla/dialog.cpp
+@@ -2038,14 +2038,14 @@
+   if (slotIdx() >= 0 && _engine.contains("primary")) {
+     auto& eng = _engine.at("primary");
+     eng->markSlotIdle(m_slot_idx["primary"]);
++    eng->resetSlot(m_slot_idx["primary"]);
+     eng->setSlotNPast(m_slot_idx["primary"], 0);
+     eng->setSlotCheckpoints(m_slot_idx["primary"], {});
+-    eng->resetSlot(m_slot_idx["primary"]);
+   }
+   if (slotIdx("secondary") >= 0 && _engine.contains("secondary")) {
+     _engine["secondary"]->markSlotIdle(m_slot_idx["secondary"]);
++    _engine["secondary"]->resetSlot(m_slot_idx["secondary"]);
+     _engine["secondary"]->setSlotNPast(m_slot_idx["secondary"], 0);
+-    _engine["secondary"]->resetSlot(m_slot_idx["secondary"]);
+   }
+
+   _kpis.reset();

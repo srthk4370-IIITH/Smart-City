@@ -1503,6 +1503,129 @@ Never overwrite a run; a re-run gets a new folder. Raw data stays out of `proofs
   - Clean the `.git` garbage, with the team's OK.
   - Never commit model bundles, raw data or large PNGs; prefer SVG.
 
+## 2.37 Hardware placement study and the batched NPU daemon (htpd) (2026-10-16)
+
+The evaluators' GPU question (2.36 B) was answered first. The answer led to a new NPU runtime that
+halves incident latency. All raw logs are in `proofs/2026-10-16_*`.
+
+### Why the board rebooted during the GPU tests
+- GPU (kgsl) and NPU buffers are **unmovable** memory and must fit in the 7.26 GB Normal zone.
+  Genie alone holds ~3.1 GB of it. Loading a second 3B model on the GPU made the kernel's OOM killer
+  pick **system** processes, and Android rebooted.
+- Fixes in the ladder scripts (`app/tools/gpu_ladder.sh`, `htp_ladder.sh`): llama.cpp at
+  `oom_score_adj 1000` (it dies first, not the system), `drop_caches` + `compact_memory` before every
+  load, one rung at a time, stop on the first failure. No reboot since.
+- OpenCL kernels for this model shape needed a work-group fix: `app/htpd/patches/opencl_mc3_workgroup.patch`.
+
+### GPU (Adreno 750, llama.cpp OpenCL): not viable
+- To compare like with like, the device's own weights were extracted and repacked to Q4_0/Q8_0
+  (`training/export/gpu/extract_device_weights.py`, `pack_exact_gguf.py`).
+- About **8.4 s per agent**, no gain from batching (the OpenCL matmuls do not batch), and 82% agreement
+  with Genie. GPU-only and hybrid placements are slower than the NPU at every size. `proofs/2026-10-16_gpu_bringup`, `2026-10-16_hw_grid`.
+
+### Why Genie could not batch
+Genie silently dropped the batching config. Patches are in `app/genie_patch/` but are not built (that
+needs the Rust toolchain). Even patched, the AR1 export would need an AR4/AR8 re-export to gain anything.
+So we moved the NPU work to **llama.cpp's Hexagon (HTP) backend** instead.
+
+### htpd: one model, many agents per weight sweep
+`app/htpd/htpd.cpp` (build: llama.cpp `tools/htpd`, patches in `app/htpd/patches/`, base commit in
+`BASE_COMMIT.txt`). It is a TCP daemon on port 8091 that takes one JSON line in and returns one out.
+- The model is loaded once, with two contexts: agents (13 streams × 768 tokens, per-stream f16 KV,
+  flash attention) and synthesizer (4096). The daemon swaps between them.
+- Decode on the NPU is bandwidth-bound, so serving all agents in one sweep is the lever. Measured
+  results:
+  | change | effect |
+  |---|---|
+  | `GGML_HEXAGON_FA_STREAMS=1` (patch): per-stream flash attention on HTP instead of CPU | makes batching faster than sequential at all |
+  | `GGML_HEXAGON_HMX_PIPE_ALL=1` (patch): pipelined HMX for decode-sized matmuls; finished streams parked | 13 agents 28–31 → ~24 s |
+  | `HTPD_DRAFT=1`: batched, verified n-gram drafting, adaptive k (≤ 4 per stream, ≤ 32 rows) | 13 agents 22 → 16.4 s, 4 agents 14.9 → 5.8 s; lossless (the draft is kept only when it equals greedy) |
+  | `HTPD_PREFIX_CACHE=1`: KV of each role's system-prompt prefix kept across incidents | prefill 8.7 → 6.8 s (13 agents), 3.1 → 2.0 s (4 agents) |
+  | NEON argmax (same first-max tie-break) | total 30.3 → 27.7 s, 25/25 identical |
+  | `HTPD_LEGACY_PREFILL=1` | keeps the old prefill order; the equal-ubatch one changed ~30% of outputs for no gain |
+- Tried and rejected: speculation on the synthesizer (it changed outputs), 8-bit KV (2× slower),
+  thread, ubatch and power-mode knobs (no gain).
+- Run-to-run noise: the same binary twice gives 21–24 of 25 identical texts. Batched float sums are
+  not bit-reproducible, so "identical" is judged against that floor.
+- A bug fixed along the way: the prefix cache never engaged because the vocab's EOT id is not the
+  `<|eot_id|>` our prompts use. It now tokenizes `<|eot_id|>` itself.
+
+### Backend integration (opt-in)
+- Turned on by the file `/data/local/tmp/smart_city_edge/npu_engine` containing `htpd`. To revert:
+  `echo genie > /data/local/tmp/smart_city_edge/npu_engine`, then restart the app.
+- `backend/htpdclient.go` supervises htpd with the env above and stops genied: one model on the NPU,
+  as before.
+  - Prefetch sends every agent of an incident in one batch.
+  - Single calls (synthesizer, Mode 2) go through the same daemon.
+  - Errors and timeouts (150 s per batch) kill htpd so the supervisor restarts it cleanly.
+- Agent text now arrives all at once per batch, not streamed. The synthesizer and Mode 2 also use
+  drafting, so their wording may differ slightly from Genie's.
+
+### Results (QIDK, through the app unless stated)
+| test | Genie | htpd (final) |
+|---|---|---|
+| chaos: 12 agents + synthesizer | ~46–48 s | **20.7 s** |
+| chaos: 10 agents + synthesizer | ~41–46 s | **20.6 s** |
+| chaos: 11 agents, staggered | ~49–57 s | **20.8 s** |
+| A/B harness: 13 agents (agents only) | 22–25 s | **14.7 s** |
+| A/B harness: 4 agents | 15 s | **4.8 s** |
+| Mode 3 median incident | ~3.8 s | 3.8 s (small incidents: about equal) |
+
+Accuracy on 54 device windows (`training/export/gpu/eval_htpd.py`, `proofs/2026-10-16_htpd_accuracy`):
+| | pattern | status | cause | JSON valid | policy |
+|---|---|---|---|---|---|
+| Genie | 85.2 | 87.0 | 81.5 | 100 | 100 |
+| htpd v1 | 85.2 | 88.9 | 83.3 | 96.3 | 94.4 |
+| htpd final | **90.7** | **94.4** | **87.0** | **100** | **100** |
+
+n = 54, so differences of a few points are within noise. The 900-window rerun is still to do: the
+first attempt stopped on a one-off stall at 91 °C.
+
+App stress (`stress_app.py --only scenarios,chaos`): **132/135**; the 3 failures are thermal.
+
+**Heat:** htpd works the NPU harder. Chaos peaks reach 95 °C and the thermal guard trips on
+back-to-back chaos incidents. Use a heatsink or fan for the demo and in the field.
+A/B tables: `proofs/2026-10-16_htpd_ab/RESULTS.md`.
+
+## 2.38 Window length study; severity from the reasoner; report page (2026-10-16)
+
+### Window length
+The agents read a fixed window: 48 points × 5 min = 4 h (`engine.go` `Window`). We measured 2, 4, 8 and
+12 h windows with the same model on the QIDK NPU. 604 cases × 4 lengths = 2416 calls, ground truth
+from faults injected into real test-month windows. Script: `training/window_study/window_study.py`.
+Everything (cases, exact prompts, raw outputs, CIs, paired tests, plots) is in
+`proofs/2026-10-16_window_study/RESULTS.md`.
+- **4 h is best for this model.** Pattern 64%, status 70%, cause 68%. Every other length is
+  significantly worse on pattern accuracy (p < 0.0001); the model was trained on 4 h.
+- **Longer windows catch slow and old changes:** an old step (2.5–8 h ago) is detected 73% → 100% at
+  12 h, a drift over 6–12 h 83% → 93%. They are often misnamed, though, and false alarms on real calm
+  data rise from 27% to 46% at 12 h.
+- **Recurring small spikes are not caught by any length** (32–52%). The 12 h "gain" is mostly flatline
+  misreads.
+- **Cost:** 8 h = +18% per agent, 12 h = +32%.
+
+### Severity follows the reasoner
+- Before: severity was set once from the rules when the incident was created, so agents saying
+  "normal" still left the incident "critical".
+- Now `severity.go` `reasonerSeverity` fills `Report.severity` when the analysis completes.
+  - A valid `severity` from the reasoner wins.
+  - Otherwise it is the worst final agent status among the flagged sensors (critical > warning >
+    sensor_fault > normal).
+  - The incident takes that value, with `severity_final=true`. While it is running, the list shows
+    "ANALYSING".
+- The user's cross-domain reasoner replaces this stub.
+- Old stored incidents are back-filled on load.
+
+### Report page (`app/device/web`)
+- While running: the step timeline.
+- When done: one "Done in X s" line, then the flagged-sensor chips and the "seen, not flagged" chips.
+  A tap opens a floating sheet with the window chart and that agent's output.
+- Then the reasoner card (a placeholder while running), then the NPU agents, collapsed.
+- The list is colour-coded by final severity: red critical, amber warning, green FINE, purple FAULT.
+  Each also has a bar, a glyph and a label, so it doesn't rely on colour alone.
+- Screenshots: `proofs/2026-10-16_ux_report_page/`. App stress test on this build: 133/135, only the 2
+  thermal checks failed.
+
 ## 3. If something goes wrong
 
 **Golden rule: just run the same `train.ps1` command again.** It continues where it stopped: training resumes

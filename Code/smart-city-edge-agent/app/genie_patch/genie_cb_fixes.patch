@@ -1,0 +1,443 @@
+--- a/examples/Genie/Genie/src/Dialog.cpp
++++ b/examples/Genie/Genie/src/Dialog.cpp
+@@ -2037,6 +2037,14 @@
+       translateLongContextConfig(genieLongContextConfig, quallaLongContextConfig, reservedTokens);
+       quallaEngineConfig["longcontext"] = quallaLongContextConfig;
+     }
++    // [genie_patch F1] The dialog config validator accepts engine "batching" but
++    // the stock translator never copied it into the qualla engine config (only
++    // the GenieEngine path in Engine.cpp did). Without this a GenieDialog_create
++    // config silently gets max-slots=1, i.e. KV-swap time multiplexing instead
++    // of continuous batching.
++    if (genieEngineConfig.contains("batching")) {
++      quallaEngineConfig["batching"] = genieEngineConfig["batching"];
++    }
+     if (genieEngineConfig.contains("cache-groups")) {
+       quallaEngineConfig["cache-groups"] = genieEngineConfig["cache-groups"];
+       for (auto& item : quallaEngineConfig["cache-groups"]) {
+--- a/examples/Genie/Genie/src/qualla/engine.cpp
++++ b/examples/Genie/Genie/src/qualla/engine.cpp
+@@ -667,8 +667,25 @@
+     return;
+   }
+ 
++  // [genie_patch F4] Physical capacity of the shared KV pool. Non-scatter
++  // SmartMask keeps (ctx - AR) past columns per variant, so a position is only
++  // safe for every variant (and survives AR1 <-> AR-max reshapes) below
++  // max_ctx - ar_max; QnnNspModel::runInference also rejects new positions at
++  // or above ctx - AR for scatter caches, so the same bound is used there.
++  // NativeKV uses its own tile addressing: leave it unbounded (stock
++  // behaviour). "kv-capacity" in the batching JSON (applied below) overrides.
++  if (!cfg.native_kv && cfg.variants.max_ctx_size > 0) {
++    const uint32_t max_ctx = static_cast<uint32_t>(cfg.variants.max_ctx_size);
++    if (max_ctx > ar_max) cfg.kv_capacity = max_ctx - ar_max;
++  }
++
+   cfg.applyJson(getSchedulerJson());
+   m_scheduler = std::make_shared<InferenceScheduler>(getDispatchFn(), cfg);
++  __INFO("{}-engine: scheduler KV pool capacity {} positions (max ctx {}, ar_max {})",
++         _type,
++         cfg.kv_capacity,
++         cfg.variants.max_ctx_size,
++         ar_max);
+   __INFO("{}-engine: inference scheduler created: {} slot(s), ar_max={}",
+          _type,
+          cfg.max_slots,
+--- a/examples/Genie/Genie/src/qualla/engines/inference-scheduler.hpp
++++ b/examples/Genie/Genie/src/qualla/engines/inference-scheduler.hpp
+@@ -82,6 +82,12 @@
+     bool native_kv{false};  // NativeKV: at most one decode slot per batch
+     // Non-default sliding-window groups (empty for plain full-context models).
+     std::vector<WindowedGroupSpec> windowed_groups;
++    // [genie_patch F4] Physical capacity of the shared default-group KV pool:
++    // every position handed out must stay below this so it is addressable by
++    // EVERY graph variant a fused fire may pick (SmartMask non-scatter keeps
++    // ctx - AR past columns, so with AR128 at CL2048 only 1920 positions
++    // survive an AR1 -> AR128 reshape). 0 = unbounded (stock behaviour).
++    uint32_t kv_capacity{0};
+     // Diagnostics only. May be null (host tests).
+     std::shared_ptr<Env> env;
+ 
+@@ -90,6 +96,8 @@
+       if (j.contains("max-slots")) max_slots = j["max-slots"];
+       if (j.contains("mixed-prefill-decode")) mixed_prefill_decode = j["mixed-prefill-decode"];
+       if (j.contains("prefill-chunk-size")) prefill_chunk_size = j["prefill-chunk-size"];
++      // [genie_patch F4] optional override, mainly to test pool exhaustion.
++      if (j.contains("kv-capacity")) kv_capacity = j["kv-capacity"];
+       if (j.contains("coalesce-window-us"))
+         coalesce_window = std::chrono::microseconds(j["coalesce-window-us"].get<int>());
+     }
+@@ -326,6 +334,30 @@
+ 
+   void compactPool(uint32_t released_slot_idx, const std::vector<uint32_t>& freed_positions);
+ 
++  // [genie_patch F4] Shared free list for the default (full-context) group.
++  // Stock code returned a slot's freed positions to THAT slot's private free
++  // list, so with long-lived dialogs (reset per query, never released) the
++  // shared high-water mark grew to the SUM of every slot's peak length and was
++  // never reclaimed. Freed positions now go to one pool, sorted ascending, that
++  // any slot can reuse. Only used when m_max_slots > 1 and the slot has no SWA.
++  uint32_t m_kv_capacity{0};
++  std::vector<uint32_t> m_shared_free;  // sorted ascending, caller holds m_mutex
++  bool usesSharedFree(uint32_t s) const {
++    return m_max_slots > 1 && m_slot_kv[s].n_recent == 0;
++  }
++  void addSharedFree(const std::vector<uint32_t>& positions);  // caller holds m_mutex
++  // Fail one pending request with ContextLimitException without touching the
++  // other slots of the batch. Caller holds m_mutex.
++  void failPendingLocked(uint32_t s, const std::string& why);
++  // failPendingLocked + return all of the slot's KV positions to the shared
++  // pool right away (its dialog must be reset after a context-limit anyway).
++  void evictSlotLocked(uint32_t s, const std::string& why);
++  // Query age per slot: stamped when a request arrives on an empty slot. When
++  // the pool is full the YOUNGEST query is evicted first, so answers already
++  // in flight finish and the newest request gets the context-limit error.
++  std::vector<uint64_t> m_slot_epoch;
++  uint64_t m_epoch_ctr{0};
++
+   // Reset all windowed-group per-slot state for a slot, preserving each group's
+   // configured window budget (n_sink / n_recent).
+   void resetGroupKV(uint32_t slot_idx);
+--- a/examples/Genie/Genie/src/qualla/engines/inference-scheduler.cpp
++++ b/examples/Genie/Genie/src/qualla/engines/inference-scheduler.cpp
+@@ -10,11 +10,66 @@
+ #include <limits>
+ #include <stdexcept>
+ 
++#include "Exception.hpp"
+ #include "inference-scheduler.hpp"
+ #include "qualla/env.hpp"
+ 
+ namespace qualla {
+ 
++// [genie_patch F4] caller holds m_mutex
++void InferenceScheduler::addSharedFree(const std::vector<uint32_t>& positions) {
++  if (positions.empty()) return;
++  m_shared_free.insert(m_shared_free.end(), positions.begin(), positions.end());
++  std::sort(m_shared_free.begin(), m_shared_free.end());
++  m_shared_free.erase(std::unique(m_shared_free.begin(), m_shared_free.end()),
++                      m_shared_free.end());
++}
++
++// [genie_patch F4] caller holds m_mutex
++void InferenceScheduler::failPendingLocked(uint32_t s, const std::string& why) {
++  PendingReq& p = m_pending[s];
++  if (!p.has_pending) return;
++  try {
++    p.promise.set_exception(std::make_exception_ptr(genie::ContextLimitException(why)));
++  } catch (...) {
++  }
++  if (p.phase == SlotPhase::DECODE) --m_n_decode_pending;
++  if (p.phase == SlotPhase::PREFILL) --m_n_prefill_pending;
++  --m_n_pending;
++  p.has_pending = false;
++  p.tokens.clear();
++  p.embeddings.clear();
++  p.embedding_bytes_per_token = 0;
++  p.embeddings_perlayer.clear();
++  p.attention_map.clear();
++  p.consumed       = 0;
++  p.feature_vector = nullptr;
++  p.selected.clear();
++  p.eaglet_start_idx = 0;
++  p.post_update      = false;
++  // The dialog is about to unwind; stop counting it as an active decoder so the
++  // other slots' decode fires are not held back waiting for it (markSlotIdle
++  // from the dialog's scope guard is then a no-op).
++  if (m_slot_phase[s] == LifecyclePhase::DECODE) {
++    --m_n_decode_active;
++    m_slot_phase[s] = LifecyclePhase::UNDEFINED;
++  }
++}
++
++// [genie_patch F4] caller holds m_mutex; only called while no fire is in flight
++// (fireBatch runs on the single dispatch thread with the lock held).
++void InferenceScheduler::evictSlotLocked(uint32_t s, const std::string& why) {
++  failPendingLocked(s, why);
++  if (m_max_slots > 1 && m_slot_kv[s].n_recent == 0) {
++    addSharedFree(m_kv_indices[s]);
++    addSharedFree(m_slot_kv[s].free_idxes);
++    m_kv_indices[s].clear();
++    m_slot_kv[s].free_idxes.clear();
++    m_n_past[s] = 0;
++    m_slot_checkpoints[s].clear();
++  }
++}
++
+ InferenceScheduler::InferenceScheduler(DispatchFn dispatch_fn, const Config& cfg)
+     : m_dispatch_fn(std::move(dispatch_fn)),
+       m_variant_selector(cfg.variant_selector),
+@@ -57,6 +112,9 @@
+     m_prefill_chunk_size = 1;
+   }
+ 
++  m_kv_capacity = cfg.kv_capacity;  // [genie_patch F4]
++  m_slot_epoch.assign(cfg.max_slots, 0);
++
+   m_dispatch_thread = std::thread([this] { dispatchLoop(); });
+ }
+ 
+@@ -120,6 +178,12 @@
+ 
+     std::vector<uint32_t> freed_positions = m_kv_indices[s];
+ 
++    // [genie_patch F4] the slot's private free list holds positions below the
++    // high-water mark that nobody owns; stock code dropped them here (leaked
++    // until every slot was released). Hand them to the shared pool instead;
++    // compactPool() below remaps them together with the live positions.
++    if (m_max_slots > 1) addSharedFree(m_slot_kv[s].free_idxes);
++
+     m_slot_acquired[s]     = false;
+     m_slot_lora_adapter[s] = {};
+     m_slot_phase[s]        = LifecyclePhase::UNDEFINED;
+@@ -134,6 +198,7 @@
+ 
+     if (m_n_acquired == 0) {
+       m_kv_hwm.store(0, std::memory_order_release);
++      m_shared_free.clear();  // [genie_patch F4]
+     } else if (!freed_positions.empty() && m_compact_fn) {
+       compactPool(s, freed_positions);
+     }
+@@ -173,8 +238,14 @@
+   m_n_past[s] = n_past;
+   if (m_kv_indices[s].size() > static_cast<size_t>(n_past)) {
+     SlotKVState& kv = m_slot_kv[s];
+-    for (size_t i = n_past; i < m_kv_indices[s].size(); ++i)
+-      kv.free_idxes.push_back(m_kv_indices[s][i]);
++    if (usesSharedFree(s)) {
++      // [genie_patch F4] return truncated positions to the shared pool
++      addSharedFree(std::vector<uint32_t>(
++          m_kv_indices[s].begin() + static_cast<std::ptrdiff_t>(n_past), m_kv_indices[s].end()));
++    } else {
++      for (size_t i = n_past; i < m_kv_indices[s].size(); ++i)
++        kv.free_idxes.push_back(m_kv_indices[s][i]);
++    }
+     m_kv_indices[s].resize(static_cast<size_t>(n_past));
+     if (kv.n_recent > 0) {
+       const size_t n_sink_cur = kv.sink_idxes.size();
+@@ -438,6 +509,14 @@
+     }
+   }
+ 
++  // [genie_patch F4] shared-pool holes move down with everything else. The pool
++  // and the freed set are disjoint (freed = the released slot's live positions).
++  for (auto& p : m_shared_free) {
++    const uint32_t shift = static_cast<uint32_t>(
++        std::lower_bound(sorted_freed.begin(), sorted_freed.end(), p) - sorted_freed.begin());
++    p -= shift;
++  }
++
+   if (!old_pos.empty()) m_compact_fn(old_pos, new_pos);
+ 
+   const uint32_t old_hwm = m_kv_hwm.load(std::memory_order_acquire);
+@@ -479,6 +558,7 @@
+     m_slot_phase[s] = new_lc;
+   }
+ 
++  if (m_kv_indices[s].empty()) m_slot_epoch[s] = ++m_epoch_ctr;  // [genie_patch F4] query start
+   auto& req  = m_pending[s];
+   req.tokens = std::move(tokens);
+   req.embeddings.clear();
+@@ -535,6 +615,7 @@
+     m_slot_phase[s] = new_lc;
+   }
+ 
++  if (m_kv_indices[s].empty()) m_slot_epoch[s] = ++m_epoch_ctr;  // [genie_patch F4] query start
+   auto& req = m_pending[s];
+   req.tokens.clear();
+   req.embeddings                = std::move(embeddings);
+@@ -798,8 +879,90 @@
+ 
+   if (plan.empty()) return true;
+ 
++  // [genie_patch F4] Pool admission. Every default-group position must stay
++  // below m_kv_capacity (positions past it are not addressable by the widest AR
++  // variant and are silently dropped by SmartMask::reshapeCache, or trip the
++  // runInference overflow check, which used to fail EVERY slot in the batch).
++  // If this fire does not fit, evict the YOUNGEST query in the plan (its
++  // request fails alone with ContextLimitException, like a single-slot dialog
++  // hitting its context limit, and its positions return to the pool at once),
++  // and repeat until the rest fits. Answers already in flight therefore finish.
++  if (m_kv_capacity > 0 && m_max_slots > 1 && !m_native_kv) {
++    const uint32_t hwm_now = m_kv_hwm.load(std::memory_order_acquire);
++    std::vector<bool> victim(m_max_slots, false);
++    size_t freed_by_victims = 0;
++    auto fits = [&]() -> bool {
++      int64_t room = static_cast<int64_t>(m_kv_capacity) - static_cast<int64_t>(hwm_now);
++      size_t shared_avail = m_shared_free.size() + freed_by_victims;
++      for (const auto& pl : plan) {
++        if (victim[pl.s]) continue;
++        const uint32_t from_slot =
++            static_cast<uint32_t>(std::min<size_t>(m_slot_kv[pl.s].free_idxes.size(), pl.take));
++        uint32_t rem = pl.take - from_slot;
++        if (m_slot_kv[pl.s].n_recent == 0) {
++          const uint32_t from_sh = static_cast<uint32_t>(std::min<size_t>(shared_avail, rem));
++          shared_avail -= from_sh;
++          rem -= from_sh;
++        }
++        room -= static_cast<int64_t>(rem);
++      }
++      return room >= 0;
++    };
++    std::vector<uint32_t> evicted;
++    while (!fits()) {
++      // youngest non-SWA query still in the plan
++      int64_t pick = -1;
++      for (const auto& pl : plan) {
++        if (victim[pl.s] || m_slot_kv[pl.s].n_recent > 0) continue;
++        if (pick < 0 || m_slot_epoch[pl.s] > m_slot_epoch[static_cast<uint32_t>(pick)])
++          pick = pl.s;
++      }
++      if (pick < 0) break;  // only SWA slots left: let the stock path handle it
++      const uint32_t v = static_cast<uint32_t>(pick);
++      victim[v]        = true;
++      freed_by_victims += m_kv_indices[v].size() + m_slot_kv[v].free_idxes.size();
++      evicted.push_back(v);
++    }
++    if (!evicted.empty()) {
++      const std::shared_ptr<Env>& _env = m_env;  // name required by __WARN
++      for (uint32_t v : evicted) {
++        if (_env) {
++          __WARN(
++              "InferenceScheduler: KV pool full (capacity {}, hwm {}, shared free {}); evicting "
++              "youngest query on slot {} ({} positions) with context-limit",
++              m_kv_capacity,
++              hwm_now,
++              m_shared_free.size(),
++              v,
++              m_kv_indices[v].size());
++        }
++        evictSlotLocked(v, "Context Size was exceeded (shared KV pool full).");
++      }
++      std::vector<SlotPlan> kept;
++      for (const auto& pl : plan)
++        if (!victim[pl.s]) kept.push_back(pl);
++      plan = std::move(kept);
++      if (plan.empty()) return true;
++      // Re-pack the AR rows of the surviving slots.
++      ar_offset_ctr   = 0;
++      any_decode      = false;
++      any_final_chunk = false;
++      batch_adapter.clear();
++      for (auto& pl : plan) {
++        const PendingReq& p = m_pending[pl.s];
++        pl.ar_offset        = ar_offset_ctr;
++        ar_offset_ctr += pl.take;
++        if (p.phase == SlotPhase::DECODE) any_decode = true;
++        if (p.consumed + pl.take == p.total_tokens()) any_final_chunk = true;
++        if (batch_adapter.empty() && !p.lora_adapter.empty()) batch_adapter = p.lora_adapter;
++      }
++    }
++  }
++
+   struct SlotAllocation {
+-    uint32_t new_from_hwm{0};   // tokens allocated from HWM
++    uint32_t new_from_hwm{0};     // tokens allocated from HWM
++    uint32_t new_from_shared{0};  // [genie_patch F4] tokens recycled from m_shared_free
++    std::vector<uint32_t> shared_positions;  // [genie_patch F4] those positions
+     uint32_t new_from_free{0};  // tokens recycled from slot's SWA free list
+     uint32_t ar_offset{0};
+     std::vector<uint32_t> positions;  // final physical positions for all new tokens
+@@ -834,8 +997,18 @@
+ 
+     const uint32_t from_swa = static_cast<uint32_t>(std::min<size_t>(kv.free_idxes.size(), take));
+     alloc[i].new_from_free  = from_swa;
+-    alloc[i].new_from_hwm   = take - from_swa;
+-    total_from_hwm += take - from_swa;
++    // [genie_patch F4] then the lowest shared free positions, then fresh HWM.
++    uint32_t from_shared = 0;
++    if (usesSharedFree(s) && take > from_swa && !m_shared_free.empty()) {
++      from_shared = static_cast<uint32_t>(std::min<size_t>(m_shared_free.size(), take - from_swa));
++      alloc[i].shared_positions.assign(
++          m_shared_free.begin(), m_shared_free.begin() + static_cast<std::ptrdiff_t>(from_shared));
++      m_shared_free.erase(m_shared_free.begin(),
++                          m_shared_free.begin() + static_cast<std::ptrdiff_t>(from_shared));
++    }
++    alloc[i].new_from_shared = from_shared;
++    alloc[i].new_from_hwm    = take - from_swa - from_shared;
++    total_from_hwm += take - from_swa - from_shared;
+     alloc[i].positions.resize(take);
+ 
+     // Reserve windowed positions for each non-default sliding-window group.
+@@ -914,6 +1087,9 @@
+     kv.free_idxes.erase(
+         kv.free_idxes.begin(),
+         kv.free_idxes.begin() + static_cast<std::ptrdiff_t>(alloc[i].new_from_free));
++    for (uint32_t k = 0; k < alloc[i].new_from_shared; ++k) {  // [genie_patch F4]
++      alloc[i].positions[pos_idx++] = alloc[i].shared_positions[k];
++    }
+     for (uint32_t k = 0; k < alloc[i].new_from_hwm; ++k) {
+       alloc[i].positions[pos_idx++] = hwm_cursor++;
+     }
+@@ -1246,6 +1422,17 @@
+       m_slot_kv[s]          = std::move(snapshot[i].kv);
+       m_group_kv[s]         = std::move(snapshot[i].group_kv);
+       m_pending[s].consumed = snapshot[i].consumed;
++      // [genie_patch F4] give back the shared-pool positions this fire took
++      // (those dropped by a take-shrink already sit in the slot's free list).
++      if (!alloc[i].shared_positions.empty()) {
++        std::vector<uint32_t> back;
++        for (uint32_t p : alloc[i].positions) {
++          if (std::find(alloc[i].shared_positions.begin(), alloc[i].shared_positions.end(), p) !=
++              alloc[i].shared_positions.end())
++            back.push_back(p);
++        }
++        addSharedFree(back);
++      }
+     }
+     for (auto& slot : req.slots) {
+       try {
+--- a/examples/Genie/Genie/src/qualla/engines/qnn-htp.hpp
++++ b/examples/Genie/Genie/src/qualla/engines/qnn-htp.hpp
+@@ -245,7 +245,14 @@
+   virtual int32_t toPhysicalSlot(int32_t slot_idx) const override {
+     if (_params.shared_Engine && m_scheduler && slot_idx >= 0) {
+       if (m_scheduler->maxSlots() > 1) return slot_idx;
+-      return 0;  // Single-slot: all dialogs share physical slot 0 (KV-swap mode).
++      // Single-slot: all dialogs share physical slot 0 (KV-swap mode).
++      // [genie_patch F3] Only the dialog whose KV is currently swapped in owns
++      // physical slot 0. Stock code mapped EVERY dialog to slot 0, so e.g.
++      // Dialog::reset() of an idle dialog zeroed n_past/kv_indices of the dialog
++      // that was generating (its history vanished mid-answer). A dialog that is
++      // not the owner has no physical slot (-1 makes the scheduler calls no-ops);
++      // its state lives in its sidecar until swapSlotKV() brings it in.
++      return (slot_idx == m_active_slot_owner) ? 0 : -1;
+     }
+     return slot_idx;
+   }
+--- a/examples/Genie/Genie/src/qualla/engines/qnn-htp.cpp
++++ b/examples/Genie/Genie/src/qualla/engines/qnn-htp.cpp
+@@ -1334,6 +1334,15 @@
+     return;
+   }
+ 
++  // [genie_patch F3] KV-swap mode (shared engine, max-slots 1): slot_idx is a
++  // logical dialog id, not a scheduler slot. Drop the dialog's saved KV sidecar
++  // so its next query starts empty; stock code kept the sidecar forever, so the
++  // next swap-in restored the PREVIOUS query's KV under a fresh dialog n_past.
++  if (_params.shared_Engine && m_scheduler->maxSlots() <= 1) {
++    m_slot_kv_sidecars.erase(slot_idx);
++    return;
++  }
++
+   const auto kv_indices = m_scheduler->getSlotKVIndices(slot_idx);
+   if (kv_indices.empty()) return;
+ 
+--- a/examples/Genie/Genie/src/qualla/engines/qnn-htp/nsp-model.cpp
++++ b/examples/Genie/Genie/src/qualla/engines/qnn-htp/nsp-model.cpp
+@@ -7889,7 +7889,14 @@
+       const int32_t past_dim = step.ctx_size - step.variant;
+       // AR-c models have variant == ctx_size so past_dim == 0; the overflow
+       // check does not apply — skip it.
+-      if (past_dim > 0 && first_new_kv_idx + s.n_tokens() > static_cast<uint32_t>(past_dim)) {
++      // [genie_patch F5] With continuous batching a slot's new positions come
++      // from free lists and need not be contiguous or ascending, so bound the
++      // LARGEST new position, not first + n (which both missed real overflows
++      // and flagged false ones). Identical for the contiguous single-slot case.
++      uint32_t max_new_kv_idx = first_new_kv_idx;
++      for (size_t k = 0; k < s.n_tokens(); ++k)
++        max_new_kv_idx = std::max(max_new_kv_idx, s.kv_indices[s.n_past + k]);
++      if (past_dim > 0 && max_new_kv_idx + 1 > static_cast<uint32_t>(past_dim)) {
+         if (lcl_past_dim > 0) {
+           slot_kvs.push_back(
+               {s.ar_offset, static_cast<uint32_t>(lcl_past_dim), s.n_tokens(), {}, {}, {}});

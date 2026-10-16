@@ -288,6 +288,7 @@ func (r *Reasoner) checkReport(res GenieResult, prompt string, sensors []SensorR
 		return rc
 	}
 	var rep Report
+	js = dropNonStringSeverity(js, rc)
 	if err := json.Unmarshal([]byte(js), &rep); err != nil {
 		// 4-bit slip seen on the QIDK: a `]` that closes no array (`... [S1.E1]."]}`). Dropping brackets that
 		// match nothing changes only the syntax; every field is still validated below.
@@ -333,6 +334,16 @@ func (r *Reasoner) checkReport(res GenieResult, prompt string, sensors []SensorR
 		rc.Repairs = append(rc.Repairs, "affected_domains completed with abnormal flagged domains: "+strings.Join(added, ", "))
 	}
 	rep.RequiresHuman = true // structural: every report needs operator approval
+	// severity is optional (the prompt does not ask for it yet); a recognisable one is kept for
+	// reasonerSeverity, anything else is dropped rather than failing an otherwise sound report
+	if rep.Severity != "" {
+		if s := normSeverity(rep.Severity); s != "" {
+			rep.Severity = s
+		} else {
+			rc.Repairs = append(rc.Repairs, "unrecognised severity '"+rep.Severity+"' dropped")
+			rep.Severity = ""
+		}
+	}
 	rep.Label, rep.Action = normEnum(rep.Label), normEnum(rep.Action)
 	// documented aliases for generic wording of the same whitelisted action (report only)
 	if a, ok := map[string]string{"inspect": "request_facility_review", "investigate": "request_facility_review",
@@ -412,6 +423,27 @@ func (r *Reasoner) checkReport(res GenieResult, prompt string, sensors []SensorR
 	}
 	rc.Valid = len(rc.Errors) == 0
 	return rc
+}
+
+// dropNonStringSeverity removes a "severity" that is not a string (`"severity": 3`). Before the
+// Report had a severity field such a key was simply ignored; it must not now fail the whole report
+// with a JSON type error. Any other shape of output is returned unchanged.
+func dropNonStringSeverity(js string, rc *ReportCall) string {
+	var m map[string]json.RawMessage
+	if json.Unmarshal([]byte(js), &m) != nil {
+		return js
+	}
+	v, ok := m["severity"]
+	if !ok || string(v) == "null" || (len(v) > 0 && v[0] == '"') {
+		return js
+	}
+	delete(m, "severity")
+	b, err := json.Marshal(m)
+	if err != nil {
+		return js
+	}
+	rc.Repairs = append(rc.Repairs, "non-text severity dropped")
+	return string(b)
 }
 
 func trunc(s string, n int) string {

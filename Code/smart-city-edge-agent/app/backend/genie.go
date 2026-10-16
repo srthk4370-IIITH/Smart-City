@@ -352,6 +352,11 @@ func trace(f string, a ...any) {
 func (g *GenieRunner) exec(ctx context.Context, b ModelBundle, prompt, prefill string, timeout time.Duration, onToken func(string)) (string, streamStats, error) {
 	var st streamStats
 
+	// htpd mode: every NPU call goes to the batched llama.cpp engine; never spawn Genie next to it.
+	if htpdEnabled() && !g.mock {
+		return g.execViaHtpd(ctx, prompt, prefill, timeout, onToken)
+	}
+
 	// Fast path: a persistent dialog that has already paid the ~700 ms model init (genieclient.go).
 	// Only for the bundle the daemon was started against; anything else, or any failure, falls
 	// through to spawning the CLI below, which is exactly the behaviour we had before genied.

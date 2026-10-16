@@ -280,6 +280,10 @@ func (g *GenieRunner) Prefetch(ctx context.Context, b ModelBundle, prompts []str
 	g.queue.Add(-1)
 	g.busy.Store(true)
 	defer func() { g.lastEnd = time.Now(); g.busy.Store(false); g.mu.Unlock() }()
+	if htpdEnabled() {
+		g.prefetchViaHtpd(ctx, b, todo, at, onToken)
+		return
+	}
 	// Same spacing Run uses, and for the same reason - see the measurement table in genie.go.
 	// Re-measured 2026-10-14: the half-speed cliff this guarded against no longer reproduces on the
 	// fine-tuned bundle with async init, so this came down from 600 ms to 250 ms.

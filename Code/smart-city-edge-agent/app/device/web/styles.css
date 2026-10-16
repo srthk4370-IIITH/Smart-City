@@ -817,3 +817,92 @@ body.noscroll #main{content-visibility:hidden}
 /* shown while the on-device backend is unreachable (restarting after a crash or reboot) */
 #offline{position:fixed;left:12px;right:12px;top:calc(var(--st-top) + 8px);z-index:60;padding:10px 14px;border-radius:10px;
   background:#3a1608;color:#ffd9c7;border:1px solid var(--accent);font-size:13px;text-align:center}
+
+/* ============================================================================
+   Incident severity + report page (2026-10-16). Severity is the cross-domain reasoner's decision
+   (backend severity.go), shown as colour + glyph/dot + a text label, never colour alone. Tokens
+   follow the theme's status inks, which hold >= 5:1 on both card grounds. Running incidents are
+   neutral: their rule severity is only provisional.
+   ============================================================================ */
+:root{
+  --sev-critical:var(--crit); --sev-critical-b:var(--crit-b);
+  --sev-warning:var(--warn);  --sev-warning-b:var(--warn-b);
+  --sev-fine:var(--ok);       --sev-fine-b:var(--ok-b);
+  --sev-fault:var(--fault);   --sev-fault-b:var(--fault-b);
+  --sev-pending:var(--tx2);   --sev-pending-b:var(--fill2);
+}
+.sev-critical{--sv:var(--sev-critical);--svb:var(--sev-critical-b)}
+.sev-warning{--sv:var(--sev-warning);--svb:var(--sev-warning-b)}
+.sev-normal{--sv:var(--sev-fine);--svb:var(--sev-fine-b)}
+.sev-sensor_fault{--sv:var(--sev-fault);--svb:var(--sev-fault-b)}
+.sev-pending{--sv:var(--sev-pending);--svb:var(--sev-pending-b)}
+.sevtag{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;line-height:1;
+  color:var(--sv,var(--tx2));padding:5px 10px;border-radius:999px;border:1px solid color-mix(in srgb,var(--sv,var(--tx2)) 45%,transparent);white-space:nowrap;max-width:100%}
+.sdot{width:8px;height:8px;border-radius:50%;background:var(--svb,var(--fill2));flex:none}
+.sev-pending .sdot{background:transparent;border:1.5px dashed var(--tx2)}
+[data-theme="dark"] .sevtag{font-family:var(--mono);font-weight:500;font-size:11.5px;letter-spacing:.12em}
+/* incident list row: left edge bar in the severity colour */
+.icard.sevrow{padding-left:20px}
+.icard.sevrow::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:4px;border-radius:0 4px 4px 0;background:var(--svb)}
+.icard.sev-pending::before{background:repeating-linear-gradient(var(--fill2) 0 6px,transparent 6px 10px)}
+
+/* latency line that replaces the step timeline once the analysis is done */
+.donein{display:flex;align-items:baseline;gap:8px;margin:2px 4px 0;font-size:14px;color:var(--tx2)}
+.donein b{font-size:22px;font-weight:800;color:var(--tx);font-variant-numeric:tabular-nums}
+.donein.fail{color:var(--crit);align-items:center;font-weight:600}
+.donein.fail svg{width:16px;height:16px}
+[data-theme="dark"] .donein{font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;font-size:11.5px}
+[data-theme="dark"] .donein b{font-weight:500;font-size:20px;letter-spacing:.02em}
+
+/* flagged-sensor chips: titles only, tap for the floating sheet */
+.sec-h.sub{margin-top:14px;font-size:12px}
+.schips{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,150px),1fr));gap:8px}
+.schip{display:flex;align-items:center;gap:10px;min-height:52px;min-width:0;padding:8px 12px;border-radius:14px;background:var(--card);box-shadow:var(--shadow);
+  border:1px solid transparent;text-align:left;transition:transform .15s var(--ease)}
+.schip:active{transform:scale(.98)}
+.schip .sglyph{font-style:normal;font-size:14px;line-height:1;color:var(--cb);flex:none;width:14px;text-align:center}
+.schip.pend .sglyph{color:var(--tx2)}
+.schip.ctx{background:transparent;box-shadow:none;border:1px dashed var(--fill2)}
+.schip-t{display:flex;flex-direction:column;min-width:0}
+.schip-t b{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.schip-t span{font-size:12px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.schip-hint{margin:8px 4px 0;font-size:12.5px}
+[data-theme="dark"] .schip{background:#121110;box-shadow:none;border-color:rgba(255,236,214,.08);border-radius:12px}
+[data-theme="dark"] .schip.ctx{background:transparent;border:1px dashed rgba(255,236,214,.16)}
+[data-theme="dark"] .schip-t b{font-weight:500;font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+[data-theme="dark"] .schip-t span{font-size:10.5px}
+
+/* reasoner card: reserved while the agents work, so the page does not jump when it fills */
+.reasoner{position:relative;min-height:160px}
+.reasoner::before{content:"";position:absolute;left:0;top:18px;bottom:18px;width:3px;border-radius:0 3px 3px 0;background:var(--svb)}
+.reasoner.sev-pending::before{background:var(--fill2)}
+.rz-h{justify-content:space-between;margin-bottom:12px}
+.rz-wait{padding:14px 0 6px}
+.rz-wait b{display:block;font-size:15px;margin-bottom:4px}
+[data-theme="dark"] .rz-wait b{font-weight:500;letter-spacing:.1em;text-transform:uppercase;font-size:12px}
+
+/* collapsible sections (NPU agents, context agents, baseline, log) */
+.fold{margin-top:18px}
+.fold-h{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:44px;padding:0 4px;
+  font-size:13px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.06em;text-align:left}
+.fold-h .chev{width:8px;height:8px;border-right:2px solid var(--tx2);border-bottom:2px solid var(--tx2);transform:rotate(45deg);margin-right:6px;flex:none;transition:transform .25s var(--spring)}
+.fold-h[aria-expanded="true"] .chev{transform:rotate(-135deg)}
+.fold-bd{margin-top:6px}
+[data-theme="dark"] .fold-h{font-family:var(--mono);font-weight:500;letter-spacing:.14em;font-size:11.5px;border-top:1px solid var(--sep)}
+
+/* floating sensor sheet over the incident sheet: own backdrop (no blur), one-shot slide-in */
+.fs{position:fixed;inset:0;z-index:55;display:flex;align-items:flex-end;justify-content:center}
+.fs-back{position:absolute;inset:0;background:var(--scrim)}
+.fs-panel{position:relative;width:100%;max-width:640px;max-height:min(86vh,780px);display:flex;flex-direction:column;background:var(--bg);
+  border-radius:20px 20px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.3);padding-bottom:var(--st-bot);contain:layout paint;
+  transform:translateY(24px);opacity:0;transition:transform .22s var(--spring),opacity .18s var(--ease)}
+.fs.open .fs-panel{transform:none;opacity:1}
+.fs-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:52px;padding:4px 8px 4px 16px;border-bottom:.5px solid var(--sep);flex:none}
+.fs-t{font-weight:700;font-size:16px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fs-bd{overflow-y:auto;overscroll-behavior:contain;padding:12px 16px 22px;-webkit-overflow-scrolling:touch}
+.fs-cap{margin-top:6px}
+.fs-sec{margin-top:16px;padding-top:12px;border-top:1px solid var(--sep)}
+.fs-sec h3{font-size:15px}
+@media (min-width:700px){ .fs{align-items:center} .fs-panel{border-radius:20px} }
+[data-theme="dark"] .fs-panel{background:#121110;border:1px solid rgba(255,236,214,.08)}
+[data-theme="dark"] .fs-t{font-family:var(--mono);font-weight:500;letter-spacing:.1em;text-transform:uppercase;font-size:13px}

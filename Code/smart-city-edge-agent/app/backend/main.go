@@ -45,7 +45,12 @@ func main() {
 	genie := NewGenieRunner(*runtime, *dir, *mock)
 	// persistent Genie dialog (genieclient.go): pays model init once instead of on every call;
 	// absent or failed, every call falls back to the per-call CLI exactly as before
-	superviseDaemon(genie, *dir)
+	htpdWorkDir = *dir
+	if htpdEnabled() {
+		superviseHtpd(genie, *dir) // batched NPU engine; genied stays stopped (HANDBOOK 2.37)
+	} else {
+		superviseDaemon(genie, *dir)
+	}
 	hub := NewHub()
 	rsn := NewReasoner(genie, eng, *dir, hub.Publish)
 	rsn.Mode = *mode

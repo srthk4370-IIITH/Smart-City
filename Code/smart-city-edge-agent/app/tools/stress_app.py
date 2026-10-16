@@ -84,7 +84,7 @@ def device(cmd):
 
 def health(tag):
     _, st = req("/api/status")
-    procs = device("pgrep -x edge-agent >/dev/null && echo backend; pgrep -x genied >/dev/null && echo daemon")
+    procs = device("pgrep -x edge-agent >/dev/null && echo backend; (pgrep -x genied || pgrep -x htpd) >/dev/null && echo daemon")
     temp = device("cat /sys/class/thermal/thermal_zone*/temp | sort -rn | head -1")
     t = int(temp) // 1000 if temp.isdigit() else -1
     alive = isinstance(st, dict) and "backend" in procs

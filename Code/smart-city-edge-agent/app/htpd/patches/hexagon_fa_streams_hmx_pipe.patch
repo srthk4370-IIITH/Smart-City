@@ -1,0 +1,26 @@
+--- ggml/src/ggml-hexagon/ggml-hexagon.cpp	2026-10-15 14:02:43.996499948 +0000
++++ /mnt/c/Users/hp/gpu_work/llama.cpp/ggml/src/ggml-hexagon/ggml-hexagon.cpp	2026-10-16 06:24:29.579321400 +0000
+@@ -5334,7 +5334,10 @@
+         return false;
+     }
+ 
+-    if (dst->ne[3] != 1) {
++    // QIDK 2026-10-16: allow multi-stream (non-unified KV) attention. The HTP kernels already index
++    // q/k/v/mask/dst by dim 3 (iq3/ik3/iv3/im3/ib3); rejecting ne[3]>1 sent every per-stream
++    // attention to the CPU, which made -np N without --kv-unified slower than sequential.
++    if (dst->ne[3] != 1 && getenv("GGML_HEXAGON_FA_STREAMS") == nullptr) {
+         return false;
+     }
+ 
+@@ -5517,7 +5520,10 @@
+             m_for_solver_padded = hex_round_up(std::max(m_for_solver, 32), 32);
+         }
+     }
+-    const bool pipeline = is_matmul_id ? false : htp_mm_hmx_pipeline(m_for_solver);
++    // QIDK 2026-10-16: GGML_HEXAGON_HMX_PIPE_ALL=1 pipelines small-M (decode-sized) HMX matmuls too, so
++    // the next weight DMA overlaps dequant + HMX instead of running one after another (same math).
++    static const bool hmx_pipe_all = getenv("GGML_HEXAGON_HMX_PIPE_ALL") != nullptr;
++    const bool pipeline = is_matmul_id ? false : (hmx_pipe_all ? m_for_solver > 0 : htp_mm_hmx_pipeline(m_for_solver));
+ 
+     const bool is_batched_val = is_matmul_id ? false : is_batched;
+     const int group_size = (ne02 > 0 ? ne12 / ne02 : 1);

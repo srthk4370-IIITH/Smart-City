@@ -301,7 +301,8 @@ func (s *Server) routes() http.Handler {
 			if i.Final != nil && i.Final.Parsed != nil {
 				lab = i.Final.Parsed.Label
 			}
-			out = append(out, map[string]any{"id": i.ID, "state": i.State, "severity": i.Severity, "title": i.Title, "mode": i.Mode,
+			out = append(out, map[string]any{"id": i.ID, "state": i.State, "severity": i.Severity, "severity_final": i.SeverityFinal,
+				"title": i.Title, "mode": i.Mode,
 				"created_sim": i.CreatedSim, "created_sim_ist": time.Unix(i.CreatedSim, 0).In(IST).Format("Mon 15:04"),
 				"created_wall": i.CreatedWall, "roles": i.Roles, "injected": i.Injected, "label": lab, "approval": i.Approval,
 				"npu_calls": i.NPUCalls, "total_ms": i.TotalMs})

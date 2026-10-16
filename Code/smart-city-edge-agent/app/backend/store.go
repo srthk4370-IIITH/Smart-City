@@ -66,6 +66,7 @@ func (r *Reasoner) load() {
 		if inc.State == "running" {
 			inc.State = "failed" // the process died mid-analysis; the operator can rerun it
 		}
+		backfillSeverity(&inc) // stored before the reasoner decided severity (severity.go)
 		c := inc
 		last[inc.ID] = &c
 		if n := incNum(inc.ID); n > r.seq {

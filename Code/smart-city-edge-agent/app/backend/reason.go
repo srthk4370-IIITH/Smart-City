@@ -32,6 +32,9 @@ type Report struct {
 	Action          string   `json:"action"`
 	Explanation     string   `json:"explanation"`
 	RequiresHuman   bool     `json:"requires_human_approval"`
+	// critical | warning | normal (shown as "fine") | sensor_fault, decided by the cross-domain
+	// reasoner (severity.go), not by the rule that opened the incident
+	Severity string `json:"severity"`
 }
 
 type SensorRef struct {
@@ -94,24 +97,25 @@ type TimelineItem struct {
 }
 
 type Incident struct {
-	ID           string         `json:"id"`
-	Mode         int            `json:"mode"`
-	State        string         `json:"state"` // running | done | failed
-	CreatedSim   int64          `json:"created_sim"`
-	CreatedWall  string         `json:"created_wall"`
-	Severity     string         `json:"severity"`
-	Title        string         `json:"title"`
-	Roles        []string       `json:"roles"`
-	Injected     bool           `json:"injected"`
-	Sensors      []SensorRef    `json:"sensors"`
-	Mode1        Report         `json:"mode1_report"`
-	Agents       []AgentCall    `json:"agents"`
-	Final        *ReportCall    `json:"final"`
-	TotalMs      float64        `json:"total_ms"`
-	NPUCalls     int            `json:"npu_calls"`
-	Timeline     []TimelineItem `json:"timeline"`
-	Approval     string         `json:"approval"` // pending | approved | dismissed
-	ApprovalNote string         `json:"approval_note"`
+	ID            string         `json:"id"`
+	Mode          int            `json:"mode"`
+	State         string         `json:"state"` // running | done | failed
+	CreatedSim    int64          `json:"created_sim"`
+	CreatedWall   string         `json:"created_wall"`
+	Severity      string         `json:"severity"`       // rule severity (provisional) until SeverityFinal
+	SeverityFinal bool           `json:"severity_final"` // set once the reasoner has decided (severity.go)
+	Title         string         `json:"title"`
+	Roles         []string       `json:"roles"`
+	Injected      bool           `json:"injected"`
+	Sensors       []SensorRef    `json:"sensors"`
+	Mode1         Report         `json:"mode1_report"`
+	Agents        []AgentCall    `json:"agents"`
+	Final         *ReportCall    `json:"final"`
+	TotalMs       float64        `json:"total_ms"`
+	NPUCalls      int            `json:"npu_calls"`
+	Timeline      []TimelineItem `json:"timeline"`
+	Approval      string         `json:"approval"` // pending | approved | dismissed
+	ApprovalNote  string         `json:"approval_note"`
 }
 
 type Reasoner struct {
@@ -619,6 +623,7 @@ func (r *Reasoner) Process(cands []Candidate, mode int) *Incident {
 	inc.TotalMs = float64(time.Since(t0).Milliseconds())
 	inc.State = "done"
 	surfaceDisagreements(inc)
+	finaliseSeverity(inc) // from here the displayed severity is the reasoner's, not the rules'
 	if mode != 1 && (inc.Final == nil || !inc.Final.Valid) {
 		inc.State = "done_with_errors"
 	}
@@ -727,7 +732,8 @@ func mode1Report(sensors []SensorRef) Report {
 		parts = append(parts, fmt.Sprintf("%s %s %s (%s)", x.Node, x.Metric, strings.ReplaceAll(x.Rule.Pattern, "_", " "), x.Rule.Status))
 	}
 	return Report{RootCause: "Rule engine: " + strings.Join(parts, "; "), Label: lab, AffectedDomains: doms, Evidence: ev,
-		Confidence: s.Rule.Confidence, Action: s.Rule.Action, Explanation: strings.Join(s.Rule.Observations, " "), RequiresHuman: true}
+		Confidence: s.Rule.Confidence, Action: s.Rule.Action, Explanation: strings.Join(s.Rule.Observations, " "), RequiresHuman: true,
+		Severity: ruleSeverity(sensors)}
 }
 
 // ------------------------------------------------------------- prompts for Mode 2 / synthesizer (base model)

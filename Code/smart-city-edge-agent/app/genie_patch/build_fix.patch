@@ -1,0 +1,36 @@
+--- a/examples/Genie/Genie/make/Android.mk
++++ b/examples/Genie/Genie/make/Android.mk
+@@ -11,7 +11,9 @@
+ 
+ #============================ Verify Target Info and Application Variables =========================================
+ ifneq ($(filter $(TARGET_ARCH_ABI),$(SUPPORTED_TARGET_ABI)),)
+-    ifneq ($(APP_STL), c++_shared)
++    # [genie_patch] also allow c++_static: the stock QAIRT libGenie.so links libc++
++    # statically (its NEEDED list has no libc++_shared.so).
++    ifeq ($(filter c++_shared c++_static,$(APP_STL)),)
+         $(error Unsupported APP_STL: "$(APP_STL)")
+     endif
+ else
+@@ -28,6 +30,9 @@
+ PACKAGE_C_INCLUDES += -I $(LOCAL_PATH)/../../../../include/QNN/HTP
+ PACKAGE_C_INCLUDES += -I $(LOCAL_PATH)/../src/qualla/tokenizers
+ PACKAGE_C_INCLUDES += -I $(LOCAL_PATH)/../src/qualla/MmappedFile/include
++# [genie_patch] missing in the 2.50 sample Android.mk (CMakeLists.txt has it):
++# nsp-base-model.hpp / qnn-htp.hpp include "inference-types.hpp" from here.
++PACKAGE_C_INCLUDES += -I $(LOCAL_PATH)/../src/qualla/engines
+ PACKAGE_C_INCLUDES += -I $(LOCAL_PATH)/../src/qualla/engines/qnn-api
+ PACKAGE_C_INCLUDES += -I $(LOCAL_PATH)/../src/qualla/engines/qnn-api/buffer
+ PACKAGE_C_INCLUDES += -I $(LOCAL_PATH)/../src/qualla/engines/qnn-api/config
+@@ -63,6 +68,12 @@
+ MY_SRC_FILES                   += $(wildcard $(LOCAL_PATH)/../src/qualla/adaptors/*.cpp)
+ MY_SRC_FILES                   += $(wildcard $(LOCAL_PATH)/../src/qualla/dialogs/*.cpp)
+ MY_SRC_FILES                   += $(wildcard $(LOCAL_PATH)/../src/qualla/encoders/text-encoders/*.cpp)
++# [genie_patch] present in CMakeLists.txt (GLOB_RECURSE src/*.cpp) but missing here;
++# without them libGenie.so does not link (ModalityEncoder etc. undefined).
++MY_SRC_FILES                   += $(wildcard $(LOCAL_PATH)/../src/qualla/encoders/*.cpp)
++MY_SRC_FILES                   += $(wildcard $(LOCAL_PATH)/../src/qualla/encoders/audio-encoders/*.cpp)
++MY_SRC_FILES                   += $(wildcard $(LOCAL_PATH)/../src/qualla/decoders/image-decoders/*.cpp)
++MY_SRC_FILES                   += $(wildcard $(LOCAL_PATH)/../src/qualla/embeddings/*.cpp)
+ MY_SRC_FILES                   += $(wildcard $(LOCAL_PATH)/../src/qualla/encoders/image-encoders/*.cpp)
+ MY_SRC_FILES                   += $(wildcard $(LOCAL_PATH)/../src/qualla/encoder-decoder/*.cpp)
+ MY_SRC_FILES                   += $(wildcard $(LOCAL_PATH)/../src/qualla/diffusion-scheduler/*.cpp)

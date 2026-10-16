@@ -1,0 +1,25 @@
+UX report page + reasoner severity - laptop verification, 2026-10-16
+=====================================================================
+How: host backend (device/edge-agent-host, built by ~/bld.sh) run in WSL with -mock (fake LLM answers,
+no device touched), -dir = scratch copy of device/state (31 stored incidents from 2026-10-06), web/
+symlinked to app/device/web. Headless Chrome driven over CDP (scratchpad shoot.mjs), viewport
+360x780 @2x (phone width), dark theme unless noted. checks.json = DOM/a11y/overflow assertions.
+
+Real data (no rewrite):
+  01_list_real_data            list coloured by backfilled reasoner severity (mock agents say normal ->
+                               old "critical" incidents now FINE; e.g. INC-0031 critical -> normal)
+  03/04_done_detail_*          completed incident: no step timeline, "Done in 2.4 s", flagged chips,
+                               seen-not-flagged hollow chips, reasoner card, compare, folds collapsed
+  05/06_sensor_sheet*          floating sheet: frozen agent window chart + agent output + rule view
+  07_context_sensor_sheet      related (not flagged) sensor sheet
+  08_npu_agents_expanded       "NPU agents (n)" fold opened
+  12_light_done_detail         light theme sanity
+Synthetic (API JSON rewritten in the page by a fetch interceptor, for states the mock cannot hold):
+  02_list_all_severities_synthetic   one row each: critical / warning / fine / fault / analysing / interrupted
+  09/10_running_detail_*       same incident rewritten as mid-analysis (1 of 3 agents answered, no report)
+  11_running_sensor_sheet      sheet of a sensor whose agent has not answered
+Checks (checks.json): documentElement.scrollWidth == 360 on every screen (no horizontal scroll),
+no element past the right edge, focus moves to sheet close button on open and back to the chip on
+close, history.back() (Android WebView goBack) closes the sheet and leaves the incident open,
+backdrop tap closes it, no console errors/exceptions.
+NOT verified here: the real NPU path / timing on the QIDK, the Android WebView itself.

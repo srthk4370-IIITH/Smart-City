@@ -127,7 +127,7 @@ const S = {
   status: null, live: null, topo: null, incs: [], incId: null, incText: '', inc: null,
   view: 'sensors', sensorMap: new Map(), drawer: null, open: new Set(), draft: {}, sse: false,
   pendingNewest: null, lastLiveEv: 0, lastLive: 0, lastStatus: 0, lastDrawer: 0, lastIncList: 0,
-  filter: 'all', incFilter: 'all', stream: {}, cardStream: {}, autoOpened: {}, trkPct: {}, modeTimer: 0,
+  filter: 'all', incFilter: 'all', stream: {}, cardStream: {}, autoOpened: {}, trkPct: {}, modeTimer: 0, fold: {},
 };
 
 /* ============================== theme + segmented ============================== */
@@ -479,7 +479,7 @@ function closeSheet(id) {
   const s = $('#' + id); if (!s.classList.contains('open')) return;
   s.classList.remove('open'); s.setAttribute('aria-hidden', 'true');
   if (id === 'sheet') S.drawer = null;
-  if (id === 'isheet') { S.incId = null; S.inc = null; S.incText = ''; }
+  if (id === 'isheet') { closeSensorSheet(); S.incId = null; S.inc = null; S.incText = ''; }
   if (!$('.sheet.open')) { $('#scrim').classList.remove('on'); document.body.classList.remove('noscroll'); }
   hidePop(true);
 }
@@ -496,10 +496,10 @@ function pathOf(pts, X, Y, gap) {
   for (const p of pts) { d += (prev == null || p[0] - prev > gap ? 'M' : 'L') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1); prev = p[0]; }
   return d;
 }
-function renderBigChart(box, s, hours, occ) {
+function renderBigChart(box, s, hours, occ, height) { // height: optional, for the compact incident sensor sheet
   const pts = s.points || [];
   if (pts.length < 2) { box.replaceChildren(h('div', { class: 'empty', text: 'Not enough data in the last ' + hours + ' h to draw a chart yet.' })); return; }
-  const W = Math.max(320, Math.min(860, box.clientWidth - 12 || 860)), H2 = W < 600 ? 290 : 360, L = W < 600 ? 50 : 62, R = 12, T = 14, B = 32;
+  const W = Math.max(320, Math.min(860, box.clientWidth - 12 || 860)), H2 = height || (W < 600 ? 290 : 360), L = W < 600 ? 50 : 62, R = 12, T = 14, B = 32;
   const t1 = pts[pts.length - 1][0], t0 = t1 - hours * 3600;
   const all = pts.map((p) => p[1]).concat((s.bollinger_upper || []).map((p) => p[1]), (s.bollinger_lower || []).map((p) => p[1]));
   let mn = Math.min(...all), mx = Math.max(...all);
@@ -550,9 +550,9 @@ function renderBigChart(box, s, hours, occ) {
   const sw = (c, extra) => h('i', { style: 'border-color:var(' + c + ');' + (extra || '') });
   const legend = h('div', { class: 'legend' },
     h('span', {}, sw('--tx'), 'raw'),
-    occ ? null : h('span', {}, sw('--blue'), 'SMA 1 h'),
-    occ ? null : h('span', {}, sw('--accent', 'border-top-style:dashed'), 'EMA 1 h'),
-    occ ? null : h('span', {}, h('i', { class: 'band' }), 'Bollinger band'),
+    occ || !(s.sma_1h || []).length ? null : h('span', {}, sw('--blue'), 'SMA 1 h'), // a frozen agent window carries raw points only
+    occ || !(s.ema_1h || []).length ? null : h('span', {}, sw('--accent', 'border-top-style:dashed'), 'EMA 1 h'),
+    occ || !up.length ? null : h('span', {}, h('i', { class: 'band' }), 'Bollinger band'),
     lim ? h('span', {}, sw('--warn-b', 'border-top-style:dashed'), 'warning') : null,
     lim ? h('span', {}, sw('--crit-b', 'border-top-style:dotted'), 'critical') : null);
   const tip = h('div', { class: 'tip', hidden: true });
@@ -744,14 +744,15 @@ function renderIncList() {
     if (e.sig !== sig) {
       e.sig = sig;
       const rr = primaryRole(i.roles);
-      setCls(e.root, 'icard ' + stClass(i.severity));
+      // coloured by the reasoner's severity; neutral while analysing (sevOf)
+      setCls(e.root, 'icard sevrow sev-' + sevOf(i).k);
       const running = i.state === 'running';
       fill(e.root,
         h('div', { class: 'top' },
           h('div', { class: 'dico', style: '--cb:' + (ROLE_COLOR[(i.roles || []).length > 1 ? 'multi' : rr] || ROLE_COLOR.multi) }, icon((i.roles || []).length > 1 ? 'multi' : rr)),
           h('div', { style: 'min-width:0;flex:1' },
             h('div', { class: 'ttl', text: i.title }),
-            h('div', { class: 'sub' }, pill(i.severity), h('span', { class: 'pill ghost', text: 'Mode ' + i.mode }),
+            h('div', { class: 'sub' }, sevTag(i), h('span', { class: 'pill ghost', text: 'Mode ' + i.mode }),
               running ? h('span', { class: 'livepill', text: 'LIVE' }) : null,
               h('span', { class: 'chip', text: nice(i.label) }), multiFlag(i)))),
         running ? h('div', { class: 'prog' }) : null,
@@ -911,6 +912,174 @@ function renderIncFoot(inc) {
       h('button', { class: 'btn primary', type: 'button', disabled: running || inc.state === 'failed' ? true : null, text: 'Approve', onclick: () => act('approve') })));
 }
 
+/* ----- severity: decided by the cross-domain reasoner (backend severity.go) -----
+   The severity an incident opens with is the rule engine's and only provisional; the agents often
+   disagree. So nothing is coloured until the analysis has finished and the reasoner has decided:
+   a running incident reads as neutral "analysing", never as a red alarm that later turns out fine. */
+const SEV_LABEL = { critical: 'Critical', warning: 'Warning', normal: 'Fine', info: 'Fine', sensor_fault: 'Fault' };
+function sevOf(i) {
+  if (i.state === 'running') return { k: 'pending', t: 'Analysing' };
+  if (i.state === 'failed') return { k: 'pending', t: 'Interrupted' };
+  if (!SEV_LABEL[i.severity]) return { k: 'pending', t: nice(i.severity) };
+  return { k: i.severity === 'info' ? 'normal' : i.severity, t: SEV_LABEL[i.severity] };
+}
+function sevTag(i) {
+  const v = sevOf(i);
+  return h('span', { class: 'sevtag sev-' + v.k, title: v.k === 'pending' ? 'Severity is decided by the cross-domain reasoner when the analysis finishes' : 'Severity decided by the cross-domain reasoner' },
+    h('i', { class: 'sdot', 'aria-hidden': 'true' }), v.t);
+}
+
+/* ----- flagged-sensor chips + floating sensor sheet ----- */
+const METRIC_NAME = { co2: 'CO2', pm25: 'PM2.5', pm10: 'PM10', temp: 'Temperature', rh: 'Humidity', level: 'Tank level', flow: 'Flow',
+  tds: 'TDS', ph: 'pH', power_kw: 'Power', pf: 'Power factor', wind: 'Wind speed', occ: 'Occupancy', ac_units_on: 'AC units on' };
+const CTX_GLYPH = { normal: '○', warning: '△', critical: '□', sensor_fault: '◇' }; // hollow: seen, not flagged
+// What this sensor's final finding is: its agent's (when it passed the policy gate), else the rule
+// finding the report fell back to. Mode 1 and 2 have no per-sensor agents.
+function sensorVerdict(inc, s) {
+  const a = (inc.agents || []).find((x) => x.ref === s.ref) || null, rf = s.rule_finding || {};
+  if (a && a.parsed && a.valid) return { st: a.parsed.status, a, f: a.parsed };
+  if (a) return { st: rf.status, a, f: null };
+  // related sensors are only seen (most get a CPU context agent at the end): show their rule view meanwhile
+  if (inc.state === 'running' && inc.mode !== 1 && !s.context) return { st: 'pending', a: null, f: null };
+  return { st: rf.status, a: null, f: null };
+}
+function sensorChip(inc, s) {
+  const v = sensorVerdict(inc, s), name = METRIC_NAME[s.metric] || nice(s.metric), pend = v.st === 'pending';
+  const glyph = pend ? '◌' : s.context ? (CTX_GLYPH[v.st] || '○') : (STATUS_GLYPH[v.st] || '○');
+  const said = pend ? 'waiting for its agent' : (STATUS_LABEL[v.st] || nice(v.st));
+  return h('button', { type: 'button', class: 'schip ' + stClass(pend ? 'none' : v.st) + (s.context ? ' ctx' : '') + (pend ? ' pend' : ''), 'data-ref': s.ref,
+    'aria-haspopup': 'dialog', 'aria-label': name + ', ' + (s.location || s.node) + (s.context ? ', related, not flagged' : '') + ': ' + said + '. Open details',
+    onclick: (e) => openSensorSheet(inc.id, s.ref, e.currentTarget) },
+  h('i', { class: 'sglyph', 'aria-hidden': 'true', text: glyph }),
+  h('span', { class: 'schip-t' }, h('b', { text: name }), h('span', { text: s.location || s.node })));
+}
+const FS = { inc: null, ref: null, opener: null, sig: '' };
+function openSensorSheet(incId, ref, opener) {
+  const fs = $('#fs'), was = !fs.hidden;
+  FS.inc = incId; FS.ref = ref; FS.opener = opener || document.activeElement; FS.sig = '';
+  fs.hidden = false;
+  // Android back (WebView goBack) closes the sheet instead of leaving the tab
+  if (!was) { try { history.pushState({ fs: 1 }, ''); } catch (e) { /* ignore */ } }
+  renderSensorSheet(true);
+  requestAnimationFrame(() => fs.classList.add('open'));
+  $('#fs-x').focus();
+}
+function closeSensorSheet(fromHistory) {
+  const fs = $('#fs'); if (fs.hidden) return;
+  fs.classList.remove('open'); fs.hidden = true;
+  const op = FS.opener, ref = FS.ref;
+  FS.inc = FS.ref = FS.opener = null; FS.sig = '';
+  hidePop(true);
+  if (!fromHistory && history.state && history.state.fs) { try { history.back(); } catch (e) { /* ignore */ } }
+  // the chips are rebuilt on every refresh: hand focus back to the current chip for that sensor
+  const back = op && op.isConnected ? op : ref && $('#inc-detail .schip[data-ref="' + ref + '"]');
+  if (back && $('#isheet').classList.contains('open')) back.focus();
+}
+function trapFocus(e) {
+  if (e.key !== 'Tab') return;
+  const f = $$('#fs button, #fs summary, #fs [tabindex="0"]').filter((x) => x.offsetParent !== null);
+  if (!f.length) return;
+  const first = f[0], last = f[f.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+}
+function renderSensorSheet(force) {
+  const inc = S.inc; if (!FS.ref) return;
+  if (!inc || inc.id !== FS.inc) { closeSensorSheet(); return; }
+  const s = (inc.sensors || []).find((x) => x.ref === FS.ref); if (!s) return;
+  const v = sensorVerdict(inc, s), a = v.a, p = v.f, rf = s.rule_finding;
+  const sig = JSON.stringify([v.st, a && a.raw, a && a.valid, inc.state]);
+  if (!force && sig === FS.sig) return;
+  FS.sig = sig;
+  const bd = $('#fs-bd'), sc = bd.scrollTop;
+  const name = METRIC_NAME[s.metric] || nice(s.metric), occ = s.role === 'occupancy', n = (s.window || []).length;
+  const pts = (s.window || []).map((x, i) => [(s.window_end || 0) - (n - 1 - i) * 300, x]);
+  setText($('#fs-t'), s.ref + ' · ' + name);
+  const kv = (rows) => h('dl', { class: 'kv', style: 'margin-top:10px' }, rows.map(([k, val]) => [h('dt', { text: k }), h('dd', { text: val })]));
+  const patChip = (f) => h('span', { class: 'chip', html: patIcon(f.pattern) + esc(nice(f.pattern)) });
+  const chart = h('div', { class: 'fs-chart' });
+  const out = [
+    h('div', { class: 'rep-h' }, v.st === 'pending' ? h('span', { class: 'pill ghost', text: 'Waiting for its agent' }) : pill(v.st),
+      s.context ? h('span', { class: 'pill ghost', text: 'Seen · not flagged' }) : null),
+    h('p', { class: 'muted', style: 'margin:6px 0 10px', text: s.node + ' · ' + (s.location || '-') }),
+    s.why ? h('div', { class: 'banner', style: 'margin-bottom:10px;font-weight:500;font-size:13.5px;padding:8px 12px' }, icon('info', 20), h('span', { text: 'Checked because: ' + s.why })) : null,
+    chart,
+    h('p', { class: 'muted fs-cap', text: n ? 'The window its agent read: ' + n + ' readings, ' + hm(pts[0][0]) + ' → ' + hm(pts[n - 1][0]) + ' IST' : 'No window stored for this sensor.' }),
+  ];
+  const ctxA = a && isCtxAgent(a);
+  const who = ctxA ? 'Context agent (rules, CPU)' : a ? (roleTitle[s.role] || nice(s.role)) + ' agent (NPU)' : inc.mode === 3 ? (roleTitle[s.role] || nice(s.role)) + ' agent' : 'Agent';
+  const sec = h('div', { class: 'fs-sec' }, h('h3', { text: who + ' says' }));
+  if (p) {
+    sec.append(h('div', { class: 'rep-h', style: 'margin-top:8px' }, pill(p.status), patChip(p)),
+      kv([['Likely cause', nice(p.likely_cause)], ['Confidence', pct(p.confidence)], ['Action', nice(p.action)]]),
+      h('ul', { class: 'obs' }, (p.observations || []).map((o) => h('li', {}, evChipsInText(o, s.evidence)))));
+    if (!ctxA) sec.append(h('div', { style: 'margin-top:10px' }, gate(a.valid, a.errors)), statChips(a));
+  } else if (a) sec.append(h('div', { style: 'margin-top:8px' }, gate(a.valid, a.errors)), h('p', { class: 'muted', style: 'margin-top:8px', text: 'Its output was rejected, so the rule finding below stands for this sensor.' }));
+  else if (v.st === 'pending') sec.append(h('p', { class: 'muted', style: 'margin-top:6px', text: inc.mode === 2 ? 'Single mode reads every sensor in one call; the result appears in the reasoner card.' : 'This agent has not answered yet. Its output appears here when it does.' }));
+  else sec.append(h('p', { class: 'muted', style: 'margin-top:6px', text: inc.mode === 1 ? 'Rules mode: no AI agent ran. The rule finding is below.' : inc.mode === 2 ? 'Single mode reads every sensor in one call, so there is no per-sensor agent.' : 'No agent output stored for this sensor.' }));
+  out.push(sec);
+  // the rule that raised the alarm, whenever there is no agent finding or the agent sees it differently
+  if (rf && (!p || p.status !== rf.status || p.pattern !== rf.pattern)) {
+    out.push(h('div', { class: 'fs-sec' }, h('h3', { text: p ? 'Rule engine said (raised the alarm)' : 'Rule finding' }),
+      h('div', { class: 'rep-h', style: 'margin-top:8px' }, pill(rf.status), patChip(rf)),
+      kv([['Likely cause', nice(rf.likely_cause)], ['Action', nice(rf.action)]]),
+      p ? null : h('ul', { class: 'obs' }, (rf.observations || []).map((o) => h('li', {}, evChipsInText(o, s.evidence))))));
+  }
+  const ek = inc.id + ':' + s.ref + ':ev';
+  out.push(h('details', { open: S.open.has(ek) ? true : null, ontoggle: (e) => { e.target.open ? S.open.add(ek) : S.open.delete(ek); } },
+    h('summary', { text: 'Evidence ' + s.ref + '.E1..E' + (s.evidence || []).length }),
+    h('ul', { class: 'evlist', style: 'padding:6px 16px 10px' }, (s.evidence || []).map((e) => h('li', {}, h('b', { text: e.ID }), h('span', { text: e.Text }))))));
+  bd.replaceChildren(...out.filter(Boolean));
+  renderBigChart(chart, { points: pts, metric: name }, 4, occ, 210);
+  bd.scrollTop = sc;
+}
+
+/* ----- detail page pieces ----- */
+// One collapsible section. Open state is remembered only once the operator has toggled it, so a
+// section can default open while the incident runs and closed once it is done.
+function fold(k, title, defOpen, ...kids) {
+  const open = k in S.fold ? S.fold[k] : defOpen, id = 'fold-' + k.replace(/[^\w-]/g, '_');
+  const bd = h('div', { class: 'fold-bd', id, hidden: open ? null : true }, kids);
+  const btn = h('button', { type: 'button', class: 'fold-h', 'aria-expanded': open ? 'true' : 'false', 'aria-controls': id,
+    onclick: () => { const o = btn.getAttribute('aria-expanded') !== 'true'; S.fold[k] = o; btn.setAttribute('aria-expanded', o ? 'true' : 'false'); bd.hidden = !o; } },
+  h('span', { text: title }), h('i', { class: 'chev', 'aria-hidden': 'true' }));
+  return h('div', { class: 'fold' }, btn, bd);
+}
+// After the analysis the step timeline has nothing left to say; only the latency stays.
+function doneLine(inc) {
+  if (inc.state === 'failed') return h('div', { class: 'donein fail' }, icon('alert', 16), h('span', { text: 'Interrupted: the app restarted mid-analysis. Rerun it below.' }));
+  const el = elapsedOf(inc);
+  return h('div', { class: 'donein' }, h('span', { text: 'Done in' }), h('b', { text: el == null ? '-' : el.toFixed(1) + ' s' }));
+}
+function reasonerCard(inc) {
+  const f = inc.final, running = inc.state === 'running', fast = !!(f && isFastModel(f.model)), v = sevOf(inc);
+  const card = h('div', { class: 'card reasoner sev-' + v.k },
+    h('div', { class: 'rep-h rz-h' }, h('h3', { text: inc.mode === 1 ? 'Rule summary (Mode 1, no AI)' : 'Cross-domain reasoner' }), sevTag(inc)));
+  const wait = (t, s) => h('div', { class: 'rz-wait' }, h('b', { text: t }), h('p', { class: 'muted', text: s }));
+  if (inc.mode === 1) {
+    if (!running && inc.mode1_report) card.append(reportBody(inc, inc.mode1_report));
+    else card.append(running ? wait('Running the rules …', 'Rules mode: statistics and a rule engine decide. No AI model is used.') : h('div', { class: 'muted', text: 'No rule summary stored.' }));
+  } else if (f) {
+    if (fast) card.append(h('div', { class: 'banner', style: 'margin-bottom:12px' }, icon('check'), h('span', { text: fastText(f.model) + '. The agent finding became the report instantly.' })));
+    card.append(h('div', { class: 'rep-h', style: 'margin-bottom:12px' }, gate(f.valid, f.errors), fast ? null : modelBadge(f.model || 'model', false)));
+    if (!fast) { const sc = statChips(f); if (sc) card.append(sc); }
+    if (f.parsed) {
+      if (!f.valid) card.append(h('div', { class: 'errs', style: 'margin:10px 0;padding:0;list-style:none', text: 'Rejected by the policy gate: do not act on the output below.' }));
+      card.append(h('div', { style: 'margin-top:12px' }, reportBody(inc, f.parsed)));
+    } else card.append(h('div', { class: 'muted', style: 'margin-top:10px', text: 'The model output could not be parsed into a report.' }));
+    if (!fast) card.append(details(inc.id + ':final:raw', 'Raw model output', f.raw), details(inc.id + ':final:prompt', 'Prompt (synthesizer)', f.prompt));
+  } else if (running) {
+    // reserved from the start so the page does not jump when the report arrives; no animation
+    const tx = S.stream[streamKeyOf(inc.id, 'final')];
+    const npu = (inc.sensors || []).filter((s) => !s.context).length, got = (inc.agents || []).filter((a) => !isCtxAgent(a)).length;
+    const allAgents = inc.mode === 2 || got >= npu;
+    if (tx || allAgents) card.append(h('pre', { class: 'stream live', 'data-s': 'final', text: tx || '' }),
+      h('div', { class: 'muted', style: 'font-size:13px;margin-top:6px', text: inc.mode === 2 ? 'One model call reads every sensor and writes the report, typing live …' : 'Combining the agent findings, typing live …' }));
+    else card.append(wait('Waiting for agents …', got + ' of ' + npu + ' flagged sensor' + (npu === 1 ? '' : 's') + ' answered. The reasoner then decides root cause, severity and action across domains.'));
+  } else card.append(h('div', { class: 'muted', text: 'No cross-domain report was produced.' }));
+  return card;
+}
+
 function renderIncDetail() {
   const inc = S.inc, box = $('#inc-detail'); if (!inc) return;
   const running = inc.state === 'running';
@@ -920,33 +1089,21 @@ function renderIncDetail() {
   const parts = [];
   setText($('#isheet-t'), inc.id);
   parts.push(h('div', { class: 'ltitle', style: 'padding-top:2px' },
-    h('div', { class: 'rep-h', style: 'margin-bottom:8px' }, pill(inc.severity), h('span', { class: 'pill ghost', text: 'Mode ' + inc.mode }),
+    h('div', { class: 'rep-h', style: 'margin-bottom:8px' }, sevTag(inc), h('span', { class: 'pill ghost', text: 'Mode ' + inc.mode }),
       running ? h('span', { class: 'livepill', text: 'LIVE' }) : null, multiFlag(inc)),
     h('h1', { class: 'inc-title', style: 'font-size:26px;line-height:1.2', text: inc.title }),
     h('p', { text: 'Sensor time ' + (inc.created_sim ? dhm(inc.created_sim) + ' IST' : '-') + ' · analysed ' + (inc.created_wall ? inc.created_wall.slice(-8) : '-') + ' · ' + (inc.sensors || []).length + ' sensors · ' + inc.npu_calls + ' NPU calls' })));
-  parts.push(trackCard(inc));
-  // cross-domain report
-  const f = inc.final;
-  const fast = !!(f && isFastModel(f.model));
-  const fc = h('div', { class: 'card' }, h('h3', { style: 'font-size:18px;margin-bottom:10px', text: 'Cross-domain report' }));
-  if (f) {
-    if (fast) fc.append(h('div', { class: 'banner', style: 'margin-bottom:12px' }, icon('check'), h('span', { text: fastText(f.model) + '. The agent finding became the report instantly.' })));
-    fc.append(h('div', { class: 'rep-h', style: 'margin-bottom:12px' }, gate(f.valid, f.errors), fast ? null : modelBadge(f.model || 'model', false)));
-    if (!fast) { const sc = statChips(f); if (sc) fc.append(sc); }
-    if (f.parsed) {
-      if (!f.valid) fc.append(h('div', { class: 'errs', style: 'margin:10px 0;padding:0;list-style:none', text: 'Rejected by the policy gate: do not act on the output below.' }));
-      fc.append(h('div', { style: 'margin-top:12px' }, reportBody(inc, f.parsed)));
-    } else fc.append(h('div', { class: 'muted', style: 'margin-top:10px', text: 'The model output could not be parsed into a report.' }));
-    if (!fast) fc.append(details(inc.id + ':final:raw', 'Raw model output', f.raw), details(inc.id + ':final:prompt', 'Prompt (synthesizer)', f.prompt));
-  } else if (inc.mode === 1) fc.append(h('div', { class: 'muted', text: 'Mode 1 (rules) writes no AI report. The rule-based summary is further down.' }));
-  else if (running) {
-    const tx = S.stream[streamKeyOf(inc.id, 'final')];
-    const allAgents = inc.mode === 2 || (inc.agents || []).length >= (inc.sensors || []).length;
-    if (tx || (inc.mode === 2) || allAgents) fc.append(h('pre', { class: 'stream live', 'data-s': 'final', text: tx || '' }), h('div', { class: 'muted', style: 'font-size:13px;margin-top:6px', text: 'Synthesizer output is typing live ...' }));
-    else fc.append(h('div', { class: 'muted' }, h('span', { class: 'spin' }), ' The report is written after every agent has finished.'));
-  } else fc.append(h('div', { class: 'muted', text: 'No cross-domain report was produced.' }));
-  parts.push(fc);
-  // compare
+  // while running the steps are the story; once done only the latency is worth keeping
+  parts.push(running ? trackCard(inc) : doneLine(inc));
+  // flagged sensors: titles only, tap for the chart and what that sensor's agent said
+  const sensors = inc.sensors || [];
+  const flagged = sensors.filter((s) => !s.context), related = sensors.filter((s) => s.context);
+  parts.push(h('div', { class: 'sec-h', text: 'Flagged sensors (' + flagged.length + ')' }), h('div', { class: 'schips' }, flagged.map((s) => sensorChip(inc, s))));
+  if (related.length) parts.push(h('div', { class: 'sec-h sub', text: 'Seen, not flagged (' + related.length + ')' }), h('div', { class: 'schips' }, related.map((s) => sensorChip(inc, s))));
+  parts.push(h('p', { class: 'muted schip-hint', text: 'Tap a sensor for its chart and what its agent concluded.' }));
+  // the reasoner's decision, reserved while the agents work
+  parts.push(h('div', { style: 'height:14px' }), reasonerCard(inc));
+  // compare (rerun) sits with the decision it questions; approve/dismiss stay in the sheet footer
   const seg = makeSeg([{ v: 1, t: 'Rules' }, { v: 2, t: 'Single' }, { v: 3, t: 'Agents' }], async (m) => {
     try { S.pendingNewest = new Set(S.incs.map((i) => i.id)); const r = await post('/api/incidents/' + inc.id + '/rerun?mode=' + m); toast(r && r.queued_ahead ? 'Rerun queued: ' + r.queued_ahead + ' ahead on the NPU' : 'Re-running ' + inc.id + ' in mode ' + m); setTimeout(refreshIncidents, 400); setTimeout(refreshIncidents, 1500); }
     catch (e) { S.pendingNewest = null; toast('Rerun: ' + e.message, true); }
@@ -955,7 +1112,6 @@ function renderIncDetail() {
   parts.push(h('div', { class: 'card' }, h('h3', { style: 'font-size:17px;margin-bottom:4px', text: 'Compare modes' }), h('p', { class: 'muted', style: 'font-size:14px;margin-bottom:10px', text: 'Re-analyse the same frozen sensor windows in another mode. A new incident is created.' }), seg));
   // agents: NPU agents (streaming + metrics) and compact CPU context agents
   const ag = h('div', { class: 'agents' }), cg = h('div', { class: 'agents' });
-  const sensors = inc.sensors || [];
   let nextShown = false;
   for (const s of sensors) {
     const a = (inc.agents || []).find((x) => x.ref === s.ref);
@@ -989,38 +1145,20 @@ function renderIncDetail() {
       else ag.append(h('div', { class: 'card agent st-none' }, h('div', { class: 'rep-h' }, h('b', { text: s.ref + ' · ' + (roleTitle[s.role] || s.role) + ' agent' }), h('span', { class: 'pill ghost', text: 'Queued' })), h('div', { class: 'muted', style: 'font-size:14px;margin-top:6px', text: 'Waiting for the NPU (one job at a time).' })));
     }
   }
-  if (ag.children.length) parts.push(h('div', { class: 'sec-h', text: 'Domain agents (NPU, on-device)' }), ag);
-  if (cg.children.length) parts.push(h('div', { class: 'sec-h', text: 'Context agents (rules, CPU, instant)' }), cg);
-  // sensors: flagged vs related domains
-  const sensorCard = (s) => {
-    const mini = h('div', { class: 'mini' });
-    const occ = s.role === 'occupancy', n = (s.window || []).length;
-    const ptsw = (s.window || []).map((v, i) => [(s.window_end || 0) - (n - 1 - i) * 300, v]);
-    const cv = STATUS_VAR[s.rule_finding && s.rule_finding.status] || '--nodata-b';
-    mini.innerHTML = `<svg viewBox="0 0 260 58" preserveAspectRatio="none" aria-label="48 point window">${sparkSvg(ptsw, 260, 58, cv, occ)}</svg>`;
-    mini.append(h('span', { class: 'muted', style: 'font-size:13px', text: n ? n + ' pts · ' + hm(ptsw[0][0]) + ' → ' + hm(ptsw[n - 1][0]) + ' IST' : 'no window' }));
-    return h('div', { class: 'card agent ' + stClass(s.rule_finding && s.rule_finding.status) },
-      h('div', { class: 'rep-h' }, h('div', { class: 'dico', style: '--cb:' + (ROLE_COLOR[s.role] || ROLE_COLOR.multi) + ';width:34px;height:34px;border-radius:11px' }, icon(s.role, 18)),
-        h('b', { text: s.ref + ' · ' + s.node + ' ' + s.metric }), s.rule_finding ? pill(s.rule_finding.status) : null),
-      h('div', { class: 'muted', style: 'font-size:14px;margin-top:4px', text: s.location }),
-      s.why ? h('div', { class: 'banner', style: 'margin-top:8px;font-weight:500;font-size:13.5px;padding:8px 12px' }, icon('info', 20), h('span', { text: 'Checked because: ' + s.why })) : null,
-      mini,
-      h('div', { style: 'margin-top:8px;font-size:14.5px' }, 'Rules: ', h('b', { text: nice(s.rule_finding && s.rule_finding.pattern) }), ' · ' + nice(s.rule_finding && s.rule_finding.likely_cause)),
-      h('details', { open: S.open.has(inc.id + ':' + s.ref + ':ev') ? true : null, ontoggle: (e) => { e.target.open ? S.open.add(inc.id + ':' + s.ref + ':ev') : S.open.delete(inc.id + ':' + s.ref + ':ev'); } },
-        h('summary', { text: 'Evidence ' + s.ref + '.E1..' }), h('ul', { class: 'evlist', style: 'padding:6px 16px 10px' }, (s.evidence || []).map((e) => h('li', {}, h('b', { text: e.ID }), h('span', { text: e.Text }))))));
-  };
-  const flagged = sensors.filter((s) => !s.context), related = sensors.filter((s) => s.context);
-  parts.push(h('div', { class: 'sec-h', text: 'Flagged (' + flagged.length + ')' }), h('div', { class: 'agents' }, flagged.map(sensorCard)));
-  if (related.length) parts.push(h('div', { class: 'sec-h', text: 'Related domains checked (' + related.length + ')' }), h('div', { class: 'agents' }, related.map(sensorCard)));
+  // open while running so the agents are seen thinking; collapsed once the reasoner has decided
+  const nNpu = running ? ag.children.length : (inc.agents || []).filter((a) => !isCtxAgent(a)).length;
+  if (ag.children.length) parts.push(fold(inc.id + ':agents', 'NPU agents (' + nNpu + ')', running, ag));
+  if (cg.children.length) parts.push(fold(inc.id + ':ctx', 'Context agents (' + cg.children.length + ', CPU)', false, cg));
   const m1 = inc.mode1_report;
-  if (m1) parts.push(h('div', { class: 'sec-h', text: 'Mode 1 rules baseline' }),
-    h('div', { class: 'card shadowc' }, h('p', { class: 'muted', style: 'margin-bottom:10px;font-size:14px', text: 'Deterministic rule engine, no AI. Always computed for comparison.' }), reportBody(inc, m1)));
-  parts.push(h('div', { class: 'sec-h', text: 'Activity log' }), h('div', { class: 'card' }, h('ul', { class: 'tl', id: 'tl' }, (inc.timeline || []).map((t) => h('li', {}, h('time', { text: t.t }), h('span', { text: t.msg }))))));
+  if (m1 && inc.mode !== 1) parts.push(fold(inc.id + ':m1', 'Mode 1 rules baseline', false,
+    h('div', { class: 'card shadowc' }, h('p', { class: 'muted', style: 'margin-bottom:10px;font-size:14px', text: 'Deterministic rule engine, no AI. Always computed for comparison.' }), reportBody(inc, m1))));
+  parts.push(fold(inc.id + ':log', 'Activity log', false, h('div', { class: 'card' }, h('ul', { class: 'tl', id: 'tl' }, (inc.timeline || []).map((t) => h('li', {}, h('time', { text: t.t }), h('span', { text: t.msg })))))));
   const bd = $('#inc-detail'), sc = bd.scrollTop;
   box.replaceChildren(...parts);
   renderIncFoot(inc);
   const tl = $('#tl'); if (tl) tl.scrollTop = tl.scrollHeight;
   bd.scrollTop = sc;
+  if (FS.ref) renderSensorSheet(false);
 }
 
 /* ============================== SENSORS (the user is the sensor) ============================== */
@@ -1326,7 +1464,12 @@ function boot() {
   window.addEventListener('hashchange', () => setView(location.hash.slice(1)));
   $('#scrim').onclick = () => { closeSheet('sheet'); closeSheet('isheet'); };
   $$('[data-close]').forEach((b) => b.onclick = () => closeSheet(b.dataset.close));
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { if ($('#isheet').classList.contains('open')) closeSheet('isheet'); else if ($('#sheet').classList.contains('open')) closeSheet('sheet'); else hidePop(true); } });
+  $('#fs-x').onclick = () => closeSensorSheet();
+  $('#fs .fs-back').onclick = () => closeSensorSheet();
+  $('#fs').addEventListener('keydown', trapFocus);
+  $('#fs-bd').addEventListener('scroll', () => hidePop(true), { passive: true });
+  window.addEventListener('popstate', () => { if (!$('#fs').hidden) closeSensorSheet(true); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { if (!$('#fs').hidden) closeSensorSheet(); else if ($('#isheet').classList.contains('open')) closeSheet('isheet'); else if ($('#sheet').classList.contains('open')) closeSheet('sheet'); else hidePop(true); } });
   document.addEventListener('click', (e) => { if (!e.target.closest || !e.target.closest('.chip.ev')) hidePop(true); });
   $('#sheet-bd').addEventListener('scroll', () => hidePop(true), { passive: true });
   $('#inc-detail').addEventListener('scroll', () => hidePop(true), { passive: true });

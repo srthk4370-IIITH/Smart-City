@@ -1,0 +1,30 @@
+{
+ "what": "hardware placement grid: same model on NPU (w4a16 bundle) and GPU (exact Q4_0/Q8_0 repack)",
+ "created": "2026-10-16T01:05:32",
+ "git": "5916bb7",
+ "device": "3ce9a4e2 pineapple",
+ "runs": [
+  {
+   "command": "hw_grid.py --incidents INC-0407,INC-0392,INC-0384,INC-0116,INC-0401 --placements gpu_seq --reps 1 --cool 60 --workload-dir C:/Users/hp/Desktop/qidk/proofs/2026-10-16_hw_grid --out C:/Users/hp/Desktop/qidk/proofs/2026-10-16_hw_grid --note GPU only, app stopped, llama-server -np 1 -c 4096 -fa off",
+   "placements": [
+    "gpu_seq"
+   ],
+   "incidents": "INC-0407,INC-0392,INC-0384,INC-0116,INC-0401",
+   "reps": 1,
+   "note": "GPU only, app stopped, llama-server -np 1 -c 4096 -fa off",
+   "started": "2026-10-16T01:05:32",
+   "gpu_server": "llama-server -m ft_device_q4exact.gguf -ngl 99 -fa off -fit off -c 4096 -np 1 -cram 256 -t 4 --host 127.0.0.1 --port 8080"
+  },
+  {
+   "command": "hw_grid.py --incidents INC-0384,INC-0116 --placements gpu_agents_only --reps 1 --cool 60 --workload-dir C:/Users/hp/Desktop/qidk/proofs/2026-10-16_hw_grid --out C:/Users/hp/Desktop/qidk/proofs/2026-10-16_hw_grid --note GPU only, small footprint: -c 1024, output.weight on CPU",
+   "placements": [
+    "gpu_agents_only"
+   ],
+   "incidents": "INC-0384,INC-0116",
+   "reps": 1,
+   "note": "GPU only, small footprint: -c 1024, output.weight on CPU",
+   "started": "2026-10-16T01:17:40",
+   "gpu_server": "llama-server -m ft_device_q4exact.gguf -ngl 99 -fa off -fit off -c 1024 -np 1 -cram 64 -t 4 -ot output\\.weight=CPU --host 127.0.0.1 --port 8080"
+  }
+ ]
+}

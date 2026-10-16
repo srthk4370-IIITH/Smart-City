@@ -1,0 +1,20 @@
+{
+ "what": "hardware placement grid: same model on NPU (w4a16 bundle) and GPU (exact Q4_0/Q8_0 repack)",
+ "created": "2026-10-16T10:15:52",
+ "git": "5916bb7",
+ "device": "3ce9a4e2 pineapple",
+ "runs": [
+  {
+   "command": "hw_grid.py --incidents INC-0392,INC-0384,INC-0116,INC-0401 --placements htp_par13,htp_seq --reps 1 --cool 60 --workload-dir C:/Users/hp/Desktop/qidk/proofs/2026-10-16_hw_grid --out C:/Users/hp/Desktop/qidk/proofs/2026-10-16_hw_grid/htp --note llama.cpp Hexagon, -np 13 -c 26624 q8 KV, FA streams patch",
+   "placements": [
+    "htp_par13",
+    "htp_seq"
+   ],
+   "incidents": "INC-0392,INC-0384,INC-0116,INC-0401",
+   "reps": 1,
+   "note": "llama.cpp Hexagon, -np 13 -c 26624 q8 KV, FA streams patch",
+   "started": "2026-10-16T10:15:52",
+   "gpu_server": "llama-server -m /data/local/tmp/gpu/ft_device_q4exact.gguf --device HTP0 -ngl 99 -fa on -fit off -np 13 -c 26624 -ctk q8_0 -ctv q8_0 -cram 0 -t 4 --host 127.0.0.1 --port 8090"
+  }
+ ]
+}
