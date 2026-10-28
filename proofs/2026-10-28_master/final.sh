@@ -20,12 +20,12 @@ DP=/mnt/c/Users/hp/Desktop/qidk/proofs/2026-10-25_domain_plan; STAGE=/mnt/c/User
 A=/mnt/c/Users/hp/Desktop/qidk/Code/platform-tools/adb.exe; K=$M/BOARD_LOCK; W=/data/local/tmp/smart_city_edge; G=/data/local/tmp/gpu
 PS=/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe
 APK=$M/fastpath_build/SmartCityEdge.fast_early.apk; APK_MD5=0deb016ee2ee8f85b7171d74cfda070f; EA_MD5=c97afdeb1c06607fc1535cb6806f9d1d
-EVAL_Z=$(date -u -d "2026-10-28 23:30" +%s); CUTOFF=$((EVAL_Z - 5*3600))   # inputs wait until 18:30Z at the latest
+EVAL_Z=$(date -u -d "2026-10-28 23:30" +%s); CUTOFF=$((EVAL_Z - 90*60))   # owner 2026-10-28: no 00:00 IST input cutoff; wait for every input. Last-moment guard only: nothing new deploys after 22:00Z (03:30 IST), so the deploy + app check end well before the eval
 exec >> $M/final.log 2>&1 < /dev/null
 log(){ echo "$(date -u +%FT%TZ) $*"; }
 w(){ wslpath -w "$1"; }
 sh_(){ $A shell "$@" | tr -d '\r'; }
-ram(){ $PS -NoProfile -Command "[int]((Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory/1024)" 2>/dev/null | tr -dc 0-9; }
+ram(){ $PS -NoProfile -Command "[int](Get-Counter '\Memory\Available MBytes').CounterSamples.CookedValue" 2>/dev/null | tr -dc 0-9; }
 ramwait(){ while f=$(ram); [ -n "$f" ] && [ "$f" -lt 1536 ]; do log "laptop RAM $f MB < 1536: wait"; sleep 60; done; }
 board(){ until $A get-state 2>/dev/null | grep -q device; do sleep 60; done; }
 TP=
@@ -35,7 +35,7 @@ unlock(){ [ -n "$TP" ] && kill $TP 2>/dev/null; TP=; [ "$(cat $K 2>/dev/null)" =
 trap unlock EXIT
 st(){ echo "$2" > $F/$1; }      # decision files
 done_(){ touch $F/.$1; }; isdone(){ [ -e $F/.$1 ]; }
-stop_app(){ sh_ 'am force-stop com.iiith.smartcityedge; pkill -x edge-agent; pkill -TERM -f "[b]in/htpd"
+stop_app(){ sh_ 'am force-stop com.iiith.smartcityedge; pkill -x edge-agent; for p in $(pidof htpd_v8x2 htpd_v8r htpd_v8s htpd_v8t htpd_v8p htpd_v8p2 htpd_v7 htpd); do kill -TERM $p; done
   i=0; while [ $i -lt 120 ] && ps -A -o NAME= | grep -qE "^(htpd|edge-agent)"; do sleep 1; i=$((i+1)); done
   sleep 30; if ps -A -o NAME= | grep -qE "^(htpd|edge-agent|genie|llama)"; then echo STILL; else echo STOPPED; fi'; }
 start_app(){ n0=$(sh_ "grep -c 'htpd: ready in' $W/state/htpd.log" | tail -1); sh_ 'am start -n com.iiith.smartcityedge/.MainActivity >/dev/null 2>&1'
@@ -83,31 +83,42 @@ P
   st split "$N"; log "F1 split pick: $N ($(grep -E '^\| sp' $RF/raw/split6/acc.md 2>/dev/null | cut -c1-90 | tr '\n' ' '))"; done_ f1; fi
 N=$(cat $F/split)
 
-# F2 inputs (until cutoff)
-if ! isdone f2; then
-  until { [ -s $RE/eval/results/round2_result.txt ] && grep -q "plan done" $M/plan.log 2>/dev/null && grep -q GATE_STUDY_DONE $M/gate_study/gate_study.log 2>/dev/null; } || [ $(date +%s) -gt $CUTOFF ]; do sleep 300; done
-  log "F2 inputs: round2=$( [ -s $RE/eval/results/round2_result.txt ] && echo yes || echo no) plan=$(grep -c 'plan done' $M/plan.log) gate=$(grep -c GATE_STUDY_DONE $M/gate_study/gate_study.log)"; done_ f2; fi
+# F2 inputs: owner 2026-10-28 evening: the laptop GPU/RAM go back to the owner, so no laptop evals (rsn_v2 eval,
+# gate study) are awaited; every remaining eval runs on the board (F3). Agents = B50 (pre-decided f4).
+if ! isdone f2; then log "F2 inputs: board-only (no laptop eval wait)"; done_ f2; fi
 
-# F3 reasoner
+# F3 reasoner: board-only gate for rsn_v2.
+#  (a) accuracy: rsn_v2 on the same 30 RWH prompts (q10-q39, q10 = warm-up) with the chosen split N, scored vs gold and vs
+#      rsn_v1's sp${N} run from split6_ab (same prompts, same binary); PASS = parse 30/30, sev=gold >= v1, label=gold >= v1.
+#  (b) consistency (only if a passes): 6 prompts x 5 runs, severity >= 92%.
 if ! isdone f3; then
   R=qwen35_reasoner_q4_0.gguf; why="rsn_v1 kept"
-  if [ -s $RE/eval/results/round2_result.txt ] && [ -s $STAGE/rsn_v2_q4_0.gguf ]; then
-    gate=$(python3 - $RE/eval/results/round2_result.txt <<'P'
-import re, sys
-t = open(sys.argv[1]).read(); g = {}
-for tag in ("rsn_v2", "ft612"):
-    m = re.search(rf"^{tag} rwh n=\d+ (.*)$", t, re.M); kv = dict(x.split("=") for x in m.group(1).split()) if m else {}
-    p = re.search(rf"^{tag} G1 .* total ([0-9.]+)", t, re.M)
-    g[tag] = (float(kv.get("v3_score", 0)), float(kv.get("severity", 0)), float(p.group(1)) if p else 0.0)
-v, b = g["rsn_v2"], g["ft612"]
-print("PASS" if all(x >= y for x, y in zip(v, b)) and b[0] > 0 else "FAIL", v, b)
+  if [ -s $STAGE/rsn_v2_q4_0.gguf ]; then board; ramwait; lock
+    pushc $STAGE/rsn_v2_q4_0.gguf $G/rsn_v2_q4_0.gguf || log "push rsn_v2 failed"
+    if [ "$(sh_ "stat -c %s $G/rsn_v2_q4_0.gguf")" = "$(stat -c %s $STAGE/rsn_v2_q4_0.gguf)" ]; then
+      sed -i 's/\r$//' $RF/scripts/ab_board.sh; $A push "$(w $RF/scripts/ab_board.sh)" /data/local/tmp/rfast/ab_board.sh > /dev/null
+      for d in rreq_split rreq_split4 rreq_split6; do sh_ "[ -d /data/local/tmp/rfast/$d ]" || $A push "$(w $RF/bench/$d)" /data/local/tmp/rfast/ > /dev/null; done
+      printf '#!/system/bin/sh\ncd /data/local/tmp/rfast; [ -d ab ] && mv ab ab_prev_$(date +%%H%%M%%S)\nREQS="10 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39" sh ab_board.sh "sp%sv2,htpd_v8x2,%s,GGML_HEXAGON_OPPOLL=1"\n' $N $G/rsn_v2_q4_0.gguf > $F/run_acc_v2.sh
+      $A push "$(w $F/run_acc_v2.sh)" /data/local/tmp/rfast/run_acc_v2.sh > /dev/null
+      sh_ 'cd /data/local/tmp/rfast; (setsid nohup sh run_acc_v2.sh > /dev/null 2>&1 < /dev/null &)'; sleep 120
+      until sh_ 'tail -1 /data/local/tmp/rfast/ab/ab.log 2>/dev/null' | grep -q "=== ab done"; do board; sleep 60; done
+      D=$RF/raw/acc_v2; rm -rf $D; $A pull /data/local/tmp/rfast/ab "$(w $RF/raw)" > /dev/null; mv $RF/raw/ab $D
+      cp $RF/raw/split6/sp${N}_q*_*.json $D/ 2>/dev/null
+      (cd $RF/scripts && REF=sp$N python3 -I split_acc.py ../raw/acc_v2 10) > $D/acc.md; log "F3 rsn_v2 board accuracy: $(grep -E '^\| sp' $D/acc.md | tr '\n' ' ')"
+      acc=$(python3 - $D/acc.md $N <<'P'
+import sys
+rows = {}
+for l in open(sys.argv[1]):
+    c = [x.strip() for x in l.strip().strip("|").split("|")]
+    if len(c) >= 10 and c[0].startswith("sp"):
+        rows[c[0]] = dict(n=int(c[1]), parse=int(c[2]), sev=int(c[3]), lab=int(c[4]), s=float(c[9]))
+v1, v2 = rows.get("sp" + sys.argv[2]), rows.get("sp" + sys.argv[2] + "v2")
+ok = bool(v1 and v2 and v2["parse"] == v2["n"] >= 30 and v2["sev"] >= v1["sev"] and v2["lab"] >= v1["lab"])
+print("PASS" if ok else "FAIL", v1, v2)
 P
 )
-    log "F3 round2 gate: $gate"
-    if [ "${gate%% *}" = PASS ]; then ramwait; lock
-      pushc $STAGE/rsn_v2_q4_0.gguf $G/rsn_v2_q4_0.gguf || { log "push rsn_v2 failed"; }
-      if [ "$(sh_ "stat -c %s $G/rsn_v2_q4_0.gguf")" = "$(stat -c %s $STAGE/rsn_v2_q4_0.gguf)" ]; then
-        sed -i 's/\r$//' $RF/scripts/ab_board.sh; $A push "$(w $RF/scripts/ab_board.sh)" /data/local/tmp/rfast/ab_board.sh > /dev/null
+      log "F3 rsn_v2 accuracy gate: $acc"
+      if [ "${acc%% *}" = PASS ]; then
         printf '#!/system/bin/sh\ncd /data/local/tmp/rfast; [ -d ab ] && mv ab ab_prev_$(date +%%H%%M%%S); mkdir -p ab/trace\nR="1 0 4 7 8 9"\nREQS="1 $R $R $R $R $R" sh ab_board.sh "cons,htpd_v8x2,%s,GGML_HEXAGON_OPPOLL=1 HTPD_REASON_TRACE=/data/local/tmp/rfast/ab/trace"\n' $G/rsn_v2_q4_0.gguf > $F/run_cons_v2.sh
         $A push "$(w $F/run_cons_v2.sh)" /data/local/tmp/rfast/run_cons_v2.sh > /dev/null
         sh_ 'cd /data/local/tmp/rfast; (setsid nohup sh run_cons_v2.sh > /dev/null 2>&1 < /dev/null &)'; sleep 120
@@ -116,11 +127,11 @@ P
         (cd $RF/scripts && python3 -I consist_table.py ../raw/consist_v2) > $RF/raw/consist_v2/table.md
         sev=$(grep '^| \*\*all' $RF/raw/consist_v2/table.md | awk -F'|' '{gsub(/[^0-9]/,"",$4); print $4}')
         log "F3 rsn_v2 board consistency: severity ${sev}% ($(grep '^| \*\*all' $RF/raw/consist_v2/table.md))"
-        if [ -n "$sev" ] && [ "$sev" -ge 92 ]; then R=rsn_v2_q4_0.gguf; why="rsn_v2: eval gate PASS, board severity ${sev}%"; else why="rsn_v1 kept: rsn_v2 board severity ${sev:-n/a}% < 92"; fi
-      else why="rsn_v1 kept: rsn_v2 push failed"; fi
-      unlock
-    else why="rsn_v1 kept: round2 gate $gate"; fi
-  else why="rsn_v1 kept: no round2 result / no rsn_v2 GGUF by cutoff"; fi
+        if [ -n "$sev" ] && [ "$sev" -ge 92 ]; then R=rsn_v2_q4_0.gguf; why="rsn_v2: board accuracy PASS ($acc), severity consistency ${sev}%"; else why="rsn_v1 kept: rsn_v2 board severity ${sev:-n/a}% < 92"; fi
+      else why="rsn_v1 kept: rsn_v2 board accuracy $acc"; fi
+    else why="rsn_v1 kept: rsn_v2 push failed"; fi
+    unlock
+  else why="rsn_v1 kept: no staged rsn_v2"; fi
   st reasoner "$R"; st reasoner_why "$why"; log "F3 reasoner: $R ($why)"; done_ f3; fi
 
 # F4 agents

@@ -1,0 +1,1222 @@
+{
+ "scenario": "crowded_room",
+ "id": "INC-0409",
+ "wall_s": 50.8,
+ "incident": {
+  "id": "INC-0409",
+  "mode": 3,
+  "state": "done",
+  "created_sim": 1791870600,
+  "created_wall": "2026-10-13 20:35:41",
+  "severity": "warning",
+  "severity_final": true,
+  "title": "KH building, level 04: Power up with occupied room",
+  "rule_title": "KH building, level 04: Power up with occupied room",
+  "roles": [
+   "power",
+   "air_quality"
+  ],
+  "injected": true,
+  "sensors": [
+   {
+    "ref": "S1",
+    "node": "SR-EM-KH04-01",
+    "metric": "power_kw",
+    "role": "power",
+    "location": "KH building, level 04, room energy meter 01",
+    "window_end": 1791870600,
+    "injected": true,
+    "window": [
+     3.010923819069706,
+     2.9933343005763344,
+     3.0074190269514833,
+     3.046742687708438,
+     3.0081607160219868,
+     3.010876775279388,
+     2.986699475409874,
+     2.9938719465749597,
+     3.035829856202474,
+     2.9627403790825864,
+     2.9925383683322346,
+     2.993496866419644,
+     2.9884984571109587,
+     3.004182664887391,
+     3.0018471452286484,
+     3.005036084655703,
+     2.9934283947620384,
+     3.029737958204042,
+     3.0026920203298255,
+     2.9932240733142086,
+     2.993036298538037,
+     3.0428894378925353,
+     2.9914935308221065,
+     3.0024725878544585,
+     3.0164419655145007,
+     3.0123530442071025,
+     2.9973470007695027,
+     2.987464347330803,
+     3.0085256020522415,
+     3.0043454061791324,
+     2.9693240791486026,
+     3.00898453339472,
+     3.0282489831073622,
+     2.9551232094729727,
+     2.9933724434017726,
+     3.0050961859084993,
+     2.99745814011952,
+     3.021971823835984,
+     9.004741466827289,
+     8.987451378207775,
+     9.003795904008669,
+     8.969863276385631,
+     9.000795815809221,
+     9.00573018738209,
+     8.991820633583176,
+     8.995473867007487,
+     8.999335486230091,
+     9.009884626792113
+    ],
+    "evidence": [
+     {
+      "ID": "E1",
+      "Stat": "last",
+      "Text": "last = 9.01 kW"
+     },
+     {
+      "ID": "E2",
+      "Stat": "max",
+      "Text": "max = 9.01 kW at 11:20"
+     },
+     {
+      "ID": "E3",
+      "Stat": "min",
+      "Text": "min = 2.96 kW at 10:10"
+     },
+     {
+      "ID": "E4",
+      "Stat": "slope",
+      "Text": "trend = +1.48 kW/h (r2 0.49)"
+     },
+     {
+      "ID": "E5",
+      "Stat": "max_jump",
+      "Text": "largest 5-min change = +5.98 kW at 10:35"
+     },
+     {
+      "ID": "E6",
+      "Stat": "sma",
+      "Text": "SMA 1h = 8.00, EMA 1h = 7.87, mean 4h = 4.25 kW"
+     },
+     {
+      "ID": "E7",
+      "Stat": "shape",
+      "Text": "halves 3.00 -> 5.50, curvature +4.79/h, oscillation crossings 2"
+     },
+     {
+      "ID": "E8",
+      "Stat": "flat",
+      "Text": "noise 0.611, longest flat run 3 pts, plateau at max 10 pts"
+     },
+     {
+      "ID": "E9",
+      "Stat": "long_view",
+      "Text": "12 h view: level shift +6.00 kW at 10:45 (133.1x normal variation)"
+     },
+     {
+      "ID": "E10",
+      "Stat": "episodes",
+      "Text": "recent episodes: no excursions beyond 3x normal noise in the last 12 h"
+     }
+    ],
+    "global_evidence_ids": [
+     "ev:SR-EM-KH04-01:power_kw:last:1791870600",
+     "ev:SR-EM-KH04-01:power_kw:max:1791870600",
+     "ev:SR-EM-KH04-01:power_kw:min:1791870600",
+     "ev:SR-EM-KH04-01:power_kw:slope:1791870600",
+     "ev:SR-EM-KH04-01:power_kw:max_jump:1791870600",
+     "ev:SR-EM-KH04-01:power_kw:sma:1791870600",
+     "ev:SR-EM-KH04-01:power_kw:shape:1791870600",
+     "ev:SR-EM-KH04-01:power_kw:flat:1791870600",
+     "ev:SR-EM-KH04-01:power_kw:long_view:1791870600",
+     "ev:SR-EM-KH04-01:power_kw:episodes:1791870600"
+    ],
+    "rule_finding": {
+     "pattern": "throttling",
+     "status": "critical",
+     "observations": [
+      "Power climbed and then held flat at a ceiling of about 9.01 kW for 10 samples [E2,E8]"
+     ],
+     "likely_cause": "capacity_limit_throttling",
+     "confidence": 0.7,
+     "action": "inspect_electrical"
+    },
+    "context": false,
+    "long_range": [
+     {
+      "id": "E9",
+      "kind": "level_shift",
+      "delta": 5.995646887882831,
+      "ago_pts": 7,
+      "sigma": 133.12366543938123,
+      "text": "12 h view: level shifted +6 kW about 0.6 h ago and stayed (133.1x normal variation)"
+     }
+    ]
+   },
+   {
+    "ref": "S2",
+    "node": "SR-AQ-KH03-03",
+    "metric": "co2",
+    "role": "air_quality",
+    "location": "KH building, level 03, indoor air sensor 03",
+    "window_end": 1791870600,
+    "injected": true,
+    "window": [
+     449.70322604778187,
+     449.6005927944569,
+     445.2651242922791,
+     446.80872527877347,
+     459.9751718987827,
+     451.6569621409718,
+     459.51573432324136,
+     451.719322457743,
+     437.8255036272816,
+     452.7041040808483,
+     449.4773850133182,
+     449.02944953460934,
+     462.98868536692993,
+     458.2512042694592,
+     447.04854831995544,
+     451.7332541844968,
+     446.89865371995444,
+     443.4621017655479,
+     448.3862335852881,
+     446.99626014849275,
+     460.56646472300304,
+     450.6211908274234,
+     451.49297383406815,
+     448.33760064052836,
+     442.8543596008965,
+     455.6041712277644,
+     453.90008575729803,
+     451.51470982325986,
+     449.0243250366169,
+     444.0325436766072,
+     450.8348444543858,
+     453.594167220112,
+     450.10850696625573,
+     450.2653310677154,
+     450.7463399686474,
+     463.2029137259372,
+     462.1271450939816,
+     488.3596986234589,
+     512.6822345543143,
+     539.6349853483846,
+     564.6613589677332,
+     590.1249959782208,
+     616.3308652738169,
+     642.2463785003255,
+     667.7704039437745,
+     693.3052800352872,
+     719.4855832646982,
+     744.503168796108
+    ],
+    "evidence": [
+     {
+      "ID": "E1",
+      "Stat": "last",
+      "Text": "last = 745 ppm"
+     },
+     {
+      "ID": "E2",
+      "Stat": "max",
+      "Text": "max = 745 ppm at 11:20"
+     },
+     {
+      "ID": "E3",
+      "Stat": "min",
+      "Text": "min = 438 ppm at 08:05"
+     },
+     {
+      "ID": "E4",
+      "Stat": "slope",
+      "Text": "trend = +47.9 ppm/h (r2 0.48)"
+     },
+     {
+      "ID": "E5",
+      "Stat": "max_jump",
+      "Text": "largest 5-min change = +27.0 ppm at 10:40"
+     },
+     {
+      "ID": "E6",
+      "Stat": "sma",
+      "Text": "SMA 1h = 603, EMA 1h = 625, mean 4h = 489 ppm"
+     },
+     {
+      "ID": "E7",
+      "Stat": "shape",
+      "Text": "halves 451 -> 527, curvature +233.9/h, oscillation crossings 2"
+     },
+     {
+      "ID": "E8",
+      "Stat": "flat",
+      "Text": "noise 8.87, longest flat run 3 pts, plateau at max 1 pts"
+     },
+     {
+      "ID": "E9",
+      "Stat": "long_view",
+      "Text": "12 h view: level shift +154.1 ppm at 10:55 (7.7x normal variation)"
+     },
+     {
+      "ID": "E10",
+      "Stat": "episodes",
+      "Text": "recent episodes: 1 excursion beyond 3x normal noise in the last 12 h (largest 3.8x)"
+     }
+    ],
+    "global_evidence_ids": [
+     "ev:SR-AQ-KH03-03:co2:last:1791870600",
+     "ev:SR-AQ-KH03-03:co2:max:1791870600",
+     "ev:SR-AQ-KH03-03:co2:min:1791870600",
+     "ev:SR-AQ-KH03-03:co2:slope:1791870600",
+     "ev:SR-AQ-KH03-03:co2:max_jump:1791870600",
+     "ev:SR-AQ-KH03-03:co2:sma:1791870600",
+     "ev:SR-AQ-KH03-03:co2:shape:1791870600",
+     "ev:SR-AQ-KH03-03:co2:flat:1791870600",
+     "ev:SR-AQ-KH03-03:co2:long_view:1791870600",
+     "ev:SR-AQ-KH03-03:co2:episodes:1791870600"
+    ],
+    "rule_finding": {
+     "pattern": "exponential_increase",
+     "status": "warning",
+     "observations": [
+      "CO2 is rising at an accelerating rate (curvature +233.9/h), now 745 ppm [E7,E1]",
+      "745 ppm exceeds the warning limit of 1000 ppm [E1]"
+     ],
+     "likely_cause": "ventilation_insufficient",
+     "confidence": 0.7,
+     "action": "inspect_ventilation"
+    },
+    "context": false,
+    "long_range": [
+     {
+      "id": "E9",
+      "kind": "level_shift",
+      "delta": 154.10408150100812,
+      "ago_pts": 5,
+      "sigma": 7.705204075050406,
+      "text": "12 h view: level shifted +154 ppm about 0.4 h ago and stayed (7.7x normal variation)"
+     }
+    ]
+   },
+   {
+    "ref": "S3",
+    "node": "SR-OC-GW-KH95-01",
+    "metric": "occ",
+    "role": "occupancy",
+    "location": "KH building, room occupancy sensor 01 (gateway KH95)",
+    "window_end": 1791870600,
+    "injected": false,
+    "window": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "evidence": [
+     {
+      "ID": "E1",
+      "Stat": "last",
+      "Text": "current state = 1"
+     },
+     {
+      "ID": "E2",
+      "Stat": "occupied_frac",
+      "Text": "occupied fraction = 0.25"
+     },
+     {
+      "ID": "E3",
+      "Stat": "toggles",
+      "Text": "state changes = 1"
+     },
+     {
+      "ID": "E4",
+      "Stat": "first_on",
+      "Text": "first occupied at 10:25"
+     },
+     {
+      "ID": "E5",
+      "Stat": "last_on",
+      "Text": "last occupied at 11:20"
+     },
+     {
+      "ID": "E6",
+      "Stat": "time",
+      "Text": "window end 11:20"
+     }
+    ],
+    "global_evidence_ids": [
+     "ev:SR-OC-GW-KH95-01:occ:last:1791870600",
+     "ev:SR-OC-GW-KH95-01:occ:occupied_frac:1791870600",
+     "ev:SR-OC-GW-KH95-01:occ:toggles:1791870600",
+     "ev:SR-OC-GW-KH95-01:occ:first_on:1791870600",
+     "ev:SR-OC-GW-KH95-01:occ:last_on:1791870600",
+     "ev:SR-OC-GW-KH95-01:occ:time:1791870600"
+    ],
+    "rule_finding": {
+     "pattern": "arrival",
+     "status": "normal",
+     "observations": [
+      "Room became occupied at 10:25 and is still occupied [E4,E1]"
+     ],
+     "likely_cause": "arrival",
+     "confidence": 0.9,
+     "action": "none"
+    },
+    "context": true,
+    "why": "load follows occupancy"
+   },
+   {
+    "ref": "S4",
+    "node": "AC-KH03",
+    "metric": "ac_units_on",
+    "role": "hvac",
+    "location": "KH building, level 03, AC units",
+    "window_end": 1791870600,
+    "injected": false,
+    "window": [
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2
+    ],
+    "evidence": [
+     {
+      "ID": "E1",
+      "Stat": "last",
+      "Text": "last = 2 units"
+     },
+     {
+      "ID": "E2",
+      "Stat": "max",
+      "Text": "max = 2 units at 07:25"
+     },
+     {
+      "ID": "E3",
+      "Stat": "min",
+      "Text": "min = 2 units at 07:25"
+     },
+     {
+      "ID": "E4",
+      "Stat": "slope",
+      "Text": "trend = +0.0 units/h (r2 0.00)"
+     },
+     {
+      "ID": "E5",
+      "Stat": "max_jump",
+      "Text": "largest 5-min change = +0.0 units at 07:30"
+     },
+     {
+      "ID": "E6",
+      "Stat": "sma",
+      "Text": "SMA 1h = 2, EMA 1h = 2, mean 4h = 2 units"
+     },
+     {
+      "ID": "E7",
+      "Stat": "shape",
+      "Text": "halves 2 -> 2, curvature +0.0/h, oscillation crossings 0"
+     },
+     {
+      "ID": "E8",
+      "Stat": "flat",
+      "Text": "noise 0.00, longest flat run 48 pts, plateau at max 48 pts"
+     }
+    ],
+    "global_evidence_ids": [
+     "ev:AC-KH03:ac_units_on:last:1791870600",
+     "ev:AC-KH03:ac_units_on:max:1791870600",
+     "ev:AC-KH03:ac_units_on:min:1791870600",
+     "ev:AC-KH03:ac_units_on:slope:1791870600",
+     "ev:AC-KH03:ac_units_on:max_jump:1791870600",
+     "ev:AC-KH03:ac_units_on:sma:1791870600",
+     "ev:AC-KH03:ac_units_on:shape:1791870600",
+     "ev:AC-KH03:ac_units_on:flat:1791870600"
+    ],
+    "rule_finding": {
+     "pattern": "stable",
+     "status": "normal",
+     "observations": [
+      "AC units running: now 2, 1h average 2.0, max 2 [E1,E6,E2]"
+     ],
+     "likely_cause": "hvac_context",
+     "confidence": 0.8,
+     "action": "none"
+    },
+    "context": true,
+    "why": "AC is the main load"
+   },
+   {
+    "ref": "S5",
+    "node": "WE-VN04-00",
+    "metric": "temp",
+    "role": "weather",
+    "location": "VN building, level 04, rooftop weather station",
+    "window_end": 1791870600,
+    "injected": false,
+    "window": [
+     29.791563435898354,
+     30.11441879715097,
+     29.61005045604466,
+     30.01745386169012,
+     29.645875713416583,
+     30.229287941986133,
+     30.25312965182595,
+     30.1561170199585,
+     30.394539641832203,
+     30.443679878501545,
+     30.176218833711907,
+     29.999639717329742,
+     29.965352205343695,
+     29.946647646885328,
+     30.143367232900953,
+     29.877619918785904,
+     29.879698806480093,
+     30.177467567004456,
+     29.892265456660382,
+     29.760708297189613,
+     30.019703573594715,
+     29.84519111906274,
+     29.912979237934863,
+     29.949755689593673,
+     29.78527743382407,
+     30.03498061068342,
+     29.95939285236267,
+     30.166687462272918,
+     30.2250766690653,
+     30.340644393262853,
+     30.023792398948473,
+     30.253876904248212,
+     29.961822693884816,
+     30.271450699313014,
+     30.05118751991807,
+     29.911689526581423,
+     30.0488360317556,
+     30.098516740160605,
+     29.979596689017534,
+     29.75169237207505,
+     30.0225240537548,
+     30.548168301658727,
+     30.08058530469598,
+     30.25273130863948,
+     30.116626903531618,
+     29.75526505036932,
+     30.074538172000086,
+     29.698693423952474
+    ],
+    "evidence": [
+     {
+      "ID": "E1",
+      "Stat": "last",
+      "Text": "last = 29.7 C"
+     },
+     {
+      "ID": "E2",
+      "Stat": "max",
+      "Text": "max = 30.5 C at 10:50"
+     },
+     {
+      "ID": "E3",
+      "Stat": "min",
+      "Text": "min = 29.6 C at 07:35"
+     },
+     {
+      "ID": "E4",
+      "Stat": "slope",
+      "Text": "trend = +0.0 C/h (r2 0.00)"
+     },
+     {
+      "ID": "E5",
+      "Stat": "max_jump",
+      "Text": "largest 5-min change = +0.6 C at 07:50"
+     },
+     {
+      "ID": "E6",
+      "Stat": "sma",
+      "Text": "SMA 1h = 30.0, EMA 1h = 30.0, mean 4h = 30.0 C"
+     },
+     {
+      "ID": "E7",
+      "Stat": "shape",
+      "Text": "halves 30.0 -> 30.1, curvature -0.3/h, oscillation crossings 14"
+     },
+     {
+      "ID": "E8",
+      "Stat": "flat",
+      "Text": "noise 0.18, longest flat run 3 pts, plateau at max 0 pts"
+     }
+    ],
+    "global_evidence_ids": [
+     "ev:WE-VN04-00:temp:last:1791870600",
+     "ev:WE-VN04-00:temp:max:1791870600",
+     "ev:WE-VN04-00:temp:min:1791870600",
+     "ev:WE-VN04-00:temp:slope:1791870600",
+     "ev:WE-VN04-00:temp:max_jump:1791870600",
+     "ev:WE-VN04-00:temp:sma:1791870600",
+     "ev:WE-VN04-00:temp:shape:1791870600",
+     "ev:WE-VN04-00:temp:flat:1791870600"
+    ],
+    "rule_finding": {
+     "pattern": "stable",
+     "status": "normal",
+     "observations": [
+      "Temperature steady around 30.0 C, ranging only 29.6-30.5 [E6,E2,E3]"
+     ],
+     "likely_cause": "normal_weather",
+     "confidence": 0.8,
+     "action": "none"
+    },
+    "context": true,
+    "why": "heat drives cooling load"
+   },
+   {
+    "ref": "S6",
+    "node": "EM-CR-SB00-00",
+    "metric": "power_kw",
+    "role": "power",
+    "location": "SB00 substation, 11 kV feeder meter",
+    "window_end": 1791870600,
+    "injected": false,
+    "window": [
+     590.592482151246,
+     592.2816115772642,
+     599.1192611247798,
+     596.319965216179,
+     600.4428703266278,
+     597.1985390511882,
+     597.4429025936713,
+     599.1119357671978,
+     601.219508953397,
+     601.3503789806875,
+     604.0697097501412,
+     601.6217772160855,
+     595.0667794715995,
+     591.8989063880456,
+     595.4112279300823,
+     601.856618390606,
+     602.9928834028593,
+     604.4485523640466,
+     601.4158796432606,
+     593.2903458458546,
+     602.2654159347655,
+     603.8927651871763,
+     598.541546693223,
+     593.3282559255167,
+     598.4504337528485,
+     599.3743640040877,
+     597.2542102070561,
+     600.6606701836279,
+     605.9876877701877,
+     599.355544845737,
+     595.5035855484665,
+     589.8675953483826,
+     604.117956691943,
+     603.4386003245072,
+     597.2131732428519,
+     604.574155153095,
+     601.0977170710914,
+     600.537154279505,
+     599.7304266600547,
+     606.7066089095157,
+     605.0955192232406,
+     604.1564391403011,
+     600.2791735452092,
+     599.6139234574282,
+     604.0916993347222,
+     603.5129278542764,
+     606.3066250836332,
+     592.1668045272185
+    ],
+    "evidence": [
+     {
+      "ID": "E1",
+      "Stat": "last",
+      "Text": "last = 592.17 kW"
+     },
+     {
+      "ID": "E2",
+      "Stat": "max",
+      "Text": "max = 606.71 kW at 10:40"
+     },
+     {
+      "ID": "E3",
+      "Stat": "min",
+      "Text": "min = 589.87 kW at 10:00"
+     },
+     {
+      "ID": "E4",
+      "Stat": "slope",
+      "Text": "trend = +1.31 kW/h (r2 0.12)"
+     },
+     {
+      "ID": "E5",
+      "Stat": "max_jump",
+      "Text": "largest 5-min change = +14.25 kW at 10:05"
+     },
+     {
+      "ID": "E6",
+      "Stat": "sma",
+      "Text": "SMA 1h = 601.94, EMA 1h = 601.15, mean 4h = 599.67 kW"
+     },
+     {
+      "ID": "E7",
+      "Stat": "shape",
+      "Text": "halves 598.55 -> 600.80, curvature -18.57/h, oscillation crossings 16"
+     },
+     {
+      "ID": "E8",
+      "Stat": "flat",
+      "Text": "noise 3.569, longest flat run 1 pts, plateau at max 0 pts"
+     }
+    ],
+    "global_evidence_ids": [
+     "ev:EM-CR-SB00-00:power_kw:last:1791870600",
+     "ev:EM-CR-SB00-00:power_kw:max:1791870600",
+     "ev:EM-CR-SB00-00:power_kw:min:1791870600",
+     "ev:EM-CR-SB00-00:power_kw:slope:1791870600",
+     "ev:EM-CR-SB00-00:power_kw:max_jump:1791870600",
+     "ev:EM-CR-SB00-00:power_kw:sma:1791870600",
+     "ev:EM-CR-SB00-00:power_kw:shape:1791870600",
+     "ev:EM-CR-SB00-00:power_kw:flat:1791870600"
+    ],
+    "rule_finding": {
+     "pattern": "stable",
+     "status": "normal",
+     "observations": [
+      "Power steady around 599.67 kW, ranging only 589.87-606.71 [E6,E2,E3]"
+     ],
+     "likely_cause": "normal_load",
+     "confidence": 0.8,
+     "action": "none"
+    },
+    "context": true,
+    "why": "room load follows occupancy and HVAC"
+   }
+  ],
+  "mode1_report": {
+   "root_cause": "Rule engine: SR-EM-KH04-01 power_kw throttling (critical); SR-AQ-KH03-03 co2 exponential increase (warning); SR-OC-GW-KH95-01 occ arrival (normal); AC-KH03 ac_units_on stable (normal); WE-VN04-00 temp stable (normal); EM-CR-SB00-00 power_kw stable (normal)",
+   "label": "power_load_anomaly",
+   "affected_domains": [
+    "power",
+    "air_quality",
+    "occupancy",
+    "hvac",
+    "weather"
+   ],
+   "evidence": [
+    "S1.E1",
+    "S2.E1",
+    "S3.E1",
+    "S4.E1",
+    "S5.E1",
+    "S6.E1"
+   ],
+   "confidence": 0.7,
+   "action": "inspect_electrical",
+   "explanation": "Power climbed and then held flat at a ceiling of about 9.01 kW for 10 samples [E2,E8]",
+   "requires_human_approval": true,
+   "severity": "critical"
+  },
+  "agents": [
+   {
+    "ttft_ms": 1422.1,
+    "gen_tokens": 88,
+    "tokens_per_s": 16.164287944747525,
+    "early_stopped": true,
+    "ref": "S1",
+    "role": "power",
+    "model": "Llama 3.2 3B smart-city agent (fine-tuned, w4a16)",
+    "fine_tuned": true,
+    "latency_ms": 6866.2,
+    "raw": "{\"pattern\": \"step_increase\", \"status\": \"normal\", \"observations\": [\"Power jumped +5.98 kW at 10:35 and did not return [E5,E1]\", \"Weekday morning start-up at 10:35, routine [E5]\"], \"likely_cause\": \"equipment_startup\", \"confidence\": 0.7, \"event_active\": true, \"onset\": \"10:35\"}",
+    "parsed": {
+     "pattern": "step_increase",
+     "status": "critical",
+     "observations": [
+      "Power jumped +5.98 kW at 10:35 and did not return [E5,E1]",
+      "Weekday morning start-up at 10:35, routine [E5]"
+     ],
+     "likely_cause": "equipment_startup",
+     "confidence": 0.97,
+     "action": "inspect_electrical",
+     "event_active": true,
+     "onset": "10:35"
+    },
+    "valid": true,
+    "errors": null,
+    "repairs": [
+     "post-rule rel_power: status 'normal' -> 'critical'"
+    ],
+    "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are the Power agent of a smart-campus edge monitor (IIIT Hyderabad). You receive a 4-hour window of one sensor metric (5-minute samples) with precomputed statistics. Identify the pattern, judge severity, explain what you notice using only the given numbers, and cite evidence ids (E1..E10) that support each observation. Never invent values. Never order physical actuation; recommend at most an inspection action. Reply with one JSON object only. JSON keys: pattern (stable|spike|dip|gradual_increase|gradual_decrease|step_increase|step_decrease|exponential_increase|oscillation|throttling|flatline|erratic), status (normal|warning|critical|sensor_fault), observations (1-2 short strings, each ending with cited ids like [E1,E4]), likely_cause (normal_load|load_surge|equipment_startup|load_drop_or_outage|capacity_limit_throttling|gradual_load_growth|cyclic_equipment|power_quality_issue|sensor_fault), confidence (0-1), event_active (true|false), onset (HH:MM), fault_kind (stuck|bias|drift|noise|dropout|saturation|quantised, only if sensor_fault), action (none|monitor|inspect_ventilation|inspect_hvac|check_sensor|inspect_water_system|inspect_electrical|review_schedule|request_facility_review).<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nNODE: SR-EM-KH04-01 (KH building, level 04, room energy meter 01)\nMETRIC: power_kw [kW]\nWINDOW: Tue 13 Oct 07:25 -> 11:20 IST, 48 x 5 min\nSERIES (10-min means): 3.00 3.03 3.01 2.99 3.00 2.99 3.00 3.00 3.01 3.00 3.02 3.00 3.01 2.99 3.01 2.99 2.99 3.00 3.01 9.00 8.99 9.00 8.99 9.00\nEVIDENCE:\nE1 last = 9.01 kW\nE2 max = 9.01 kW at 11:20\nE3 min = 2.96 kW at 10:10\nE4 trend = +1.48 kW/h (r2 0.49)\nE5 largest 5-min change = +5.98 kW at 10:35\nE6 SMA 1h = 8.00, EMA 1h = 7.87, mean 4h = 4.25 kW\nE7 halves 3.00 -> 5.50, curvature +4.79/h, oscillation crossings 2\nE8 noise 0.611, longest flat run 3 pts, plateau at max 10 pts\nE9 12 h view: level shift +6.00 kW at 10:45 (133.1x normal variation)\nE10 recent episodes: no excursions beyond 3x normal noise in the last 12 h<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n{\"pattern\": \""
+   },
+   {
+    "ttft_ms": 1422.1,
+    "gen_tokens": 85,
+    "tokens_per_s": 15.61265911136418,
+    "early_stopped": true,
+    "ref": "S2",
+    "role": "air_quality",
+    "model": "Llama 3.2 3B smart-city agent (fine-tuned, w4a16)",
+    "fine_tuned": true,
+    "latency_ms": 6866.4,
+    "raw": "{\"pattern\": \"gradual_increase\", \"status\": \"normal\", \"observations\": [\"CO2 keeps rising, +47.9 ppm/h with r2 0.48 [E4]\", \"Normal build-up while people are present [E4]\"], \"likely_cause\": \"occupancy_load\", \"confidence\": 0.7, \"event_active\": true, \"onset\": \"10:35\"}",
+    "parsed": {
+     "pattern": "gradual_increase",
+     "status": "normal",
+     "observations": [
+      "CO2 keeps rising, +47.9 ppm/h with r2 0.48 [E4]",
+      "Normal build-up while people are present [E4]"
+     ],
+     "likely_cause": "occupancy_load",
+     "confidence": 0.65,
+     "action": "monitor",
+     "event_active": true,
+     "onset": "10:35"
+    },
+    "valid": true,
+    "errors": null,
+    "repairs": [
+     "disagreement with the rule surfaced in the report: CO2 (S2): the AI judged this gradual increase/normal, but the deterministic rule that raised this incident found exponential increase/warning - review before deciding."
+    ],
+    "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are the Air Quality agent of a smart-campus edge monitor (IIIT Hyderabad). You receive a 4-hour window of one sensor metric (5-minute samples) with precomputed statistics. Identify the pattern, judge severity, explain what you notice using only the given numbers, and cite evidence ids (E1..E10) that support each observation. Never invent values. Never order physical actuation; recommend at most an inspection action. Reply with one JSON object only. JSON keys: pattern (stable|spike|dip|gradual_increase|gradual_decrease|step_increase|step_decrease|exponential_increase|oscillation|throttling|flatline|erratic), status (normal|warning|critical|sensor_fault), observations (1-2 short strings, each ending with cited ids like [E1,E4]), likely_cause (normal_conditions|occupancy_load|ventilation_insufficient|outdoor_pollution_ingress|indoor_emission_source|hvac_cooling_issue|humidity_control_issue|sensor_fault), confidence (0-1), event_active (true|false), onset (HH:MM), fault_kind (stuck|bias|drift|noise|dropout|saturation|quantised, only if sensor_fault), action (none|monitor|inspect_ventilation|inspect_hvac|check_sensor|inspect_water_system|inspect_electrical|review_schedule|request_facility_review).<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nNODE: SR-AQ-KH03-03 (KH building, level 03, indoor air sensor 03)\nMETRIC: co2 [ppm]\nLIMITS: warning above 1000, critical above 1500\nWINDOW: Tue 13 Oct 07:25 -> 11:20 IST, 48 x 5 min\nSERIES (10-min means): 450 446 456 456 445 449 461 449 445 448 456 450 449 453 447 452 450 457 475 526 577 629 681 732\nEVIDENCE:\nE1 last = 745 ppm\nE2 max = 745 ppm at 11:20\nE3 min = 438 ppm at 08:05\nE4 trend = +47.9 ppm/h (r2 0.48)\nE5 largest 5-min change = +27.0 ppm at 10:40\nE6 SMA 1h = 603, EMA 1h = 625, mean 4h = 489 ppm\nE7 halves 451 -> 527, curvature +233.9/h, oscillation crossings 2\nE8 noise 8.87, longest flat run 3 pts, plateau at max 1 pts\nE9 12 h view: level shift +154.1 ppm at 10:55 (7.7x normal variation)\nE10 recent episodes: 1 excursion beyond 3x normal noise in the last 12 h (largest 3.8x)<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n{\"pattern\": \""
+   },
+   {
+    "ttft_ms": 0,
+    "gen_tokens": 0,
+    "tokens_per_s": 0,
+    "early_stopped": false,
+    "ref": "S3",
+    "role": "occupancy",
+    "model": "context agent (rules, CPU)",
+    "fine_tuned": false,
+    "latency_ms": 0,
+    "raw": "",
+    "parsed": {
+     "pattern": "arrival",
+     "status": "normal",
+     "observations": [
+      "Room became occupied at 10:25 and is still occupied [E4,E1]"
+     ],
+     "likely_cause": "arrival",
+     "confidence": 0.9,
+     "action": "none"
+    },
+    "valid": true,
+    "errors": null,
+    "prompt": ""
+   },
+   {
+    "ttft_ms": 0,
+    "gen_tokens": 0,
+    "tokens_per_s": 0,
+    "early_stopped": false,
+    "ref": "S4",
+    "role": "hvac",
+    "model": "context agent (rules, CPU)",
+    "fine_tuned": false,
+    "latency_ms": 0,
+    "raw": "",
+    "parsed": {
+     "pattern": "stable",
+     "status": "normal",
+     "observations": [
+      "AC units running: now 2, 1h average 2.0, max 2 [E1,E6,E2]"
+     ],
+     "likely_cause": "hvac_context",
+     "confidence": 0.8,
+     "action": "none"
+    },
+    "valid": true,
+    "errors": null,
+    "prompt": ""
+   },
+   {
+    "ttft_ms": 0,
+    "gen_tokens": 0,
+    "tokens_per_s": 0,
+    "early_stopped": false,
+    "ref": "S5",
+    "role": "weather",
+    "model": "context agent (rules, CPU)",
+    "fine_tuned": false,
+    "latency_ms": 0,
+    "raw": "",
+    "parsed": {
+     "pattern": "stable",
+     "status": "normal",
+     "observations": [
+      "Temperature steady around 30.0 C, ranging only 29.6-30.5 [E6,E2,E3]"
+     ],
+     "likely_cause": "normal_weather",
+     "confidence": 0.8,
+     "action": "none"
+    },
+    "valid": true,
+    "errors": null,
+    "prompt": ""
+   },
+   {
+    "ttft_ms": 0,
+    "gen_tokens": 0,
+    "tokens_per_s": 0,
+    "early_stopped": false,
+    "ref": "S6",
+    "role": "power",
+    "model": "context agent (rules, CPU)",
+    "fine_tuned": false,
+    "latency_ms": 0,
+    "raw": "",
+    "parsed": {
+     "pattern": "stable",
+     "status": "normal",
+     "observations": [
+      "Power steady around 599.67 kW, ranging only 589.87-606.71 [E6,E2,E3]"
+     ],
+     "likely_cause": "normal_load",
+     "confidence": 0.8,
+     "action": "none"
+    },
+    "valid": true,
+    "errors": null,
+    "prompt": ""
+   }
+  ],
+  "final": {
+   "ttft_ms": 2748.5,
+   "gen_tokens": 545,
+   "tokens_per_s": 19.63850732930714,
+   "early_stopped": false,
+   "model": "qwen3.5-4b (htpd)",
+   "latency_ms": 31754,
+   "raw": "{\"title\": \"KH building, level 04: Power up with occupied room\", \"severity\": \"normal\", \"label\": \"occupancy_driven_load\", \"root_cause\": \"People arrived; their heat and equipment raise the load and CO2. AC ran it all window.\", \"causal_chain\": \"arrival (S3.E4) -> CO2 rise (S2.E4) and load step (S1.E5) -> AC on (S4.E1)\", \"observations\": [{\"text\": \"Room occupied since 10:25\", \"src\": [\"S3.E4\"]}, {\"text\": \"CO2 trend: +47.9 ppm per hour (r2 0.48)\", \"src\": [\"S2.E4\"]}, {\"text\": \"Power jumped +5.98 kW within 5 minutes at 10:35\", \"src\": [\"S1.E5\"]}, {\"text\": \"AC units running: now 2, 1h average 2.0, max 2\", \"src\": [\"S4.E1\", \"S4.E6\"]}, {\"text\": \"Outdoor temperature at 29.7 C at the end of the window\", \"src\": [\"S5.E1\"]}], \"agent_checks\": [{\"ref\": \"S1\", \"claim\": \"status critical\", \"verdict\": \"corrected\", \"fact\": \"the jump follows people arriving; it is expected use\", \"src\": [\"S3.E4\", \"S1.E5\"]}, {\"ref\": \"S1\", \"claim\": \"cause equipment startup\", \"verdict\": \"corrected\", \"fact\": \"occupancy began at 10:25, so people or equipment started\", \"src\": [\"S3.E4\", \"S1.E5\"]}], \"affected_domains\": [\"power\", \"air_quality\", \"occupancy\", \"hvac\"], \"suspect_sensors\": [], \"evidence\": [\"S3.E4\", \"S2.E4\", \"S1.E5\", \"S4.E1\"], \"confidence\": 0.88, \"checklist\": [{\"action\": \"monitor\", \"target\": \"S1 (SR-EM-KH04-01)\", \"why\": \"Confirm the trend at the next window\"}], \"monitor_next\": \"Next re-check: watch power and CO2\", \"needs_more_data\": false, \"needs_deeper\": false, \"explanation\": \"The load step and CO2 rise follow people arriving. It is expected; nothing is wrong.\"}",
+   "parsed": {
+    "root_cause": "People arrived; their heat and equipment raise the load and CO2. AC ran it all window.",
+    "label": "occupancy_driven_load",
+    "affected_domains": [
+     "power",
+     "air_quality",
+     "occupancy",
+     "hvac"
+    ],
+    "evidence": [
+     "S3.E4",
+     "S2.E4",
+     "S1.E5",
+     "S4.E1"
+    ],
+    "confidence": 0.88,
+    "action": "monitor",
+    "explanation": "The load step and CO2 rise follow people arriving. It is expected; nothing is wrong. AI and rules disagree: CO2 (S2): the AI judged this gradual increase/normal, but the deterministic rule that raised this incident found exponential increase/warning - review before deciding.",
+    "requires_human_approval": true,
+    "severity": "warning",
+    "title": "KH building, level 04: Power up with occupied room",
+    "causal_chain": "arrival (S3.E4) -> CO2 rise (S2.E4) and load step (S1.E5) -> AC on (S4.E1)",
+    "observations": [
+     {
+      "text": "Room occupied since 10:25",
+      "src": [
+       "S3.E4"
+      ]
+     },
+     {
+      "text": "CO2 trend: +47.9 ppm per hour (r2 0.48)",
+      "src": [
+       "S2.E4"
+      ]
+     },
+     {
+      "text": "Power jumped +5.98 kW within 5 minutes at 10:35",
+      "src": [
+       "S1.E5"
+      ]
+     },
+     {
+      "text": "AC units running: now 2, 1h average 2.0, max 2",
+      "src": [
+       "S4.E1",
+       "S4.E6"
+      ]
+     },
+     {
+      "text": "Outdoor temperature at 29.7 C at the end of the window",
+      "src": [
+       "S5.E1"
+      ]
+     }
+    ],
+    "agent_checks": [
+     {
+      "ref": "S1",
+      "claim": "status critical",
+      "verdict": "corrected",
+      "fact": "the jump follows people arriving; it is expected use",
+      "src": [
+       "S3.E4",
+       "S1.E5"
+      ]
+     },
+     {
+      "ref": "S1",
+      "claim": "cause equipment startup",
+      "verdict": "corrected",
+      "fact": "occupancy began at 10:25, so people or equipment started",
+      "src": [
+       "S3.E4",
+       "S1.E5"
+      ]
+     }
+    ],
+    "checklist": [
+     {
+      "action": "monitor",
+      "target": "S1 (SR-EM-KH04-01)",
+      "why": "Confirm the trend at the next window"
+     }
+    ],
+    "monitor_next": "Next re-check: watch power and CO2",
+    "source": "device:qwen3.5-4b (htpd)",
+    "escalation": {
+     "offer": false
+    },
+    "severity_basis": {
+     "rule": "critical",
+     "reasoner": "normal",
+     "final": "warning",
+     "guard": "the reasoner said normal, the rules say critical: kept at warning"
+    }
+   },
+   "valid": true,
+   "repairs": [
+    "1 AI/rule disagreement(s) surfaced for review"
+   ],
+   "errors": null,
+   "prompt": "<|im_start|>system\n# Tools\n\nYou have access to the following functions:\n\n<tools>\n{\"type\": \"function\", \"function\": {\"name\": \"related_context\", \"description\": \"Incident-time only.\", \"parameters\": {\"type\": \"object\", \"properties\": {\"ref\": {\"type\": \"string\"}, \"hours\": {\"type\": \"integer\"}}, \"required\": [\"ref\"]}}}\n{\"type\": \"function\", \"function\": {\"name\": \"get_sensor_history\", \"description\": \"Aggregated readings of one sensor for a period, plus the evidence summary the agents use (min/max/trend/steps).\", \"parameters\": {\"type\": \"object\", \"properties\": {\"node\": {\"type\": \"string\"}, \"metric\": {\"type\": \"string\"}, \"time\": {\"type\": \"object\", \"properties\": {\"preset\": {\"type\": \"string\"}, \"from\": {\"type\": \"string\"}, \"to\": {\"type\": \"string\"}}}, \"agg\": {\"type\": \"string\"}, \"stats_only\": {\"type\": \"boolean\"}}, \"required\": [\"node\", \"metric\", \"time\"]}}}\n{\"type\": \"function\", \"function\": {\"name\": \"get_action_history\", \"description\": \"Past checklist steps, outcomes (sensor_replaced, sensor_repaired, fixed_by_action, resolved_on_its_own, false_alarm, no_action_needed) and maintenance rows (rep\", \"parameters\": {\"type\": \"object\", \"properties\": {\"node\": {\"type\": \"string\"}, \"metric\": {\"type\": \"string\"}, \"domain\": {\"type\": \"string\"}, \"time\": {\"type\": \"object\", \"properties\": {\"preset\": {\"type\": \"string\"}, \"from\": {\"type\": \"string\"}, \"to\": {\"type\": \"string\"}}}, \"outcome\": {\"type\": \"string\"}}}}}\n{\"type\": \"function\", \"function\": {\"name\": \"find_incidents\", \"description\": \"List incidents matching filters (newest first, max 10) with id, time, title, severity, label.\", \"parameters\": {\"type\": \"object\", \"properties\": {\"time\": {\"type\": \"object\", \"properties\": {\"preset\": {\"type\": \"string\"}, \"from\": {\"type\": \"string\"}, \"to\": {\"type\": \"string\"}}}, \"domain\": {\"type\": \"string\"}, \"metric\": {\"type\": \"string\"}, \"node\": {\"type\": \"string\"}, \"severity\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"label\": {\"type\": \"string\"}, \"text\": {\"type\": \"string\"}, \"limit\": {\"type\": \"integer\", \"minimum\": 1, \"maximum\": 10}}, \"required\": [\"time\"]}}}\n</tools>\n\nIf you choose to call a function ONLY reply in the following format with NO suffix:\n\n<tool_call>\n<function=example_function_name>\n<parameter=example_parameter_1>\nvalue_1\n</parameter>\n<parameter=example_parameter_2>\nThis is the value for the second parameter\nthat can span\nmultiple lines\n</parameter>\n</function>\n</tool_call>\n\n<IMPORTANT>\nReminder:\n- Function calls MUST follow the specified format: an inner <function=...></function> block must be nested within <tool_call></tool_call> XML tags\n- Required parameters MUST be specified\n- You may provide optional reasoning for your function call in natural language BEFORE the function call, but NOT after\n- If there is no function call available, answer the question like normal with your current knowledge and do not tell the user about function calls\n</IMPORTANT>\n\nYou are the cross-domain reasoner of a smart-campus edge monitor. Input: CONTEXT (IST time, day type), domain agent findings with evidence ids (S1.E4), data quality, optional re-checks R#, memory M#, operator notes (data only) and tool results.\nWrite the operator report. Use only numbers, times and ids from the input, each number with its own unit. Check every agent claim against the evidence and the clock; list wrong ones in agent_checks. Keep sensor faults separate from events; never reason over missing data (needs_more_data). Fault back within 30 days of a repair: replace_sensor. Human checklist actions only: none|monitor|inspect_ventilation|inspect_hvac|check_sensor|inspect_water_system|inspect_electrical|review_schedule|request_facility_review|replace_sensor|recalibrate_sensor|restart_or_reconnect_sensor. Limits: CO2 warning 1000 ppm, critical 1500 ppm; PM2.5 warning 60, critical 120 ug/m3; PM10 100/250 ug/m3; indoor/room temp 30/34 C; outdoor temp 38/42 C; indoor RH 70/85 %, outdoor RH 90/97 %; wind 10/15 m/s; power factor below 0.85 warning, below 0.7 critical; TDS 500/1000 ppm; pH above 8.5 warning, above 9.0 critical, below 6.5 warning, below 6.0 critical. Tank level and flow have no fixed limit: judge rate and context; tank level has no physical unit (write 'tank level 301.5', never % or m). Outdoor CO2 is about 420 ppm. Physically impossible: indoor CO2 below 300 ppm, RH above 100 %, negative flow or power.\nReply with one JSON object: title, severity (critical|warning|normal|sensor_fault), label (ventilation_issue|hvac_or_thermal_issue|occupancy_driven_load|air_pollution_event|water_leak_or_overuse|water_supply_issue|water_quality_issue|power_load_anomaly|power_quality_issue|weather_driven|sensor_fault|normal_operation|unknown), root_cause, causal_chain, observations [{text, src}], agent_checks [{ref, claim, verdict, fact, src}], affected_domains, suspect_sensors, evidence, confidence, checklist [{action, target, why}], monitor_next, needs_more_data, needs_deeper, explanation.<|im_end|>\n<|im_start|>user\nCONTEXT: Tue 13 Oct 2026 11:20 IST | workday | daytime | outdoor 29.7 C (WE-VN04-00, 11:20)\nINCIDENT INC-0409 opened 11:20 (mode early), windows 4 h of 5-min samples\nDOMAIN AGENT FINDINGS:\nS1 [FLAGGED]: SR-EM-KH04-01 power_kw [kW] at KH building, level 04, room energy meter 01 (power)\n  quality=good\n  agent: pattern=step_increase status=critical cause=equipment_startup confidence=0.97\n  - Power jumped +5.98 kW at 10:35 and did not return [S1.E5,S1.E1]\n  - Weekday morning start-up at 10:35, routine [S1.E5]\n  S1.E1 last = 9.01 kW\n  S1.E2 max = 9.01 kW at 11:20\n  S1.E3 min = 2.96 kW at 10:10\n  S1.E4 trend = +1.48 kW/h (r2 0.49)\n  S1.E5 largest 5-min change = +5.98 kW at 10:35\n  S1.E6 SMA 1h = 8.00, EMA 1h = 7.87, mean 4h = 4.25 kW\n  S1.E7 halves 3.00 -> 5.50, curvature +4.79/h, oscillation crossings 2\n  S1.E8 noise 0.611, longest flat run 3 pts, plateau at max 10 pts\n  S1.E9 12 h view: level shift +6.00 kW at 10:45 (133.1x normal variation)\n  S1.E10 recent episodes: no excursions beyond 3x normal noise in the last 12 h\nS2 [FLAGGED]: SR-AQ-KH03-03 co2 [ppm] at KH building, level 03, indoor air sensor 03 (air_quality)\n  LIMITS: warning above 1000, critical above 1500\n  quality=good\n  agent: pattern=gradual_increase status=normal cause=occupancy_load confidence=0.65\n  - CO2 keeps rising, +47.9 ppm/h with r2 0.48 [S2.E4]\n  - Normal build-up while people are present [S2.E4]\n  S2.E1 last = 745 ppm\n  S2.E2 max = 745 ppm at 11:20\n  S2.E3 min = 438 ppm at 08:05\n  S2.E4 trend = +47.9 ppm/h (r2 0.48)\n  S2.E5 largest 5-min change = +27.0 ppm at 10:40\n  S2.E6 SMA 1h = 603, EMA 1h = 625, mean 4h = 489 ppm\n  S2.E7 halves 451 -> 527, curvature +233.9/h, oscillation crossings 2\n  S2.E8 noise 8.87, longest flat run 3 pts, plateau at max 1 pts\n  S2.E9 12 h view: level shift +154.1 ppm at 10:55 (7.7x normal variation)\n  S2.E10 recent episodes: 1 excursion beyond 3x normal noise in the last 12 h (largest 3.8x)\nS3 [related: load follows occupancy]: SR-OC-GW-KH95-01 occ [0/1] at KH building, room occupancy sensor 01 (gateway KH95) (occupancy)\n  quality=good\n  agent: pattern=arrival status=normal cause=arrival confidence=0.90\n  - Room became occupied at 10:25 and is still occupied [S3.E4,S3.E1]\n  S3.E1 current state = 1\n  S3.E2 occupied fraction = 0.25\n  S3.E4 first occupied at 10:25\n  S3.E5 last occupied at 11:20\nS4 [related: AC is the main load]: AC-KH03 ac_units_on [units] at KH building, level 03, AC units (hvac)\n  quality=good\n  agent: pattern=stable status=normal cause=hvac_context confidence=0.80\n  - AC units running: now 2, 1h average 2.0, max 2 [S4.E1,S4.E6,S4.E2]\n  S4.E1 last = 2 units\n  S4.E4 trend = +0.0 units/h (r2 0.00)\n  S4.E5 largest 5-min change = +0.0 units at 07:30\n  S4.E8 noise 0.00, longest flat run 48 pts, plateau at max 48 pts\nS5 [related: heat drives cooling load]: WE-VN04-00 temp [C] at VN building, level 04, rooftop weather station (weather)\n  quality=good\n  agent: pattern=stable status=normal cause=normal_weather confidence=0.80\n  - Temperature steady around 30.0 C, ranging only 29.6-30.5 [S5.E6,S5.E2,S5.E3]\n  S5.E1 last = 29.7 C\n  S5.E2 max = 30.5 C at 10:50\n  S5.E3 min = 29.6 C at 07:35\n  S5.E4 trend = +0.0 C/h (r2 0.00)\n  S5.E5 largest 5-min change = +0.6 C at 07:50\nS6 [related: room load follows occupancy and HVAC]: EM-CR-SB00-00 power_kw [kW] at SB00 substation, 11 kV feeder meter (power)\n  quality=good\n  agent: pattern=stable status=normal cause=normal_load confidence=0.80\n  - Power steady around 599.67 kW, ranging only 589.87-606.71 [S6.E6,S6.E2,S6.E3]\n  S6.E1 last = 592.17 kW\n  S6.E2 max = 606.71 kW at 10:40\n  S6.E3 min = 589.87 kW at 10:00\n  S6.E4 trend = +1.31 kW/h (r2 0.12)\n  S6.E5 largest 5-min change = +14.25 kW at 10:05\nMEMORY: no past incidents or maintenance on these sensors in the last 90 days\nWrite the cross-domain incident report JSON.<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+  },
+  "total_ms": 38643,
+  "npu_calls": 3,
+  "timeline": [
+   {
+    "t": "16:59:05",
+    "msg": "Event gated: 6 sensor(s) flagged, mode 3"
+   },
+   {
+    "t": "16:59:05",
+    "msg": "Orchestrator: 2 sensor(s) to NPU agents, 4 related sensor(s) checked by context agents in parallel"
+   },
+   {
+    "t": "16:59:05",
+    "msg": "Orchestrator: running all 2 NPU agents in one model load (batched)"
+   },
+   {
+    "t": "16:59:12",
+    "msg": "Power agent analysing SR-EM-KH04-01 power_kw on NPU (fine-tuned)"
+   },
+   {
+    "t": "16:59:12",
+    "msg": "Power agent done in 6.9s (first token 1.4s, 88 tokens): step_increase / critical (policy PASSED)"
+   },
+   {
+    "t": "16:59:12",
+    "msg": "Air Quality agent analysing SR-AQ-KH03-03 co2 on NPU (fine-tuned)"
+   },
+   {
+    "t": "16:59:12",
+    "msg": "Air Quality agent done in 6.9s (first token 1.4s, 85 tokens): gradual_increase / normal (policy PASSED)"
+   },
+   {
+    "t": "16:59:12",
+    "msg": "Reasoner v3 combining 3 domains"
+   },
+   {
+    "t": "16:59:12",
+    "msg": "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+   },
+   {
+    "t": "16:59:20",
+    "msg": "Reasoner title: KH building, level 04: Power up with occupied room"
+   },
+   {
+    "t": "16:59:20",
+    "msg": "Reasoner severity (provisional): normal"
+   },
+   {
+    "t": "16:59:44",
+    "msg": "Severity guard: the reasoner said normal, the rules say critical: kept at warning"
+   },
+   {
+    "t": "16:59:44",
+    "msg": "Reasoner v3 report in 31.8s (1 completion(s), 0 tool call(s)), policy ok"
+   },
+   {
+    "t": "16:59:44",
+    "msg": "Finished in 38.6s, 3 NPU call(s)"
+   }
+  ],
+  "approval": "pending",
+  "approval_note": "",
+  "refine_stage": "early",
+  "next_refine_sim": 1791876000,
+  "sim_epoch": 1695229129619048483,
+  "revisions": [
+   {
+    "stage": "early",
+    "sim_end": 1791870600,
+    "wall": "2026-10-13 20:36:19",
+    "severity": "warning",
+    "title": "KH building, level 04: Power up with occupied room",
+    "label": "occupancy_driven_load",
+    "npu_calls": 3,
+    "ms": 38643,
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "power_kw",
+      "pattern": "step_increase",
+      "status": "critical"
+     },
+     {
+      "ref": "S2",
+      "metric": "co2",
+      "pattern": "level_shift (12 h view)",
+      "status": "warning"
+     }
+    ]
+   }
+  ],
+  "workflow": "needs_decision",
+  "needs_since": 1791903979,
+  "live_epoch": 1695229129619048483,
+  "steps": [
+   {
+    "id": "s1",
+    "source": "report",
+    "action": "monitor",
+    "text": "Keep watching the flagged readings; no on-site action yet",
+    "why": "People arrived; their heat and equipment raise the load and CO2.",
+    "added_at_stage": "early",
+    "state": "open"
+   },
+   {
+    "id": "s2",
+    "source": "agent",
+    "action": "inspect_electrical",
+    "target": "SR-EM-KH04-01",
+    "text": "Ask an electrician to inspect the feeder and panel of the flagged meter",
+    "why": "Power at KH building, level 04, room energy meter 01: step increase (critical)",
+    "added_at_stage": "early",
+    "state": "open"
+   }
+  ],
+  "events": [
+   {
+    "seq": 1,
+    "at": 1791903941,
+    "actor": "system",
+    "event": "created",
+    "detail": "6 sensor(s) flagged"
+   },
+   {
+    "seq": 2,
+    "at": 1791903979,
+    "actor": "reasoner",
+    "event": "analysed",
+    "detail": "severity warning"
+   }
+  ]
+ }
+}

@@ -117,6 +117,8 @@ type ReportCall struct {
 	// two-stage report (owner, 2026-10-27): the instant deterministic report shown while the reasoner writes;
 	// replaced by the reasoner's report (or its fallback) when the analysis completes
 	Preliminary bool `json:"preliminary,omitempty"`
+	// what the preliminary is based on, shown on its banner (retrieval.go)
+	Note string `json:"note,omitempty"`
 }
 
 type TimelineItem struct {
@@ -137,6 +139,7 @@ type Incident struct {
 	Roles         []string       `json:"roles"`
 	Injected      bool           `json:"injected"`
 	FastPath      bool           `json:"fast_path,omitempty"` // opened by the critical fast path (fastpath.go)
+	Retrieved     []RetMatch     `json:"retrieved,omitempty"` // similar past AI reports behind the preliminary (retrieval.go)
 	Sensors       []SensorRef    `json:"sensors"`
 	Mode1         Report         `json:"mode1_report"`
 	Agents        []AgentCall    `json:"agents"`
@@ -181,6 +184,7 @@ type Reasoner struct {
 	// report; the AI analysis at persistReadings updates that incident instead of opening a new one
 	fastInc map[string]*Incident
 	early   []earlyJob // provisional early AI runs (earlyai.go), after alerts and jobs, before refinements
+	ret     retIndex   // finished AI reports for the retrieval preliminary (retrieval.go)
 }
 
 func NewReasoner(g *GenieRunner, e *Engine, dir string, notify func(string, any)) *Reasoner {
@@ -188,6 +192,10 @@ func NewReasoner(g *GenieRunner, e *Engine, dir string, notify func(string, any)
 		refineQ: map[string]bool{}}
 	os.MkdirAll(filepath.Dir(r.store), 0o755)
 	r.load()
+	r.ret.rebuild(r.incidents)
+	if n := r.ret.loadSeed(filepath.Join(dir, "data", "rag_seed.json")); n > 0 {
+		trace("retrieval: %d seed reference cases loaded", n)
+	}
 	return r
 }
 
@@ -611,6 +619,10 @@ func (r *Reasoner) Process(cands []Candidate, mode int) *Incident {
 	r.persist(inc)
 	t0 := time.Now()
 	r.log(inc, fmt.Sprintf("Event gated: %d sensor(s) flagged, mode %d", len(inc.Sensors), mode))
+	if mode != 1 {
+		// instant first report (retrieval + rules, CPU, < 5 ms) while the agents and the reasoner run
+		r.preliminary(inc, r.retrievalPreliminary(inc))
+	}
 	var epoch, shift int64
 	if r.eng != nil {
 		epoch, shift, _ = r.eng.SimBase() // the history the refinements will re-read (refine.go)
@@ -624,6 +636,12 @@ func (r *Reasoner) Process(cands []Candidate, mode int) *Incident {
 	if mode != 1 && (inc.Final == nil || !inc.Final.Valid) {
 		inc.State = "done_with_errors"
 	}
+	r.mu.Unlock()
+	if mode != 1 {
+		r.retConsistency(inc)
+		r.ret.add(inc) // the index learns every finished AI report
+	}
+	r.mu.Lock()
 	r.scheduleRefine(inc, epoch, shift) // early alert done; its sensors are re-read at 1.5 h and 3 h (refine.go)
 	r.wfAnalysedLocked(inc, epoch)      // workflow.go: needs a decision; the checklist is built
 	r.mu.Unlock()
@@ -1174,8 +1192,13 @@ func (r *Reasoner) preliminary(inc *Incident, rc *ReportCall) {
 		return
 	}
 	rc.Preliminary = true
-	rc.Model = "preliminary (rules + agent findings)"
+	if !strings.HasPrefix(rc.Model, "preliminary") {
+		rc.Model = "preliminary (rules + agent findings)"
+	}
 	r.mu.Lock()
+	if rc.Note == "" && inc.Final != nil && inc.Final.Preliminary {
+		rc.Note = inc.Final.Note // keep what the first preliminary was based on
+	}
 	inc.Final = rc
 	r.mu.Unlock()
 	r.log(inc, "Preliminary report shown (rules + agent findings); the reasoner is writing the full report")

@@ -2221,6 +2221,25 @@ The app A/B on the board is running from `board_ab/`.
 - Young-window top-up (proofs/2026-10-28_master/young_window, detached yw_queue): 690 new k=3..7 rows (train months) + B50-correct replay,
   trained from the exact B50 adapter; accepted only if gate2 vs B50 passes AND gate-study young-window accuracy improves (YW_DONE.json).
 
+## 2.56 Final build for the evaluation (2026-10-28, proofs/2026-10-28_master/FINAL_STATUS.md)
+
+- Result: PASS: chaos 6/6 done+valid, fast path then AI on the same incident: {"fast_incident": "INC-0418", "fast_s": 6.3, "ai_update_s": 55.2, "final_model": "qwen3.5-4b (htpd)", "valid": true, "severity": "sensor_fault", "title": "KH building, level 03: Suspect CO2 readings", "pass": true}
+- Reasoner qwen35_reasoner_q4_0.gguf (rsn_v1 kept: rsn_v2 board accuracy FAIL {'n': 30, 'parse': 30, 'sev': 27, 'lab': 25, 's': 22.5} {'n': 3, 'parse': 1, 'sev': 1, 'lab': 1, 's': 28.1}); agents ft_B50_q4_0.gguf (B50 kept: P3b winner T30 fails gate2 head-to-head vs B50 (dev +7 CI[-19,+35], sev -13, E1 -4; diag/gate2_T30_vs_B50.json), owner rule accuracy first); reasoner_split=3; APK fast_early (edge-agent c97afdeb1c06607fc1535cb6806f9d1d); htpd_v8x2.
+- Rollback: bash proofs/2026-10-28_master/final_rollback.sh (known-good snapshot taken before the deploy).
+
+## 2.57 Retrieval preliminary (2026-10-29, proofs/2026-10-28_master/RAG_STATUS.md)
+
+- Every incident gets an instant preliminary (< 5 ms CPU): the nearest finished AI reports (structured features + TF-IDF, same role/metric,
+  tuned threshold; seed reference cases rank below live reports) adapted to the LIVE values, severity = max(rules, retrieved);
+  no hit -> rules report + 'full AI report coming'. The AI report replaces it on the same incident; AI-vs-retrieved severity
+  disagreements are logged. retrieval.go, retrieval_test.go. APK 4baf7f79. Result: PASS: 4/4 incidents had a preliminary within 2 s and the AI report on the same incident; fastcheck {"fast_incident": "INC-0427", "fast_s": 5.5, "ai_update_s": 47.5, "final_model": "deterministic (related domains verified steady)", "valid": true, "severity": "sensor_fault", "title": "CO2 step increase: KH building, level 03, indoor air sensor 03", "pass": true}
+
+## 2.58 rsn_v2 retry with htpd_v8x3 (2026-10-29, proofs/2026-10-28_master/RSN_V2_RETRY.md)
+
+- Result: DEPLOYED htpd_v8x3 + rsn_v1: app check PASS (chaos 3 3 3, fastcheck {"fast_incident": "INC-0433", "fast_s": 5.6, "ai_update_s": 47.2, "final_model": "qwen3.5-4b (htpd)", "valid": true, "severity": "sensor_fault", "title": "KH building, level 03: Suspect CO2 readings", "pass": true})
+- htpd_v8x3: bounded constrained pick (top-64, then top-1024, then the forced token, with a full scan only as the last resort); 150 s wall-clock guard per reason request (stop "timeout" -> deterministic report); slow-pick counters in the log.
+- Gates: parity 5/5, rsn_v2 parse 10/10, sev gold 10 vs 10, label gold 8 vs 9, consistency 9/9.
+
 ## 3. If something goes wrong
 
 **Golden rule: just run the same `train.ps1` command again.** It continues where it stopped: training resumes
@@ -2532,3 +2551,29 @@ headers. It's a post-mid-eval item, as is Qwen for reasoning.
   - The board A/B is queued and runs standalone when the board connects: `proofs/2026-10-28_master/split6_ab.sh`. It compares sp3, sp6 and sp4 on 30 RWH prompts and writes `raw/split6/acc.md`.
   - Deploy only if severity and label vs gold are no worse than sp3.
 - **Pruned lm_head** (estimated −12%): still on hold after the 02:11 board reboot; it needs the owner's explicit OK.
+
+### 2.54b P3b result and the agents-model decision for the evaluation (2026-10-28)
+- **P3b** (replay only of rows mixA50 answers correctly, then a WiSE blend of 0.5/0.7/1.0): every blend fails gate2 against mixA50. The cause is HVAC; P3B10 is also worse on water_unseen.
+
+  | blend | dev net (3 parts) | dev severity net | E1 net |
+  |---|---|---|---|
+  | P3B05 | −27 / −52 / −3 | −65 | −1 |
+  | P3B07 | −26 / −54 / +3 | −60 | −4 |
+  | P3B10 | −40 / −73 / −7 | −82 | +8 |
+
+- **The queue's winner** is T30, the P2 candidate (rule: best dev+E1 net among the passers).
+- **Head to head, T30 vs B50** (`gate2.py --ref-dev B50 --ref-e1 B50`, `diag/gate2_T30_vs_B50.json`): **FAIL**.
+  - dev net +7, CI [−19, +35], not significant;
+  - severity −13;
+  - E1 −4.
+- **Decision:** B50 stays the agents' model for the evaluation, accuracy first. `final.sh` F4 is pre-decided: `final/agents` = B50.
+
+### 2.56b Split after the final deploy (2026-10-29 00:25 IST, `split_post.sh`, `raw/split_post`)
+- **sp4 vs sp3** (rsn_v1, q10-q19): same gold agreement (sev 10/10, label 9/10, 10/10 identical to sp3), 21.0 s vs 21.2 s (−1%). The app check passed (2/2 valid, 4 streams), but a count bug in the script (it expected "3/3" after the check was cut to 2 incidents) reverted the board to sp3. sp3 stays; the gain was negligible.
+- **sp6:** htpd died at the first request: `HTP0 buffer mapping failed size 427401216`. 6 streams × 4096 ctx do not fit the NPU session. A retry at ~3200 ctx is queued with the rsn_v2 retry as a small test (5 prompts), for numbers only.
+- **Final (FINAL_STATUS.md):** PASS. chaos 6/6 done and valid; the fast path opens the incident at 6.3 s and the AI updates it at 55 s.
+- **Retrieval preliminary (RAG_STATUS.md):** PASS. The preliminary arrives at 0 s; 2/4 were retrieval hits.
+
+### 2.58b v8x3 speed check (2026-10-29 03:52 IST, `proofs/2026-10-28_master/x2x3_ab.sh`, `x2x3_raw/`)
+- The parity run showed v8x3 6-9% slower than the v8x2 reference, but that reference was 5 h older, on a cooler board.
+- Same-session interleaved A/B, rsn_v1 sp3, q12-q14, x2/x3/x2/x3: **v8x2 21.7 s vs v8x3 21.6 s (−0.3%, n=6 each)**. Every prompt is within 0.4 s. The 150 s guard, bounded pick and heartbeat cost nothing measurable. **v8x3 stays live.**

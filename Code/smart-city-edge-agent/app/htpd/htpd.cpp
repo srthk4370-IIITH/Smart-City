@@ -131,6 +131,7 @@
 #include <mutex>
 #include <thread>
 #include <vector>
+#include <atomic>
 
 using clk = std::chrono::steady_clock;
 static double ms_since(clk::time_point t) { return std::chrono::duration<double, std::milli>(clk::now() - t).count(); }
@@ -857,6 +858,7 @@ static bool g_reason_disk_cache = true;       // HTPD_REASON_DISK_CACHE=0: stati
 static int g_reason_spec = 0;                 // max draft tokens (0 = off: v8r decoding)
 static int g_reason_spec_nmin = 2, g_reason_spec_nmax = 4;  // n-gram match length range (longest first)
 static int g_reason_rs = 0;                   // n_rs_seq of the reasoner context
+static double g_reason_timeout_ms = 150000;   // v8x3: HTPD_REASON_TIMEOUT_MS wall-clock guard per reason request (0 = off)
 // v8x split decoding: request "split": [[keys...], ...] (+ "split_after": key); empty = off
 static std::vector<std::vector<std::string>> g_req_split;
 static std::string g_req_split_after = "causal_chain";
@@ -895,6 +897,26 @@ static void trace_pick(const float * lg, int n_vocab, llama_token picked) {
 }
 
 static llama_token pick_forced_impl(const float * lg, int n_vocab, const htpd::Forcer & fz, int * changed);
+// v8x3 pick statistics (per request) and the kind of the last pick: 0 argmax, 1 top-64, 2 top-1024, 3 forced token, 4 full scan
+static int g_pick_kind = 0;
+static long g_pick_slow64 = 0, g_pick_slow1k = 0, g_pick_full = 0;
+static bool g_pick_bounded = true, g_pick_debug = false;
+// v8x3 heartbeat: decode progress seen by a watcher thread (stall diagnosis: HTP side vs CPU side)
+static std::atomic<long> g_hb_step{0};
+static std::atomic<int> g_hb_in_decode{0}, g_hb_phase{0};  // phase 0 idle, 1 prefill, 2 decode step, 3 pick/handle
+static void hb_thread() {
+    long last = -1; int still = 0;
+    for (;;) {
+        std::this_thread::sleep_for(std::chrono::seconds(15));
+        const int ph = g_hb_phase.load(); const long st = g_hb_step.load();
+        if (ph == 0) { last = -1; still = 0; continue; }
+        if (st == last) {
+            still += 15;
+            if (still >= 30)
+                fprintf(stderr, "htpd: heartbeat: no progress for %d s at step %ld, phase %d, in_decode %d\n", still, st, ph, g_hb_in_decode.load());
+        } else { last = st; still = 0; }
+    }
+}
 static llama_token pick_forced(const float * lg, int n_vocab, const htpd::Forcer & fz, int * changed) {
     const llama_token t = pick_forced_impl(lg, n_vocab, fz, changed);
     trace_pick(lg, n_vocab, t);
@@ -907,6 +929,7 @@ static llama_token pick_forced_impl(const float * lg, int n_vocab, const htpd::F
         if (llama_vocab_is_eog(g_vocab, x)) return fz.done();
         return x >= 0 && x < (llama_token) g_rpieces.size() && fz.allows(g_rpieces[x]);
     };
+    g_pick_kind = 0;
     if (ok(t)) return t;
     constexpr int K = 64;
     std::vector<std::pair<float, int>> top;
@@ -918,8 +941,38 @@ static llama_token pick_forced_impl(const float * lg, int n_vocab, const htpd::F
         if ((int) top.size() > K) top.pop_back();
     }
     llama_token best = -1;
+    g_pick_kind = 1;
     for (auto & e : top) if (ok(e.second)) { best = e.second; break; }
     if (best < 0) {
+        g_pick_slow64++;
+        if (g_pick_debug) {
+            const std::string tp = t >= 0 && t < (llama_token) g_rpieces.size() ? g_rpieces[t] : std::string("?");
+            fprintf(stderr, "htpd: pick slow: mode %d key '%s' val '%.40s' need '%.40s' argmax '%s'\n", (int) fz.mode,
+                    fz.key.c_str(), fz.val.c_str(), fz.need.c_str(), tp.c_str());
+        }
+    }
+    if (best < 0 && g_pick_bounded) {
+        // (a) top-1024 by logit (same order as the full scan, so the same token when one of them is allowed)
+        constexpr int K2 = 1024;
+        std::vector<int> idx(n_vocab);
+        for (int i = 0; i < n_vocab; ++i) idx[i] = i;
+        const int k2 = std::min(K2, n_vocab);
+        std::nth_element(idx.begin(), idx.begin() + k2, idx.end(), [&](int a, int b) { return lg[a] > lg[b]; });
+        std::sort(idx.begin(), idx.begin() + k2, [&](int a, int b) { return lg[a] > lg[b] || (lg[a] == lg[b] && a < b); });
+        g_pick_kind = 2;
+        for (int j = 0; j < k2; ++j) if (ok(idx[j])) { best = idx[j]; break; }
+        if (best < 0) {
+            g_pick_slow1k++;
+            // then the first token of the deterministic continuation, when there is one
+            const std::string ft = fz.forced_text();
+            if (!ft.empty()) {
+                std::vector<llama_token> ftk = tokenize(ft);
+                if (!ftk.empty() && ok(ftk[0])) { best = ftk[0]; g_pick_kind = 3; }
+            }
+        }
+    }
+    if (best < 0) {
+        g_pick_kind = 4; g_pick_full++;
         float bv = -INFINITY;
         for (int i = 0; i < n_vocab; ++i) {
             if (best >= 0 && !(lg[i] > bv)) continue;
@@ -977,6 +1030,7 @@ static std::vector<Out> run_reason(llama_context * ctx, const std::vector<std::s
     }
 
     auto t0 = clk::now();
+    g_pick_slow64 = g_pick_slow1k = g_pick_full = 0;
     llama_batch batch = llama_batch_init(std::max(n_batch, n * 72), 0, 1);
     auto prefill = [&](int s, int from, int to, bool want_last) -> bool {  // tokens [from, to) of stream s
         for (int k = from; k < to;) {
@@ -986,7 +1040,10 @@ static std::vector<Out> run_reason(llama_context * ctx, const std::vector<std::s
                 batch.token[idx] = toks[s][k]; batch.pos[idx] = k; batch.n_seq_id[idx] = 1; batch.seq_id[idx][0] = s;
                 batch.logits[idx] = want_last && k == to - 1;
             }
-            if (llama_decode(ctx, batch) != 0) { fprintf(stderr, "htpd: reason prefill failed\n"); return false; }
+            g_hb_phase = 1; g_hb_in_decode = 1;
+            const int rc_pf = llama_decode(ctx, batch);
+            g_hb_in_decode = 0; g_hb_step++;
+            if (rc_pf != 0) { fprintf(stderr, "htpd: reason prefill failed\n"); return false; }
         }
         return true;
     };
@@ -1166,6 +1223,7 @@ static std::vector<Out> run_reason(llama_context * ctx, const std::vector<std::s
         hist.insert(hist.end(), cert.begin(), cert.end());
         flush_step();
         while (!fin) {
+            if (g_reason_timeout_ms > 0 && ms_since(t0) > g_reason_timeout_ms) { out[0].stop = "timeout"; out[0].ms = ms_since(t0); break; }
             ngram_draft(hist, K, g_reason_spec_nmin, g_reason_spec_nmax, draft);
             const int room = per_seq - 72 - pos[0] - (int) cert.size() - 1;
             if ((int) draft.size() > room) draft.resize(std::max(0, room));
@@ -1233,6 +1291,15 @@ static std::vector<Out> run_reason(llama_context * ctx, const std::vector<std::s
     flush_step();
     int steps = spec ? sp.steps : 0;
     while (active > 0) {
+        if (g_reason_timeout_ms > 0 && ms_since(t0) > g_reason_timeout_ms) {  // (b) wall-clock guard
+            for (int s = 0; s < NS; ++s) if (!done[s]) { done[s] = true; out[s].stop = "timeout"; out[s].ms = ms_since(t0); }
+            fprintf(stderr, "htpd: reason timeout after %.0f ms (%d active streams stopped)\n", ms_since(t0), active);
+            active = 0;
+            break;
+        }
+        if (g_pick_debug && steps % 100 == 0 && steps > 0)
+            fprintf(stderr, "htpd: step %d at %.0f ms, slow picks %ld/%ld/%ld\n", steps, ms_since(t0), g_pick_slow64, g_pick_slow1k, g_pick_full);
+        g_hb_phase = 3; g_hb_step++;
         batch.n_tokens = 0;
         std::vector<int> last(NS, -1);
         for (int s = 0; s < NS; ++s) {
@@ -1249,7 +1316,10 @@ static std::vector<Out> run_reason(llama_context * ctx, const std::vector<std::s
                 if (j + 1 == inj[s].size()) last[s] = idx;
             }
         }
-        if (llama_decode(ctx, batch) != 0) { fprintf(stderr, "htpd: reason decode failed\n"); break; }
+        g_hb_phase = 2; g_hb_in_decode = 1;
+        const int rc_dec = llama_decode(ctx, batch);
+        g_hb_in_decode = 0; g_hb_phase = 3; g_hb_step++;
+        if (rc_dec != 0) { fprintf(stderr, "htpd: reason decode failed\n"); break; }
         steps++;
         for (int s = 0; s < NS; ++s) {
             if (last[s] < 0) continue;
@@ -1282,11 +1352,15 @@ static std::vector<Out> run_reason(llama_context * ctx, const std::vector<std::s
         flush_step();
     }
     llama_batch_free(batch);
+    g_hb_phase = 0;
     for (int s = 0; s < NS; ++s) {
         llama_memory_seq_rm(mem, s, -1, -1);
         if (out[s].stop.empty()) out[s].stop = "error";
         fprintf(stderr, "htpd: reason stream %d: %d tokens (%d forced, %d constrained picks), stop %s, %.0f ms\n",
                 s, out[s].tokens, out[s].forced, changed[s], out[s].stop.c_str(), out[s].ms);
+        if (s == NS - 1)
+            fprintf(stderr, "htpd: reason picks: %ld top64 misses, %ld top1024 misses, %ld full scans (bounded %d)\n",
+                    g_pick_slow64, g_pick_slow1k, g_pick_full, (int) g_pick_bounded);
     }
     fprintf(stderr, "htpd: reason %d streams, %d decode steps, prefill %.0f ms, cache %s (%d tokens, %.0f ms)\n",
             NS, steps, prefill_ms, rs.cache.c_str(), rs.cached_tokens, rs.cache_ms);
@@ -1491,6 +1565,10 @@ int main(int argc, char ** argv) {
     g_reason_turn_cache = env_int("HTPD_REASON_TURN_CACHE", 1) != 0;
     g_reason_disk_cache = env_int("HTPD_REASON_DISK_CACHE", 1) != 0;
     g_reason_spec = std::max(0, std::min(16, env_int("HTPD_REASON_SPEC", 0)));
+    g_reason_timeout_ms = env_int("HTPD_REASON_TIMEOUT_MS", 150000);
+    g_pick_bounded = env_int("HTPD_PICK_BOUNDED", 1) != 0;
+    g_pick_debug = env_int("HTPD_PICK_DEBUG", 0) != 0;
+    if (env_int("HTPD_HEARTBEAT", 1) != 0) std::thread(hb_thread).detach();
     g_reason_spec_nmin = std::max(1, env_int("HTPD_REASON_SPEC_NMIN", 2));
     g_reason_spec_nmax = std::max(g_reason_spec_nmin, env_int("HTPD_REASON_SPEC_NMAX", 4));
     const int reason_idle_ms = env_int("HTPD_REASON_IDLE_MS", 20000);

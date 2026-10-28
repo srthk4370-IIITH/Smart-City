@@ -27,7 +27,7 @@ for cfg in "$@"; do
   name=${cfg%%,*}; rest=${cfg#*,}; bin=${rest%%,*}; rest=${rest#*,}; rm=${rest%%,*}; extra=${rest#*,}
   [ "$rm" = "-" ] && rm=/data/local/tmp/gpu/qwen35_reasoner_q4_0.gguf
   LIBD=/data/local/tmp/llama.cpp/lib; case $bin in htpd_new*) LIBD=/data/local/tmp/llama.cpp-new/lib;; htpd_k4*) LIBD=/data/local/tmp/llama.cpp-k4/lib;; esac
-  RS=1; RQ=rreq; RCX=""; case $name in sp2*) RS=2; RQ=rreq_split2;; sp4*) RS=4; RQ=rreq_split4;; sp6*) RS=6; RQ=rreq_split6;; sp*) RS=3; RQ=rreq_split;; esac  # split configs: 3 reason streams + split requests
+  RS=1; RQ=rreq; RCX=""; case $name in sp2*) RS=2; RQ=rreq_split2;; sp4*) RS=4; RQ=rreq_split4;; sp6c*) RS=6; RQ=rreq_split6; RCX="--reason-ctx 3200";; sp6*) RS=6; RQ=rreq_split6;; sp*) RS=3; RQ=rreq_split;; esac  # split configs: 3 reason streams + split requests
   cool 60
   log "config $name: $bin model $rm env [$extra] (MemAvailable $(mavail) MB)"
   env LD_LIBRARY_PATH=$LIBD ADSP_LIBRARY_PATH=$LIBD GGML_HEXAGON_FA_STREAMS=1 HTPD_SPEC=0 \

@@ -1705,7 +1705,7 @@ function reasonerCard(inc) {
     if (!fast) card.append(details(inc.id + ':final:raw', 'Raw model output', f.raw), details(inc.id + ':final:prompt', 'Prompt (synthesizer)', f.prompt));
   } else if (running && pre) {
     const tx = S.stream[streamKeyOf(inc.id, 'final')];
-    card.append(h('div', { class: 'banner', style: 'margin-bottom:12px' }, icon('clock'), h('span', { text: 'Preliminary report from the rules and the agent findings. The AI reasoner is writing the full report and will replace this one.' })));
+    card.append(h('div', { class: 'banner', style: 'margin-bottom:12px' }, icon('clock'), h('span', { text: pre.note ? pre.note.replace(/ - /g, ' — ') + '. The AI report will replace this one.' : 'Preliminary report from the rules and the agent findings. The AI reasoner is writing the full report and will replace this one.' })));
     if (pre.parsed) card.append(h('div', { style: 'margin-top:12px;opacity:.85' }, reportBody(inc, pre.parsed)));
     card.append(h('pre', { class: 'stream live', 'data-s': 'final', text: tx || '' }), h('div', { class: 'muted', style: 'font-size:13px;margin-top:6px', text: 'Reasoner typing live …' }));
   } else if (running) {

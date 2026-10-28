@@ -100,7 +100,7 @@ func (r *Reasoner) queueEarly(cands []Candidate) {
 	r.mu.Unlock()
 	if inc == nil {
 		inc = r.newIncident(cands, r.Mode)
-		rc := fallbackReport(inc.Sensors, nil, nil)
+		rc := r.retrievalPreliminary(inc)
 		r.mu.Lock()
 		for _, c := range cands {
 			r.fastInc[key(c.Node, c.Metric)] = inc

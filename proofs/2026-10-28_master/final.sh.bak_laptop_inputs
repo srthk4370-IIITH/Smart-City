@@ -1,0 +1,236 @@
+#!/usr/bin/env bash
+# FINAL orchestrator for the evaluation (owner 2026-10-28; eval ~05:00 IST 10-29 = 23:30Z 10-28). Standalone, resumable:
+#   bash proofs/detach.sh final proofs/2026-10-28_master/final.sh        (log final.log, step markers final/.fN)
+# Accuracy first. ONE deploy (models + APK + profile), then the app run; any failure -> auto-rollback to known-good.
+#  F0 known-good snapshot (board profile, installed APK, edge-agent md5)          [board, lock]
+#  F1 split-N pick from split6_ab (waits for its result; it queues on BOARD_LOCK itself)
+#  F2 wait for the inputs until CUTOFF: rsn_v2 eval (round2_result.txt), P3b winner (plan.log), gate study
+#  F3 reasoner: rsn_v2 only if round2 >= ft612 on RWH v3_score + RWH severity + P0 total AND board 6x5 severity >= 92%
+#  F4 agents: P3b winner (P3B*/T30, staged GGUF) else B50
+#  F5 deploy: APK fast_early (0deb016e / edge-agent c97afdeb), models, profile (bin, model, reasoner_model, reasoner_split,
+#     ai_early_* only if the gate study cleared shapes)                         [board, lock]
+#  F6 check: chaos2 6 scenarios + critical-breach fast path (fastcheck.py); fail -> rollback + 2-scenario re-check
+#  F7 FINAL_STATUS.md + HANDBOOK 2.56
+#  F8 research (pruned_ab, gpu_bench) only if >= 3 h remain before 23:30Z
+# Guards: laptop RAM (< 1.5 GB free -> wait), board offline -> wait, board heat (chaos2/board scripts start <= 60 C),
+# one NPU client (every board step stops the app and waits for exit + 30 s), .part + md5 + mv, never reboots.
+M=/mnt/c/Users/hp/Desktop/qidk/proofs/2026-10-28_master; F=$M/final; mkdir -p $F/known_good
+RF=/mnt/c/Users/hp/Desktop/qidk/proofs/2026-10-27_reasoner_fast; RE=/mnt/c/Users/hp/Desktop/qidk/proofs/2026-10-25_reasoner_final
+DP=/mnt/c/Users/hp/Desktop/qidk/proofs/2026-10-25_domain_plan; STAGE=/mnt/c/Users/hp/Desktop/qidk/Code/models_stage
+A=/mnt/c/Users/hp/Desktop/qidk/Code/platform-tools/adb.exe; K=$M/BOARD_LOCK; W=/data/local/tmp/smart_city_edge; G=/data/local/tmp/gpu
+PS=/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe
+APK=$M/fastpath_build/SmartCityEdge.fast_early.apk; APK_MD5=0deb016ee2ee8f85b7171d74cfda070f; EA_MD5=c97afdeb1c06607fc1535cb6806f9d1d
+EVAL_Z=$(date -u -d "2026-10-28 23:30" +%s); CUTOFF=$((EVAL_Z - 90*60))   # owner 2026-10-28: no 00:00 IST input cutoff; wait for every input. Last-moment guard only: nothing new deploys after 22:00Z (03:30 IST), so the deploy + app check end well before the eval
+exec >> $M/final.log 2>&1 < /dev/null
+log(){ echo "$(date -u +%FT%TZ) $*"; }
+w(){ wslpath -w "$1"; }
+sh_(){ $A shell "$@" | tr -d '\r'; }
+ram(){ $PS -NoProfile -Command "[int](Get-Counter '\Memory\Available MBytes').CounterSamples.CookedValue" 2>/dev/null | tr -dc 0-9; }
+ramwait(){ while f=$(ram); [ -n "$f" ] && [ "$f" -lt 1536 ]; do log "laptop RAM $f MB < 1536: wait"; sleep 60; done; }
+board(){ until $A get-state 2>/dev/null | grep -q device; do sleep 60; done; }
+TP=
+lock(){ board; while [ -e $K ] && [ "$(cat $K 2>/dev/null)" != final ] && [ $(( $(date +%s) - $(stat -c %Y $K) )) -lt 10800 ]; do log "BOARD_LOCK held ($(cat $K)): wait"; sleep 60; done
+  echo final > $K; ( while [ "$(cat $K 2>/dev/null)" = final ]; do touch $K; sleep 300; done ) & TP=$!; }
+unlock(){ [ -n "$TP" ] && kill $TP 2>/dev/null; TP=; [ "$(cat $K 2>/dev/null)" = final ] && rm -f $K; }
+trap unlock EXIT
+st(){ echo "$2" > $F/$1; }      # decision files
+done_(){ touch $F/.$1; }; isdone(){ [ -e $F/.$1 ]; }
+stop_app(){ sh_ 'am force-stop com.iiith.smartcityedge; pkill -x edge-agent; pkill -TERM -f "[b]in/htpd"
+  i=0; while [ $i -lt 120 ] && ps -A -o NAME= | grep -qE "^(htpd|edge-agent)"; do sleep 1; i=$((i+1)); done
+  sleep 30; if ps -A -o NAME= | grep -qE "^(htpd|edge-agent|genie|llama)"; then echo STILL; else echo STOPPED; fi'; }
+start_app(){ n0=$(sh_ "grep -c 'htpd: ready in' $W/state/htpd.log" | tail -1); sh_ 'am start -n com.iiith.smartcityedge/.MainActivity >/dev/null 2>&1'
+  for i in $(seq 1 60); do sleep 5; [ "$(sh_ "grep -c 'htpd: ready in' $W/state/htpd.log" | tail -1)" -gt "${n0:-0}" ] && return 0; done; return 1; }
+pushc(){ src=$1; dst=$2; m=$(md5sum "$src" | cut -c1-32)   # .part + md5 (host sidecar for big files) + mv
+  if [ "$(sh_ "cat $dst.md5 2>/dev/null" | cut -c1-32)" = "$m" ] && [ "$(sh_ "stat -c %s $dst 2>/dev/null")" = "$(stat -c %s "$src")" ]; then log "already on board: $dst"; return 0; fi
+  $A push "$(w "$src")" $dst.part > /dev/null || return 1
+  [ "$(sh_ "stat -c %s $dst.part")" = "$(stat -c %s "$src")" ] || { log "size mismatch $dst"; sh_ "rm -f $dst.part"; return 1; }
+  if [ $(stat -c %s "$src") -lt 100000000 ]; then [ "$(sh_ "md5sum $dst.part" | cut -c1-32)" = "$m" ] || { log "md5 mismatch $dst"; return 1; }; fi
+  sh_ "mv -f $dst.part $dst && echo $m > $dst.md5"; log "pushed $dst ($m)"; }
+setp(){ f=$1; k=$2; v=$3; grep -v "^$k=" $f > $f.t; [ -n "$v" ] && echo "$k=$v" >> $f.t; mv $f.t $f; }
+log "=== final start (cutoff $(date -u -d @$CUTOFF +%TZ), eval $(date -u -d @$EVAL_Z +%TZ))"
+touch $M/.s3   # chain.sh step 3 must not deploy on its own: final.sh owns the deploy
+
+# F0 known-good snapshot
+if ! isdone f0; then ramwait; lock
+  sh_ "cat $W/htpd_profile" > $F/known_good/htpd_profile; sh_ "cp $W/htpd_profile $W/htpd_profile.bak_final"
+  p=$(sh_ 'pm path com.iiith.smartcityedge' | head -1 | sed 's/^package://'); $A pull "$p" "$(w $F/known_good/app.apk)" > /dev/null
+  sh_ "md5sum $W/edge-agent" > $F/known_good/edge-agent.md5; md5sum $F/known_good/app.apk > $F/known_good/app.md5
+  log "F0 known-good: $(cat $F/known_good/edge-agent.md5) apk $(cut -c1-8 $F/known_good/app.md5) profile: $(grep -E '^(bin|model|reasoner_model|reasoner_split)=' $F/known_good/htpd_profile | tr '\n' ' ')"
+  [ -s $F/known_good/app.apk ] && grep -q '^model=' $F/known_good/htpd_profile && done_ f0 || { log "F0 failed: abort"; exit 2; }
+  unlock; fi
+
+# F1 split pick
+if ! isdone f1; then
+  until grep -q "=== split6 done" $M/split6_ab.log 2>/dev/null || [ $(date +%s) -gt $CUTOFF ]; do sleep 120; done
+  N=3
+  if [ -s $RF/raw/split6/acc.md ]; then
+    N=$(python3 - $RF/raw/split6/acc.md <<'P'
+import sys
+rows = {}
+for l in open(sys.argv[1]):
+    c = [x.strip() for x in l.strip().strip("|").split("|")]
+    if len(c) >= 10 and c[0] in ("sp3", "sp4", "sp6"):
+        rows[c[0]] = dict(n=int(c[1]), parse=int(c[2]), sev=int(c[3]), lab=int(c[4]), sevref=int(c[7]), labref=int(c[8]), s=float(c[9]))
+b = rows.get("sp3"); best = "3"
+if b:
+    ok = [k for k, r in rows.items() if k != "sp3" and r["parse"] == r["n"] and r["sev"] >= b["sev"] and r["lab"] >= b["lab"]
+          and r["sevref"] >= r["n"] - 1 and r["labref"] >= r["n"] - 1 and r["s"] < b["s"]]
+    if ok: best = min(ok, key=lambda k: rows[k]["s"])[2:]
+print(best)
+P
+)
+  fi
+  st split "$N"; log "F1 split pick: $N ($(grep -E '^\| sp' $RF/raw/split6/acc.md 2>/dev/null | cut -c1-90 | tr '\n' ' '))"; done_ f1; fi
+N=$(cat $F/split)
+
+# F2 inputs (until cutoff)
+if ! isdone f2; then
+  until { [ -s $RE/eval/results/round2_result.txt ] && grep -q "plan done" $M/plan.log 2>/dev/null && grep -q GATE_STUDY_DONE $M/gate_study/gate_study.log 2>/dev/null; } || [ $(date +%s) -gt $CUTOFF ]; do sleep 300; done
+  log "F2 inputs: round2=$( [ -s $RE/eval/results/round2_result.txt ] && echo yes || echo no) plan=$(grep -c 'plan done' $M/plan.log) gate=$(grep -c GATE_STUDY_DONE $M/gate_study/gate_study.log)"; done_ f2; fi
+
+# F3 reasoner
+if ! isdone f3; then
+  R=qwen35_reasoner_q4_0.gguf; why="rsn_v1 kept"
+  if [ -s $RE/eval/results/round2_result.txt ] && [ -s $STAGE/rsn_v2_q4_0.gguf ]; then
+    gate=$(python3 - $RE/eval/results/round2_result.txt <<'P'
+import re, sys
+t = open(sys.argv[1]).read(); g = {}
+for tag in ("rsn_v2", "ft612"):
+    m = re.search(rf"^{tag} rwh n=\d+ (.*)$", t, re.M); kv = dict(x.split("=") for x in m.group(1).split()) if m else {}
+    p = re.search(rf"^{tag} G1 .* total ([0-9.]+)", t, re.M)
+    g[tag] = (float(kv.get("v3_score", 0)), float(kv.get("severity", 0)), float(p.group(1)) if p else 0.0)
+v, b = g["rsn_v2"], g["ft612"]
+print("PASS" if all(x >= y for x, y in zip(v, b)) and b[0] > 0 else "FAIL", v, b)
+P
+)
+    log "F3 round2 gate: $gate"
+    if [ "${gate%% *}" = PASS ]; then ramwait; lock
+      pushc $STAGE/rsn_v2_q4_0.gguf $G/rsn_v2_q4_0.gguf || { log "push rsn_v2 failed"; }
+      if [ "$(sh_ "stat -c %s $G/rsn_v2_q4_0.gguf")" = "$(stat -c %s $STAGE/rsn_v2_q4_0.gguf)" ]; then
+        sed -i 's/\r$//' $RF/scripts/ab_board.sh; $A push "$(w $RF/scripts/ab_board.sh)" /data/local/tmp/rfast/ab_board.sh > /dev/null
+        printf '#!/system/bin/sh\ncd /data/local/tmp/rfast; [ -d ab ] && mv ab ab_prev_$(date +%%H%%M%%S); mkdir -p ab/trace\nR="1 0 4 7 8 9"\nREQS="1 $R $R $R $R $R" sh ab_board.sh "cons,htpd_v8x2,%s,GGML_HEXAGON_OPPOLL=1 HTPD_REASON_TRACE=/data/local/tmp/rfast/ab/trace"\n' $G/rsn_v2_q4_0.gguf > $F/run_cons_v2.sh
+        $A push "$(w $F/run_cons_v2.sh)" /data/local/tmp/rfast/run_cons_v2.sh > /dev/null
+        sh_ 'cd /data/local/tmp/rfast; (setsid nohup sh run_cons_v2.sh > /dev/null 2>&1 < /dev/null &)'; sleep 120
+        until sh_ 'tail -1 /data/local/tmp/rfast/ab/ab.log 2>/dev/null' | grep -q "=== ab done"; do board; sleep 60; done
+        rm -rf $RF/raw/consist_v2; $A pull /data/local/tmp/rfast/ab "$(w $RF/raw)" > /dev/null; mv $RF/raw/ab $RF/raw/consist_v2
+        (cd $RF/scripts && python3 -I consist_table.py ../raw/consist_v2) > $RF/raw/consist_v2/table.md
+        sev=$(grep '^| \*\*all' $RF/raw/consist_v2/table.md | awk -F'|' '{gsub(/[^0-9]/,"",$4); print $4}')
+        log "F3 rsn_v2 board consistency: severity ${sev}% ($(grep '^| \*\*all' $RF/raw/consist_v2/table.md))"
+        if [ -n "$sev" ] && [ "$sev" -ge 92 ]; then R=rsn_v2_q4_0.gguf; why="rsn_v2: eval gate PASS, board severity ${sev}%"; else why="rsn_v1 kept: rsn_v2 board severity ${sev:-n/a}% < 92"; fi
+      else why="rsn_v1 kept: rsn_v2 push failed"; fi
+      unlock
+    else why="rsn_v1 kept: round2 gate $gate"; fi
+  else why="rsn_v1 kept: no round2 result / no rsn_v2 GGUF by cutoff"; fi
+  st reasoner "$R"; st reasoner_why "$why"; log "F3 reasoner: $R ($why)"; done_ f3; fi
+
+# F4 agents
+if ! isdone f4; then
+  AG=ft_B50_q4_0.gguf; why="B50 kept"
+  if [ -s $DP/QUEUE_DONE_P3B.json ]; then
+    Wn=$(python3 -c "import json;print(json.load(open('$DP/QUEUE_DONE_P3B.json')).get('winner',''))")
+    if echo "$Wn" | grep -qE '^(P3B|T30)' && [ -s $STAGE/ft_${Wn}_q4_0.gguf ] && [ -s $STAGE/ft_${Wn}_q4_0.gguf.md5 ] && grep -q "winner_build rc=0" $M/plan.log; then
+      [ "$(md5sum $STAGE/ft_${Wn}_q4_0.gguf | cut -c1-32)" = "$(cut -c1-32 $STAGE/ft_${Wn}_q4_0.gguf.md5)" ] && { AG=ft_${Wn}_q4_0.gguf; why="P3b winner $Wn"; } || why="B50 kept: $Wn md5 mismatch"
+    else why="B50 kept: winner '$Wn' not deployable (tag/staged/winner_build)"; fi
+  else why="B50 kept: no QUEUE_DONE_P3B by cutoff"; fi
+  st agents "$AG"; st agents_why "$why"; log "F4 agents: $AG ($why)"; done_ f4; fi
+
+# F5 deploy (one)
+rollback(){ log "ROLLBACK to known-good"; r=$(stop_app); log "stop: $r"
+  $A push "$(w $F/known_good/htpd_profile)" $W/htpd_profile.part > /dev/null && sh_ "mv -f $W/htpd_profile.part $W/htpd_profile"
+  $A install -r -d "$(w $F/known_good/app.apk)" | tail -1; start_app && log "rollback: htpd ready" || log "rollback: htpd NOT ready"
+  log "rollback state: $(sh_ "md5sum $W/edge-agent; grep -E '^(bin|model|reasoner_model|reasoner_split)=' $W/htpd_profile" | tr '\n' ' ')"; }
+if ! isdone f5; then ramwait; lock
+  [ "$(md5sum $APK | cut -c1-32)" = $APK_MD5 ] || { log "F5 abort: APK md5"; exit 3; }
+  AG=$(cat $F/agents); R=$(cat $F/reasoner)
+  [ "$AG" != ft_B50_q4_0.gguf ] && { pushc $STAGE/$AG $G/$AG || { log "F5: agents push failed -> B50"; AG=ft_B50_q4_0.gguf; st agents "$AG"; }; }
+  cp $F/known_good/htpd_profile $F/htpd_profile.final
+  setp $F/htpd_profile.final bin /data/local/tmp/llama.cpp/bin/htpd_v8x2
+  setp $F/htpd_profile.final model $G/$AG
+  setp $F/htpd_profile.final reasoner_model $G/$R
+  setp $F/htpd_profile.final reasoner_split $N
+  EK=; ES=
+  if [ -s $M/gate_study/results_B50.json ]; then
+    ES=$(python3 -c "
+import json; r=json.load(open('$M/gate_study/results_B50.json'))
+print(','.join(s for s,v in r.items() if v.get('recommended_gate') is not None and v['recommended_gate']<=4 and v.get('n_events',0)>=10))")
+    [ -n "$ES" ] && EK=4; fi
+  setp $F/htpd_profile.final ai_early_k "$EK"; setp $F/htpd_profile.final ai_early_shapes "$ES"
+  log "F5 profile: $(grep -E '^(bin|model|reasoner_model|reasoner_split|ai_early_k|ai_early_shapes)=' $F/htpd_profile.final | tr '\n' ' ')"
+  r=$(stop_app); log "F5 stop: $r"; [ "$r" = STOPPED ] || { log "F5 abort: NPU client still running"; unlock; exit 3; }
+  $A push "$(w $F/htpd_profile.final)" $W/htpd_profile.part > /dev/null && sh_ "mv -f $W/htpd_profile.part $W/htpd_profile"
+  $A install -r -d "$(w $APK)" | tail -1
+  if start_app; then sleep 20; ea=$(sh_ "md5sum $W/edge-agent" | cut -c1-32)
+    log "F5 deployed: edge-agent $ea; $(sh_ "grep -E 'ready in|reasoner slot' $W/state/htpd.log | tail -2" | tr '\n' ' ')"
+    [ "$ea" = $EA_MD5 ] || log "F5 WARNING: edge-agent md5 $ea != $EA_MD5 (EdgeService redeploys from the APK on start)"
+    done_ f5
+  else log "F5: htpd not ready"; rollback; st result "rollback: htpd not ready after deploy"; done_ f5; done_ f6; fi
+  unlock; fi
+
+# F6 app run
+if ! isdone f6; then ramwait; lock
+  t0=$(date +%s); (cd $RF/scripts && python3 -I chaos2.py chaos 6 210); rc=$?
+  ok=$(python3 - $t0 <<'P'
+import glob, json, os, sys
+t0 = float(sys.argv[1]); n = d = v = 0
+for f in glob.glob("/mnt/c/Users/hp/Desktop/qidk/proofs/2026-10-27_reasoner_fast/raw/chaos_*_incident.json"):
+    if os.path.getmtime(f) < t0: continue
+    x = json.load(open(f)); i = x.get("incident"); n += 1
+    if isinstance(i, dict): d += i.get("state") == "done"; v += bool((i.get("final") or {}).get("valid"))
+print(n, d, v)
+P
+)
+  fc=$(cd $RF/scripts && python3 -I fastcheck.py); frc=$?
+  log "F6 chaos rc=$rc (n done valid: $ok); fastcheck rc=$frc $fc"
+  set -- $ok
+  if [ $rc = 0 ] && [ "${1:-0}" -ge 6 ] && [ "${2:-0}" -ge 6 ] && [ "${3:-0}" -ge 6 ] && [ $frc = 0 ]; then st result "PASS: chaos 6/6 done+valid, fast path then AI on the same incident: $fc"
+  else st result "FAIL -> rolled back: chaos rc=$rc ($ok), fastcheck $fc"; rollback
+    (cd $RF/scripts && python3 -I chaos2.py chaos 2 150); log "F6 re-check after rollback rc=$?"; fi
+  mkdir -p $F/chaos; cp $RF/raw/chaos_*_incident.json $RF/logs/chaos.log $F/chaos/ 2>/dev/null
+  log "F6 result: $(cat $F/result)"; done_ f6; unlock; fi
+
+# F7 status
+if ! isdone f7; then
+  sh_ "md5sum $W/edge-agent; grep -E '^(bin|model|reasoner_model|reasoner_split|ai_early_k|ai_early_shapes|env)=' $W/htpd_profile; md5sum /data/local/tmp/llama.cpp/bin/htpd_v8x2" > $F/board_state.txt
+  cat > $M/FINAL_STATUS.md <<EOF
+# FINAL status ($(date -u +%FT%TZ))
+**Result:** $(cat $F/result)
+
+| part | deployed | why |
+|---|---|---|
+| reasoner | $(cat $F/reasoner) | $(cat $F/reasoner_why) |
+| agents | $(cat $F/agents) | $(cat $F/agents_why) |
+| split decoding | reasoner_split=$N | split6_ab (\`$RF/raw/split6/acc.md\`) |
+| app | fast_early APK $APK_MD5 / edge-agent $EA_MD5 (fast path on; early AI: $(grep -E '^ai_early' $F/htpd_profile.final | tr '\n' ' ' || echo off)) | owner order 4 |
+| daemon | htpd_v8x2 + 620d222 libs | SDK route gave no win (RESULTS §8) |
+
+Board state after the run:
+\`\`\`
+$(cat $F/board_state.txt)
+\`\`\`
+Rollback (WSL): known-good = \`$F/known_good\` (profile, installed APK $(cut -c1-8 $F/known_good/app.md5), $(cut -c1-8 $F/known_good/edge-agent.md5)):
+\`bash $M/final_rollback.sh\` (stops the app, restores the profile, reinstalls the APK, starts it).
+Log: \`$M/final.log\`; chaos incidents: \`$F/chaos/\`; fast-path check: \`$RF/raw/fastcheck_*.json\`.
+EOF
+  python3 - <<P
+p = "/mnt/c/Users/hp/Desktop/qidk/HANDBOOK.md"; s = open(p, encoding="utf-8").read()
+e = """## 2.56 Final build for the evaluation (2026-10-28, proofs/2026-10-28_master/FINAL_STATUS.md)
+
+- Result: $(cat $F/result | sed 's/"/\\"/g')
+- Reasoner $(cat $F/reasoner) ($(cat $F/reasoner_why)); agents $(cat $F/agents) ($(cat $F/agents_why)); reasoner_split=$N; APK fast_early (edge-agent $EA_MD5); htpd_v8x2.
+- Rollback: bash proofs/2026-10-28_master/final_rollback.sh (known-good snapshot taken before the deploy).
+
+"""
+if "## 2.56 " not in s:
+    s = s.replace("## 3. If something goes wrong", e + "## 3. If something goes wrong", 1); open(p, "w", encoding="utf-8").write(s)
+P
+  log "F7 FINAL_STATUS.md + HANDBOOK 2.56 written"; done_ f7; fi
+
+# F8 research (only with >= 3 h left)
+if ! isdone f8; then
+  left=$(( EVAL_Z - $(date +%s) ))
+  if [ $left -ge 10800 ] && grep -q "^PASS" $F/result; then log "F8 research: $((left/60)) min left -> pruned_ab, gpu_bench"
+    bash $M/pruned_ab.sh; log "F8 pruned done: $(grep -E 'ABORT|probe passed|done' $RF/raw/pruned_ab/ab.log 2>/dev/null | tail -2 | tr '\n' ' ')"
+    [ $(( EVAL_Z - $(date +%s) )) -ge 5400 ] && { bash $M/gpu_bench_wait.sh; log "F8 gpu_bench done"; }
+  else log "F8 research skipped ($((left/60)) min left, result $(cut -c1-4 $F/result))"; fi
+  done_ f8; fi
+log "=== final done"

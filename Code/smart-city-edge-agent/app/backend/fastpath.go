@@ -55,7 +55,7 @@ func (r *Reasoner) openFast(cands []Candidate) *Incident {
 		return nil
 	}
 	inc := r.newIncident(todo, r.Mode)
-	rc := fallbackReport(inc.Sensors, nil, nil)
+	rc := r.retrievalPreliminary(inc)
 	r.mu.Lock()
 	inc.Severity = "critical"
 	inc.FastPath = true

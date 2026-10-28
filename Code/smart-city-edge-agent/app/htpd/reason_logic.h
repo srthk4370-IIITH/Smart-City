@@ -244,7 +244,8 @@ struct Forcer {
         if (!constrained()) return std::string();
         Forcer f = *this;
         std::string out;
-        while (out.size() < cap) {
+        int iters = 0;
+        while (out.size() < cap && iters++ < 1024) {  // v8x3: a no-progress state can never spin forever
             if (f.mode == FORCED) {
                 std::string n = f.need;
                 out += n;

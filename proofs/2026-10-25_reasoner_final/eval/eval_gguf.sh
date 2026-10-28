@@ -10,7 +10,8 @@ SP=$!; MAIN=$$
 # server (re-applied every pass), resume at <= 72 C and >= 2.5 GB
 PAUSE=/mnt/c/Users/hp/Desktop/qidk/proofs/2026-10-25_reasoner_final/PAUSE_GPU; PS=/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe
 ( hot=0; while sleep 20; do kill -0 $MAIN 2>/dev/null || exit 0
-    if [ $(( $(date +%s) - $(stat -c %Y $HB) )) -gt 900 ] || [ -e $PAUSE ]; then echo "WATCHDOG stop"; kill -CONT $SP; kill $SP; pkill -f "run_v3.py --tag $TAG"; exit 0; fi
+    # no HEARTBEAT age check any more: standalone jobs (owner 2026-10-28); a stale HB after laptop sleep killed the rsn_v2 eval
+    if [ -e $PAUSE ]; then echo "WATCHDOG stop"; kill -CONT $SP; kill $SP; pkill -f "run_v3.py --tag $TAG"; exit 0; fi
     t=$(nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits | tr -dc 0-9)
     f=$($PS -NoProfile -Command "[int](Get-Counter '\Memory\Available MBytes').CounterSamples.CookedValue" < /dev/null 2>/dev/null | tr -dc 0-9)
     { { [ -n "$t" ] && [ "$t" -ge 80 ]; } || { [ -n "$f" ] && [ "$f" -lt 1536 ]; }; } && { [ $hot = 0 ] && echo "pause gpu=${t}C avail=${f}MB"; hot=1; }
