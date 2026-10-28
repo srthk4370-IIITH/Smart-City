@@ -1,17 +1,17 @@
-# Overnight status (2026-10-28T22:18:36Z, IST 03:48)
+# Overnight status (2026-10-28T22:28:37Z, IST 03:58)
 
 | job | state |
 |---|---|
 | final | stopped |
 | split_post | stopped |
 | rag_deploy | stopped |
-| rag_seed | alive |
+| rag_seed | stopped |
 | website_final | stopped |
+| seed_deploy | alive |
 | watch | alive |
-| x2x3 | alive |
 
-**Board:** online, 49 C, MemAvailable 5061 MB, procs: 30651 htpd_v8x2 
-**BOARD_LOCK:** x2x3
+**Board:** online, 46 C, MemAvailable 9450 MB, procs: none
+**BOARD_LOCK:** seed
 **Stalled-htpd SIGTERMs tonight:** 0
 
 ## final.sh

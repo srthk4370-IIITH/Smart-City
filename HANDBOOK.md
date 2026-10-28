@@ -2577,3 +2577,10 @@ headers. It's a post-mid-eval item, as is Qwen for reasoning.
 ### 2.58b v8x3 speed check (2026-10-29 03:52 IST, `proofs/2026-10-28_master/x2x3_ab.sh`, `x2x3_raw/`)
 - The parity run showed v8x3 6-9% slower than the v8x2 reference, but that reference was 5 h older, on a cooler board.
 - Same-session interleaved A/B, rsn_v1 sp3, q12-q14, x2/x3/x2/x3: **v8x2 21.7 s vs v8x3 21.6 s (−0.3%, n=6 each)**. Every prompt is within 0.4 s. The 150 s guard, bounded pick and heartbeat cost nothing measurable. **v8x3 stays live.**
+
+### 2.57b Retrieval seed library live (2026-10-29 04:01 IST, `proofs/2026-10-28_master/rag_seed`, `seed_deploy.sh`)
+- rsn_v1 (laptop CUDA, the same GGUF as the board) generated 320 train-split incidents. It was stopped early because the laptop RAM was shared. **254 were kept** after the app's validity checks (53 unparsed, 12 invalid, 1 without features); all 6 domains are covered.
+- Pushed to `/data/local/tmp/smart_city_edge/data/rag_seed.json` (.part + md5 + mv, app stopped). App check PASS: fast path 5.6 s, then the AI on the same incident at 47.7 s.
+- That incident's preliminary matched live past reports, not a seed (live reports rank 3% above seeds).
+- The first attempt rolled back only because its "loaded" check grepped a trace line that prints only with SCE_GENIE_TRACE=1.
+- Rollback: remove that file and restart the app.
