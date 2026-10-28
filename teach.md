@@ -110,7 +110,7 @@ Line numbers are for the current working tree.
   build happens) and `reasoner_v1`.
 - B50 provenance: `proofs/2026-10-25_domain_plan/B50_STAGED.json`.
 - rsn_v1 evaluation: `proofs/2026-10-25_reasoner_final/eval/results/summary_v3.json` (`ft612`).
-- rsn_v2 retry status: <<filled from RSN_V2_RETRY.md: result>>
+- rsn_v2 retry status: DEPLOYED htpd_v8x3 + rsn_v1: app check PASS (chaos 3 3 3, fastcheck {"fast_incident": "INC-0433", "fast_s": 5.6, "ai_update_s": 47.2, "final_model": "qwen3.5-4b (htpd)", "valid": true, "severity": "sensor_fault", "title": "KH building, level 03: Suspect CO2 readings", "pass": true})
 
 ## 6. Deploy and rollback (scripts in `proofs/2026-10-28_master/`)
 
@@ -123,7 +123,7 @@ Line numbers are for the current working tree.
 | `deploy_model.sh`, `deploy_b50.sh` | push a GGUF (.part + md5 + mv) and set `model=` |
 | `overnight_watch.sh` | rewrites OVERNIGHT_STATUS.md every 10 minutes and runs the stalled-htpd watchdog |
 
-The live state: <<filled from FINAL_STATUS.md: result>>. Retrieval: <<filled from RAG_STATUS.md: result>>.
+The live state: PASS: chaos 6/6 done+valid, fast path then AI on the same incident: {"fast_incident": "INC-0418", "fast_s": 6.3, "ai_update_s": 55.2, "final_model": "qwen3.5-4b (htpd)", "valid": true, "severity": "sensor_fault", "title": "KH building, level 03: Suspect CO2 readings", "pass": true}. Retrieval: PASS: 4/4 incidents had a preliminary within 2 s and the AI report on the same incident; fastcheck {"fast_incident": "INC-0427", "fast_s": 5.5, "ai_update_s": 47.5, "final_model": "deterministic (related domains verified steady)", "valid": true, "severity": "sensor_fault", "title": "CO2 step incr....
 
 ## 7. Board tests
 

@@ -131,7 +131,7 @@ do the reading and the explaining.
 | P3 / P3b blends (replay + WiSE 0.5 / 0.7 / 1.0) | every one fails gate2; HVAC worse (P3B05 dev net −27, severity −65) | HANDBOOK 2.54b, `p3b_gate.txt` |
 | T30 (the P2/P3 winner) | head to head vs B50: dev +7, CI [−19, +35], severity −13, E1 −4 → FAIL | `diag/gate2_T30_vs_B50.json` |
 | rsn_v2 (round 2, Kaggle) | first board try: 1 of 3 prompts parsed; htpd stalled at 100% CPU on q11 | `FINAL_STATUS.md` |
-| rsn_v2 retry (htpd_v8x3 fix) | <<filled from RSN_V2_RETRY.md: result>> | `RSN_V2_RETRY.md` |
+| rsn_v2 retry (htpd_v8x3 fix) | DEPLOYED htpd_v8x3 + rsn_v1: app check PASS (chaos 3 3 3, fastcheck {"fast_incident": "INC-0433", "fast_s": 5.6, "ai_update_s": 47.2, "final_model": "qwen3.5-4b (htpd)", "valid": true, "severity": "sensor_fault", "title": "KH building, level 03: Suspect CO2 readings", "pass": true}) | `RSN_V2_RETRY.md` |
 
 **Why:** a gain on the laptop (HF, teacher-forced) did not reliably carry over to the Q4_0 model on the
 NPU, so every decision is made on the board or the faithful host GGUF proxy (207/208 rows agree, HANDBOOK 2.45).
@@ -202,7 +202,7 @@ NPU, so every decision is made on the board or the faithful host GGUF proxy (207
 - **Hit:** the preliminary uses the retrieved label, action and wording, but numbers come from the live
   values only. Severity = max(rules, retrieved), so it cannot under-alert.
 - **Miss:** the rules report, with "full AI report coming". It runs on the CPU in under 5 ms.
-- **Board:** <<filled from RAG_STATUS.md: result>> (2 of 4 incidents hit; edge-agent ebd08e13).
+- **Board:** PASS: 4/4 incidents had a preliminary within 2 s and the AI report on the same incident; fastcheck {"fast_incident": "INC-0427", "fast_s": 5.5, "ai_update_s": 47.5, "final_model": "deterministic (related domains verified steady)", "valid": true, "severity": "sensor_fault", "title": "CO2 step incr... (2 of 4 incidents hit; edge-agent ebd08e13).
 
 **Show:** the RAG_STATUS.md table (incident, preliminary basis, AI report on the same incident).
 **Why:** the first report should be as good as possible without a new model or extra NPU time.
@@ -233,9 +233,9 @@ NPU, so every decision is made on the board or the faithful host GGUF proxy (207
 |---|---|---|
 | final app check | PASS: chaos 6/6 done and valid; fast path 6.3 s → the AI on the same incident at 55.2 s | `FINAL_STATUS.md` |
 | agents | B50 (`ft_B50_q4_0.gguf`) | `final/agents_why` |
-| reasoner | rsn_v1 (`qwen35_reasoner_q4_0.gguf`); rsn_v2 retry: <<filled from RSN_V2_RETRY.md: result>> | `FINAL_STATUS.md`, `RSN_V2_RETRY.md` |
+| reasoner | rsn_v1 (`qwen35_reasoner_q4_0.gguf`); rsn_v2 retry: DEPLOYED htpd_v8x3 + rsn_v1: app check PASS (chaos 3 3 3, fastcheck {"fast_incident": "INC-0433", "fast_s": 5.6, "ai_update_s": 47.2, "final_model": "qwen3.5-4b (htpd)", "valid": true, "severity": "sensor_fault", "title": "KH building, level 03: Suspect CO2 readings", "pass": true}) | `FINAL_STATUS.md`, `RSN_V2_RETRY.md` |
 | split decoding | 3 (split-4 −1% only and failed its app check; split-6 does not fit) | `split_post.log` |
-| retrieval preliminary | <<filled from RAG_STATUS.md: result>> | `RAG_STATUS.md` |
+| retrieval preliminary | PASS: 4/4 incidents had a preliminary within 2 s and the AI report on the same incident; fastcheck {"fast_incident": "INC-0427", "fast_s": 5.5, "ai_update_s": 47.5, "final_model": "deterministic (related domains verified steady)", "valid": true, "severity": "sensor_fault", "title": "CO2 step incr... | `RAG_STATUS.md` |
 | app / daemon | edge-agent ebd08e13 (retrieval build on top of fast-path c97afdeb), htpd_v8x2 | `RAG_STATUS.md`, `FINAL_STATUS.md` |
 | B50 chaos through the app | 6/6 valid; wall time 38.8-51.5 s, tank leak 98.9 s | `CHAIN_STATUS.json` |
 
