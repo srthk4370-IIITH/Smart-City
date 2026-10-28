@@ -1,0 +1,128 @@
+<section class="section">
+  <span class="label">Journey · 6 to 28 October 2026</span>
+  <p class="statement">From one slow model call to a two-model edge system.</p>
+  <p class="lead">Ten steps, oldest first. Each says what we did, why, and what we measured on the QIDK. Steps we tried and dropped are listed too, because they explain why things are the way they are.</p>
+  <div class="jr-legend" aria-hidden="true">
+    <span><i class="jr-dot is-kept"></i>kept, runs today</span>
+    <span><i class="jr-dot is-replaced"></i>kept, later replaced</span>
+    <span><i class="jr-dot is-rejected"></i>measured and dropped</span>
+  </div>
+</section>
+
+<ol class="jr-list">
+  <li class="jr-step is-replaced" data-proof="proofs/2026-10-16_htpd_accuracy">
+    <span class="label">1 · 6 to 14 Oct · Start</span>
+    <h2 class="jr-title">Fine-tuned Llama 3.2 3B on the NPU through Qualcomm Genie</h2>
+    <dl class="jr-dl">
+      <dt>What</dt><dd>One small model per building domain (air, water, power, occupancy, weather), fine-tuned with QLoRA on 6,480 worked examples from real IIIT-H sensor data, quantised to 4 bits and run on the Hexagon NPU with Qualcomm's Genie runtime. Three modes: rules only, one AI call, or one agent per flagged sensor plus a synthesiser.</dd>
+      <dt>Why</dt><dd>Faults should be explained on the device, offline, with evidence, not only flagged by thresholds.</dd>
+      <dt>Result</dt><dd>Pattern accuracy 94% for the fine-tuned model against 68% for the rules and 20% for the base model (laptop, 150 held-out windows); about 85% on the NPU after GPTQ quantisation (54 windows). One NPU call cost about 1.2 s plus 52 ms per output token, so a 12-agent incident took 46 to 48 s.</dd>
+    </dl>
+  </li>
+
+  <li class="jr-step is-kept" data-proof="proofs/2026-10-16_htpd_ab">
+    <span class="label">2 · 16 Oct · Runtime</span>
+    <h2 class="jr-title">htpd: our own batched NPU daemon on llama.cpp's Hexagon backend</h2>
+    <dl class="jr-dl">
+      <dt>What</dt><dd>One long-lived process keeps the model on the NPU and decodes all agents of an incident together, so each pass over the weights serves every agent. Added per-stream attention on the NPU, pipelined matrix units, verified drafting and a cache for the fixed part of each prompt.</dd>
+      <dt>Why</dt><dd>Genie silently ignored batching. The Adreno GPU was slower (about 8.4 s per agent, no batching gain) and a second model on it rebooted the board.</dd>
+      <dt>Result</dt><dd>12 agents plus synthesiser: 46 to 48 s → 20.7 s through the app. Accuracy on 54 device windows did not drop: pattern 85.2% → 90.7%.</dd>
+    </dl>
+  </li>
+
+  <li class="jr-step is-kept" data-proof="proofs/2026-10-16_placement_study">
+    <span class="label">3 · 16 Oct · Windows</span>
+    <h2 class="jr-title">Window study, refined re-analysis and 12-hour checks</h2>
+    <dl class="jr-dl">
+      <dt>What</dt><dd>Measured 2, 4, 8 and 12 h windows (2,416 NPU calls) and where an event sits inside the window (1,248 calls). Added automatic re-analysis 1.5 h and 3 h after the alert, and CPU checks for level shifts and drifts over 12 h.</dd>
+      <dt>Why</dt><dd>The AI is called while an event is young, but it had been trained on older events.</dd>
+      <dt>Result</dt><dd>4 h was the best single window. Pattern accuracy was 42% at 40 min after onset and 88% at 3 h, which is why the report is refined later. The 12 h checks caught old steps 73% → 93% and drifts 83% → 95% with no new false alarms.</dd>
+    </dl>
+  </li>
+
+  <li class="jr-step is-replaced" data-proof="proofs/2026-10-17_retrain_v2">
+    <span class="label">4 · 16 to 21 Oct · Agents v2</span>
+    <h2 class="jr-title">Domain agents retrained on what v1 got wrong</h2>
+    <dl class="jr-dl">
+      <dt>What</dt><dd>35,946 training rows for six roles (a new HVAC agent), windows of 2 to 12 h, young and old events, sensor faults, and normal routines that look like alarms. About 50 h on the laptop GPU. In the app, the re-analysis window now depends on the event's shape and age.</dd>
+      <dt>Why</dt><dd>v1 misread young events and called about 31% of normal routines alarms.</dd>
+      <dt>Result</dt><dd>At 40 min: 42% → 73.8%. False alarms 31% → 18%. With the shape-based window, 86.3% at 3 h on a fresh seed (182 events).</dd>
+    </dl>
+  </li>
+
+  <li class="jr-step is-kept" data-proof="proofs/2026-10-24_trackB">
+    <span class="label">5 · 21 to 25 Oct · Hardening</span>
+    <h2 class="jr-title">Rules after the model, a weight blend, and many rejected top-ups</h2>
+    <dl class="jr-dl">
+      <dt>What</dt><dd>Deterministic checks applied after each agent answer (limits, glitches, chatter, allowed causes, leak and HVAC rules). The agents' model became mixA50, a 50/50 weight blend of v2 and a top-up. A real-world data layer stopped the app inventing readings for silent sensors. Approval workflow for operators.</dd>
+      <dt>Why</dt><dd>Several further training runs (3d, 3e, v2.1) looked better on the laptop but were no better, or worse, on the NPU. We now screen every candidate on a host copy of the board model, which matches the board on 207 of 208 rows.</dd>
+      <dt>Result</dt><dd>Status accuracy 81.5% → 86.4% on 1,148 test rows and 60.4% → 85.2% on 318 real-world rows, from the post-rules alone.</dd>
+    </dl>
+  </li>
+
+  <li class="jr-step is-kept" data-proof="proofs/2026-10-25_reasoner_final">
+    <span class="label">6 · 23 to 27 Oct · Reasoner</span>
+    <h2 class="jr-title">A cross-domain reasoner (Qwen3.5-4B) on the same NPU</h2>
+    <dl class="jr-dl">
+      <dt>What</dt><dd>Qwen3.5-4B, fine-tuned with QLoRA (rank 32, about 21 h on the laptop), replaces the synthesiser. It reads the agents' findings and writes the title, severity, root cause, evidence and checklist. htpd swaps between the agents' model and the reasoner.</dd>
+      <dt>Why</dt><dd>Root causes cross domains (people arrive, CO2 and power rise together); one model that sees all findings can say so.</dd>
+      <dt>Result</dt><dd>On 150 held-out incidents (laptop): severity 91.9%, root-cause label 87.8%, valid output 98.7%. On the board, the same prompt run 5 times gives the same severity 97% of the time, 100% with a light guard that never lets the report say "normal" when the rules say warning or worse.</dd>
+    </dl>
+  </li>
+
+  <li class="jr-step is-kept" data-proof="proofs/2026-10-27_reasoner_fast">
+    <span class="label">7 · 27 to 28 Oct · Reasoner latency</span>
+    <h2 class="jr-title">Making the report faster without changing its answers</h2>
+    <dl class="jr-dl">
+      <dt>What</dt><dd>Decoding is limited by memory bandwidth: about 60 ms per token, roughly 52 GB/s over 2.6 GB of weights. We measured every lever on the board.</dd>
+      <dt>Kept</dt><dd>
+        <ul class="jr-ul">
+          <li><b>Polling for NPU completions</b>: 27.8 → 25.8 s per report, identical agent outputs.</li>
+          <li><b>Two-stage report</b>: a rules-plus-agents report, marked preliminary, appears 1 to 7 s after the event; the reasoner's report replaces it.</li>
+          <li><b>Split decoding</b>: the headline (title, severity, label) is written once, then 3 groups of fields are written in parallel. 25.7 → 23.7 s on 30 held-out incidents, no loss against the gold answers.</li>
+          <li><b>Early release</b>: the reasoner leaves the NPU after 3 s idle instead of 20 s, so the next incident's agents don't wait.</li>
+        </ul></dd>
+      <dt>Dropped</dt><dd>
+        <ul class="jr-ul">
+          <li><b>Speculative decoding</b> (MTP and n-gram): 1% to 20% slower, since small verify batches cost more than one token on this NPU.</li>
+          <li><b>Hexagon SDK route</b> (upstream llama.cpp and our own 32x4 HVX kernel): reasoner +3% to +6%, agents −4% to −5%; net about zero.</li>
+          <li><b>Smaller output layer</b>: 4-bit lm_head −4% but changed a label; the pruned lm_head ran once, then the board rebooted at 90 to 94 °C. Held back.</li>
+          <li><b>Reasoner on the GPU</b>: estimated about 19 to 20 s for one report (about the same as the NPU), better only for bursts. Not built before the evaluation.</li>
+        </ul></dd>
+      <dt>Result</dt><dd>Event to full report through the app: 30 to 43 s → 28 to 39 s, with the preliminary report on screen within seconds.</dd>
+    </dl>
+  </li>
+
+  <li class="jr-step is-kept" data-proof="proofs/2026-10-25_domain_plan">
+    <span class="label">8 · 27 to 28 Oct · Agents B50</span>
+    <h2 class="jr-title">B50 becomes the agents' model; a sounder acceptance test</h2>
+    <dl class="jr-dl">
+      <dt>What</dt><dd>B50 is mixA50 with half of a further LoRA top-up blended in. We also replaced our acceptance test: a permutation test showed the old one rejected two identical models 71% to 82% of the time.</dd>
+      <dt>Result</dt><dd>Against mixA50 under the new test: overall +1, severity-weighted +61, story suite +4 (wins minus losses). Through the app: 6 of 6 scenarios done and valid. The next candidate (T30) lost head to head against B50, so B50 stays: accuracy first.</dd>
+    </dl>
+  </li>
+
+  <li class="jr-step is-kept" data-proof="proofs/2026-10-28_master">
+    <span class="label">9 · 28 Oct · Real-world latency</span>
+    <h2 class="jr-title">The real delay is sensor time, not NPU time</h2>
+    <dl class="jr-dl">
+      <dt>What we found</dt><dd>Real sensors give one reading per 5 minutes. The AI waits for 8 abnormal readings plus a short batch window, so a real event reached the AI 40 to 55 min after it started, far more than the 30 to 40 s of NPU work.</dd>
+      <dt>What we built</dt><dd>
+        <ul class="jr-ul">
+          <li><b>Critical fast path</b>: 2 readings in a row past a sensor's critical limit open the incident at once with the rules-only report. The agents and reasoner still run at 8 readings and update the same incident.</li>
+          <li><b>Gate study</b>: can the agents read younger events (3 to 7 readings)? 2,640 shortened windows, scored per event shape. It decides whether an early, provisional AI report is switched on for some shapes; that feature is built and off by default.</li>
+        </ul></dd>
+    </dl>
+  </li>
+
+  <li class="jr-step is-kept" data-proof="proofs/2026-10-28_master">
+    <span class="label">10 · 28 Oct night · Consolidation</span>
+    <h2 class="jr-title">One deploy, checked through the app, with automatic rollback</h2>
+    <dl class="jr-dl">
+      <dt>What</dt><dd>A single script snapshots the known-good board state, picks the split setting, runs a board accuracy and consistency gate for a second reasoner (rsn_v2), deploys the app with the fast path, then runs 6 scenarios and a critical-breach check through the app. Any failure restores the snapshot.</dd>
+      <dt>Result</dt><dd data-slot="consolidation">See <a href="#/today">Today</a> for what passed and what runs now.</dd>
+    </dl>
+  </li>
+</ol>
+
+<div data-slot="next"></div>

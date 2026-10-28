@@ -98,7 +98,8 @@ export default async function mount(ctx) {
     const fmt = (v) => Number(v).toLocaleString('en-US');
     const pct = tr.max_steps ? Math.round(100 * tr.step / tr.max_steps) : null;
     const asOf = String((st.meta && st.meta.generated_at) || '').replace('T', ' ').slice(0, 16);
-    slot('tr-statement').textContent = pct != null ? `${pct} % trained: step ${fmt(tr.step)} of ${fmt(tr.max_steps)}.` : 'Retraining the domain agents.';
+    const finished = /finish|done/i.test(String(tr.state || '')) || pct >= 99;
+    slot('tr-statement').textContent = finished ? 'Training v2 finished; v2 shipped on 21 Oct.' : pct != null ? `${pct} % trained: step ${fmt(tr.step)} of ${fmt(tr.max_steps)}.` : 'Retraining the domain agents.';
     const kv = (k, v) => h('div.tr-kv', null, h('span.label', { text: k }), h('span.tr-v', { text: v }));
     slot('tr-progress').append(h('div.tr-prog', { role: 'group', 'aria-label': 'Training progress' },
       h('div.tr-bar', { role: 'progressbar', 'aria-label': 'Training steps done', 'aria-valuemin': '0', 'aria-valuemax': String(tr.max_steps || 0), 'aria-valuenow': String(tr.step || 0) },
@@ -106,10 +107,12 @@ export default async function mount(ctx) {
       h('div.tr-kvs', null,
         kv('Best dev loss', tr.best_dev_loss != null ? `${tr.best_dev_loss} (step ${fmt(tr.best_step)})` : '–'),
         kv('Speed', tr.recent_s_per_step ? `${tr.recent_s_per_step} s / step` : '–'),
-        kv('Training left', tr.eta_training_hours != null ? `≈ ${tr.eta_training_hours} h + pauses` : '–'),
+        finished ? null : kv('Training left', tr.eta_training_hours != null ? `≈ ${tr.eta_training_hours} h + pauses` : '–'),
         kv('State', `${tr.state || '–'}`),
         kv('As of', asOf)),
-      h('p.muted.tr-note', { text: 'Read from the training log when the site was built. The QIDK runs v1 until v2 passes its acceptance test.' })));
+      h('p.muted.tr-note', null, finished
+        ? ['Read from the training log when the site was built. v2 replaced v1 on the board on 21 Oct; the agents later moved to mixA50 (25 Oct) and B50 (28 Oct). ', h('a', { href: '#/today', text: 'What runs today →' })]
+        : 'Read from the training log when the site was built.')));
 
     const grid = slot('training');
     // 1) dev loss (every eval) + train loss per token

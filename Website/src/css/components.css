@@ -29,7 +29,9 @@
   .nav { top: 10px; padding: 4px; }
   .nav__brand { display: none; }
   .nav a.nav__item { padding: 8px 7px; font-size: 0.64rem; letter-spacing: 0.08em; }
-  .nav__lock { width: 30px; height: 30px; margin-left: 2px; }
+  .nav__lock { width: 30px; height: 30px; margin-left: 2px; flex: none; }
+  .nav { overflow-x: auto; scrollbar-width: none; }
+  .nav::-webkit-scrollbar { display: none; }
 }
 
 /* ---------- password gate ---------- */
@@ -224,6 +226,8 @@ dialog.modal[open] { animation: fadeIn var(--fade) both; }
 /* nav: each page has its own colour; active = tinted pill + coloured underline */
 .nav a.nav__item[data-page="deck"] { --c: var(--accent); }
 .nav a.nav__item[data-page="route"] { --c: var(--t-latency); }
+.nav a.nav__item[data-page="today"] { --c: var(--o-kept); }
+.nav a.nav__item[data-page="journey"] { --c: var(--t-refinement); }
 .nav a.nav__item[data-page="decisions"] { --c: var(--t-agent_design); }
 .nav a.nav__item[data-page="proofs"] { --c: var(--t-training_v2); }
 .nav a.nav__item[data-page="qa"] { --c: var(--t-accuracy); }

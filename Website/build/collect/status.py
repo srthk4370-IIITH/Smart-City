@@ -37,7 +37,7 @@ def main():
                                   "WSL:~/smartcity_runs/agents_v2/best.json", "HANDBOOK.md#2.37-2.40", "proofs/"],
                  "notes": "Device state is as last recorded in HANDBOOK/proofs; the board was not probed at build time (no adb from the site build)."},
         "training_v2": {
-            "state": "running" if running else ("stopped" if sess.get("hours") else "no recent log lines (stalled or stopped)"),
+            "state": "finished" if (last and last["step"] >= 4494) or not fresh else ("running" if running else "stopped"),
             "step": last["step"] if last else None, "max_steps": 4494,
             "progress": round(last["step"] / 4494, 4) if last else None,
             "last_log_time": last["t"] if last else None,
@@ -51,16 +51,13 @@ def main():
         "deployed_on_qidk": {
             "board": "Qualcomm QIDK, Snapdragon 8 Gen 3 (SM8650), Hexagon V75 NPU, Android 14",
             "app": "Smart City Edge (com.iiith.smartcityedge), native APK, starts the Go backend as the shell user via local adbd",
-            "npu_engine": "htpd v6 (llama.cpp Hexagon daemon; 13 agent streams x 768 ctx + 4096 synthesizer ctx; drafting, prefix cache, NEON argmax); Genie/genied kept as revert",
-            "model": "v1 fine-tuned Llama 3.2 3B (GPTQ int4 weights) repacked exactly to GGUF Q4_0/Q8_0 for htpd",
-            "agent_window": "4 h (48 x 5 min); refinements at +1.5 h and +3 h; 12 h level-shift / drift checks as evidence",
-            "severity_and_titles": "from the analysis (severity.go, title.go stubs until the cross-domain reasoner)",
-            "accuracy_on_device": {"pattern": 0.907, "status": 0.944, "cause": 0.87, "json": 1.0, "policy": 1.0, "n": 54, "evidence_id": "acc_device54_engines"},
-            "latency": {"mode3_median_s": 3.8, "chaos_12_agents_s": 20.7, "ab_13_agents_s": 14.7, "evidence_id": "lat_chaos_genie_vs_htpd"},
-            "stress_test": {"passed": 132, "total": 135, "failures": "thermal only", "evidence_id": "ux_stress_runs"}},
+            "npu_engine": "htpd_v8x2 (llama.cpp 620d222 Hexagon backend + our patches): batched domain agents, model swap to the reasoner, split decoding",
+            "model": "B50 domain agents (Llama 3.2 3B, Q4_0) + Qwen3.5-4B cross-domain reasoner (Q4_0); details and final-deploy status in today.json",
+            "agent_window": "4 h early alert; re-checks at +1.5 h and +3 h with a window chosen by the event's shape (up to 12 h); 12 h level-shift / drift checks as evidence",
+            "severity_and_titles": "from the reasoner, with a light rule guard (never 'normal' when the rules say warning or worse)",
+            "status_file": "data/today.json (build/collect/today.py)"},
         "repo": {"head": head, "dirty_working_tree": dirty, "branch_note": "work after the last commit lives in the working tree and proofs/"},
-        "next": ["finish retrain v2 (4,494 steps)", "merge -> GGUF Q4_0 (imatrix) -> htpd", "NPU acceptance on test months (RETRAIN_V2_SPEC #20)",
-                 "latency pass back to <= 14.7 s (13 agents) / <= 3.8 s typical", "cross-domain reasoner", "900-window rerun; Mode 1/2/3 labelled grid"],
+        "next": ["see data/today.json and the Today page"],
     }
     (DATA / "status.json").write_text(json.dumps(out, indent=1, ensure_ascii=False), encoding="utf-8")
     return out

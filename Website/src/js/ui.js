@@ -3,14 +3,16 @@ import * as charts from './charts.js';
 
 export const PAGES = [
   { id: 'deck', title: 'Deck', sub: 'The slides, full screen' },
+  { id: 'today', title: 'Today', sub: 'What runs on the board now, with its numbers' },
+  { id: 'journey', title: 'Journey', sub: 'Ten steps from one slow call to today' },
   { id: 'route', title: 'Route', sub: 'How we got here, step by step' },
   { id: 'decisions', title: 'Decisions', sub: 'What we chose, what we rejected, why' },
   { id: 'proofs', title: 'Proofs', sub: 'Every number, its file and its script' },
   { id: 'rawdata', title: 'Raw data', sub: 'Every reading, breach and training window' },
   { id: 'qa', title: 'Q&A', sub: 'The questions you will ask, answered with evidence' },
 ];
-export const START_HERE = ['route', 'decisions', 'qa'];
-export const NEXT = { deck: 'route', route: 'decisions', decisions: 'qa', qa: 'proofs', proofs: 'rawdata', rawdata: 'deck', kit: 'deck' };
+export const START_HERE = ['today', 'journey', 'qa'];
+export const NEXT = { deck: 'today', today: 'journey', journey: 'route', route: 'decisions', decisions: 'qa', qa: 'proofs', proofs: 'rawdata', rawdata: 'deck', kit: 'deck' };
 const pageTitle = (id) => (PAGES.find((p) => p.id === id) || { title: id }).title;
 
 /** Tiny DOM helper: h('div.card', {attrs}, ...children) */

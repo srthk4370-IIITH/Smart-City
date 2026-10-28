@@ -1,0 +1,33 @@
+.td-banner { margin-top: 22px; padding: 16px 18px; border: 1px solid var(--line); border-left: 4px solid var(--c, var(--muted)); border-radius: var(--radius); background: var(--panel); max-width: 78ch; }
+.td-banner:empty { display: none; }
+.td-banner .label { display: block; color: var(--c, var(--muted)); margin-bottom: 6px; }
+.td-banner p { margin: 0; color: var(--silver); line-height: 1.5; }
+.td-banner.is-pass { --c: var(--o-kept); }
+.td-banner.is-rollback { --c: var(--warn); }
+.td-banner.is-pending { --c: var(--o-pending); }
+
+.ptable { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+.ptable table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+.ptable th, .ptable td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+.ptable tr:last-child td { border-bottom: 0; }
+.ptable th { background: var(--panel-2); font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 400; white-space: nowrap; }
+.ptable td { color: var(--silver); font-variant-numeric: tabular-nums; line-height: 1.45; }
+.ptable td:first-child { color: var(--text); }
+.ptable code, .td-md code { font-family: var(--font-mono); font-size: 0.76rem; color: var(--accent-text); word-break: break-all; }
+.td-table td:nth-child(3) { min-width: 9ch; }
+.td-note { font-size: var(--fs-small); margin-top: 10px; }
+
+.td-flow, .td-list { margin: 0; padding-left: 1.3em; display: grid; gap: 10px; max-width: 78ch; color: var(--silver); line-height: 1.55; }
+.td-flow b, .td-list b { color: var(--text); font-weight: 500; }
+.td-pending { color: var(--muted); font-style: italic; margin: 0; }
+.td-steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 0.84rem; color: var(--silver); }
+.td-steps li { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr); gap: 10px; overflow-wrap: anywhere; }
+.td-steps .label { color: var(--muted); }
+.td-md { display: grid; gap: 10px; color: var(--silver); line-height: 1.5; overflow-wrap: anywhere; }
+.td-md p { margin: 0; }
+.td-h { font-size: 1rem; font-weight: 500; color: var(--text); margin: 6px 0 0; }
+.td-mdlist { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; }
+.td-pre { margin: 0; padding: 12px; background: var(--bg-deep); border: 1px solid var(--line); border-radius: 8px; font-family: var(--font-mono); font-size: 0.74rem; color: var(--silver); overflow-x: auto; white-space: pre; max-height: 420px; }
+@media (max-width: 560px) { .td-steps li { grid-template-columns: minmax(0, 1fr); gap: 0; } }
+.td-md > *, .td-md div { min-width: 0; max-width: 100%; }
+.card .ptable, .card .td-pre { max-width: 100%; }

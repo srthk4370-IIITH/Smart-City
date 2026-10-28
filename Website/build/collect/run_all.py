@@ -17,7 +17,7 @@ from _lib import *  # noqa
 
 import accuracy, agent_design, latency, hardware, refinement, app_ux, training_v2, dataset_v2, ops, timeline, extras  # noqa
 import use_case, situations  # noqa
-import decision_groups, route, qa, status  # noqa
+import decision_groups, route, qa, status, today  # noqa
 
 TOPICS = ["use_case", "situations", "latency", "hardware", "accuracy", "agent_design", "refinement", "training_v2", "dataset_v2", "app_ux", "ops", "timeline"]
 TOPIC_TITLES = {"use_case": "Use case: what it is for, in numbers", "situations": "Situations: measured incidents, start to report", "latency": "Latency", "hardware": "Hardware (NPU, GPU, thermals, memory)", "accuracy": "Accuracy",
@@ -186,7 +186,7 @@ def main():
     dataset_v2.main(); ops.main(); timeline.main(); extras.main(); use_case.main(); situations.main()
     before = len(list(DATA.glob("*/*.json"))) - len(list((DATA / "raw").glob("*.json")))
     fold()
-    decision_groups.main(); route.main(); qa.main(); status.main()
+    decision_groups.main(); route.main(); qa.main(); status.main(); today.main()
     # raw-data guard over every published JSON
     problems = {}
     for p in DATA.rglob("*.json"):

@@ -5,7 +5,7 @@ import { createUI, h, PAGES } from './ui.js';
 import { createData } from './data.js';
 import * as deck from './deck.js';
 
-const ROUTES = ['deck', 'route', 'decisions', 'proofs', 'qa', 'kit', 'rawdata'];
+const ROUTES = ['deck', 'today', 'journey', 'route', 'decisions', 'proofs', 'qa', 'kit', 'rawdata'];
 const app = document.getElementById('app');
 const gate = document.getElementById('gate');
 const nav = document.getElementById('nav');

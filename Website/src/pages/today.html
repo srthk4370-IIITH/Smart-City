@@ -1,0 +1,65 @@
+<section class="section">
+  <span class="label" data-slot="asof">Today</span>
+  <p class="statement">What runs on the board for the evaluation, as it is.</p>
+  <div class="td-banner" data-slot="banner" role="status"></div>
+</section>
+
+<section class="section">
+  <span class="label">On the board</span>
+  <p class="lead">Qualcomm QIDK (Snapdragon 8 Gen 3, SM8650), Hexagon V75 NPU, Android 14. Everything below runs on the board alone, offline. Two models share the NPU through one daemon, which swaps between them.</p>
+  <div class="ptable td-table" data-slot="parts"></div>
+  <p class="muted td-note" data-slot="parts-note"></p>
+</section>
+
+<section class="section">
+  <span class="label">How an incident flows today</span>
+  <ol class="td-flow" data-slot="flow">
+    <li><b>Sensor readings</b> arrive every 5 min (the demo replays real campus data, 1 reading every 2 s). The rules watch every sensor.</li>
+    <li data-fast><b>Critical fast path:</b> 2 readings in a row past a critical limit open the incident at once, with a rules-only report.</li>
+    <li><b>Event gate:</b> 8 abnormal readings start the AI: one domain agent per flagged sensor, all decoded together on the NPU.</li>
+    <li><b>Preliminary report</b> (rules plus the agents' findings) on screen within seconds.</li>
+    <li><b>Reasoner report</b> (Qwen3.5-4B) replaces it: title and severity first, then the full report.</li>
+    <li><b>Re-checks</b> at 1.5 h and 3 h re-read the sensors with a longer window and can raise or lower the severity. The operator approves every action.</li>
+  </ol>
+</section>
+
+<section class="section">
+  <span class="label" data-topic="latency">Latency</span>
+  <p class="statement">Seconds on the NPU; minutes of sensor time before it.</p>
+  <div class="grid" data-slot="latency"></div>
+</section>
+
+<section class="section">
+  <span class="label" data-topic="accuracy">Accuracy</span>
+  <div class="grid" data-slot="accuracy"></div>
+</section>
+
+<section class="section">
+  <span class="label">Tonight's run</span>
+  <p class="lead">The final deploy and its checks, read from the proof files when the site was built.</p>
+  <div class="grid" data-slot="tonight"></div>
+</section>
+
+<section class="section">
+  <span class="label">Known limits</span>
+  <ul class="td-list">
+    <li><b>Sensor time dominates.</b> A non-critical event reaches the AI after 8 readings, 40 to 55 min of real sensor time. Only sensors with a critical limit have the fast path; power, tank level and flow have no fixed limits.</li>
+    <li><b>Heat.</b> Back-to-back heavy incidents push the board to 90 to 94 °C and the thermal guard trips. The board needs a heatsink or fan in the field.</li>
+    <li><b>The NPU is not bit-for-bit repeatable.</b> The same prompt can give a different answer near a decision boundary: severity agrees 97% of the time across repeats (100% with the guard).</li>
+    <li><b>Known model weaknesses.</b> Recurring small spikes, pump cycling, and erratic or exponential shapes at 3 h are still often misnamed. Hourly sensors (such as TDS) have too few points and stay rules-only.</li>
+    <li><b>One NPU, two models.</b> Swapping between the agents' model and the reasoner costs about 3 to 4 s per incident; bursts queue.</li>
+    <li><b>Data.</b> All models were trained and tested on one campus's sensors (test months held out, about 15% of sensors held out completely).</li>
+  </ul>
+</section>
+
+<section class="section">
+  <span class="label">What's next</span>
+  <ul class="td-list" data-slot="next-list">
+    <li><b>After the evaluation:</b> the pruned output layer A/B (about −12% reasoner time; held back because the board rebooted once with it) and the GPU benchmark.</li>
+    <li><b>Reasoner on the GPU</b>, agents on the NPU: no model swap, and the next incident's agents can run while a report is written. Needs a memory coexistence test first.</li>
+    <li><b>Younger events:</b> use the gate study to switch on the early, provisional AI report for the shapes the agents read reliably at 3 to 7 readings.</li>
+    <li><b>Storage and fog:</b> the last 1,000 incidents on the board plus an all-time index; derived data (never raw readings) to a free cloud database, with the board as the only writer.</li>
+  </ul>
+</section>
+
+<div data-slot="next"></div>
