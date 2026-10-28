@@ -1,0 +1,1963 @@
+{
+ "version": "v2.0",
+ "created": "2026-10-17T01:28:04",
+ "config_hash": "2ec9e0bfad59ff98",
+ "seed": 2026,
+ "scale": 1.0,
+ "generation_seconds": 121.5,
+ "heldout_nodes": {
+  "air_quality": [
+   "AQ-VN90-00",
+   "SR-AQ-KH95-00",
+   "SR-AQ-TH04-00"
+  ],
+  "occupancy": [
+   "SR-OC-GW-KH95-21"
+  ],
+  "power": [
+   "SR-EM-KH04-01",
+   "SR-EM-KH04-02"
+  ],
+  "water": [
+   "WM-WF-KH95-40",
+   "WM-WF-KH98-40",
+   "WM-WF-PH03-01",
+   "WM-WF-PH03-02",
+   "WM-WF-PH04-70",
+   "WM-WF-VN04-70"
+  ],
+  "weather": [],
+  "hvac": [
+   "SR-AC-KH00-00",
+   "SR-AC-KH00-02",
+   "SR-AC-KH01-03",
+   "SR-AC-KH01-10",
+   "SR-AC-KH01-19",
+   "SR-AC-KH02-09",
+   "SR-AC-KH02-17",
+   "SR-AC-KH02-18",
+   "SR-AC-KH03-02",
+   "SR-AC-KH03-05",
+   "SR-AC-KH03-07",
+   "SR-AC-KH03-21",
+   "SR-AC-KH95-01"
+  ]
+ },
+ "e10_thresholds": {
+  "air_quality/co2": {
+   "n": 300,
+   "p50": 0,
+   "p95": 1,
+   "thr": 3
+  },
+  "air_quality/pm10": {
+   "n": 300,
+   "p50": 0,
+   "p95": 2,
+   "thr": 3
+  },
+  "air_quality/pm25": {
+   "n": 300,
+   "p50": 0,
+   "p95": 2,
+   "thr": 3
+  },
+  "air_quality/rh": {
+   "n": 300,
+   "p50": 0,
+   "p95": 1,
+   "thr": 3
+  },
+  "air_quality/temp": {
+   "n": 300,
+   "p50": 0,
+   "p95": 1,
+   "thr": 3
+  },
+  "power/pf": {
+   "n": 300,
+   "p50": 7,
+   "p95": 11,
+   "thr": 12
+  },
+  "power/power_kw": {
+   "n": 300,
+   "p50": 0,
+   "p95": 11,
+   "thr": 12
+  },
+  "water/flow": {
+   "n": 20,
+   "p50": 0,
+   "p95": 3,
+   "thr": 4
+  },
+  "water/level": {
+   "n": 300,
+   "p50": 0,
+   "p95": 7,
+   "thr": 8
+  },
+  "weather/rh": {
+   "n": 300,
+   "p50": 0,
+   "p95": 1,
+   "thr": 3
+  },
+  "weather/temp": {
+   "n": 300,
+   "p50": 0,
+   "p95": 1,
+   "thr": 3
+  },
+  "weather/wind": {
+   "n": 300,
+   "p50": 0,
+   "p95": 7,
+   "thr": 8
+  }
+ },
+ "hvac": {
+  "status": "ok",
+  "module": "training/v2/hvac.py",
+  "hvac_py_sha256_16": "71a694640d425efb",
+  "lengths": [
+   24,
+   30,
+   36,
+   42,
+   48,
+   54,
+   60,
+   66,
+   72,
+   78,
+   84,
+   90,
+   96,
+   102,
+   108,
+   114,
+   120,
+   126,
+   132,
+   138,
+   144
+  ]
+ },
+ "calibration": "training/v2/calibration.json",
+ "quota": {
+  "train": {
+   "air_quality": 6500,
+   "water": 6500,
+   "power": 6500,
+   "weather": 5000,
+   "occupancy": 5000,
+   "hvac": 6500
+  },
+  "dev": {
+   "air_quality": 360,
+   "water": 360,
+   "power": 360,
+   "weather": 280,
+   "occupancy": 280,
+   "hvac": 360
+  },
+  "test": {
+   "air_quality": 540,
+   "water": 540,
+   "power": 540,
+   "weather": 420,
+   "occupancy": 420,
+   "hvac": 540
+  }
+ },
+ "mix_weights": {
+  "water_fill": 0.05,
+  "stable": 0.08,
+  "event": 0.4,
+  "recurring": 0.04,
+  "old_shift": 0.05,
+  "long_drift": 0.05,
+  "fault": 0.12,
+  "compound": 0.06,
+  "routine": 0.1,
+  "real_routine": 0.06,
+  "real_longrange": 0.02,
+  "zero_idle": 0.02
+ },
+ "splits": {
+  "train": {
+   "n": 35946,
+   "duplicates_dropped": 9,
+   "sha256_16": "2bbbe5fe4f663975",
+   "roles": {
+    "power": 6500,
+    "weather": 4999,
+    "air_quality": 6498,
+    "hvac": 6499,
+    "occupancy": 4995,
+    "water": 6455
+   },
+   "families": {
+    "routine": 1959,
+    "event": 10294,
+    "real_longrange": 506,
+    "real_routine": 1513,
+    "hvac": 6499,
+    "fault": 3033,
+    "recurring": 509,
+    "occupancy": 4995,
+    "long_drift": 1265,
+    "stable": 2023,
+    "water_fill": 310,
+    "compound": 1516,
+    "old_shift": 1265,
+    "zero_idle": 259
+   },
+   "role_family": {
+    "power/routine": 677,
+    "weather/event": 2272,
+    "air_quality/real_longrange": 133,
+    "weather/real_routine": 340,
+    "hvac/hvac": 6499,
+    "air_quality/fault": 796,
+    "weather/fault": 682,
+    "weather/recurring": 227,
+    "air_quality/recurring": 265,
+    "occupancy/occupancy": 4995,
+    "water/event": 2661,
+    "air_quality/event": 2652,
+    "water/real_routine": 371,
+    "power/fault": 812,
+    "water/long_drift": 310,
+    "power/stable": 542,
+    "water/stable": 495,
+    "water/water_fill": 310,
+    "power/event": 2709,
+    "water/compound": 371,
+    "air_quality/long_drift": 332,
+    "power/compound": 406,
+    "water/old_shift": 310,
+    "power/real_routine": 406,
+    "weather/long_drift": 284,
+    "water/fault": 743,
+    "weather/compound": 341,
+    "power/zero_idle": 135,
+    "air_quality/routine": 663,
+    "weather/stable": 455,
+    "water/routine": 619,
+    "power/old_shift": 339,
+    "air_quality/stable": 531,
+    "air_quality/old_shift": 332,
+    "power/real_longrange": 135,
+    "air_quality/compound": 398,
+    "power/long_drift": 339,
+    "weather/real_longrange": 114,
+    "weather/old_shift": 284,
+    "water/zero_idle": 124,
+    "water/real_longrange": 124,
+    "air_quality/real_routine": 396,
+    "water/recurring": 17
+   },
+   "patterns": {
+    "power/oscillation": 811,
+    "weather/exponential_increase": 301,
+    "air_quality/gradual_increase": 1071,
+    "weather/gradual_decrease": 486,
+    "hvac/flatline": 240,
+    "weather/step_increase": 649,
+    "air_quality/flatline": 354,
+    "weather/flatline": 413,
+    "weather/spike": 500,
+    "air_quality/spike": 543,
+    "occupancy/vacant": 831,
+    "occupancy/departure": 833,
+    "water/step_increase": 632,
+    "water/gradual_increase": 893,
+    "occupancy/intermittent": 833,
+    "power/dip": 528,
+    "occupancy/arrival": 833,
+    "water/oscillation": 588,
+    "power/stable": 1097,
+    "air_quality/throttling": 351,
+    "air_quality/dip": 383,
+    "occupancy/off_hours_presence": 831,
+    "water/stable": 1139,
+    "water/gradual_decrease": 759,
+    "power/throttling": 166,
+    "hvac/setback_drift": 721,
+    "hvac/stuck_off": 241,
+    "power/gradual_increase": 434,
+    "power/gradual_decrease": 782,
+    "weather/gradual_increase": 732,
+    "water/flatline": 433,
+    "hvac/erratic": 241,
+    "power/spike": 465,
+    "water/exponential_increase": 330,
+    "hvac/stable": 729,
+    "power/flatline": 429,
+    "air_quality/gradual_decrease": 948,
+    "weather/stable": 995,
+    "hvac/pull_down": 481,
+    "air_quality/stable": 1060,
+    "weather/throttling": 219,
+    "hvac/short_cycling": 241,
+    "hvac/too_cold": 241,
+    "water/dip": 416,
+    "hvac/biased_reading": 241,
+    "power/step_decrease": 410,
+    "air_quality/step_increase": 765,
+    "water/step_decrease": 323,
+    "hvac/slow_recovery": 241,
+    "air_quality/oscillation": 186,
+    "water/spike": 328,
+    "hvac/normal_cycling": 473,
+    "water/erratic": 356,
+    "weather/erratic": 191,
+    "occupancy/occupied": 834,
+    "hvac/too_hot": 241,
+    "power/step_increase": 778,
+    "power/erratic": 398,
+    "air_quality/step_decrease": 279,
+    "power/exponential_increase": 202,
+    "hvac/calibration_drift": 241,
+    "weather/oscillation": 96,
+    "weather/step_decrease": 160,
+    "hvac/unit_alarm": 241,
+    "weather/dip": 257,
+    "hvac/saturation": 241,
+    "hvac/bias_jump": 241,
+    "hvac/running_empty_room": 241,
+    "air_quality/erratic": 228,
+    "air_quality/exponential_increase": 330,
+    "hvac/dropout": 241,
+    "hvac/no_cooling_effect": 241,
+    "hvac/quantised": 240,
+    "hvac/stuck_on": 241,
+    "water/throttling": 258
+   },
+   "status": {
+    "normal": 19926,
+    "warning": 7266,
+    "sensor_fault": 5247,
+    "critical": 3507
+   },
+   "fault_kind": {
+    "stuck": 1177,
+    "quantised": 673,
+    "noise": 969,
+    "dropout": 1010,
+    "saturation": 330,
+    "bias": 840,
+    "drift": 248
+   },
+   "event_active": {
+    "True": 23873,
+    "False": 12073
+   },
+   "seen": {
+    "seen": 35946
+   },
+   "window_n": {
+    "48": 12051,
+    "96": 6502,
+    "144": 4790,
+    "90": 608,
+    "36": 992,
+    "84": 629,
+    "60": 811,
+    "24": 1000,
+    "54": 792,
+    "30": 960,
+    "42": 960,
+    "132": 471,
+    "66": 760,
+    "114": 542,
+    "78": 685,
+    "102": 555,
+    "138": 481,
+    "120": 549,
+    "108": 553,
+    "72": 729,
+    "126": 526
+   },
+   "small_boundary": 2268,
+   "routine": {
+    "why_loadcycle": 793,
+    "why_diurnal": 448,
+    "why_valve": 294,
+    "why_refill": 785,
+    "why_overflow": 1062,
+    "why_pump": 305,
+    "why_drain": 572,
+    "weekend_off": 240,
+    "why_outdoor_pm": 1044,
+    "offhours_water": 186,
+    "fan_mode": 240,
+    "why_occ_co2": 354,
+    "why_co2_decay": 340,
+    "setpoint_change_ok": 240,
+    "why_shortcycle": 57,
+    "continuous_duty": 240,
+    "small_excursion": 240,
+    "why_startup": 242,
+    "night_setback": 240,
+    "why_night_refills": 206,
+    "why_shutdown": 122,
+    "why_solar": 40,
+    "why_hvac_cycle": 2
+   },
+   "confidence": {
+    "0.7": 7639,
+    "0.35": 935,
+    "0.8": 3017,
+    "0.85": 4072,
+    "0.9": 3647,
+    "0.3": 1886,
+    "0.95": 3709,
+    "0.4": 298,
+    "0.75": 5149,
+    "0.6": 2518,
+    "0.92": 885,
+    "0.5": 147,
+    "0.65": 810,
+    "0.68": 76,
+    "0.72": 61,
+    "0.55": 255,
+    "0.78": 27,
+    "0.63": 49,
+    "0.45": 210,
+    "0.82": 253,
+    "0.74": 42,
+    "0.61": 26,
+    "0.81": 34,
+    "0.77": 34,
+    "0.62": 18,
+    "0.76": 47,
+    "0.84": 9,
+    "0.88": 9,
+    "0.53": 8,
+    "0.79": 17,
+    "0.83": 18,
+    "0.57": 10,
+    "0.66": 13,
+    "0.64": 8,
+    "0.86": 10
+   },
+   "tokens": {
+    "prompt": {
+     "mean": 732.5,
+     "p50": 731,
+     "p95": 940,
+     "max": 1104
+    },
+    "completion": {
+     "mean": 87.6,
+     "p50": 86,
+     "p95": 107,
+     "max": 122
+    },
+    "generated_until_action": {
+     "mean": 75.8,
+     "p50": 74,
+     "p95": 95,
+     "max": 109
+    },
+    "by_window": {
+     "24": {
+      "n": 1000,
+      "prompt": {
+       "mean": 634.8,
+       "p50": 637,
+       "p95": 785,
+       "max": 825
+      },
+      "gen": {
+       "mean": 74.7,
+       "p50": 73,
+       "p95": 93,
+       "max": 104
+      }
+     },
+     "30": {
+      "n": 960,
+      "prompt": {
+       "mean": 655.9,
+       "p50": 659,
+       "p95": 808,
+       "max": 846
+      },
+      "gen": {
+       "mean": 76.3,
+       "p50": 75,
+       "p95": 95,
+       "max": 108
+      }
+     },
+     "36": {
+      "n": 992,
+      "prompt": {
+       "mean": 658.1,
+       "p50": 666,
+       "p95": 816,
+       "max": 856
+      },
+      "gen": {
+       "mean": 75.3,
+       "p50": 74,
+       "p95": 94,
+       "max": 105
+      }
+     },
+     "42": {
+      "n": 960,
+      "prompt": {
+       "mean": 667.4,
+       "p50": 677,
+       "p95": 819,
+       "max": 865
+      },
+      "gen": {
+       "mean": 74.9,
+       "p50": 73,
+       "p95": 93,
+       "max": 107
+      }
+     },
+     "48": {
+      "n": 12051,
+      "prompt": {
+       "mean": 683.1,
+       "p50": 690,
+       "p95": 839,
+       "max": 894
+      },
+      "gen": {
+       "mean": 75.7,
+       "p50": 74,
+       "p95": 94,
+       "max": 108
+      }
+     },
+     "54": {
+      "n": 792,
+      "prompt": {
+       "mean": 697.2,
+       "p50": 709,
+       "p95": 854,
+       "max": 898
+      },
+      "gen": {
+       "mean": 76.0,
+       "p50": 74,
+       "p95": 95,
+       "max": 102
+      }
+     },
+     "60": {
+      "n": 811,
+      "prompt": {
+       "mean": 700.5,
+       "p50": 709,
+       "p95": 862,
+       "max": 920
+      },
+      "gen": {
+       "mean": 75.5,
+       "p50": 73,
+       "p95": 94,
+       "max": 107
+      }
+     },
+     "66": {
+      "n": 760,
+      "prompt": {
+       "mean": 712.3,
+       "p50": 725,
+       "p95": 871,
+       "max": 911
+      },
+      "gen": {
+       "mean": 76.0,
+       "p50": 74,
+       "p95": 95,
+       "max": 108
+      }
+     },
+     "72": {
+      "n": 729,
+      "prompt": {
+       "mean": 719.7,
+       "p50": 733,
+       "p95": 886,
+       "max": 936
+      },
+      "gen": {
+       "mean": 76.1,
+       "p50": 75,
+       "p95": 95,
+       "max": 107
+      }
+     },
+     "78": {
+      "n": 685,
+      "prompt": {
+       "mean": 728.0,
+       "p50": 749,
+       "p95": 901,
+       "max": 957
+      },
+      "gen": {
+       "mean": 76.1,
+       "p50": 75,
+       "p95": 95,
+       "max": 104
+      }
+     },
+     "84": {
+      "n": 629,
+      "prompt": {
+       "mean": 739.1,
+       "p50": 757,
+       "p95": 906,
+       "max": 950
+      },
+      "gen": {
+       "mean": 75.6,
+       "p50": 74,
+       "p95": 94,
+       "max": 106
+      }
+     },
+     "90": {
+      "n": 608,
+      "prompt": {
+       "mean": 761.3,
+       "p50": 773,
+       "p95": 936,
+       "max": 980
+      },
+      "gen": {
+       "mean": 76.5,
+       "p50": 74,
+       "p95": 95,
+       "max": 103
+      }
+     },
+     "96": {
+      "n": 6502,
+      "prompt": {
+       "mean": 761.8,
+       "p50": 781,
+       "p95": 940,
+       "max": 994
+      },
+      "gen": {
+       "mean": 76.0,
+       "p50": 74,
+       "p95": 95,
+       "max": 107
+      }
+     },
+     "102": {
+      "n": 555,
+      "prompt": {
+       "mean": 769.0,
+       "p50": 797,
+       "p95": 961,
+       "max": 998
+      },
+      "gen": {
+       "mean": 75.7,
+       "p50": 74,
+       "p95": 94,
+       "max": 105
+      }
+     },
+     "108": {
+      "n": 553,
+      "prompt": {
+       "mean": 788.0,
+       "p50": 805,
+       "p95": 973,
+       "max": 1013
+      },
+      "gen": {
+       "mean": 75.8,
+       "p50": 75,
+       "p95": 93,
+       "max": 109
+      }
+     },
+     "114": {
+      "n": 542,
+      "prompt": {
+       "mean": 796.3,
+       "p50": 821,
+       "p95": 981,
+       "max": 1029
+      },
+      "gen": {
+       "mean": 76.7,
+       "p50": 76,
+       "p95": 96,
+       "max": 105
+      }
+     },
+     "120": {
+      "n": 549,
+      "prompt": {
+       "mean": 789.2,
+       "p50": 828,
+       "p95": 990,
+       "max": 1028
+      },
+      "gen": {
+       "mean": 75.2,
+       "p50": 73,
+       "p95": 94,
+       "max": 104
+      }
+     },
+     "126": {
+      "n": 526,
+      "prompt": {
+       "mean": 816.5,
+       "p50": 845,
+       "p95": 1000,
+       "max": 1045
+      },
+      "gen": {
+       "mean": 76.3,
+       "p50": 76,
+       "p95": 94,
+       "max": 107
+      }
+     },
+     "132": {
+      "n": 471,
+      "prompt": {
+       "mean": 819.8,
+       "p50": 853,
+       "p95": 1010,
+       "max": 1082
+      },
+      "gen": {
+       "mean": 76.1,
+       "p50": 75,
+       "p95": 95,
+       "max": 103
+      }
+     },
+     "138": {
+      "n": 481,
+      "prompt": {
+       "mean": 834.1,
+       "p50": 869,
+       "p95": 1035,
+       "max": 1068
+      },
+      "gen": {
+       "mean": 75.9,
+       "p50": 74,
+       "p95": 95,
+       "max": 104
+      }
+     },
+     "144": {
+      "n": 4790,
+      "prompt": {
+       "mean": 841.1,
+       "p50": 877,
+       "p95": 1042,
+       "max": 1104
+      },
+      "gen": {
+       "mean": 75.9,
+       "p50": 74,
+       "p95": 95,
+       "max": 108
+      }
+     }
+    }
+   }
+  },
+  "dev": {
+   "n": 1947,
+   "duplicates_dropped": 2,
+   "sha256_16": "7f4a0e3e4210773b",
+   "roles": {
+    "hvac": 360,
+    "water": 355,
+    "power": 360,
+    "occupancy": 279,
+    "weather": 233,
+    "air_quality": 360
+   },
+   "families": {
+    "hvac": 360,
+    "event": 614,
+    "stable": 109,
+    "occupancy": 279,
+    "fault": 168,
+    "long_drift": 55,
+    "routine": 109,
+    "old_shift": 54,
+    "real_routine": 71,
+    "recurring": 23,
+    "compound": 74,
+    "water_fill": 7,
+    "real_longrange": 17,
+    "zero_idle": 7
+   },
+   "role_family": {
+    "hvac/hvac": 360,
+    "water/event": 161,
+    "power/stable": 30,
+    "occupancy/occupancy": 279,
+    "weather/event": 148,
+    "power/event": 157,
+    "power/fault": 45,
+    "air_quality/event": 148,
+    "power/long_drift": 19,
+    "power/routine": 38,
+    "power/old_shift": 19,
+    "water/routine": 34,
+    "air_quality/routine": 37,
+    "air_quality/real_routine": 22,
+    "water/fault": 41,
+    "air_quality/recurring": 15,
+    "air_quality/stable": 29,
+    "water/old_shift": 17,
+    "air_quality/fault": 44,
+    "power/compound": 22,
+    "water/compound": 21,
+    "weather/fault": 38,
+    "weather/real_routine": 6,
+    "air_quality/long_drift": 18,
+    "power/real_routine": 22,
+    "water/long_drift": 17,
+    "water/water_fill": 7,
+    "power/real_longrange": 8,
+    "water/real_routine": 21,
+    "air_quality/compound": 22,
+    "water/stable": 27,
+    "weather/recurring": 8,
+    "air_quality/old_shift": 18,
+    "weather/compound": 9,
+    "weather/stable": 23,
+    "air_quality/real_longrange": 7,
+    "water/zero_idle": 7,
+    "water/real_longrange": 2,
+    "weather/long_drift": 1
+   },
+   "patterns": {
+    "hvac/dropout": 13,
+    "water/step_increase": 35,
+    "power/stable": 58,
+    "occupancy/off_hours_presence": 46,
+    "water/gradual_increase": 50,
+    "occupancy/vacant": 46,
+    "weather/exponential_increase": 18,
+    "power/erratic": 29,
+    "hvac/setback_drift": 40,
+    "occupancy/intermittent": 46,
+    "power/flatline": 18,
+    "hvac/stuck_off": 13,
+    "occupancy/arrival": 47,
+    "air_quality/spike": 31,
+    "hvac/slow_recovery": 14,
+    "power/gradual_decrease": 50,
+    "air_quality/stable": 62,
+    "weather/gradual_increase": 21,
+    "air_quality/exponential_increase": 18,
+    "power/step_increase": 40,
+    "power/step_decrease": 29,
+    "water/dip": 28,
+    "hvac/calibration_drift": 13,
+    "hvac/stuck_on": 13,
+    "hvac/too_cold": 14,
+    "power/dip": 31,
+    "hvac/stable": 38,
+    "water/gradual_decrease": 41,
+    "air_quality/gradual_decrease": 51,
+    "hvac/normal_cycling": 29,
+    "hvac/erratic": 13,
+    "weather/step_increase": 19,
+    "water/step_decrease": 13,
+    "weather/gradual_decrease": 22,
+    "hvac/flatline": 13,
+    "water/stable": 64,
+    "air_quality/step_decrease": 15,
+    "power/gradual_increase": 28,
+    "water/flatline": 26,
+    "hvac/biased_reading": 13,
+    "weather/flatline": 21,
+    "air_quality/gradual_increase": 72,
+    "air_quality/erratic": 15,
+    "water/oscillation": 30,
+    "hvac/quantised": 13,
+    "air_quality/throttling": 27,
+    "water/erratic": 14,
+    "hvac/bias_jump": 13,
+    "hvac/pull_down": 27,
+    "air_quality/step_increase": 32,
+    "power/throttling": 11,
+    "hvac/no_cooling_effect": 14,
+    "power/oscillation": 40,
+    "occupancy/occupied": 47,
+    "weather/stable": 52,
+    "hvac/unit_alarm": 13,
+    "weather/dip": 21,
+    "occupancy/departure": 47,
+    "weather/step_decrease": 11,
+    "power/spike": 20,
+    "hvac/saturation": 13,
+    "water/throttling": 18,
+    "weather/spike": 24,
+    "weather/throttling": 12,
+    "power/exponential_increase": 6,
+    "water/spike": 21,
+    "weather/erratic": 8,
+    "hvac/short_cycling": 14,
+    "air_quality/flatline": 19,
+    "water/exponential_increase": 15,
+    "air_quality/dip": 14,
+    "air_quality/oscillation": 4,
+    "hvac/running_empty_room": 13,
+    "hvac/too_hot": 14,
+    "weather/oscillation": 4
+   },
+   "status": {
+    "sensor_fault": 292,
+    "critical": 242,
+    "normal": 1003,
+    "warning": 410
+   },
+   "fault_kind": {
+    "dropout": 62,
+    "noise": 50,
+    "stuck": 63,
+    "drift": 14,
+    "bias": 44,
+    "quantised": 40,
+    "saturation": 19
+   },
+   "event_active": {
+    "False": 653,
+    "True": 1294
+   },
+   "seen": {
+    "seen": 1947
+   },
+   "window_n": {
+    "96": 298,
+    "144": 240,
+    "30": 76,
+    "132": 27,
+    "48": 721,
+    "108": 28,
+    "78": 31,
+    "114": 20,
+    "66": 37,
+    "102": 32,
+    "72": 28,
+    "84": 45,
+    "120": 25,
+    "42": 52,
+    "90": 27,
+    "36": 71,
+    "24": 58,
+    "60": 39,
+    "54": 45,
+    "138": 21,
+    "126": 26
+   },
+   "small_boundary": 127,
+   "routine": {
+    "why_overflow": 99,
+    "weekend_off": 13,
+    "night_setback": 13,
+    "why_startup": 13,
+    "why_drain": 36,
+    "why_co2_decay": 26,
+    "small_excursion": 13,
+    "why_outdoor_pm": 55,
+    "why_diurnal": 15,
+    "why_night_refills": 8,
+    "why_shortcycle": 4,
+    "setpoint_change_ok": 13,
+    "why_loadcycle": 40,
+    "continuous_duty": 13,
+    "why_refill": 17,
+    "fan_mode": 13,
+    "why_pump": 17,
+    "offhours_water": 5,
+    "why_occ_co2": 16,
+    "why_shutdown": 10,
+    "why_valve": 4,
+    "why_solar": 1
+   },
+   "confidence": {
+    "0.9": 207,
+    "0.7": 408,
+    "0.75": 285,
+    "0.85": 212,
+    "0.95": 200,
+    "0.65": 41,
+    "0.8": 167,
+    "0.3": 105,
+    "0.6": 149,
+    "0.55": 8,
+    "0.92": 45,
+    "0.35": 44,
+    "0.4": 20,
+    "0.82": 14,
+    "0.72": 4,
+    "0.86": 3,
+    "0.5": 3,
+    "0.63": 3,
+    "0.81": 4,
+    "0.45": 12,
+    "0.78": 1,
+    "0.68": 3,
+    "0.83": 2,
+    "0.61": 1,
+    "0.66": 2,
+    "0.79": 1,
+    "0.53": 1,
+    "0.76": 1,
+    "0.62": 1
+   },
+   "tokens": {
+    "prompt": {
+     "mean": 723.2,
+     "p50": 709,
+     "p95": 944,
+     "max": 1075
+    },
+    "completion": {
+     "mean": 87.9,
+     "p50": 86,
+     "p95": 108,
+     "max": 119
+    },
+    "generated_until_action": {
+     "mean": 76.0,
+     "p50": 74,
+     "p95": 95,
+     "max": 107
+    },
+    "by_window": {
+     "24": {
+      "n": 58,
+      "prompt": {
+       "mean": 636.2,
+       "p50": 636,
+       "p95": 769,
+       "max": 815
+      },
+      "gen": {
+       "mean": 79.5,
+       "p50": 81,
+       "p95": 95,
+       "max": 100
+      }
+     },
+     "30": {
+      "n": 76,
+      "prompt": {
+       "mean": 644.2,
+       "p50": 652,
+       "p95": 797,
+       "max": 806
+      },
+      "gen": {
+       "mean": 75.7,
+       "p50": 74,
+       "p95": 92,
+       "max": 94
+      }
+     },
+     "36": {
+      "n": 71,
+      "prompt": {
+       "mean": 657.1,
+       "p50": 656,
+       "p95": 800,
+       "max": 835
+      },
+      "gen": {
+       "mean": 76.5,
+       "p50": 76,
+       "p95": 94,
+       "max": 100
+      }
+     },
+     "42": {
+      "n": 52,
+      "prompt": {
+       "mean": 668.5,
+       "p50": 678,
+       "p95": 804,
+       "max": 832
+      },
+      "gen": {
+       "mean": 78.2,
+       "p50": 81,
+       "p95": 95,
+       "max": 98
+      }
+     },
+     "48": {
+      "n": 721,
+      "prompt": {
+       "mean": 684.4,
+       "p50": 688,
+       "p95": 832,
+       "max": 896
+      },
+      "gen": {
+       "mean": 76.5,
+       "p50": 75,
+       "p95": 95,
+       "max": 107
+      }
+     },
+     "54": {
+      "n": 45,
+      "prompt": {
+       "mean": 708.1,
+       "p50": 716,
+       "p95": 851,
+       "max": 861
+      },
+      "gen": {
+       "mean": 76.3,
+       "p50": 75,
+       "p95": 89,
+       "max": 98
+      }
+     },
+     "60": {
+      "n": 39,
+      "prompt": {
+       "mean": 698.2,
+       "p50": 699,
+       "p95": 848,
+       "max": 874
+      },
+      "gen": {
+       "mean": 75.2,
+       "p50": 70,
+       "p95": 96,
+       "max": 98
+      }
+     },
+     "66": {
+      "n": 37,
+      "prompt": {
+       "mean": 730.1,
+       "p50": 725,
+       "p95": 866,
+       "max": 875
+      },
+      "gen": {
+       "mean": 76.2,
+       "p50": 74,
+       "p95": 91,
+       "max": 103
+      }
+     },
+     "72": {
+      "n": 28,
+      "prompt": {
+       "mean": 724.7,
+       "p50": 748,
+       "p95": 888,
+       "max": 912
+      },
+      "gen": {
+       "mean": 77.6,
+       "p50": 76,
+       "p95": 96,
+       "max": 105
+      }
+     },
+     "78": {
+      "n": 31,
+      "prompt": {
+       "mean": 752.0,
+       "p50": 753,
+       "p95": 910,
+       "max": 936
+      },
+      "gen": {
+       "mean": 78.0,
+       "p50": 77,
+       "p95": 94,
+       "max": 102
+      }
+     },
+     "84": {
+      "n": 45,
+      "prompt": {
+       "mean": 750.6,
+       "p50": 757,
+       "p95": 924,
+       "max": 942
+      },
+      "gen": {
+       "mean": 74.0,
+       "p50": 74,
+       "p95": 89,
+       "max": 102
+      }
+     },
+     "90": {
+      "n": 27,
+      "prompt": {
+       "mean": 720.1,
+       "p50": 772,
+       "p95": 918,
+       "max": 932
+      },
+      "gen": {
+       "mean": 71.4,
+       "p50": 72,
+       "p95": 87,
+       "max": 95
+      }
+     },
+     "96": {
+      "n": 298,
+      "prompt": {
+       "mean": 748.8,
+       "p50": 782,
+       "p95": 943,
+       "max": 977
+      },
+      "gen": {
+       "mean": 75.0,
+       "p50": 74,
+       "p95": 95,
+       "max": 105
+      }
+     },
+     "102": {
+      "n": 32,
+      "prompt": {
+       "mean": 786.8,
+       "p50": 806,
+       "p95": 945,
+       "max": 976
+      },
+      "gen": {
+       "mean": 77.0,
+       "p50": 77,
+       "p95": 96,
+       "max": 97
+      }
+     },
+     "108": {
+      "n": 28,
+      "prompt": {
+       "mean": 809.7,
+       "p50": 820,
+       "p95": 955,
+       "max": 975
+      },
+      "gen": {
+       "mean": 76.3,
+       "p50": 75,
+       "p95": 93,
+       "max": 99
+      }
+     },
+     "114": {
+      "n": 20,
+      "prompt": {
+       "mean": 765.0,
+       "p50": 821,
+       "p95": 972,
+       "max": 989
+      },
+      "gen": {
+       "mean": 70.5,
+       "p50": 70,
+       "p95": 86,
+       "max": 90
+      }
+     },
+     "120": {
+      "n": 25,
+      "prompt": {
+       "mean": 769.3,
+       "p50": 830,
+       "p95": 995,
+       "max": 1000
+      },
+      "gen": {
+       "mean": 73.8,
+       "p50": 68,
+       "p95": 91,
+       "max": 102
+      }
+     },
+     "126": {
+      "n": 26,
+      "prompt": {
+       "mean": 840.5,
+       "p50": 869,
+       "p95": 998,
+       "max": 1019
+      },
+      "gen": {
+       "mean": 76.2,
+       "p50": 75,
+       "p95": 86,
+       "max": 103
+      }
+     },
+     "132": {
+      "n": 27,
+      "prompt": {
+       "mean": 817.6,
+       "p50": 868,
+       "p95": 1025,
+       "max": 1050
+      },
+      "gen": {
+       "mean": 77.6,
+       "p50": 78,
+       "p95": 93,
+       "max": 101
+      }
+     },
+     "138": {
+      "n": 21,
+      "prompt": {
+       "mean": 813.5,
+       "p50": 869,
+       "p95": 1022,
+       "max": 1045
+      },
+      "gen": {
+       "mean": 75.4,
+       "p50": 73,
+       "p95": 95,
+       "max": 101
+      }
+     },
+     "144": {
+      "n": 240,
+      "prompt": {
+       "mean": 824.7,
+       "p50": 885,
+       "p95": 1051,
+       "max": 1075
+      },
+      "gen": {
+       "mean": 75.6,
+       "p50": 74,
+       "p95": 96,
+       "max": 104
+      }
+     }
+    }
+   }
+  },
+  "test": {
+   "n": 2965,
+   "duplicates_dropped": 1,
+   "sha256_16": "6fdb17d5a5187913",
+   "roles": {
+    "power": 540,
+    "air_quality": 540,
+    "hvac": 540,
+    "occupancy": 420,
+    "weather": 420,
+    "water": 505
+   },
+   "families": {
+    "routine": 162,
+    "real_routine": 98,
+    "hvac": 540,
+    "occupancy": 420,
+    "event": 862,
+    "long_drift": 102,
+    "recurring": 62,
+    "real_longrange": 39,
+    "stable": 167,
+    "compound": 120,
+    "fault": 252,
+    "zero_idle": 21,
+    "old_shift": 94,
+    "water_fill": 26
+   },
+   "role_family": {
+    "power/routine": 56,
+    "air_quality/real_routine": 33,
+    "hvac/hvac": 540,
+    "occupancy/occupancy": 420,
+    "weather/event": 190,
+    "power/event": 226,
+    "power/long_drift": 28,
+    "air_quality/event": 220,
+    "weather/recurring": 19,
+    "power/real_routine": 34,
+    "weather/real_longrange": 10,
+    "power/stable": 45,
+    "weather/compound": 29,
+    "water/fault": 62,
+    "air_quality/stable": 44,
+    "weather/fault": 57,
+    "power/fault": 67,
+    "weather/long_drift": 24,
+    "air_quality/fault": 66,
+    "water/event": 226,
+    "air_quality/long_drift": 28,
+    "power/compound": 34,
+    "power/zero_idle": 11,
+    "water/routine": 51,
+    "air_quality/routine": 55,
+    "weather/real_routine": 29,
+    "air_quality/old_shift": 28,
+    "air_quality/compound": 33,
+    "water/long_drift": 22,
+    "water/real_longrange": 7,
+    "water/zero_idle": 10,
+    "water/compound": 24,
+    "weather/stable": 38,
+    "water/stable": 40,
+    "water/recurring": 21,
+    "air_quality/recurring": 22,
+    "power/old_shift": 28,
+    "air_quality/real_longrange": 11,
+    "weather/old_shift": 24,
+    "water/old_shift": 14,
+    "water/water_fill": 26,
+    "power/real_longrange": 11,
+    "water/real_routine": 2
+   },
+   "patterns": {
+    "power/oscillation": 66,
+    "air_quality/gradual_decrease": 94,
+    "hvac/pull_down": 40,
+    "occupancy/intermittent": 70,
+    "weather/step_increase": 53,
+    "power/dip": 27,
+    "power/step_increase": 59,
+    "power/gradual_increase": 51,
+    "air_quality/step_increase": 55,
+    "occupancy/arrival": 70,
+    "occupancy/departure": 70,
+    "air_quality/stable": 93,
+    "occupancy/vacant": 70,
+    "weather/spike": 46,
+    "air_quality/oscillation": 17,
+    "occupancy/off_hours_presence": 70,
+    "occupancy/occupied": 70,
+    "power/stable": 82,
+    "air_quality/throttling": 38,
+    "hvac/flatline": 20,
+    "hvac/short_cycling": 20,
+    "hvac/setback_drift": 60,
+    "weather/gradual_increase": 70,
+    "water/erratic": 36,
+    "hvac/unit_alarm": 20,
+    "weather/step_decrease": 21,
+    "hvac/dropout": 20,
+    "power/spike": 30,
+    "power/flatline": 64,
+    "air_quality/flatline": 28,
+    "water/stable": 74,
+    "weather/erratic": 19,
+    "hvac/saturation": 20,
+    "hvac/stuck_off": 20,
+    "weather/dip": 22,
+    "hvac/bias_jump": 20,
+    "water/dip": 24,
+    "weather/gradual_decrease": 36,
+    "power/gradual_decrease": 45,
+    "hvac/stable": 70,
+    "water/step_increase": 98,
+    "air_quality/step_decrease": 14,
+    "water/gradual_increase": 72,
+    "hvac/biased_reading": 20,
+    "water/flatline": 27,
+    "air_quality/gradual_increase": 91,
+    "power/exponential_increase": 20,
+    "power/step_decrease": 46,
+    "water/spike": 55,
+    "hvac/calibration_drift": 20,
+    "hvac/too_hot": 20,
+    "water/exponential_increase": 40,
+    "weather/stable": 82,
+    "air_quality/spike": 40,
+    "weather/exponential_increase": 19,
+    "hvac/slow_recovery": 20,
+    "hvac/quantised": 20,
+    "hvac/erratic": 20,
+    "hvac/too_cold": 20,
+    "weather/throttling": 19,
+    "weather/flatline": 27,
+    "air_quality/erratic": 21,
+    "hvac/normal_cycling": 30,
+    "hvac/running_empty_room": 20,
+    "air_quality/dip": 30,
+    "power/throttling": 23,
+    "air_quality/exponential_increase": 19,
+    "water/throttling": 25,
+    "hvac/stuck_on": 20,
+    "water/oscillation": 22,
+    "water/gradual_decrease": 27,
+    "power/erratic": 27,
+    "hvac/no_cooling_effect": 20,
+    "water/step_decrease": 5,
+    "weather/oscillation": 6
+   },
+   "status": {
+    "normal": 1588,
+    "critical": 263,
+    "warning": 669,
+    "sensor_fault": 445
+   },
+   "fault_kind": {
+    "stuck": 108,
+    "noise": 91,
+    "bias": 63,
+    "dropout": 78,
+    "quantised": 57,
+    "saturation": 27,
+    "drift": 21
+   },
+   "event_active": {
+    "True": 1983,
+    "False": 982
+   },
+   "seen": {
+    "unseen": 985,
+    "seen": 1744,
+    "unseen_sepoct": 236
+   },
+   "window_n": {
+    "96": 467,
+    "144": 327,
+    "84": 46,
+    "48": 1098,
+    "36": 104,
+    "30": 92,
+    "24": 107,
+    "120": 44,
+    "66": 62,
+    "42": 92,
+    "90": 48,
+    "132": 43,
+    "60": 73,
+    "54": 76,
+    "72": 45,
+    "102": 38,
+    "126": 38,
+    "138": 38,
+    "78": 51,
+    "108": 35,
+    "114": 41
+   },
+   "small_boundary": 164,
+   "routine": {
+    "why_loadcycle": 66,
+    "why_outdoor_pm": 75,
+    "weekend_off": 20,
+    "small_excursion": 20,
+    "why_refill": 61,
+    "why_diurnal": 34,
+    "why_co2_decay": 30,
+    "why_startup": 19,
+    "continuous_duty": 20,
+    "fan_mode": 20,
+    "why_valve": 25,
+    "why_occ_co2": 27,
+    "night_setback": 20,
+    "setpoint_change_ok": 20,
+    "why_solar": 5,
+    "why_shutdown": 13,
+    "why_night_refills": 14,
+    "why_drain": 11,
+    "why_pump": 8,
+    "offhours_water": 5,
+    "why_overflow": 9,
+    "why_hvac_cycle": 1
+   },
+   "confidence": {
+    "0.7": 492,
+    "0.85": 332,
+    "0.8": 302,
+    "0.95": 346,
+    "0.9": 294,
+    "0.6": 179,
+    "0.35": 98,
+    "0.75": 453,
+    "0.3": 183,
+    "0.4": 33,
+    "0.45": 14,
+    "0.92": 86,
+    "0.68": 4,
+    "0.65": 63,
+    "0.74": 3,
+    "0.72": 4,
+    "0.55": 21,
+    "0.5": 18,
+    "0.84": 2,
+    "0.86": 1,
+    "0.64": 2,
+    "0.82": 20,
+    "0.63": 1,
+    "0.61": 1,
+    "0.77": 3,
+    "0.53": 1,
+    "0.76": 7,
+    "0.81": 1,
+    "0.83": 1
+   },
+   "tokens": {
+    "prompt": {
+     "mean": 717.9,
+     "p50": 701,
+     "p95": 940,
+     "max": 1081
+    },
+    "completion": {
+     "mean": 86.8,
+     "p50": 85,
+     "p95": 107,
+     "max": 122
+    },
+    "generated_until_action": {
+     "mean": 75.1,
+     "p50": 73,
+     "p95": 95,
+     "max": 108
+    },
+    "by_window": {
+     "24": {
+      "n": 107,
+      "prompt": {
+       "mean": 640.8,
+       "p50": 642,
+       "p95": 768,
+       "max": 794
+      },
+      "gen": {
+       "mean": 77.4,
+       "p50": 75,
+       "p95": 97,
+       "max": 100
+      }
+     },
+     "30": {
+      "n": 92,
+      "prompt": {
+       "mean": 668.3,
+       "p50": 658,
+       "p95": 789,
+       "max": 846
+      },
+      "gen": {
+       "mean": 78.6,
+       "p50": 79,
+       "p95": 95,
+       "max": 99
+      }
+     },
+     "36": {
+      "n": 104,
+      "prompt": {
+       "mean": 660.1,
+       "p50": 666,
+       "p95": 801,
+       "max": 833
+      },
+      "gen": {
+       "mean": 74.8,
+       "p50": 72,
+       "p95": 94,
+       "max": 98
+      }
+     },
+     "42": {
+      "n": 92,
+      "prompt": {
+       "mean": 680.0,
+       "p50": 678,
+       "p95": 814,
+       "max": 879
+      },
+      "gen": {
+       "mean": 75.3,
+       "p50": 73,
+       "p95": 93,
+       "max": 104
+      }
+     },
+     "48": {
+      "n": 1098,
+      "prompt": {
+       "mean": 685.0,
+       "p50": 690,
+       "p95": 834,
+       "max": 874
+      },
+      "gen": {
+       "mean": 75.6,
+       "p50": 74,
+       "p95": 95,
+       "max": 105
+      }
+     },
+     "54": {
+      "n": 76,
+      "prompt": {
+       "mean": 703.6,
+       "p50": 708,
+       "p95": 841,
+       "max": 860
+      },
+      "gen": {
+       "mean": 78.3,
+       "p50": 81,
+       "p95": 96,
+       "max": 102
+      }
+     },
+     "60": {
+      "n": 73,
+      "prompt": {
+       "mean": 690.5,
+       "p50": 710,
+       "p95": 849,
+       "max": 896
+      },
+      "gen": {
+       "mean": 72.8,
+       "p50": 70,
+       "p95": 92,
+       "max": 97
+      }
+     },
+     "66": {
+      "n": 62,
+      "prompt": {
+       "mean": 737.3,
+       "p50": 730,
+       "p95": 876,
+       "max": 910
+      },
+      "gen": {
+       "mean": 75.4,
+       "p50": 72,
+       "p95": 95,
+       "max": 97
+      }
+     },
+     "72": {
+      "n": 45,
+      "prompt": {
+       "mean": 718.0,
+       "p50": 724,
+       "p95": 875,
+       "max": 911
+      },
+      "gen": {
+       "mean": 73.0,
+       "p50": 71,
+       "p95": 86,
+       "max": 99
+      }
+     },
+     "78": {
+      "n": 51,
+      "prompt": {
+       "mean": 733.3,
+       "p50": 740,
+       "p95": 906,
+       "max": 926
+      },
+      "gen": {
+       "mean": 74.6,
+       "p50": 75,
+       "p95": 94,
+       "max": 99
+      }
+     },
+     "84": {
+      "n": 46,
+      "prompt": {
+       "mean": 734.5,
+       "p50": 758,
+       "p95": 901,
+       "max": 926
+      },
+      "gen": {
+       "mean": 73.8,
+       "p50": 72,
+       "p95": 93,
+       "max": 108
+      }
+     },
+     "90": {
+      "n": 48,
+      "prompt": {
+       "mean": 742.8,
+       "p50": 768,
+       "p95": 919,
+       "max": 962
+      },
+      "gen": {
+       "mean": 75.9,
+       "p50": 73,
+       "p95": 96,
+       "max": 108
+      }
+     },
+     "96": {
+      "n": 467,
+      "prompt": {
+       "mean": 752.5,
+       "p50": 780,
+       "p95": 949,
+       "max": 991
+      },
+      "gen": {
+       "mean": 74.5,
+       "p50": 72,
+       "p95": 95,
+       "max": 103
+      }
+     },
+     "102": {
+      "n": 38,
+      "prompt": {
+       "mean": 778.8,
+       "p50": 798,
+       "p95": 976,
+       "max": 987
+      },
+      "gen": {
+       "mean": 76.4,
+       "p50": 75,
+       "p95": 98,
+       "max": 101
+      }
+     },
+     "108": {
+      "n": 35,
+      "prompt": {
+       "mean": 739.8,
+       "p50": 799,
+       "p95": 953,
+       "max": 966
+      },
+      "gen": {
+       "mean": 71.4,
+       "p50": 70,
+       "p95": 90,
+       "max": 93
+      }
+     },
+     "114": {
+      "n": 41,
+      "prompt": {
+       "mean": 792.1,
+       "p50": 822,
+       "p95": 992,
+       "max": 1016
+      },
+      "gen": {
+       "mean": 72.2,
+       "p50": 72,
+       "p95": 90,
+       "max": 97
+      }
+     },
+     "120": {
+      "n": 44,
+      "prompt": {
+       "mean": 805.2,
+       "p50": 828,
+       "p95": 999,
+       "max": 1029
+      },
+      "gen": {
+       "mean": 72.8,
+       "p50": 72,
+       "p95": 88,
+       "max": 95
+      }
+     },
+     "126": {
+      "n": 38,
+      "prompt": {
+       "mean": 766.6,
+       "p50": 834,
+       "p95": 991,
+       "max": 1021
+      },
+      "gen": {
+       "mean": 77.4,
+       "p50": 81,
+       "p95": 94,
+       "max": 100
+      }
+     },
+     "132": {
+      "n": 43,
+      "prompt": {
+       "mean": 811.1,
+       "p50": 844,
+       "p95": 1025,
+       "max": 1028
+      },
+      "gen": {
+       "mean": 73.6,
+       "p50": 71,
+       "p95": 91,
+       "max": 96
+      }
+     },
+     "138": {
+      "n": 38,
+      "prompt": {
+       "mean": 794.1,
+       "p50": 860,
+       "p95": 1022,
+       "max": 1065
+      },
+      "gen": {
+       "mean": 76.2,
+       "p50": 77,
+       "p95": 91,
+       "max": 94
+      }
+     },
+     "144": {
+      "n": 327,
+      "prompt": {
+       "mean": 787.8,
+       "p50": 868,
+       "p95": 1035,
+       "max": 1081
+      },
+      "gen": {
+       "mean": 73.1,
+       "p50": 72,
+       "p95": 94,
+       "max": 99
+      }
+     }
+    }
+   }
+  }
+ }
+}

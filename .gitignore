@@ -95,3 +95,29 @@ proofs/**/prompts.jsonl
 proofs/2026-10-16_window_study/samples.jsonl
 proofs/**/*.png
 proofs/**/workload_*.json
+
+# ---- 2026-10-28: keep the repo to source + summaries ----
+# Per-sample data built from real sensor windows (incidents, eval sets, prompts, rows) stays private (HANDBOOK 2.36)
+proofs/**/*.jsonl
+proofs/**/*rows.json
+proofs/**/sse_capture.txt
+# Build outputs and device binaries copied into proofs for deploy/rollback (rebuilt from source; md5s are kept)
+Code/smart-city-edge-agent/app/backend/edgeagent
+proofs/**/*edge-agent*
+proofs/**/htpd
+proofs/**/*.so
+proofs/**/llama-bench
+proofs/**/*.orig
+# Large profiler dumps
+proofs/**/prof_err.txt
+# Staged model files (GBs) and Cloudflare/wrangler local state
+Code/models_stage/
+.wrangler/
+# Local job state: step markers, locks, pause flags, heartbeats
+proofs/**/.s[0-9]
+proofs/**/BOARD_LOCK
+proofs/**/PAUSE_GPU
+proofs/**/HEARTBEAT
+proofs/**/*.state
+# Website QA screenshots
+Website/qa/**/*.png

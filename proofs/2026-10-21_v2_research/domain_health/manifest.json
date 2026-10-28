@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-21",
+  "what": "Domain health monitor (per-domain status tiles, trend, open incidents, next steps)",
+  "files": {
+    "DESIGN.md": "research summary + chosen design",
+    "go_test_health.log": "go test -run Health -v (9 tests, WSL)",
+    "ui_health_check.js": "browser-free render check of app.js domain-health section",
+    "ui_health_check.log": "output of node ui_health_check.js app.js"
+  },
+  "code": [
+    "Code/smart-city-edge-agent/app/backend/domainhealth.go",
+    "Code/smart-city-edge-agent/app/backend/domainhealth_test.go",
+    "Code/smart-city-edge-agent/app/backend/main.go (SSE health on change)",
+    "Code/smart-city-edge-agent/app/backend/server.go (GET /api/health)",
+    "Code/smart-city-edge-agent/app/device/web/app.js",
+    "Code/smart-city-edge-agent/app/device/web/index.html",
+    "Code/smart-city-edge-agent/app/device/web/styles.css",
+    "Code/smart-city-edge-agent/app/device/web/sw.js (cache v29)"
+  ],
+  "results": { "go_vet": "clean", "go_test_all": "ok (56.4s)", "go_test_health": "9/9 pass", "ui_check": "OK (5 scenarios)" },
+  "device_verified": false,
+  "note": "Not yet exercised on the QIDK app (no adb in this task)."
+}

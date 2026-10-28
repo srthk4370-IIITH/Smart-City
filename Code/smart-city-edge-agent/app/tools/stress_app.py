@@ -70,7 +70,13 @@ def _req(path, body=None, method=None, timeout=30):
 
 
 def check(name, ok, evidence=""):
-    RESULTS.append({"check": name, "ok": bool(ok), "evidence": evidence})
+    """Record one check. `evidence` is written for the failure case ("none in 70 s", "timeout"), so on a
+    PASS it is kept only as context, prefixed "info:" - a passing check must not read like a failure in
+    stress_report.json. Pass/fail is decided by `ok` alone."""
+    ev = str(evidence) if evidence is not None else ""
+    if ok and ev and not ev.startswith("info:"):
+        ev = "info: " + ev
+    RESULTS.append({"check": name, "ok": bool(ok), "evidence": ev})
     print(f"  [{'PASS' if ok else 'FAIL'}] {name}" + (f"  - {evidence}" if evidence and not ok else ""), flush=True)
     return ok
 
@@ -84,7 +90,7 @@ def device(cmd):
 
 def health(tag):
     _, st = req("/api/status")
-    procs = device("pgrep -x edge-agent >/dev/null && echo backend; (pgrep -x genied || pgrep -x htpd) >/dev/null && echo daemon")
+    procs = device("pgrep -x edge-agent >/dev/null && echo backend; (pgrep -x genied || pgrep -x htpd || pgrep -x htpd_v7) >/dev/null && echo daemon")
     temp = device("cat /sys/class/thermal/thermal_zone*/temp | sort -rn | head -1")
     t = int(temp) // 1000 if temp.isdigit() else -1
     alive = isinstance(st, dict) and "backend" in procs
@@ -216,10 +222,10 @@ def phase_excursions(n):
                 break
         iid, dt = wait_new_incident(before, 30)
         tag = f"excursion {s['metric']}@{s['node']} -> {target:.1f}"
-        if not check(f"{tag}: incident raised", iid, "none in 70s"):
+        if not check(f"{tag}: incident raised", iid, iid or "none in 70s"):
             continue
         inc = wait_done(iid)
-        if not check(f"{tag}: analysis finished", inc, "timeout"):
+        if not check(f"{tag}: analysis finished", inc, (inc or {}).get("state") or "timeout"):
             continue
         record(tag, inc)
         check(f"{tag}: state done (not done_with_errors)", inc["state"] == "done", inc["state"])
@@ -251,12 +257,12 @@ def phase_faults():
             check("stuck sensor: analysed without errors", inc["state"] == "done", inc["state"])
             # the sim adds jitter to held values, so this is a level shift, not a flatline; the real
             # stuck_sensor scenario (scenarios phase) is the fault-classification check
-            RESULTS.append({"check": "stuck sensor (held slider): agent status " + str(pats), "ok": True, "evidence": "informational"})
+            RESULTS.append({"check": "stuck sensor (held slider): agent status " + str(pats), "ok": True, "evidence": "info: informational, not a pass/fail check"})
     else:
         # with the slider value held exactly, the sim still adds sensor noise, so a perfect flatline
         # may never form - record it as an observation rather than inventing a failure
         RESULTS.append({"check": "stuck sensor: no incident within 110 s (sim noise keeps it non-flat)",
-                        "ok": True, "evidence": "informational"})
+                        "ok": True, "evidence": "info: informational, not a pass/fail check"})
         print("  [INFO] stuck sensor produced no incident (simulator adds noise to held values)")
 
     # 2. a single large spike IS an anomaly: it stays inside the 4-hour window, so the window keeps an
@@ -296,13 +302,13 @@ def phase_scenarios(modes):
             req("/api/mode", {"mode": mode})
             before = set(incident_ids())
             code, _ = req("/api/inject", {"scenario": sc["id"]})
-            if not check(f"M{mode} {sc['id']}: injectable", code == 200, str(code)):
+            if not check(f"M{mode} {sc['id']}: injectable", code == 200, f"HTTP {code}"):
                 continue
             iid, dt = wait_new_incident(before, 150)
-            if not check(f"M{mode} {sc['id']}: incident raised", iid, "none in 150 s"):
+            if not check(f"M{mode} {sc['id']}: incident raised", iid, iid or "none in 150 s"):
                 continue
             inc = wait_done(iid)
-            if not check(f"M{mode} {sc['id']}: finished", inc, "timeout"):
+            if not check(f"M{mode} {sc['id']}: finished", inc, (inc or {}).get("state") or "timeout"):
                 continue
             record(f"M{mode} {sc['id']}", inc)
             check(f"M{mode} {sc['id']}: state done", inc["state"] == "done", inc["state"])
@@ -351,7 +357,7 @@ def phase_chaos(rounds, staggered=False):
                 break
         iid, dt = wait_new_incident(before, 60)
         tag = f"chaos {kind} #{r + 1}"
-        if not check(f"{tag}: incident raised", iid, "none"):
+        if not check(f"{tag}: incident raised", iid, iid or "none"):
             continue
         time.sleep(8)  # let any second batch form so every resulting incident is counted
         new = [i for i in incident_ids() if i not in before]
@@ -360,7 +366,7 @@ def phase_chaos(rounds, staggered=False):
             if inc:
                 record(tag, inc)
         main = max((i for i in incs if i), key=lambda i: i.get("npu_calls") or 0, default=None)
-        if not check(f"{tag}: analysis finished", main, "timeout"):
+        if not check(f"{tag}: analysis finished", main, (main or {}).get("id") or "timeout"):
             continue
         n_agents = sum(1 for a in main.get("agents") or [] if a.get("prompt"))
         f = main.get("final") or {}

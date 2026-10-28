@@ -1,0 +1,54 @@
+== baseline ==
+  [PASS] baseline: backend alive
+  [FAIL] baseline: NPU daemon alive  - backend
+  [PASS] baseline: board below 80 C (49 C)
+  [PASS] baseline: thermal guard not tripped
+
+== chaos (simultaneous): all sensors abnormal at once, 2 round(s) ==
+  [PASS] chaos simultaneous #1: incident raised
+  [PASS] chaos simultaneous #1: analysis finished
+  [PASS] chaos simultaneous #1: 14 NPU agents + synthesizer, 1 incident(s), 30.8s
+  [PASS] chaos simultaneous #1: cross-domain report passed policy
+  [PASS] chaos simultaneous #1: report names several domains
+  [PASS] chaos simultaneous #1: every agent passed policy
+  [PASS] chaos simultaneous #1: backend alive
+  [FAIL] chaos simultaneous #1: NPU daemon alive  - backend
+  [FAIL] chaos simultaneous #1: board below 80 C (84 C)  - 84 C
+  [PASS] chaos simultaneous #1: thermal guard not tripped
+  [PASS] chaos simultaneous #2: incident raised
+  [PASS] chaos simultaneous #2: analysis finished
+  [PASS] chaos simultaneous #2: 14 NPU agents + synthesizer, 1 incident(s), 28.4s
+  [PASS] chaos simultaneous #2: cross-domain report passed policy
+  [PASS] chaos simultaneous #2: report names several domains
+  [FAIL] chaos simultaneous #2: every agent passed policy  - [["cause 'acidic_condition' not allowed for water", "action '' not whitelisted"]]
+  [PASS] chaos simultaneous #2: backend alive
+  [FAIL] chaos simultaneous #2: NPU daemon alive  - backend
+  [FAIL] chaos simultaneous #2: board below 80 C (92 C)  - 92 C
+  [FAIL] chaos simultaneous #2: thermal guard not tripped  - True
+
+== chaos (staggered): all sensors abnormal at once, 1 round(s) ==
+  [PASS] chaos staggered #1: incident raised
+  [PASS] chaos staggered #1: analysis finished
+  [PASS] chaos staggered #1: 13 NPU agents + synthesizer, 1 incident(s), 27.7s
+  [PASS] chaos staggered #1: cross-domain report passed policy
+  [PASS] chaos staggered #1: report names several domains
+  [FAIL] chaos staggered #1: every agent passed policy  - [["cause 'acidic_condition' not allowed for water", "action '' not whitelisted"]]
+  [PASS] chaos staggered #1: backend alive
+  [FAIL] chaos staggered #1: NPU daemon alive  - backend
+  [FAIL] chaos staggered #1: board below 80 C (94 C)  - 94 C
+  [FAIL] chaos staggered #1: thermal guard not tripped  - True
+
+==== 23/34 checks passed in 2.4 min ====
+Mode 3 analysis: n=3 min 27.7s  median 28.4s  max 30.8s
+  FAIL baseline: NPU daemon alive: backend
+  FAIL chaos simultaneous #1: NPU daemon alive: backend
+  FAIL chaos simultaneous #1: board below 80 C (84 C): 84 C
+  FAIL chaos simultaneous #2: every agent passed policy: [["cause 'acidic_condition' not allowed for water", "action '' not whitelisted"]]
+  FAIL chaos simultaneous #2: NPU daemon alive: backend
+  FAIL chaos simultaneous #2: board below 80 C (92 C): 92 C
+  FAIL chaos simultaneous #2: thermal guard not tripped: True
+  FAIL chaos staggered #1: every agent passed policy: [["cause 'acidic_condition' not allowed for water", "action '' not whitelisted"]]
+  FAIL chaos staggered #1: NPU daemon alive: backend
+  FAIL chaos staggered #1: board below 80 C (94 C): 94 C
+  FAIL chaos staggered #1: thermal guard not tripped: True
+report: C:\Users\hp\Desktop\qidk\Code\smart-city-edge-agent\app\tools\stress_report.json

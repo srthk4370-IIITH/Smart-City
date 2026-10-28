@@ -906,3 +906,354 @@ body.noscroll #main{content-visibility:hidden}
 @media (min-width:700px){ .fs{align-items:center} .fs-panel{border-radius:20px} }
 [data-theme="dark"] .fs-panel{background:#121110;border:1px solid rgba(255,236,214,.08)}
 [data-theme="dark"] .fs-t{font-family:var(--mono);font-weight:500;letter-spacing:.1em;text-transform:uppercase;font-size:13px}
+
+/* early alert + refined re-analysis (backend refine.go): stage badge, next-refinement line, history */
+.stagetag{display:inline-flex;align-items:center;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;line-height:1;
+  padding:5px 9px;border-radius:999px;background:var(--fill);color:var(--tx2);white-space:nowrap}
+.stagetag.ref{background:color-mix(in srgb,var(--blue) 14%,transparent);color:var(--blue)}
+.stagetag.prov{background:color-mix(in srgb,var(--amber,#b7791f) 16%,transparent);color:var(--amber,#b7791f)}
+[data-theme="dark"] .stagetag{font-family:var(--mono);font-weight:500;font-size:11px;letter-spacing:.12em}
+.refnext{margin:6px 0 0;font-size:13px;color:var(--tx2)}
+.hist{list-style:none;margin:0;padding:0}
+.hist li{padding:10px 0;border-top:1px solid var(--sep)}
+.hist li:first-child{border-top:0;padding-top:0}
+.hist .hh{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px}
+.hist .ht{font-size:14.5px;font-weight:600;margin-top:6px;overflow-wrap:anywhere}
+.hist .hc{font-size:13px;color:var(--tx2);margin-top:4px;overflow-wrap:anywhere}
+
+/* ---- refinement (1.5 h / 3 h) typing live under the finished report (app.js refiningCard) ---- */
+.refining{margin-top:14px}
+.refining .rf-row{display:grid;grid-template-columns:56px minmax(0,1fr);gap:8px;align-items:start;margin-top:8px}
+.refining .rf-ref{font-size:12.5px;font-weight:600;padding-top:9px;color:var(--muted,inherit)}
+.stream.rf{margin:0;min-height:0;max-height:96px;font-size:11.5px;padding:8px 10px}
+/* stream boxes take the tokens' own pace; never animate their height */
+.stream,.cstream{overflow-anchor:none;contain:content}
+
+/* ============================================================================
+   Operator UX pass (2026-10-21, proofs/2026-10-21_ux/UX_RESEARCH.md).
+   ISA-101: grey when normal, colour only for abnormal, always colour + glyph + word.
+   Level 1 = campus health tiles (worst first), Level 2 = domain sheet, Level 3 = incident,
+   Level 4 = Technical details / Engineering view. Targets >= 44-48 px, text >= 13 px.
+   ============================================================================ */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+/* Engineering view: technical chrome is hidden for operators, one tap away (header </> or About) */
+body:not(.eng) .eng-only{display:none!important}
+#eng.on{background:var(--accent-tint);color:var(--accent-tx)}
+.eng-card{margin-bottom:14px}
+
+/* ---------- campus health (Level 1) ---------- */
+.dh{margin:0 0 18px}
+.dh-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 4px 2px}
+.dh-hd h2{font-size:13px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.06em}
+.dh-conn{font-size:12.5px;font-weight:700;white-space:nowrap}
+.dh-conn.on{color:var(--ok)} .dh-conn.off{color:var(--warn)}
+.dh-hd2{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 12px;margin:0 4px 10px}
+.dh-sum0{font-size:15px;font-weight:600;color:var(--tx);line-height:1.35;min-width:0;flex:1 1 220px}
+.dh-sum0.bad{color:var(--c)}
+.dh-dec{display:inline-flex;align-items:center;min-height:44px;padding:0 4px;color:var(--accent-tx);font-weight:700;font-size:14px;text-decoration:none;white-space:nowrap}
+.dh-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.dh-tile{display:flex;flex-direction:column;align-items:stretch;gap:5px;width:100%;min-width:0;min-height:96px;text-align:left;
+  padding:12px 12px 10px 14px;border-radius:16px;background:var(--card);box-shadow:var(--shadow);border:1px solid var(--sep);
+  border-left:4px solid var(--cb);color:var(--tx);transition:transform .15s var(--ease)}
+.dh-tile:active{transform:scale(.985)}
+.dh-tile:not(.calm){background:color-mix(in srgb,var(--cb) 7%,var(--card))}
+.dh-tile.calm{border-left-color:var(--sep)}
+.dh-tile.wide{grid-column:1/-1}
+.dh-tile>span{display:block;min-width:0}
+.dh-top{display:flex!important;flex-wrap:wrap;align-items:center;gap:4px 8px}
+.dh-ico{width:28px;height:28px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;flex:none;color:var(--tx2);border:1px solid var(--sep)}
+.dh-ico svg{width:17px;height:17px}
+.dh-name{flex:1 1 0;min-width:0;font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dh-st{flex:0 0 100%;font-size:14px;font-weight:800;color:var(--c);display:flex;align-items:center;gap:6px}
+.dh-st i{font-style:normal}
+.dh-tile.calm .dh-st{color:var(--tx2);font-weight:700}
+.dh-sum{font-size:13px;color:var(--tx2);line-height:1.35}
+.dh-chg{font-size:13.5px;font-weight:700}
+.dh-chg.elevated{color:var(--crit)} .dh-chg.curbed{color:var(--ok)}
+.dh-stale{font-size:13px;color:var(--warn);font-weight:600}
+.dh-do{font-size:14px;line-height:1.4;color:var(--tx)}
+.dh-do b{color:var(--c)}
+.dh-foot{display:flex!important;align-items:center;gap:8px;margin-top:auto;padding-top:2px;font-size:12.5px;color:var(--tx2)}
+.dh-time{font-variant-numeric:tabular-nums;flex:1;min-width:0}
+.dh-n{font-weight:800;color:var(--accent-tx);white-space:nowrap}
+.dh-go{font-size:20px;line-height:1;color:var(--tx2)}
+.dh-tr{font-weight:700}
+.dh-tr.elevated{color:var(--crit)} .dh-tr.curbed{color:var(--ok)}
+.dh-strip{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.dh-chip{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 13px;border-radius:999px;background:var(--fill);color:var(--tx);font-size:14px;font-weight:700}
+.dh-chip .g{color:var(--c)}
+.dh-chip.st-normal .g,.dh-chip.st-none .g{color:var(--tx2)}
+.toast.act{pointer-events:auto;display:flex;align-items:center;gap:14px}
+.toast.act button{min-height:44px;padding:0 12px;border-radius:10px;background:rgba(255,255,255,.22);font-weight:800}
+@media (min-width:700px){.dh-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (min-width:1024px){.dh-grid{grid-template-columns:repeat(6,minmax(0,1fr))}.dh-tile.wide{grid-column:span 3}}
+
+/* ---------- domain sheet (Level 2) + shared operator sections ---------- */
+.ds-head{padding:4px 0 6px 14px;border-left:4px solid var(--cb)}
+.ds-head.st-normal,.ds-head.st-none{border-left-color:var(--sep)}
+.ds-big{font-size:24px;font-weight:800;color:var(--c);line-height:1.2}
+.ds-head.st-normal .ds-big,.ds-head.st-none .ds-big{color:var(--tx)}
+.ds-big small{font-size:15px;font-weight:600;color:var(--tx2)}
+.ds-head p{margin-top:6px;font-size:14px;color:var(--tx2)}
+.ds-head .dh-chg{font-size:14px}
+.ds-ai{color:var(--accent-tx)!important;font-weight:600}
+.op-sec{margin-top:20px}
+.op-sec h3{font-size:12.5px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.06em;margin:0 0 8px}
+.op-sec p{font-size:14.5px;line-height:1.5;color:var(--tx)}
+.op-sec p+p{margin-top:6px}
+.op-lead{font-size:16px!important;font-weight:600}
+.op-more{color:var(--tx2)!important;font-size:14px!important}
+.op-note{font-size:13px!important;color:var(--tx2)!important;margin-top:8px}
+.op-h4{font-size:12.5px;font-weight:700;color:var(--tx2);margin:14px 0 8px}
+.op-steps{margin:0;padding-left:24px;font-size:15px;line-height:1.45}
+.op-steps li+li{margin-top:6px}
+.op-warn{background:color-mix(in srgb,var(--crit) 12%,transparent);color:var(--crit);margin-top:14px}
+.ds-incs,.ds-list{display:flex;flex-direction:column;gap:8px}
+.ds-inc{display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:100%;min-height:56px;padding:10px 14px;text-align:left;border-radius:14px;
+  background:var(--card);border:1px solid var(--sep);border-left:4px solid var(--svb,var(--sep))}
+.ds-inc b{font-size:15px;font-weight:700;line-height:1.3}
+.ds-inc span{font-size:13px;color:var(--tx2)}
+.ds-row{display:grid;grid-template-columns:18px minmax(0,1fr) auto;grid-template-areas:"g n v" "g n s";align-items:center;gap:0 10px;width:100%;min-height:56px;
+  padding:8px 12px;text-align:left;border-radius:12px;background:var(--card);border:1px solid var(--sep)}
+.ds-g{grid-area:g;color:var(--c);font-size:14px;text-align:center}
+.ds-row.st-normal .ds-g{color:var(--tx2)}
+.ds-n{grid-area:n;display:flex;flex-direction:column;min-width:0}
+.ds-n b{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ds-n span{font-size:13px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ds-v{grid-area:v;font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.ds-s{grid-area:s;font-size:12.5px;font-weight:700;color:var(--c);text-align:right;white-space:nowrap}
+.ds-row.st-normal .ds-s{color:var(--tx2)}
+details.tech{margin-top:22px}
+.tech-bd{padding:8px 16px 14px;border-top:.5px solid var(--sep)}
+.tech-bd .kv,.tech-kv{font-size:13.5px}
+
+/* ---------- incident (Level 3): headline, decision state, summary sections ---------- */
+.op-head{padding:2px 0 4px}
+.op-head h1.inc-title{font-size:21px;line-height:1.3;font-weight:800;letter-spacing:-.01em;margin:0;overflow-wrap:anywhere}
+.op-meta{margin-top:6px;font-size:13.5px;color:var(--tx2)}
+.dec{display:inline-flex;align-items:center;font-size:12.5px;font-weight:800;line-height:1;padding:5px 10px;border-radius:999px;white-space:nowrap;border:1px solid currentColor}
+.dec.pending{color:var(--accent-tx)} .dec.approved{color:var(--ok)} .dec.dismissed,.dec.run{color:var(--tx2)}
+.op-row .conf{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;border-radius:12px;border:1px solid var(--sep);background:var(--card);font-weight:700;font-size:15px}
+.conf .confbar{width:90px}
+.conf-n{color:var(--tx2);font-weight:600}
+.op-rev{list-style:none;margin:8px 0 0;padding:0}
+.op-rev li{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:9px 0;border-top:1px solid var(--sep);font-size:14px}
+.op-rev li:first-child{border-top:0}
+.rv-l{font-weight:600;min-width:150px}
+.rv-c{font-weight:700;color:var(--tx2)}
+.rv-elevated .rv-c{color:var(--crit)} .rv-curbed .rv-c,.rv-resolved .rv-c{color:var(--ok)}
+.rv-d{flex:0 0 100%;font-size:13px;color:var(--tx2)}
+.tech-wrap{margin-top:22px}
+.tech-wrap>.fold{margin-top:0}
+.tech-wrap>.fold>.fold-h{min-height:48px;border-top:1px solid var(--sep)}
+.schip-t span{white-space:normal;overflow:visible}
+
+/* ---------- dark theme: keep the instrument look, but readable operator text ---------- */
+[data-theme="dark"] .dh-name{font-weight:500;font-size:13.5px;letter-spacing:.06em;text-transform:uppercase}
+[data-theme="dark"] .dh-st{font-weight:600;font-size:13.5px;letter-spacing:.04em}
+[data-theme="dark"] .dh-tile{background-color:#121110;box-shadow:none}
+[data-theme="dark"] .dh-tile:not(.calm){background:color-mix(in srgb,var(--cb) 8%,#121110)}
+[data-theme="dark"] .dh-sum,[data-theme="dark"] .dh-do,[data-theme="dark"] .dh-chg{font-size:13px}
+[data-theme="dark"] .dh-sum0{font-size:13.5px;letter-spacing:.01em}
+[data-theme="dark"] .op-head h1.inc-title{font-family:var(--mono);font-size:18px;font-weight:600;letter-spacing:.01em;text-transform:none}
+[data-theme="dark"] .op-sec p{font-size:13.5px;line-height:1.55}
+[data-theme="dark"] .op-lead{font-size:14.5px!important}
+[data-theme="dark"] .op-note,[data-theme="dark"] .op-more{font-size:12.5px!important}
+[data-theme="dark"] .op-steps{font-size:13.5px}
+[data-theme="dark"] .op-sec h3{font-size:11.5px;letter-spacing:.12em}
+[data-theme="dark"] .ds-row,[data-theme="dark"] .ds-inc{background:#121110}
+[data-theme="dark"] .ds-n b,[data-theme="dark"] .ds-inc b{font-weight:600;font-size:13.5px}
+[data-theme="dark"] .dec{font-family:var(--mono);font-weight:500;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase}
+[data-theme="dark"] .dh-chip{background:transparent;border:1px solid var(--sep);font-weight:500;font-size:12.5px}
+[data-theme="dark"] .op-row .conf{background:transparent}
+/* desktop tab rail: the dark-theme overflow guard (padding 0 2px) truncated the labels ("SENSO...", "I...") */
+@media (min-width:1024px){
+  [data-theme="dark"] .tabs a{padding:0 16px;min-width:auto}
+  [data-theme="dark"] .tabs a span{overflow:visible;max-width:none}
+  [data-theme="dark"] .tabs a{font-size:11.5px}
+}
+
+/* ============================================================================
+   Overflow pass (2026-10-23, proofs/2026-10-23_ui_overflow, audit = ui_overflow_audit.js).
+   Root causes found by the DOM audit at 360/412/768/1440 px, 130% text zoom and stretched content:
+   unbroken ids/paths in AI text, nowrap pills/chips/notes in flex rows without min-width:0, a
+   fixed-width glyph box, and fixed 4-column/sparkline widths that do not grow with the font.
+   Nothing is hidden: long text wraps, and the few places that still clip keep the full text a tap away.
+   ============================================================================ */
+/* long unbroken tokens (sensor ids, file paths, model names) break instead of widening the page */
+body{overflow-wrap:anywhere}
+.sheet-bd,.fs-bd,#about,.toast,.pop{overflow-wrap:anywhere;min-width:0}
+.toast{max-width:100%}
+/* sheet headers: two lines before clipping (the full name is also in the body) */
+.sheet-t,.fs-t{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.25}
+/* brand: may take two short lines next to the clock instead of "SMART CITY ED..." */
+.brand b{white-space:normal;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;line-height:1.15;overflow-wrap:normal}
+/* decided-incident footer: the decision pill keeps its size, the operator note wraps; a long note
+   shows three lines and opens fully on tap (it is the only place the note is shown) */
+.foot-row{min-width:0}
+.foot-row>*{min-width:0}
+.foot-row>.pill{flex:none}
+.foot-note{flex:1;font-size:14px;cursor:pointer;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.foot-note.open{display:block;max-height:40vh;overflow-y:auto}
+/* model badge and per-call stat chips: wrap inside the card instead of clipping/spilling */
+.rep-h .pill,.statrow .chip{white-space:normal;max-width:100%;min-width:0;line-height:1.3;overflow-wrap:anywhere}
+.rep-h>*{min-width:0}
+/* campus-health tile footer: the "N awaiting decision" count wraps under the time instead of
+   pushing the chevron (and the whole page) out to the right */
+.dh-foot{flex-wrap:wrap}
+.dh-n{white-space:normal;min-width:0}
+.dh-go{flex:none;margin-left:auto}
+[data-theme="dark"] .dh-name{letter-spacing:.03em}
+/* flagged-sensor chip: glyph box grows with the font; titles wrap instead of "ROOM TEMPERA..." */
+.schip .sglyph{width:auto;min-width:14px}
+.schip-t b{white-space:normal}
+/* hero counters: four columns only while they fit; at large text two columns (container query in
+   em, so it follows the WebView text zoom) */
+.hero{container-type:inline-size}
+@container (max-width:23em){
+  .hero-stats,[data-theme="dark"] .hero-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+.hstat span{overflow-wrap:normal}
+/* live rows: the big readout ("Occupied") needs the room the sparkline takes on narrow phones */
+@media (max-width:380px){ .row .spark{width:84px} }
+.row .val{min-width:0}
+
+/* toasts stay compact: the action button never wraps letter by letter (overflow pass side effect) */
+.toast.act{font-size:14px;padding:9px 12px;max-height:40vh;overflow:auto}
+.toast.act .tmsg{min-width:0;flex:1 1 auto}
+.toast.act button{flex:0 0 auto;white-space:nowrap;overflow-wrap:normal;word-break:normal}
+
+/* ============================================================================
+   UX v34 (proofs/2026-10-23_ux_v34): approval lifecycle, checklist, data-quality chips, maintenance,
+   re-check countdown, shift summary, list filters + grouping. Grey when normal: colour only for
+   states that need someone (needs decision, got worse); every state is glyph + word. Targets >= 44 px.
+   ============================================================================ */
+/* workflow chip (incident sheet header, list cards) */
+.wfchip{display:inline-flex;align-items:center;gap:6px;min-width:0;font-weight:800;font-size:13px;color:var(--tx2);white-space:normal;overflow-wrap:anywhere}
+.wfchip i{font-style:normal;flex:none}
+.wfchip.wf-needs_decision{color:var(--accent-tx)}
+.wfchip.wf-in_progress{color:var(--tx)}
+.wfchip.wf-resolved{color:var(--ok)}
+.wfchip.wf-interrupted{color:var(--warn)}
+.icard .foot2{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:8px;font-size:13px;color:var(--tx2)}
+.eta{font-variant-numeric:tabular-nums;color:var(--tx2)}
+.op-meta .eta{font-size:14px}
+/* operator picker */
+.opbtn{width:auto;min-width:44px;padding:0 10px;gap:6px;display:inline-flex;align-items:center;max-width:42vw}
+.opbtn .op-n{font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.op-list{display:flex;flex-direction:column;gap:8px;margin:12px 0}
+.op-item{display:flex;gap:8px;min-width:0}
+.op-item .op-pick{flex:1;justify-content:flex-start;min-width:0;white-space:normal;text-align:left}
+.op-item .op-del{flex:none;width:44px;padding:0}
+.op-h{font-size:15px;margin:14px 0 8px}
+/* checklist */
+.cklist{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:10px}
+.ck{background:var(--card2);border-radius:14px;padding:12px;min-width:0}
+.ck-row{display:flex;gap:10px;align-items:flex-start;min-width:0}
+.ck-g{flex:none;font-size:20px;line-height:1.2;color:var(--tx2)}
+.ck-done .ck-g{color:var(--ok)}
+.ck-body{min-width:0;flex:1}
+.ck-t{font-weight:700;line-height:1.35}
+.ck-done .ck-t,.ck-not_needed .ck-t,.ck-withdrawn .ck-t{color:var(--tx2)}
+.ck-not_needed .ck-t,.ck-withdrawn .ck-t{text-decoration:line-through}
+.ck-why,.ck-src,.ck-by{font-size:13.5px;color:var(--tx2);margin-top:4px}
+.ck-by{color:var(--tx)}
+.ck-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.ck-tag{font-size:12px;font-weight:800;padding:3px 8px;border-radius:999px;background:var(--accent-tint);color:var(--accent-tx)}
+.ck-act{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;padding-left:30px}
+.ck-act .btn{flex:1 1 120px}
+.ck-act .btn.plain{flex:0 0 auto}
+.ck-nn{margin-top:10px;padding-left:30px;display:flex;flex-direction:column;gap:8px}
+.ck-reasons{display:flex;flex-wrap:wrap;gap:8px}
+.ck-reasons .fchip{flex:0 1 auto;white-space:normal;box-shadow:none;background:var(--fill)}
+.ck-nn .ck-act{padding-left:0;margin-top:0}
+.ck-add{display:flex;gap:8px;margin-top:12px;min-width:0}
+.ck-add .note-in{flex:1;min-width:0}
+.ck-add .btn{flex:none}
+/* banners */
+.banner.wfb{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:12px 14px;border-radius:14px;margin:4px 0 12px;font-size:15px;background:var(--fill)}
+.banner.wfb>span:nth-child(2){flex:1 1 200px;min-width:0}
+.banner.wfb.crit{background:color-mix(in srgb,var(--crit) 14%,transparent);color:var(--crit)}
+.banner.wfb.warn{background:color-mix(in srgb,var(--warn) 14%,transparent);color:var(--warn)}
+.banner.wfb.ok{background:color-mix(in srgb,var(--ok) 12%,transparent);color:var(--tx)}
+/* activity timeline + history */
+.evtl{list-style:none;margin:8px 0 0;padding:0;font-size:14px}
+.evtl li{display:grid;grid-template-columns:auto auto 1fr;gap:4px 10px;padding:7px 0;border-bottom:.5px dashed var(--sep);min-width:0}
+.evtl time{color:var(--tx2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.evtl .ev-who{white-space:nowrap}
+.evtl .ev-what{min-width:0}
+.ev-recheck_elevated .ev-what,.ev-reminder .ev-what{color:var(--crit)}
+.hs-list{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.hs-i,.hs-m{background:var(--card2);border-radius:12px;padding:10px 12px;font-size:14px;min-width:0}
+.hs-open{display:block;width:100%;text-align:left;min-height:44px;color:var(--tx)}
+.hs-o{color:var(--tx2);margin-top:2px}
+.hs-steps{margin:6px 0 0;padding-left:4px;list-style:none;color:var(--tx2)}
+.hs-rec{margin-top:6px;color:var(--warn);font-weight:700}
+.hs-m{color:var(--tx2)}
+/* footer close / dismiss form */
+.ffm-opts{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px}
+.ffm-opts .fchip{flex:1 1 150px;white-space:normal;justify-content:center;text-align:center;box-shadow:none;background:var(--fill)}
+.ffm-opts .fchip.on{background:var(--accent);color:var(--accent-ink)}
+#inc-foot .foot-row{flex-wrap:wrap}
+#inc-foot .foot-row .btn{min-width:0}
+/* data-quality chip (◆ glyph + word, the reason on tap / in the title) */
+.qchip{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:800;padding:3px 9px;border-radius:999px;background:color-mix(in srgb,var(--fault) 14%,transparent);color:var(--fault);white-space:normal;min-width:0}
+.qchip i{font-style:normal}
+.qchip.q-maintenance,.qchip.q-stale{background:var(--fill);color:var(--tx2)}
+button.qchip{min-height:44px;padding:0 12px}
+.qwrap{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0}
+.qreason{font-size:13.5px;color:var(--tx2);flex-basis:100%}
+.qslot:empty{display:none}
+.dh-q{display:block;font-size:13px;color:var(--fault);margin-top:4px}
+.dh-q i{font-style:normal;margin-right:4px}
+.dq-list{list-style:none;margin:6px 0;padding:0;display:flex;flex-direction:column;gap:8px;font-size:14px}
+.ds-row .qchip{grid-column:1/-1;justify-self:start}
+.row.oos .val{opacity:.6}
+.oos{color:var(--tx2);font-weight:700;margin-bottom:10px}
+.msec .mbtns{flex-wrap:wrap}
+.msec .mbtns .btn{flex:1 1 160px}
+.mform{display:flex;flex-direction:column;gap:8px}
+.mlbl{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--tx2)}
+.mform .foot-row{flex-wrap:wrap}
+/* incident list tools + grouping */
+.inc-tools{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;margin:0 0 6px}
+.inc-tools .note-in{min-width:0}
+.sel{min-height:44px;border-radius:12px;border:0;background:var(--fill);color:var(--tx);padding:0 10px;font:inherit;font-size:15px;max-width:100%}
+@media (max-width:560px){.inc-tools{grid-template-columns:1fr 1fr}.inc-tools #inc-q{grid-column:1/-1}}
+.igrp{display:flex;flex-direction:column;gap:6px;min-width:0}
+.irel{min-height:44px;text-align:left;padding:0 14px;border-radius:12px;background:var(--fill);font-weight:700;font-size:14px;color:var(--tx)}
+.irel .muted{font-weight:500}
+.irel-list{display:flex;flex-direction:column;gap:8px;padding-left:12px;border-left:2px solid var(--sep)}
+/* shift summary */
+.shift{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin:10px 0 0;padding:8px 8px 8px 14px;border-radius:14px;background:var(--card);box-shadow:var(--shadow);font-size:14.5px}
+.shift .sh-t{flex:1 1 200px;min-width:0}
+.shift .sh-go{font-weight:700;color:var(--accent-tx);min-height:44px;display:inline-flex;align-items:center}
+.shift .sh-x{flex:none}
+/* 360 px with 130 % text: the tab labels ("INCIDEN…") get the width they need instead of equal fifths */
+@media (max-width:420px){
+  .tabs a{flex:1 1 auto;min-width:0;padding:0 1px}
+  [data-theme="dark"] .tabs a{letter-spacing:0;padding:0 1px}
+  [data-theme="dark"] .tabs a span{text-overflow:clip}
+}
+/* WebViews without container queries (older Android System WebView < 105): the hero counters fall
+   back to a viewport query, so they never squeeze into four narrow columns */
+@supports not (container-type:inline-size){
+  @media (max-width:420px){ .hero-stats,[data-theme="dark"] .hero-stats{grid-template-columns:repeat(2,minmax(0,1fr))} }
+}
+/* and without color-mix (WebView < 111): solid fallbacks for the tinted chips and banners */
+@supports not (background:color-mix(in srgb,red 10%,transparent)){
+  .qchip,.banner.wfb.crit,.banner.wfb.warn,.banner.wfb.ok,.btn.danger{background:var(--fill)}
+}
+/* v34 overflow pass (ui_overflow_audit.js on the seeded mock: 52 -> 0) */
+/* the operator button joins the header: on narrow phones the sensor clock steps aside (sensor time is
+   also in the Live subtitle and on every incident), so the brand mark keeps its room */
+@media (max-width:400px){ .bar-r .clk{display:none} }
+.brand{min-width:30px}
+.brand img{flex:none}
+/* the tile footer now carries "1 needs decision · 1 in progress (Ravi)": the time wraps too */
+.dh-time{white-space:normal;overflow-wrap:anywhere}
+/* maintenance buttons: long labels wrap at large text instead of running out of the button */
+.msec .btn,.mform .btn{white-space:normal;height:auto;min-height:44px;padding-top:6px;padding-bottom:6px;text-align:center;line-height:1.25}
+/* live row readout: the unit moves under the value instead of spilling ("ug/m3" at 130 %) */
+.row .val{white-space:normal}
+.row .val small{white-space:nowrap;display:inline-block}

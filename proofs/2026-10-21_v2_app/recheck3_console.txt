@@ -1,0 +1,16 @@
+improve:power_throttling INC-0044 early sev=warning      change=None power_kw gradual_increase/warning 
+improve:power_throttling INC-0044 1.5h  sev=warning      change=same power_kw step_increase/warning KEPT warning kept from early: the rule on the fresh window still reads critical (refined view: 
+improve:power_throttling INC-0044 3h    sev=critical     change=elevated power_kw step_decrease/critical 
+== improve:power_throttling: warning -> warning -> critical (elevated)
+improve:pm_spike INC-0045 early sev=critical     change=None pm25 spike/critical 
+improve:pm_spike INC-0045 1.5h  sev=normal       change=curbed pm25 spike/normal CURBED resolved: critical -> normal, spike back to baseline since 14:35 (AI: event no longer acti
+improve:pm_spike INC-0045 3h    sev=critical     change=elevated pm25 spike/critical 
+== improve:pm_spike: critical -> normal -> critical (same)
+improve:ventilation_failure INC-0046 early sev=warning      change=None co2 exponential_increase/warning 
+improve:ventilation_failure INC-0046 1.5h  sev=normal       change=curbed co2 spike/normal CURBED resolved: warning -> normal, spike back to baseline since 16:10 (AI: event no longer activ
+improve:ventilation_failure INC-0046 3h    sev=normal       change=same co2 spike/normal still resolved: back to baseline since 16:05 (AI: event no longer active)
+== improve:ventilation_failure: warning -> normal -> normal (curbed)
+hold:ventilation_failure INC-0047 early sev=warning      change=None co2 exponential_increase/warning 
+hold:ventilation_failure INC-0047 1.5h  sev=critical     change=elevated co2 throttling/critical 
+hold:ventilation_failure INC-0047 3h    sev=critical     change=same co2 throttling/critical 
+== hold:ventilation_failure: warning -> critical -> critical (elevated)

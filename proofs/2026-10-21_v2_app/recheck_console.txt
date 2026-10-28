@@ -1,0 +1,36 @@
+improve:ventilation_failure INC-0027 early sev=warning      change=None co2 exponential_increase/warning 
+improve:ventilation_failure INC-0027 1.5h  sev=warning      change=same co2 spike/warning 
+improve:ventilation_failure INC-0027 3h    sev=warning      change=same co2 spike/warning 
+== improve:ventilation_failure: warning -> warning -> warning (same)
+improve:tank_leak INC-0028 early sev=critical     change=None level gradual_decrease/critical 
+improve:tank_leak INC-0028 1.5h  sev=critical     change=same level step_increase/critical 
+improve:tank_leak INC-0028 3h    sev=critical     change=same level step_increase/critical 
+== improve:tank_leak: critical -> critical -> critical (same)
+improve:power_throttling INC-0029 early sev=warning      change=None power_kw gradual_increase/warning 
+improve:power_throttling INC-0029 1.5h  sev=critical     change=elevated power_kw spike/critical 
+improve:power_throttling INC-0029 3h    sev=critical     change=same power_kw spike/critical 
+== improve:power_throttling: warning -> critical -> critical (elevated)
+improve:stuck_sensor INC-0030 early sev=sensor_fault change=None temp flatline/sensor_fault 
+improve:stuck_sensor INC-0030 1.5h  sev=sensor_fault change=same temp flatline/sensor_fault 
+improve:stuck_sensor INC-0030 3h    sev=sensor_fault change=same temp flatline/sensor_fault 
+== improve:stuck_sensor: sensor_fault -> sensor_fault -> sensor_fault (same)
+improve:pm_spike INC-0031 early sev=critical     change=None pm25 spike/critical 
+improve:pm_spike INC-0031 1.5h  sev=critical     change=same pm25 spike/critical 
+improve:pm_spike INC-0031 3h    sev=critical     change=same pm25 spike/critical 
+== improve:pm_spike: critical -> critical -> critical (same)
+hold:ventilation_failure INC-0032 early sev=warning      change=None co2 exponential_increase/warning 
+hold:ventilation_failure INC-0032 1.5h  sev=critical     change=elevated co2 throttling/critical 
+hold:ventilation_failure INC-0032 3h    sev=critical     change=same co2 throttling/critical 
+== hold:ventilation_failure: warning -> critical -> critical (elevated)
+hold:tank_leak INC-0033 early sev=critical     change=None level gradual_decrease/critical 
+hold:tank_leak INC-0033 1.5h  sev=critical     change=same level gradual_decrease/critical 
+hold:tank_leak INC-0033 3h    sev=critical     change=same level gradual_decrease/critical 
+== hold:tank_leak: critical -> critical -> critical (same)
+hold:power_throttling INC-0034 early sev=warning      change=None power_kw gradual_increase/warning 
+hold:power_throttling INC-0034 1.5h  sev=critical     change=elevated power_kw throttling/critical 
+hold:power_throttling INC-0034 3h    sev=critical     change=same power_kw throttling/critical 
+== hold:power_throttling: warning -> critical -> critical (elevated)
+hold:heat_buildup INC-0035 early sev=warning      change=None temp level_shift (12 h view)/warning 
+hold:heat_buildup INC-0035 1.5h  sev=normal       change=curbed temp gradual_increase/normal CURBED curbed warning -> normal: refined view (gradual increase normal) and rule (normal) both re
+hold:heat_buildup INC-0035 3h    sev=normal       change=same temp throttling/normal 
+== hold:heat_buildup: warning -> normal -> normal (curbed)

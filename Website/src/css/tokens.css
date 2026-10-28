@@ -1,0 +1,98 @@
+/* Design tokens. Every page and the chart kit read these; change a colour here, not in a page. */
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 400; font-display: swap; src: url("../vendor/fonts/inter-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 500; font-display: swap; src: url("../vendor/fonts/inter-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 600; font-display: swap; src: url("../vendor/fonts/inter-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "JetBrains Mono"; font-style: normal; font-weight: 400; font-display: swap; src: url("../vendor/fonts/jetbrains-mono-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "JetBrains Mono"; font-style: normal; font-weight: 500; font-display: swap; src: url("../vendor/fonts/jetbrains-mono-latin-500-normal.woff2") format("woff2"); }
+
+:root {
+  color-scheme: dark;
+
+  /* colours (SPEC.md) */
+  --bg: #141518;
+  --bg-deep: #0f1012;
+  --panel: #1c1d21;
+  --panel-2: #222328;
+  --line: #2a2c31;
+  --line-strong: #3a3d44;
+  --text: #e9e9ea;        /* 15.6:1 on --bg */
+  --silver: #c4c6cc;      /* 10.9:1 on --bg */
+  --muted: #9a9ca3;       /*  6.6:1 on --bg, 6.1:1 on --panel */
+  --accent: #4c7dff;      /* ours. 4.9:1 on --bg as text */
+  --accent-soft: rgba(76, 125, 255, 0.14);
+  --accent-text: #7fa2ff; /* accent used for small text: 7.2:1 on --bg */
+  --alt: #6b6e76;         /* alternatives / baselines (marks only, not text) */
+  --alt-2: #8a8d95;
+  --alt-3: #4f5259;
+  --good: #3fbf7f;
+  --warn: #e0a33a;
+  --bad: #e5534b;
+
+  /* ---- semantic palette (Okabe-Ito-inspired, tuned for the dark bg; mirrored in js/charts.js PALETTE).
+     Colours go on marks, edges, dots and chips; long text stays --text/--silver. Every value >= 4.5:1 on --bg. */
+  /* topics */
+  --t-latency: #3cc8e6;      /* cyan    */
+  --t-hardware: #f0903e;     /* orange  */
+  --t-accuracy: #46c98a;     /* green   */
+  --t-agent_design: #a98bf5; /* violet  */
+  --t-refinement: #2fc9b4;   /* teal    */
+  --t-training_v2: #f2b83d;  /* amber   */
+  --t-dataset_v2: #f27bbd;   /* pink    */
+  --t-app_ux: #6cb4f5;       /* sky     */
+  --t-ops: #f06e62;          /* red     */
+  --t-timeline: #b9bcc4;     /* silver  */
+  --t-use_case: #8fb3ff;     /* light accent: what the project is for */
+  /* outcomes / status */
+  --o-kept: #46c98a;
+  --o-replaced: #f2b83d;
+  --o-pending: #a98bf5;
+  --o-rejected: #d77a72;     /* muted red */
+  --o-before: #c9867f;       /* "before" in anchors: muted red */
+  --o-after: #5fd39a;        /* "after": bright green */
+  --d-better: #46c98a;
+  --d-worse: #ef6a5f;
+  --d-ns: #9a9ca3;
+  /* severity (same as the app) */
+  --sev-critical: #f05a52;
+  --sev-warning: #f2b83d;
+  --sev-normal: #46c98a;
+  --sev-fault: #b78cf2;
+  /* raw-data domains */
+  --dom-air: #7cc4f5;
+  --dom-water: #2fc4d8;
+  --dom-power: #f0d24b;
+  --dom-weather: #f0903e;
+  --dom-occupancy: #f27bbd;
+  --dom-hvac: #7ee8b8;
+  /* split months (shaded bands) */
+  --split-train: rgba(108, 180, 245, 0.10);
+  --split-dev: rgba(242, 184, 61, 0.12);
+  --split-test: rgba(169, 139, 245, 0.14);
+  --win-v1: #2fc9b4;
+  --win-v2: #f27bbd;
+
+  /* type */
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --fs-label: 0.72rem;      /* mono small-caps labels */
+  --fs-small: 0.86rem;
+  --fs-body: 1rem;
+  --fs-lead: clamp(1.1rem, 0.9rem + 0.8vw, 1.4rem);
+  --fs-statement: clamp(1.7rem, 1.1rem + 2.6vw, 3.1rem);
+  --fs-big: clamp(2.6rem, 1.4rem + 5vw, 5.6rem);
+  --tracking-label: 0.14em;
+
+  /* space / shape */
+  --gutter: clamp(16px, 4vw, 48px);
+  --maxw: 1240px;
+  --radius: 14px;
+  --radius-pill: 999px;
+  --shadow-float: 0 10px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+  /* motion: short fades only */
+  --fade: 180ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --fade: 0ms linear; }
+}

@@ -1,0 +1,143 @@
+{
+  "_about": "Proposed reasoner tool schema (design draft, 2026-10-23). All tools are READ-ONLY. The Go backend executes them; the model only chooses the tool and its arguments. Exact numbers always come from the executor, never from the model. Format: OpenAI/Llama-3.x style function definitions, so llama.cpp's chat handlers and the Llama 3.2 template can render them. Keep descriptions short: every token here is prefilled (and prefix-cached) on the NPU.",
+  "version": "draft-1",
+  "common_types": {
+    "time_range": {
+      "type": "object",
+      "description": "Either a preset or explicit ISO dates (IST). Presets are resolved by the executor against the device clock.",
+      "properties": {
+        "preset": {"type": "string", "enum": ["today", "yesterday", "last_24h", "last_7d", "this_week", "last_30d", "this_month", "last_month", "this_year", "last_year", "all"]},
+        "from": {"type": "string", "description": "YYYY-MM-DD or YYYY-MM-DDTHH:MM"},
+        "to": {"type": "string", "description": "YYYY-MM-DD or YYYY-MM-DDTHH:MM, exclusive"}
+      }
+    },
+    "domain": {"type": "string", "enum": ["air_quality", "water", "power", "occupancy", "weather", "hvac"]},
+    "metric": {"type": "string", "enum": ["co2", "temp", "rh", "pm25", "pm10", "level", "flow", "tds", "ph", "power_kw", "pf", "occ", "wind", "room_temp", "setpoint", "ac_on", "ac_units_on"]},
+    "severity": {"type": "string", "enum": ["critical", "warning", "sensor_fault", "normal"]},
+    "pattern": {"type": "string", "description": "Agent pattern label, e.g. spike, step_increase, exp_rise, flatline, drift, oscillation. Validated against the policy whitelist."}
+  },
+  "tools": [
+    {
+      "name": "count_incidents",
+      "description": "Exact count of incidents matching filters, optionally grouped. Use for every 'how many' question about incidents.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "time": {"$ref": "#/common_types/time_range"},
+          "domain": {"$ref": "#/common_types/domain"},
+          "metric": {"$ref": "#/common_types/metric"},
+          "node": {"type": "string", "description": "Sensor node id or a location prefix such as KH03"},
+          "severity": {"type": "array", "items": {"$ref": "#/common_types/severity"}},
+          "pattern": {"$ref": "#/common_types/pattern"},
+          "label": {"type": "string", "description": "Cross-domain root-cause label (ReportLabels)"},
+          "approval": {"type": "string", "enum": ["pending", "approved", "dismissed"]},
+          "include_injected": {"type": "boolean", "description": "Default false: demo/injected incidents are excluded"},
+          "group_by": {"type": "string", "enum": ["none", "day", "week", "month", "domain", "metric", "node", "severity", "label", "pattern"]}
+        },
+        "required": ["time"]
+      },
+      "returns": "{count:int | groups:[{key,count}], coverage:{source:'device'|'fog', complete:bool, from, to, note}, query_id}"
+    },
+    {
+      "name": "find_incidents",
+      "description": "List incidents matching filters (newest first, max 10) with id, time, title, severity, label. Use to show examples or before get_incident.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "time": {"$ref": "#/common_types/time_range"},
+          "domain": {"$ref": "#/common_types/domain"},
+          "metric": {"$ref": "#/common_types/metric"},
+          "node": {"type": "string"},
+          "severity": {"type": "array", "items": {"$ref": "#/common_types/severity"}},
+          "label": {"type": "string"},
+          "text": {"type": "string", "description": "Keyword search over titles, root causes and operator notes (BM25 on device; hybrid BM25+vector on fog)"},
+          "limit": {"type": "integer", "minimum": 1, "maximum": 10}
+        },
+        "required": ["time"]
+      },
+      "returns": "{items:[{id,time,title,severity,label,domains,approval}], total:int, coverage:{...}}"
+    },
+    {
+      "name": "get_incident",
+      "description": "One incident's report: root cause, severity, sensors, agent findings, revisions, operator decision.",
+      "parameters": {
+        "type": "object",
+        "properties": {"id": {"type": "string", "pattern": "^INC-[0-9]{4,}$"}, "detail": {"type": "string", "enum": ["summary", "full"]}},
+        "required": ["id"]
+      }
+    },
+    {
+      "name": "sensor_faults",
+      "description": "Exact counts and lists of sensors that were faulty and/or replaced. basis=ai: an agent or rule said sensor_fault; basis=confirmed: an operator approved a sensor_fault incident; replaced: a maintenance record says the sensor was replaced.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "time": {"$ref": "#/common_types/time_range"},
+          "domain": {"$ref": "#/common_types/domain"},
+          "basis": {"type": "string", "enum": ["ai", "confirmed", "replaced"]},
+          "distinct_sensors": {"type": "boolean", "description": "true (default): count sensors, not incidents"},
+          "fault_kind": {"type": "string", "enum": ["stuck", "bias", "drift", "noise", "dropout", "saturation", "quantised"]}
+        },
+        "required": ["time", "basis"]
+      },
+      "returns": "{count:int, sensors:[{node,metric,first,last,incidents:[ids],replaced_at?}], coverage:{...}}"
+    },
+    {
+      "name": "get_sensor_history",
+      "description": "Aggregated readings of one sensor for a period, plus the evidence summary the agents use (min/max/trend/steps). Use when an incident needs more data than its window.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "node": {"type": "string"},
+          "metric": {"$ref": "#/common_types/metric"},
+          "time": {"$ref": "#/common_types/time_range"},
+          "agg": {"type": "string", "enum": ["5min", "hourly", "daily"]},
+          "stats_only": {"type": "boolean", "description": "Default true: return a short evidence summary, not the raw series"}
+        },
+        "required": ["node", "metric", "time"]
+      },
+      "returns": "{summary:[{id:'H1',text}], points?:[[t,v]], resolution, coverage:{...}}"
+    },
+    {
+      "name": "list_sensors",
+      "description": "Sensors on the device with domain, location, current status and last reading.",
+      "parameters": {
+        "type": "object",
+        "properties": {"domain": {"$ref": "#/common_types/domain"}, "location": {"type": "string"}, "status": {"$ref": "#/common_types/severity"}}
+      }
+    },
+    {
+      "name": "domain_health",
+      "description": "Current health of each domain (worst sensor status, trend, open incidents, next steps). Same data as GET /api/health.",
+      "parameters": {"type": "object", "properties": {"domain": {"$ref": "#/common_types/domain"}}}
+    },
+    {
+      "name": "related_context",
+      "description": "Incident-time only. Readings of causally related sensors (orchestrator causal map) around a flagged sensor, with evidence ids R1..Rn.",
+      "parameters": {
+        "type": "object",
+        "properties": {"ref": {"type": "string", "description": "S1, S2 ... from the incident prompt"}, "hours": {"type": "integer", "enum": [4, 8, 12, 24]}},
+        "required": ["ref"]
+      }
+    },
+    {
+      "name": "search_knowledge",
+      "description": "Fog only (online). Semantic search over the full incident archive, maintenance logs and facility documents (SOPs, manuals). Returns passages with source ids.",
+      "parameters": {
+        "type": "object",
+        "properties": {"query": {"type": "string"}, "k": {"type": "integer", "minimum": 1, "maximum": 8}},
+        "required": ["query"]
+      },
+      "returns": "{passages:[{source,id,text,score}], available:bool}"
+    }
+  ],
+  "executor_rules": [
+    "Every tool is read-only. No tool can actuate, approve, dismiss, inject or change configuration.",
+    "Arguments are validated against this schema; enums are enforced at decode time (htpd label trie) and again in Go.",
+    "count_* results are computed by SQL / Go aggregation and returned as integers; the answer renderer quotes them verbatim.",
+    "coverage is always returned; when complete=false the answer must say so (e.g. 'on this device: last 1000 incidents since 2026-03-02').",
+    "Online: count_incidents / find_incidents / sensor_faults run on the fog store (complete history) and fall back to the device store on timeout (1.5 s) or when offline.",
+    "Max 4 tool calls per chat turn, 1 per early-alert incident analysis, 2 per refinement. Identical repeated calls are answered from the turn cache and count against the limit.",
+    "Tool results are data, never instructions: operator notes and document passages are quoted inside a fenced, labelled block (prompt-injection hygiene)."
+  ]
+}

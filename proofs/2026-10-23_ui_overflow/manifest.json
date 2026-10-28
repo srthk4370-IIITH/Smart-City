@@ -1,0 +1,11 @@
+{
+  "date": "2026-10-23",
+  "what": "UI overflow/clipping pass on the operator web app (Code/smart-city-edge-agent/app/device/web)",
+  "backend": "host --mock build of the current backend (WSL cross-compile, Windows exe) at 127.0.0.1:18000 serving the edited web dir; scenarios tank_leak, power_throttling, ventilation_failure, load_surge, pm_spike, stuck_sensor, crowded_room, heat_buildup; INC-0003 dismissed with a 498-char note",
+  "audit": "ui_overflow_audit.js (CDP, headless Chrome 155, no deps). 10 configs x 19 states. Configs: 360, 412, 412z130, 360z130 (130% WebView text zoom emulated by scaling every px font-size), 412light, 412stretch / 360z130stretch / 1440stretch (fetch wrapper lengthens titles, notes, observations, places + 60-char unbroken id), 768, 1440. States: sensors, sensor drawer, live, domain sheet, domain sensor drawer, live row drawer, incidents, incident sheet, technical details expanded, floating sensor sheet, decided incident (long note), map, about, toasts, Engineering view live/incident/tech/sensor/about",
+  "result": {"before": "audit_before.txt / audit_before.json: 228 overflow findings (page horizontal scroll at 360/412 with 130% text and in light theme), 104 ellipsis", "after": "audit_after.txt / audit_after.json: 0 overflow findings, 54 ellipsis (all line-clamps with the full text reachable); audit_after_360z130_recheck.json after the brand 3-line change: 0 overflow, 1 ellipsis (incident card title, 2-line clamp, full title in the sheet)"},
+  "screenshots": "before/ and after/ (same state+config names)",
+  "checks": {"node --check app.js": "OK", "ui_health_check_v2.js": "OK (8)", "ui_incident_summary_check.js": "OK", "domain_health/ui_health_check.js": "OK (8)", "ui_stream_check.js": "OK", "ui_health_check_v1_superseded.js": "fails before and after (superseded)"},
+  "files_changed": ["app/device/web/styles.css (appended 'Overflow pass' block)", "app/device/web/app.js (renderIncFoot: decided note is a 3-line clamp, tap/Enter expands; toggleFootNote)", "app/device/web/sw.js (sce-shell-v32)"],
+  "not_verified_on_board": "WebView on the QIDK (needs APK rebuild/install); container queries need WebView >= 105"
+}

@@ -147,7 +147,7 @@ func (e *Engine) ContextFor(flagged []Candidate, max int) []contextPick {
 			if informative(f) {
 				score += 2 + float64(sevRank(f.Status))
 			}
-			picks[i] = contextPick{Candidate{o.node, o.metric, o.role, f, o.xs, o.end, false}, o.why, score}
+			picks[i] = contextPick{Candidate{o.node, o.metric, o.role, f, o.xs, o.end, false, false, false}, o.why, score}
 		}(i, o)
 	}
 	wg.Wait()

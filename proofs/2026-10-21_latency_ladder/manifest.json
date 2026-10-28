@@ -1,0 +1,38 @@
+{
+ "what": "v2 latency ladder: v1 steps mapped to v2, time breakdown, ranked levers, device A/B plan (paper study, no device access)",
+ "created": "2026-10-22T00:03:34",
+ "git_head": "d403c8d66e2604610ca918a3293adc78e29470be",
+ "device_used": false,
+ "inputs": [
+  "proofs/2026-10-21_v2_app/{chaos_v7,chaos_synthcache,stress,refine_*,recheck4}",
+  "proofs/2026-10-16_htpd_v6_app_stress_report_final.json",
+  "proofs/2026-10-21_htpd_v7_ab/*",
+  "proofs/2026-10-16_htpd_ab/RESULTS.md",
+  "proofs/2026-10-16_htp_bringup/*",
+  "app/backend/testdata/v2_prompt_fixtures.json",
+  "HANDBOOK.md 2.8-2.42, 5"
+ ],
+ "checks": {
+  "backend_patch": "go build + go vet clean; go test -run InvalidAgent|Htpd|Solo|Retry|Stream ok (scratch copy, WSL go-sdk)",
+  "htpd_patch": "g++ -std=c++17 -fsyntax-only vs llama.cpp 620d2225 headers clean (not built for the device)",
+  "apply": "git apply --check of both patches on the working tree: clean"
+ },
+ "files": {
+  "ab_ladder.py": "b661bda5b56018fd4c244a39aea08293",
+  "app_breakdown.py": "bdb022cbf8842c70aa6a156aa26f6589",
+  "evidence.json": "9c7a252cabf1171774092b8f8967f4d5",
+  "evidence_from_proofs.py": "791ddc3413bd28b02c57e9eae5cd6900",
+  "htpd_warmup.jsonl": "696514368d1addbd4db0ccc5f9a700bd",
+  "htpd_warmup_all.jsonl": "7a06fac054fd812b582cb620cd96998f",
+  "make_warmup.py": "358ba02a16dcca21e1e9a573b6d8b7e8",
+  "patches/backend_latency.patch": "881d1ba763a38e9853ed2790d104c94e",
+  "patches/htpd_v8.patch": "9014a09c20f4e465537262686acf9bfe",
+  "PLAN.md": "0dd89def6e4dbd4cfa91ca24a0d76942",
+  "profiles/candidate.txt": "c3f79f7212f9bf7a4e99459e74b86f13",
+  "profiles/L7.txt": "6c6f6059d8eec6dc4526e7e1a1342bd5",
+  "prompt_tokens.json": "c9dcff6bf04dc4dcd3baf00395f55b9b",
+  "prompt_tokens.py": "f9801135377156748eb3cbdc05629440",
+  "run_app_ab.sh": "376e4760aa367e8ade794052b829d46d",
+  "run_ladder.sh": "231f1d2cb72dc16d1e6cf305679d5601"
+ }
+}

@@ -1,0 +1,219 @@
+[
+ {
+  "scenario": "tank_leak",
+  "incident": "INC-0612",
+  "stages": [
+   {
+    "stage": "early",
+    "state": "done",
+    "severity": "normal",
+    "title": "Tank level judged normal: KH building, level 98, water tank level sensor 00",
+    "rule_title": "Tank level spike: KH building, level 98, water tank level sensor 00",
+    "note": null,
+    "revisions": 1,
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "level",
+      "pattern": "stable",
+      "status": "normal",
+      "rule": null,
+      "long_range": []
+     }
+    ],
+    "total_ms": 4899,
+    "t_since_inject_s": 67.0
+   },
+   {
+    "stage": "1.5h",
+    "state": "done",
+    "severity": "warning",
+    "title": "Tank level slow drift (12 h view): KH building, level 98, water tank level sensor 00",
+    "rule_title": "Tank level spike: KH building, level 98, water tank level sensor 00",
+    "note": null,
+    "revisions": 2,
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "level",
+      "pattern": "stable",
+      "status": "normal",
+      "rule": null,
+      "long_range": [
+       "12 h view: slow drift -64.5 level over 12 h (r2 0.85, 32.3x normal variation)"
+      ]
+     }
+    ],
+    "total_ms": 4899,
+    "t_since_inject_s": 82.1
+   },
+   {
+    "stage": "3h",
+    "state": "done",
+    "severity": "warning",
+    "title": "Tank level slow drift (12 h view): KH building, level 98, water tank level sensor 00",
+    "rule_title": "Tank level spike: KH building, level 98, water tank level sensor 00",
+    "note": null,
+    "revisions": 3,
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "level",
+      "pattern": "stable",
+      "status": "normal",
+      "rule": null,
+      "long_range": [
+       "12 h view: slow drift -65.1 level over 12 h (r2 0.85, 32.5x normal variation)"
+      ]
+     }
+    ],
+    "total_ms": 4899,
+    "t_since_inject_s": 100.2
+   }
+  ]
+ },
+ {
+  "scenario": "ventilation_failure",
+  "incident": "INC-0613",
+  "stages": [
+   {
+    "stage": "early",
+    "state": "done",
+    "severity": "warning",
+    "title": "CO2 exponential increase: KH building, level 03, indoor air sensor 03",
+    "rule_title": "CO2 exponential increase: KH building, level 03, indoor air sensor 03",
+    "note": null,
+    "revisions": 1,
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "co2",
+      "pattern": "exponential_increase",
+      "status": "warning",
+      "rule": null,
+      "long_range": [
+       "12 h view: level shifted +187 ppm about 0.6 h ago and stayed (9.4x normal variation)"
+      ]
+     }
+    ],
+    "total_ms": 6584,
+    "t_since_inject_s": 30.8
+   },
+   {
+    "stage": "1.5h",
+    "state": "done",
+    "severity": "critical",
+    "title": "CO2 spike: KH building, level 03, indoor air sensor 03",
+    "rule_title": "CO2 exponential increase: KH building, level 03, indoor air sensor 03",
+    "note": null,
+    "revisions": 2,
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "co2",
+      "pattern": "spike",
+      "status": "critical",
+      "rule": null,
+      "long_range": []
+     }
+    ],
+    "total_ms": 6584,
+    "t_since_inject_s": 45.9
+   },
+   {
+    "stage": "3h",
+    "state": "done",
+    "severity": "critical",
+    "title": "CO2 spike: KH building, level 03, indoor air sensor 03",
+    "rule_title": "CO2 exponential increase: KH building, level 03, indoor air sensor 03",
+    "note": null,
+    "revisions": 3,
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "co2",
+      "pattern": "spike",
+      "status": "critical",
+      "rule": null,
+      "long_range": []
+     }
+    ],
+    "total_ms": 6584,
+    "t_since_inject_s": 61.0
+   }
+  ]
+ },
+ {
+  "scenario": "power_throttling",
+  "incident": "INC-0614",
+  "stages": [
+   {
+    "stage": "early",
+    "state": "done",
+    "severity": "critical",
+    "title": "Power exponential increase: KH building, level 04, room energy meter 01",
+    "rule_title": "Power exponential increase: KH building, level 04, room energy meter 01",
+    "note": null,
+    "revisions": 1,
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "power_kw",
+      "pattern": "exponential_increase",
+      "status": "critical",
+      "rule": null,
+      "long_range": [
+       "12 h view: level shifted +7.23 kW about 0.3 h ago and stayed (160.7x normal variation)"
+      ]
+     }
+    ],
+    "total_ms": 4088,
+    "t_since_inject_s": 15.4
+   },
+   {
+    "stage": "1.5h",
+    "state": "done",
+    "severity": "critical",
+    "title": "Power throttling: KH building, level 04, room energy meter 01",
+    "rule_title": "Power exponential increase: KH building, level 04, room energy meter 01",
+    "note": null,
+    "revisions": 2,
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "power_kw",
+      "pattern": "throttling",
+      "status": "critical",
+      "rule": null,
+      "long_range": [
+       "12 h view: level shifted +18 kW about 1.7 h ago and stayed (398.5x normal variation)"
+      ]
+     }
+    ],
+    "total_ms": 4088,
+    "t_since_inject_s": 33.5
+   },
+   {
+    "stage": "3h",
+    "state": "done",
+    "severity": "critical",
+    "title": "Power step decrease: KH building, level 04, room energy meter 01",
+    "rule_title": "Power exponential increase: KH building, level 04, room energy meter 01",
+    "note": null,
+    "revisions": 3,
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "power_kw",
+      "pattern": "step_decrease",
+      "status": "critical",
+      "rule": null,
+      "long_range": []
+     }
+    ],
+    "total_ms": 4088,
+    "t_since_inject_s": 51.6
+   }
+  ]
+ }
+]

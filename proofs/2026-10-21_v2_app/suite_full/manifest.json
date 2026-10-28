@@ -1,0 +1,116 @@
+{
+ "tool": "app/tools/app_suite_v2.py",
+ "args": {
+  "out": "C:/Users/hp/Desktop/qidk/proofs/2026-10-21_v2_app/suite_full",
+  "phases": "all",
+  "quick": false,
+  "fresh": false,
+  "summarize_only": false,
+  "base": "http://127.0.0.1:8000",
+  "no_adb": false,
+  "seed": 20261022,
+  "warmup": 48,
+  "incident_wait": 150,
+  "stage_timeout": 300,
+  "scenarios": "",
+  "multi_sets": "",
+  "chaos_rounds": 2,
+  "fault_trials": 10,
+  "fault_wait": 120,
+  "soak_min": 15,
+  "stream_sets": "",
+  "robust_trials": 2,
+  "kill_delay": 3.0,
+  "restart_cmd": null,
+  "htpd_kill_cmd": null,
+  "max_temp": 80.0,
+  "resume_temp": 70.0,
+  "thermal_wait_max": 1800
+ },
+ "phases": [
+  "scenarios",
+  "chain",
+  "multi",
+  "chaos",
+  "faults",
+  "soak",
+  "stream",
+  "robust"
+ ],
+ "git_head": "d403c8d66e2604610ca918a3293adc78e29470be",
+ "git_dirty_files": 73,
+ "started": "2026-10-21T08:22:54.278478+05:30",
+ "ended": null,
+ "backend": {
+  "running_on": "QIDK Pineapple for arm64 (SM8650), Android, standalone on device",
+  "models": {
+   "agent": {
+    "name": "Llama 3.2 3B smart-city agent (fine-tuned, w4a16)",
+    "dir": "/data/local/tmp/genie_bundle_ft",
+    "config": "smartcity_agent.json",
+    "fine_tuned": true,
+    "available": true,
+    "note": "fine-tuned bundle validated on device"
+   },
+   "base": {
+    "name": "Llama 3.2 3B Instruct (base, w4a16)",
+    "dir": "/data/local/tmp/genie_bundle",
+    "config": "smartcity_agent.json",
+    "fine_tuned": false,
+    "available": true,
+    "note": "on-device NPU (HTP V75)"
+   },
+   "reasoner": {
+    "name": "Llama 3.2 3B Instruct (base, w4a16)",
+    "dir": "/data/local/tmp/genie_bundle",
+    "config": "smartcity_agent.json",
+    "fine_tuned": false,
+    "available": true,
+    "note": "on-device NPU (HTP V75)"
+   },
+   "tuned": {
+    "name": "Llama 3.2 3B smart-city agent (fine-tuned, w4a16)",
+    "dir": "/data/local/tmp/genie_bundle_ft",
+    "config": "smartcity_agent.json",
+    "fine_tuned": true,
+    "available": true,
+    "note": "fine-tuned bundle validated on device"
+   }
+  },
+  "genie_daemon": "not running (per-call CLI path)",
+  "mode": 3,
+  "replay": {
+   "noise_scale": 1,
+   "playing": true,
+   "poll_ms": 2000,
+   "source": "live sensors: dashboard sliders and /api/ingest (one 5-minute reading per sensor per poll)",
+   "speed_buckets_per_poll": 1,
+   "start": 1791901800
+  },
+  "device": {
+   "cpu_c": 34.1,
+   "mem_available_mb": 4684,
+   "npu_c": 34.1,
+   "skin_c": 32.154,
+   "thermal_guard": false,
+   "thermal_max_c": 34.1
+  },
+  "npu": {
+   "busy": false,
+   "queue": 0,
+   "calls": 0,
+   "errors": 0,
+   "last_latency_ms": 0,
+   "last_error": ""
+  },
+  "uptime_s": 238
+ },
+ "files": {
+  "units/*.json": "per-unit checks + data",
+  "raw/<tag>/<INC>_<stage>.json": "full incident per stage",
+  "raw/sse_*.jsonl": "SSE events (token/incident/log)",
+  "summary.json/.txt": "aggregate",
+  "window_check.json": "every sensor-stage window row",
+  "console.txt": "console log"
+ }
+}

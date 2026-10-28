@@ -1,0 +1,454 @@
+{
+ "base": "http://127.0.0.1:18000",
+ "when": "2026-10-23T17:02:49.360Z",
+ "seeded": {
+  "log": [
+   "inject stuck_sensor 200",
+   "fault incident INC-0001",
+   "inject tank_leak 200",
+   "inject power_throttling 200",
+   "inject ventilation_failure 200",
+   "rerun INC-0003 mode 1 -> 200",
+   "analyze WE-VN04-00 rh 200",
+   "ack A INC-0004 200",
+   "step A 200",
+   "own step A 200",
+   "ack C 200",
+   "close C 200",
+   "dismiss D 200",
+   "fault ack 200",
+   "fault step 404 (404 = the AI judged it fine, no step)",
+   "fault close 200",
+   "fault rerun 200",
+   "maintenance AQ-KN00-00 pm25 200",
+   "poll 10 s 200",
+   "analyze EM-CR-SB00-00 pf (re-checks still ahead) 200"
+  ],
+  "A": "INC-0004",
+  "B": "INC-0003",
+  "C": "INC-0002",
+  "D": "INC-0005",
+  "fault": "INC-0001",
+  "recur": "INC-0006",
+  "oos": "AQ-KN00-00 pm25"
+ },
+ "fails": 0,
+ "results": [
+  {
+   "ok": true,
+   "name": "API: acknowledged incident is in progress (or back to normal), owner Ravi",
+   "detail": "{\"acked_at\":1792774887,\"approval\":\"pending\",\"closed_at\":0,\"created_sim\":1792742400,\"created_sim_ist\":\"Fri 13:30\",\"created_unix\":1792774883,\"created_wall\":\"2026-10-23 22:31:23\",\"group\":\"INC-0004\",\"grou"
+  },
+  {
+   "ok": true,
+   "name": "API: closed with an outcome",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "API: dismiss = closed as false alarm, approval dismissed (old field kept)",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "API: a repeat incident is grouped (group_size > 1)",
+   "detail": "INC-0007:INC-0007/1 INC-0006:INC-0006/2 INC-0005:INC-0005/1 INC-0004:INC-0004/2 INC-0003:INC-0004/2 INC-0002:INC-0002/1 INC-0001:INC-0006/2"
+  },
+  {
+   "ok": true,
+   "name": "API: fault after a repair gets \"Replace the sensor\" (30-day rule)",
+   "detail": "[{\"id\":\"s1\",\"source\":\"rules\",\"action\":\"check_sensor\",\"text\":\"Check the flagged sensor on site (power, mounting, calibration) before trusting it\",\"why\":\"Temperature at KH building, level 03, indoor air sensor 03: flatline (sensor fault)\",\"added_at_stage\":\"early\",\"state\":\"open\"},{\"id\":\"s2\",\"source\":\"r"
+  },
+  {
+   "ok": true,
+   "name": "API: History of this sensor lists the repair",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "API: event log ack, step_done, step_added",
+   "detail": "system:created,reasoner:analysed,Ravi:ack,Ravi:step_done,Ravi:step_added"
+  },
+  {
+   "ok": true,
+   "name": "412x915 shift summary on opening",
+   "detail": "Since 20:31: 7 new · 0 got worse · 3 resolvedSee incidents ›"
+  },
+  {
+   "ok": true,
+   "name": "412x915 tab labels not truncated",
+   "detail": "[]"
+  },
+  {
+   "ok": true,
+   "name": "412x915 operator shown in the header",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "412x915 tile shows \"N needs decision · N in progress (name)\"",
+   "detail": "Air quality■Critical1 critical, 1 faulty, 1 out of service of 5 sensors↑ Got worse (was Warning)◆Data: 1 out of serviceDo now: Check the flagged sensor on site (power, mounting, calibration) before trusting itsince 14:10 (10 min)2 needs decision · 1 in progress (Ravi)› | Power■Critical1 critical of "
+  },
+  {
+   "ok": true,
+   "name": "412x915 tile shows the out-of-service sensor",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "412x915 live row shows ⊘ Out of service",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "412x915 card shows the owner (In progress · Ravi)",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "412x915 card shows Closed · outcome",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "412x915 grouped card shows \"N related\"",
+   "detail": "▸ 1 related · same sensor or same pattern within 30 min"
+  },
+  {
+   "ok": true,
+   "name": "412x915 related incidents expand",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "412x915 text search narrows the list",
+   "detail": "1 of 5"
+  },
+  {
+   "ok": true,
+   "name": "412x915 state filter \"Closed\" shows only closed incidents",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "412x915 re-check countdown on an open incident card",
+   "detail": "[\"Next check at 1.5 h · in 2 min\"]"
+  },
+  {
+   "ok": true,
+   "name": "412x915 checklist with ticked count",
+   "detail": "Warning▶In progress · RaviCO2 rising faster and faster · KH-03Air quality · detected 23 Oct 13:30 (sensor time)What is happeningCO2 at KH-03 rising faster and faster (warning).CO2 is rising at an acce"
+  },
+  {
+   "ok": true,
+   "name": "412x915 step shows who did it",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "412x915 activity timeline",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "412x915 History of this sensor section",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "412x915 action buttons are at least 44 px tall",
+   "detail": "[]"
+  },
+  {
+   "ok": true,
+   "name": "412x915 footer: owner + Close…",
+   "detail": "Ravi is on it since 22:31. Tick the steps above, then close it with how it ended.Dismiss…Close…"
+  },
+  {
+   "ok": true,
+   "name": "412x915 close asks for one of 6 outcomes",
+   "detail": "[\"Fixed by action=false\",\"Sensor replaced=false\",\"Sensor repaired or recalibrated=false\",\"Resolved on its own=false\",\"False alarm=false\",\"No action needed=false\"]"
+  },
+  {
+   "ok": true,
+   "name": "412x915 needs decision: I'm on it + Dismiss…",
+   "detail": "I'm on it = you take this and work through the steps. Dismiss = not needed (note required). Nothing switches automatically.Dismiss…I'm on it (Ravi)"
+  },
+  {
+   "ok": true,
+   "name": "412x915 repair rule step shown",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "412x915 operator picker lists the device names",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "412x915 sensor sheet: out of service until + Back in service",
+   "detail": "⊘ Out of service26.7 ug/m3KN building, outdoor air station2224262808:0012:00IST▲ warning limit 60 (off scale)▲ critical limit 120 (off scale)rawSMA 1 hEMA 1 hBollinger bandwarningcriticalWhereKN build"
+  },
+  {
+   "ok": true,
+   "name": "412x915 no horizontal page scroll",
+   "detail": "0"
+  },
+  {
+   "ok": true,
+   "name": "360x780_z130 shift summary on opening",
+   "detail": "Since 20:31: 7 new · 0 got worse · 4 resolvedSee incidents ›"
+  },
+  {
+   "ok": true,
+   "name": "360x780_z130 tab labels not truncated",
+   "detail": "[]"
+  },
+  {
+   "ok": true,
+   "name": "360x780_z130 operator shown in the header",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "360x780_z130 tile shows \"N needs decision · N in progress (name)\"",
+   "detail": "Air quality■Critical1 critical, 1 faulty, 1 out of service of 5 sensors↑ Got worse (was Warning)◆Data: 1 out of serviceDo now: Check the flagged sensor on site (power, mounting, calibration) before trusting itsince 14:10 (25 min)2 needs decision · 1 in progress (Ravi)› | Power■Critical1 critical of "
+  },
+  {
+   "ok": true,
+   "name": "360x780_z130 tile shows the out-of-service sensor",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "360x780_z130 live row shows ⊘ Out of service",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "360x780_z130 card shows the owner (In progress · Ravi)",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "360x780_z130 card shows Closed · outcome",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "360x780_z130 grouped card shows \"N related\"",
+   "detail": "▸ 1 related · same sensor or same pattern within 30 min"
+  },
+  {
+   "ok": true,
+   "name": "360x780_z130 related incidents expand",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "360x780_z130 text search narrows the list",
+   "detail": "1 of 5"
+  },
+  {
+   "ok": true,
+   "name": "360x780_z130 state filter \"Closed\" shows only closed incidents",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "360x780_z130 re-check countdown on an open incident card",
+   "detail": "[\"Next check at 1.5 h · in 2 min\"]"
+  },
+  {
+   "ok": true,
+   "name": "360x780_z130 checklist with ticked count",
+   "detail": "Warning▶In progress · RaviCO2 rising faster and faster · KH-03Air quality · detected 23 Oct 13:30 (sensor time)What is happeningCO2 at KH-03 rising faster and faster (warning).CO2 is rising at an acce"
+  },
+  {
+   "ok": true,
+   "name": "360x780_z130 step shows who did it",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "360x780_z130 activity timeline",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "360x780_z130 History of this sensor section",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "360x780_z130 action buttons are at least 44 px tall",
+   "detail": "[]"
+  },
+  {
+   "ok": true,
+   "name": "360x780_z130 footer: owner + Close…",
+   "detail": "Ravi is on it since 22:31. Tick the steps above, then close it with how it ended.Dismiss…Close…"
+  },
+  {
+   "ok": true,
+   "name": "360x780_z130 close asks for one of 6 outcomes",
+   "detail": "[\"Fixed by action=false\",\"Sensor replaced=false\",\"Sensor repaired or recalibrated=false\",\"Resolved on its own=false\",\"False alarm=false\",\"No action needed=false\"]"
+  },
+  {
+   "ok": true,
+   "name": "360x780_z130 needs decision: I'm on it + Dismiss…",
+   "detail": "I'm on it = you take this and work through the steps. Dismiss = not needed (note required). Nothing switches automatically.Dismiss…I'm on it (Ravi)"
+  },
+  {
+   "ok": true,
+   "name": "360x780_z130 repair rule step shown",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "360x780_z130 operator picker lists the device names",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "360x780_z130 sensor sheet: out of service until + Back in service",
+   "detail": "⊘ Out of service26.7 ug/m3KN building, outdoor air station2224262808:0012:00IST▲ warning limit 60 (off scale)▲ critical limit 120 (off scale)rawSMA 1 hEMA 1 hBollinger bandwarningcriticalWhereKN build"
+  },
+  {
+   "ok": true,
+   "name": "360x780_z130 no horizontal page scroll",
+   "detail": "0"
+  },
+  {
+   "ok": true,
+   "name": "1440x900 shift summary on opening",
+   "detail": "Since 20:32: 7 new · 0 got worse · 4 resolvedSee incidents ›"
+  },
+  {
+   "ok": true,
+   "name": "1440x900 tab labels not truncated",
+   "detail": "[]"
+  },
+  {
+   "ok": true,
+   "name": "1440x900 operator shown in the header",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "1440x900 tile shows \"N needs decision · N in progress (name)\"",
+   "detail": "Air quality■Critical1 critical, 1 faulty, 1 out of service of 5 sensors◆Data: 1 out of serviceDo now: Check the flagged sensor on site (power, mounting, calibration) before trusting itsince 14:10 (35 min)2 needs decision · 1 in progress (Ravi)› | Power■Critical1 critical of 3 sensorsDo now: Ask an e"
+  },
+  {
+   "ok": true,
+   "name": "1440x900 tile shows the out-of-service sensor",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "1440x900 live row shows ⊘ Out of service",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "1440x900 card shows the owner (In progress · Ravi)",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "1440x900 card shows Closed · outcome",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "1440x900 grouped card shows \"N related\"",
+   "detail": "▸ 1 related · same sensor or same pattern within 30 min"
+  },
+  {
+   "ok": true,
+   "name": "1440x900 related incidents expand",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "1440x900 text search narrows the list",
+   "detail": "1 of 5"
+  },
+  {
+   "ok": true,
+   "name": "1440x900 state filter \"Closed\" shows only closed incidents",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "1440x900 re-check countdown on an open incident card",
+   "detail": "[\"Next check at 1.5 h · in 2 min\"]"
+  },
+  {
+   "ok": true,
+   "name": "1440x900 checklist with ticked count",
+   "detail": "Warning▶In progress · RaviCO2 rising faster and faster · KH-03Air quality · detected 23 Oct 13:30 (sensor time)What is happeningCO2 at KH-03 rising faster and faster (warning).CO2 is rising at an acce"
+  },
+  {
+   "ok": true,
+   "name": "1440x900 step shows who did it",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "1440x900 activity timeline",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "1440x900 History of this sensor section",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "1440x900 action buttons are at least 44 px tall",
+   "detail": "[]"
+  },
+  {
+   "ok": true,
+   "name": "1440x900 footer: owner + Close…",
+   "detail": "Ravi is on it since 22:31. Tick the steps above, then close it with how it ended.Dismiss…Close…"
+  },
+  {
+   "ok": true,
+   "name": "1440x900 close asks for one of 6 outcomes",
+   "detail": "[\"Fixed by action=false\",\"Sensor replaced=false\",\"Sensor repaired or recalibrated=false\",\"Resolved on its own=false\",\"False alarm=false\",\"No action needed=false\"]"
+  },
+  {
+   "ok": true,
+   "name": "1440x900 needs decision: I'm on it + Dismiss…",
+   "detail": "I'm on it = you take this and work through the steps. Dismiss = not needed (note required). Nothing switches automatically.Dismiss…I'm on it (Ravi)"
+  },
+  {
+   "ok": true,
+   "name": "1440x900 repair rule step shown",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "1440x900 operator picker lists the device names",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "name": "1440x900 sensor sheet: out of service until + Back in service",
+   "detail": "⊘ Out of service26.7 ug/m3KN building, outdoor air station2224262808:0010:0012:0014:00IST▲ warning limit 60 (off scale)▲ critical limit 120 (off scale)rawSMA 1 hEMA 1 hBollinger bandwarningcriticalWhe"
+  },
+  {
+   "ok": true,
+   "name": "1440x900 no horizontal page scroll",
+   "detail": "0"
+  },
+  {
+   "ok": true,
+   "name": "no page errors",
+   "detail": ""
+  }
+ ],
+ "page_errors": []
+}

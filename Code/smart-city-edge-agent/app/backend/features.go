@@ -77,6 +77,7 @@ var Causes = map[string][]string{
 	"occupancy": {"vacant", "normal_occupancy", "arrival", "departure", "intermittent_presence",
 		"off_hours_presence", "sensor_fault"},
 }
+
 var Actions = []string{"none", "monitor", "inspect_ventilation", "inspect_hvac", "check_sensor", "inspect_water_system",
 	"inspect_electrical", "review_schedule", "request_facility_review"}
 
@@ -405,6 +406,8 @@ type AgentInput struct {
 	Stats    Stats
 	Occ      OccStats
 	Evidence []Evidence
+	Xs       []float64 // v2: the window the prompt was built from (post-rules, postrules.go); nil for v1 and HVAC
+	HVRule   *Finding  // v2 HVAC: the deterministic rule finding on the same window (post rule hvac_rule)
 }
 
 func BuildAgentPrompt(role, node, location, metric string, xs []float64, end int64) AgentInput {
@@ -552,3 +555,10 @@ func sortFloats(a []float64) {
 		a[j+1] = v
 	}
 }
+
+// ActionsV2 are accepted from the v2 agents but are NOT in Actions, which is printed into the v1 prompt
+// (prompt parity with the deployed model). switch_off_ac (HVAC running in an empty room) is a
+// recommendation like every action: the operator approves it, nothing is actuated automatically.
+var ActionsV2 = []string{"switch_off_ac"}
+
+func actionAllowed(a string) bool { return contains(Actions, a) || contains(ActionsV2, a) }

@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-23",
+  "what": "UX release v34: approval lifecycle (workflow, checklist, outcomes, event log, re-ack, reminder, auto-close, 30-day repair rule, sensor history), data-quality chips, maintenance UI, re-check countdown, shift summary, list filters/search/grouping, Android per-incident notifications, tab-label + container-query fallbacks",
+  "git_head": "d403c8d66e2604610ca918a3293adc78e29470be (uncommitted working tree)",
+  "files_changed": {
+    "backend": ["workflow.go (new)", "workflow_test.go (new)", "reason.go", "store.go", "refine.go (one hook)", "domainhealth.go", "server.go", "main.go", "engine.go (maint_until)", "dataquality.go (maint_until)"],
+    "web": ["device/web/app.js", "device/web/index.html", "device/web/styles.css", "device/web/sw.js (sce-shell-v34)"],
+    "android": ["android/src/com/iiith/smartcityedge/EdgeService.java", "android/src/com/iiith/smartcityedge/MainActivity.java", "android/AndroidManifest.xml"]
+  },
+  "builds_md5": {
+    "device/edge-agent (arm64)": "236e3bf8ce961342cad906918fd37756",
+    "device/edge-agent-host": "b062c8401b327f71cfbd4d7a8e391c39",
+    "android/out/SmartCityEdge.apk": "44bda8827a88be3054f7d24646e638e4",
+    "device/web/app.js": "4360e07f0b26dba289a3d17068925caa",
+    "device/web/index.html": "eeb373bd7dc2fc700afc82d80c4bb733",
+    "device/web/styles.css": "bd2290a0b6325c18c80d8bbc9e26e7f9",
+    "device/web/sw.js": "bc49922212fc48debb70163b4d46093e"
+  },
+  "checks": {
+    "go vet + go test ./... (WSL, GOMAXPROCS=2, nice, -p 1)": "OK, 92 PASS / 0 FAIL (go_test.log)",
+    "ui_health_check_v2.js": "OK (8)", "ui_stream_check.js": "OK", "ui_incident_summary_check.js": "OK",
+    "ui_v34_check.js (new, CDP, seeded host --mock)": "83/83 OK, 0 page errors (ui_v34_check.json, screens/ x39)",
+    "ui_overflow_audit.js (10 configs x 19 states)": "0 overflow, 35 ellipsis, 0 page errors (overflow_audit.json)"
+  },
+  "backend_for_ui": "Windows build of the same source with --mock (host), 127.0.0.1:18000, poll 1 s then 10 s, v2 agents",
+  "not_verified_on_board": "board off-limits: WebView rendering, Android notifications and tap-to-open untested on the QIDK"
+}

@@ -1,0 +1,57 @@
+.rd-lead { margin-top: 18px; }
+.rd-pick__row { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; justify-content: space-between; }
+.rd-domains, .rd-metrics { display: flex; flex-wrap: wrap; gap: 6px; }
+.rd-domains button, .rd-metrics button, .rd-list button {
+  font: inherit; font-family: var(--font-mono); font-size: var(--fs-label); letter-spacing: .06em;
+  background: var(--panel); color: var(--silver); border: 1px solid var(--line); border-radius: var(--radius-pill);
+  padding: 6px 12px; cursor: pointer; min-height: 32px;
+}
+.rd-domains button[aria-selected="true"], .rd-metrics button[aria-selected="true"], .rd-list button[aria-selected="true"] {
+  background: var(--accent-soft); color: var(--text); border-color: var(--accent);
+}
+.rd-domains button:focus-visible, .rd-metrics button:focus-visible, .rd-list button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.rd-search { display: flex; flex-direction: column; gap: 4px; min-width: 200px; flex: 0 1 280px; }
+.rd-search input {
+  background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font: inherit;
+}
+.rd-search input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.rd-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; max-height: 132px; overflow-y: auto; padding: 2px; }
+.rd-list button { border-radius: 8px; }
+.rd-list button .rd-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--warn); margin-left: 6px; vertical-align: middle; }
+.rd-head { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: end; justify-content: space-between; margin-bottom: 10px; }
+.rd-title { font-size: var(--fs-lead); margin: 0; font-weight: 600; }
+.rd-title .chip { margin-left: 8px; vertical-align: middle; }
+.rd-sub { margin: 4px 0 0; font-size: var(--fs-small); }
+.rd-tools { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.rd-zoom { display: flex; gap: 4px; }
+.rd-zoom .btn { padding: 4px 10px; font-size: var(--fs-label); }
+.rd-chart { height: 520px; width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
+.rd-note { font-size: var(--fs-small); margin: 8px 0 0; min-height: 1.3em; }
+.rd-patterns { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 10px; font-family: var(--font-mono); font-size: var(--fs-label); color: var(--silver); }
+.rd-patterns i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.rd-ana { display: grid; grid-template-columns: repeat(12, 1fr); gap: 14px; margin-top: 12px; }
+.rd-ana > div { grid-column: span 4; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; min-width: 0; }
+.rd-ana > div.w8 { grid-column: span 8; }
+.rd-ana h4 { margin: 0 0 2px; font-family: var(--font-mono); font-size: var(--fs-label); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--muted); font-weight: 500; }
+.rd-ana p { margin: 0 0 6px; font-size: var(--fs-small); color: var(--silver); min-height: 2.6em; }
+.rd-ana .c { height: 190px; }
+.rd-corr { list-style: none; padding: 0; margin: 6px 0 0; font-size: var(--fs-small); }
+.rd-corr li { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.rd-corr b { font-family: var(--font-mono); color: var(--accent-text); font-weight: 500; }
+.rd-sankey { height: 380px; margin-top: 10px; }
+.rd-flow-claim { margin: 8px 0 0; }
+.rd-reason { font-size: var(--fs-body); line-height: 1.5; }
+.rd-reason .btn { margin-top: 12px; }
+@media (max-width: 900px) {
+  .rd-ana > div, .rd-ana > div.w8 { grid-column: span 12; }
+  .rd-chart { height: 460px; }
+}
+@media (max-width: 480px) {
+  .rd-search { flex: 1 1 100%; }
+  .rd-sankey { height: 340px; }
+}
+/* domain colours (tokens.css --dom-*) */
+.rd-domains button.rd-dom { display: inline-flex; align-items: center; gap: 7px; border-color: color-mix(in srgb, var(--c) 50%, var(--line-strong)); }
+.rd-domains button.rd-dom::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: none; }
+.rd-domains button.rd-dom[aria-selected="true"] { background: color-mix(in srgb, var(--c) 22%, transparent); border-color: var(--c); color: var(--text); }
+.rd-main .legend { margin-top: 4px; }

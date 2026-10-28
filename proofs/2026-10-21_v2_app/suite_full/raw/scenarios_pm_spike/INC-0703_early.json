@@ -1,0 +1,579 @@
+{
+ "id": "INC-0703",
+ "mode": 3,
+ "state": "done",
+ "created_sim": 1791970500,
+ "created_wall": "2026-10-14 05:04:32",
+ "severity": "critical",
+ "severity_final": true,
+ "title": "PM2.5 spike: KN building, outdoor air station",
+ "rule_title": "PM2.5 spike: KN building, outdoor air station",
+ "roles": [
+  "air_quality"
+ ],
+ "injected": true,
+ "sensors": [
+  {
+   "ref": "S1",
+   "node": "AQ-KN00-00",
+   "metric": "pm25",
+   "role": "air_quality",
+   "location": "KN building, outdoor air station",
+   "window_end": 1791970500,
+   "injected": true,
+   "window": [
+    24.30335047571683,
+    22.862946378925223,
+    22.525242904019926,
+    23.84610974474683,
+    21.62996895637516,
+    23.599883703318334,
+    22.89507337741593,
+    24.552529829565202,
+    23.124163820477158,
+    25.436926682422076,
+    26.746986327170614,
+    25.260003510269623,
+    24.205604625376672,
+    25.41828214786423,
+    24.401923600335564,
+    21.77747462532858,
+    25.819740375257183,
+    25.28791539959936,
+    26.581596106992972,
+    23.99970027978268,
+    26.335504217132932,
+    26.43632669407928,
+    25.09533361291684,
+    23.839824990881393,
+    26.16681823336898,
+    23.19904861309884,
+    22.98634866677139,
+    25.415178731112892,
+    25.614799554420237,
+    27.148279209626914,
+    25.58628077712529,
+    25.302923677059447,
+    25.809710015290623,
+    25.305836139626972,
+    22.3043838450834,
+    23.569115044017586,
+    24.344474327504027,
+    24.940920568347185,
+    23.756498222092787,
+    144.81893958457977,
+    144.6198432610627,
+    24.846570708841398,
+    26.409180833840704,
+    24.684425236628954,
+    26.312361272018844,
+    25.768562404125955,
+    25.42728720392124,
+    25.99447742862134
+   ],
+   "evidence": [
+    {
+     "ID": "E1",
+     "Stat": "last",
+     "Text": "last = 26.0 ug/m3"
+    },
+    {
+     "ID": "E2",
+     "Stat": "max",
+     "Text": "max = 144.8 ug/m3 at 14:25"
+    },
+    {
+     "ID": "E3",
+     "Stat": "min",
+     "Text": "min = 21.6 ug/m3 at 11:30"
+    },
+    {
+     "ID": "E4",
+     "Stat": "slope",
+     "Text": "trend = +5.4 ug/m3/h (r2 0.07)"
+    },
+    {
+     "ID": "E5",
+     "Stat": "max_jump",
+     "Text": "largest 5-min change = +121.1 ug/m3 at 14:25"
+    },
+    {
+     "ID": "E6",
+     "Stat": "sma",
+     "Text": "SMA 1h = 45.2, EMA 1h = 35.9, mean 4h = 29.7 ug/m3"
+    },
+    {
+     "ID": "E7",
+     "Stat": "shape",
+     "Text": "halves 24.4 -> 35.0, curvature +2.2/h, oscillation crossings 2"
+    },
+    {
+     "ID": "E8",
+     "Stat": "flat",
+     "Text": "noise 17.60, longest flat run 1 pts, plateau at max 0 pts"
+    },
+    {
+     "ID": "E9",
+     "Stat": "long_view",
+     "Text": "12 h view: no level shift or drift"
+    },
+    {
+     "ID": "E10",
+     "Stat": "episodes",
+     "Text": "recent episodes: 1 excursion beyond 3x normal noise in the last 12 h (largest 40.0x)"
+    }
+   ],
+   "global_evidence_ids": [
+    "ev:AQ-KN00-00:pm25:last:1791970500",
+    "ev:AQ-KN00-00:pm25:max:1791970500",
+    "ev:AQ-KN00-00:pm25:min:1791970500",
+    "ev:AQ-KN00-00:pm25:slope:1791970500",
+    "ev:AQ-KN00-00:pm25:max_jump:1791970500",
+    "ev:AQ-KN00-00:pm25:sma:1791970500",
+    "ev:AQ-KN00-00:pm25:shape:1791970500",
+    "ev:AQ-KN00-00:pm25:flat:1791970500",
+    "ev:AQ-KN00-00:pm25:long_view:1791970500",
+    "ev:AQ-KN00-00:pm25:episodes:1791970500"
+   ],
+   "rule_finding": {
+    "pattern": "spike",
+    "status": "critical",
+    "observations": [
+     "PM2.5 spiked to 144.8 ug/m3 at 14:25 and fell back to 26.0 ug/m3 [E2,E1]",
+     "26.0 ug/m3 exceeds the critical limit of 120 ug/m3 [E1]"
+    ],
+    "likely_cause": "outdoor_pollution_ingress",
+    "confidence": 0.7,
+    "action": "inspect_ventilation"
+   },
+   "context": false
+  },
+  {
+   "ref": "S2",
+   "node": "WE-VN04-00",
+   "metric": "wind",
+   "role": "weather",
+   "location": "VN building, level 04, rooftop weather station",
+   "window_end": 1791970500,
+   "injected": false,
+   "window": [
+    3.045543676070641,
+    2.9645679899555137,
+    2.8390058651475636,
+    3.1244848041964763,
+    3.3237349529358124,
+    3.048792283921064,
+    2.928942335114489,
+    3.0986711448558037,
+    3.1047257922842006,
+    3.082369140698862,
+    2.9232822859462333,
+    2.877429307648118,
+    3.155997735460897,
+    3.0697715102322367,
+    3.0909453399166,
+    3.041058512392649,
+    2.968729533607083,
+    2.974727099821249,
+    3.212588714739994,
+    3.0518355615723287,
+    2.8982121829415943,
+    2.9177283767054627,
+    2.9315529279414245,
+    3.040977442498263,
+    3.069752689569298,
+    2.8398727135664643,
+    2.9778810321202376,
+    2.754005097298815,
+    2.8961558070371685,
+    2.854817728028973,
+    2.9355085104540044,
+    3.039906970550683,
+    2.8866950379772174,
+    2.9872942378287837,
+    2.760045270034581,
+    2.8839309091101035,
+    3.209852019379068,
+    2.922783684346235,
+    3.2019191963097042,
+    2.8361383138240432,
+    2.924967642410783,
+    3.0767025968351285,
+    3.19569339234456,
+    3.0641630260583685,
+    3.128461606089109,
+    2.990615845611402,
+    3.2211474082435467,
+    3.010855182555219
+   ],
+   "evidence": [
+    {
+     "ID": "E1",
+     "Stat": "last",
+     "Text": "last = 3.01 m/s"
+    },
+    {
+     "ID": "E2",
+     "Stat": "max",
+     "Text": "max = 3.32 m/s at 11:30"
+    },
+    {
+     "ID": "E3",
+     "Stat": "min",
+     "Text": "min = 2.75 m/s at 13:25"
+    },
+    {
+     "ID": "E4",
+     "Stat": "slope",
+     "Text": "trend = -0.01 m/s/h (r2 0.00)"
+    },
+    {
+     "ID": "E5",
+     "Stat": "max_jump",
+     "Text": "largest 5-min change = -0.37 m/s at 14:25"
+    },
+    {
+     "ID": "E6",
+     "Stat": "sma",
+     "Text": "SMA 1h = 3.07, EMA 1h = 3.05, mean 4h = 3.01 m/s"
+    },
+    {
+     "ID": "E7",
+     "Stat": "shape",
+     "Text": "halves 3.03 -> 2.99, curvature +0.10/h, oscillation crossings 15"
+    },
+    {
+     "ID": "E8",
+     "Stat": "flat",
+     "Text": "noise 0.120, longest flat run 1 pts, plateau at max 0 pts"
+    }
+   ],
+   "global_evidence_ids": [
+    "ev:WE-VN04-00:wind:last:1791970500",
+    "ev:WE-VN04-00:wind:max:1791970500",
+    "ev:WE-VN04-00:wind:min:1791970500",
+    "ev:WE-VN04-00:wind:slope:1791970500",
+    "ev:WE-VN04-00:wind:max_jump:1791970500",
+    "ev:WE-VN04-00:wind:sma:1791970500",
+    "ev:WE-VN04-00:wind:shape:1791970500",
+    "ev:WE-VN04-00:wind:flat:1791970500"
+   ],
+   "rule_finding": {
+    "pattern": "stable",
+    "status": "normal",
+    "observations": [
+     "Wind speed steady around 3.01 m/s, ranging only 2.75-3.32 [E6,E2,E3]"
+    ],
+    "likely_cause": "normal_weather",
+    "confidence": 0.8,
+    "action": "none"
+   },
+   "context": true,
+   "why": "wind disperses/brings particles"
+  },
+  {
+   "ref": "S3",
+   "node": "WE-VN04-00",
+   "metric": "rh",
+   "role": "weather",
+   "location": "VN building, level 04, rooftop weather station",
+   "window_end": 1791970500,
+   "injected": false,
+   "window": [
+    60.63384882391977,
+    60.70723690438064,
+    59.38342118122127,
+    59.517799653760356,
+    60.11079876921,
+    60.09825714295525,
+    60.550681028444195,
+    58.800064526633236,
+    59.47894027407512,
+    60.34144319028831,
+    59.66413032674821,
+    61.290498949843894,
+    59.59589884502757,
+    61.18856742656175,
+    59.793204058339605,
+    58.361238396577086,
+    59.68588549030316,
+    59.467656797284704,
+    60.10882435272467,
+    59.79008221776149,
+    60.45020419976637,
+    59.84378147424153,
+    61.24983466457428,
+    58.878050393024424,
+    58.77290680664373,
+    59.34018981488091,
+    59.191426285023304,
+    60.72808960109911,
+    60.16394984428114,
+    60.32264945723624,
+    59.235364767855664,
+    59.33738329350839,
+    60.25620920408542,
+    60.05185269968938,
+    60.0951583196934,
+    59.76677905915821,
+    60.26272407934187,
+    60.01715702049782,
+    59.83056912516019,
+    60.78710246372208,
+    59.55183046721969,
+    57.79907495526743,
+    60.52866228191509,
+    59.32737377450496,
+    60.60897736507828,
+    60.52922640072039,
+    59.49906086704428,
+    59.62518581213745
+   ],
+   "evidence": [
+    {
+     "ID": "E1",
+     "Stat": "last",
+     "Text": "last = 59.6 %"
+    },
+    {
+     "ID": "E2",
+     "Stat": "max",
+     "Text": "max = 61.3 % at 12:05"
+    },
+    {
+     "ID": "E3",
+     "Stat": "min",
+     "Text": "min = 57.8 % at 14:35"
+    },
+    {
+     "ID": "E4",
+     "Stat": "slope",
+     "Text": "trend = -0.0 %/h (r2 0.01)"
+    },
+    {
+     "ID": "E5",
+     "Stat": "max_jump",
+     "Text": "largest 5-min change = +2.7 % at 14:40"
+    },
+    {
+     "ID": "E6",
+     "Stat": "sma",
+     "Text": "SMA 1h = 59.9, EMA 1h = 59.8, mean 4h = 59.9 %"
+    },
+    {
+     "ID": "E7",
+     "Stat": "shape",
+     "Text": "halves 60.0 -> 59.8, curvature +1.3/h, oscillation crossings 19"
+    },
+    {
+     "ID": "E8",
+     "Stat": "flat",
+     "Text": "noise 0.75, longest flat run 2 pts, plateau at max 0 pts"
+    }
+   ],
+   "global_evidence_ids": [
+    "ev:WE-VN04-00:rh:last:1791970500",
+    "ev:WE-VN04-00:rh:max:1791970500",
+    "ev:WE-VN04-00:rh:min:1791970500",
+    "ev:WE-VN04-00:rh:slope:1791970500",
+    "ev:WE-VN04-00:rh:max_jump:1791970500",
+    "ev:WE-VN04-00:rh:sma:1791970500",
+    "ev:WE-VN04-00:rh:shape:1791970500",
+    "ev:WE-VN04-00:rh:flat:1791970500"
+   ],
+   "rule_finding": {
+    "pattern": "stable",
+    "status": "normal",
+    "observations": [
+     "Humidity steady around 59.9 %, ranging only 57.8-61.3 [E6,E2,E3]"
+    ],
+    "likely_cause": "normal_weather",
+    "confidence": 0.8,
+    "action": "none"
+   },
+   "context": true,
+   "why": "humidity affects particle readings"
+  }
+ ],
+ "mode1_report": {
+  "root_cause": "Rule engine: AQ-KN00-00 pm25 spike (critical); WE-VN04-00 wind stable (normal); WE-VN04-00 rh stable (normal)",
+  "label": "air_pollution_event",
+  "affected_domains": [
+   "air_quality",
+   "weather"
+  ],
+  "evidence": [
+   "S1.E1",
+   "S2.E1",
+   "S3.E1"
+  ],
+  "confidence": 0.7,
+  "action": "inspect_ventilation",
+  "explanation": "PM2.5 spiked to 144.8 ug/m3 at 14:25 and fell back to 26.0 ug/m3 [E2,E1] 26.0 ug/m3 exceeds the critical limit of 120 ug/m3 [E1]",
+  "requires_human_approval": true,
+  "severity": "critical"
+ },
+ "agents": [
+  {
+   "ttft_ms": 391.7,
+   "gen_tokens": 106,
+   "tokens_per_s": 38.07608031897698,
+   "early_stopped": true,
+   "ref": "S1",
+   "role": "air_quality",
+   "model": "Llama 3.2 3B smart-city agent (fine-tuned, w4a16)",
+   "fine_tuned": true,
+   "latency_ms": 3184.737,
+   "raw": "{\"pattern\": \"spike\", \"status\": \"critical\", \"observations\": [\"PM2.5 jumped +121.1 ug/m3 at 14:25, peak 144.8 ug/m3 [E5,E2]\", \"144.8 ug/m3 exceeds the critical limit of 120 ug/m3 [E2]\"], \"likely_cause\": \"outdoor_pollution_ingress\", \"confidence\": 0.95, \"event_active\": false, \"onset\": \"14:25\"}",
+   "parsed": {
+    "pattern": "spike",
+    "status": "critical",
+    "observations": [
+     "PM2.5 jumped +121.1 ug/m3 at 14:25, peak 144.8 ug/m3 [E5,E2]",
+     "144.8 ug/m3 exceeds the critical limit of 120 ug/m3 [E2]"
+    ],
+    "likely_cause": "outdoor_pollution_ingress",
+    "confidence": 0.85,
+    "action": "inspect_ventilation",
+    "event_active": false,
+    "onset": "14:25"
+   },
+   "valid": true,
+   "errors": null,
+   "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are the Air Quality agent of a smart-campus edge monitor (IIIT Hyderabad). You receive a 4-hour window of one sensor metric (5-minute samples) with precomputed statistics. Identify the pattern, judge severity, explain what you notice using only the given numbers, and cite evidence ids (E1..E10) that support each observation. Never invent values. Never order physical actuation; recommend at most an inspection action. Reply with one JSON object only. JSON keys: pattern (stable|spike|dip|gradual_increase|gradual_decrease|step_increase|step_decrease|exponential_increase|oscillation|throttling|flatline|erratic), status (normal|warning|critical|sensor_fault), observations (1-2 short strings, each ending with cited ids like [E1,E4]), likely_cause (normal_conditions|occupancy_load|ventilation_insufficient|outdoor_pollution_ingress|indoor_emission_source|hvac_cooling_issue|humidity_control_issue|sensor_fault), confidence (0-1), event_active (true|false), onset (HH:MM), fault_kind (stuck|bias|drift|noise|dropout|saturation|quantised, only if sensor_fault), action (none|monitor|inspect_ventilation|inspect_hvac|check_sensor|inspect_water_system|inspect_electrical|review_schedule|request_facility_review).<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nNODE: AQ-KN00-00 (KN building, outdoor air station)\nMETRIC: pm25 [ug/m3]\nLIMITS: warning above 60, critical above 120\nWINDOW: Wed 14 Oct 11:10 -> 15:05 IST, 48 x 5 min\nSERIES (10-min means): 23.6 23.2 22.6 23.7 24.3 26.0 24.8 23.1 25.6 25.3 26.4 24.5 24.7 24.2 26.4 25.4 25.6 22.9 24.6 84.3 84.7 25.5 26.0 25.7\nEVIDENCE:\nE1 last = 26.0 ug/m3\nE2 max = 144.8 ug/m3 at 14:25\nE3 min = 21.6 ug/m3 at 11:30\nE4 trend = +5.4 ug/m3/h (r2 0.07)\nE5 largest 5-min change = +121.1 ug/m3 at 14:25\nE6 SMA 1h = 45.2, EMA 1h = 35.9, mean 4h = 29.7 ug/m3\nE7 halves 24.4 -> 35.0, curvature +2.2/h, oscillation crossings 2\nE8 noise 17.60, longest flat run 1 pts, plateau at max 0 pts\nE9 12 h view: no level shift or drift\nE10 recent episodes: 1 excursion beyond 3x normal noise in the last 12 h (largest 40.0x)<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n{\"pattern\": \""
+  },
+  {
+   "ttft_ms": 0,
+   "gen_tokens": 0,
+   "tokens_per_s": 0,
+   "early_stopped": false,
+   "ref": "S2",
+   "role": "weather",
+   "model": "context agent (rules, CPU)",
+   "fine_tuned": false,
+   "latency_ms": 0,
+   "raw": "",
+   "parsed": {
+    "pattern": "stable",
+    "status": "normal",
+    "observations": [
+     "Wind speed steady around 3.01 m/s, ranging only 2.75-3.32 [E6,E2,E3]"
+    ],
+    "likely_cause": "normal_weather",
+    "confidence": 0.8,
+    "action": "none"
+   },
+   "valid": true,
+   "errors": null,
+   "prompt": ""
+  },
+  {
+   "ttft_ms": 0,
+   "gen_tokens": 0,
+   "tokens_per_s": 0,
+   "early_stopped": false,
+   "ref": "S3",
+   "role": "weather",
+   "model": "context agent (rules, CPU)",
+   "fine_tuned": false,
+   "latency_ms": 0,
+   "raw": "",
+   "parsed": {
+    "pattern": "stable",
+    "status": "normal",
+    "observations": [
+     "Humidity steady around 59.9 %, ranging only 57.8-61.3 [E6,E2,E3]"
+    ],
+    "likely_cause": "normal_weather",
+    "confidence": 0.8,
+    "action": "none"
+   },
+   "valid": true,
+   "errors": null,
+   "prompt": ""
+  }
+ ],
+ "final": {
+  "ttft_ms": 0,
+  "gen_tokens": 0,
+  "tokens_per_s": 0,
+  "early_stopped": false,
+  "model": "deterministic (related domains verified steady)",
+  "latency_ms": 0,
+  "raw": "",
+  "parsed": {
+   "root_cause": "PM2.5 spike on KN building, outdoor air station (outdoor pollution ingress)",
+   "label": "air_pollution_event",
+   "affected_domains": [
+    "air_quality"
+   ],
+   "evidence": [
+    "S1.E5",
+    "S1.E2",
+    "S2.E1",
+    "S3.E1"
+   ],
+   "confidence": 0.85,
+   "action": "inspect_ventilation",
+   "explanation": "PM2.5 jumped +121.1 ug/m3 at 14:25, peak 144.8 ug/m3 [E5,E2] 144.8 ug/m3 exceeds the critical limit of 120 ug/m3 [E2] (from domain agent finding). Related domains checked and steady: Wind speed stable (S2), Humidity stable (S3), so the cause is local to this domain.",
+   "requires_human_approval": true,
+   "severity": "critical"
+  },
+  "valid": true,
+  "errors": null,
+  "prompt": ""
+ },
+ "total_ms": 3189,
+ "npu_calls": 1,
+ "timeline": [
+  {
+   "t": "01:27:57",
+   "msg": "Event gated: 3 sensor(s) flagged, mode 3"
+  },
+  {
+   "t": "01:27:57",
+   "msg": "Orchestrator: 1 sensor(s) to NPU agents, 2 related sensor(s) checked by context agents in parallel"
+  },
+  {
+   "t": "01:27:57",
+   "msg": "Air Quality agent analysing AQ-KN00-00 pm25 on NPU (fine-tuned)"
+  },
+  {
+   "t": "01:28:00",
+   "msg": "Air Quality agent done in 3.2s (first token 0.4s, 106 tokens): spike / critical (policy PASSED)"
+  },
+  {
+   "t": "01:28:00",
+   "msg": "Related domains checked and steady (2 context agents): isolated event, no synthesizer call needed"
+  },
+  {
+   "t": "01:28:00",
+   "msg": "Finished in 3.2s, 1 NPU call(s)"
+  }
+ ],
+ "approval": "pending",
+ "approval_note": "",
+ "refine_stage": "early",
+ "next_refine_sim": 1791975900,
+ "sim_epoch": 1695259615943499458,
+ "revisions": [
+  {
+   "stage": "early",
+   "sim_end": 1791970500,
+   "wall": "2026-10-14 05:04:35",
+   "severity": "critical",
+   "title": "PM2.5 spike: KN building, outdoor air station",
+   "label": "air_pollution_event",
+   "npu_calls": 1,
+   "ms": 3189,
+   "sensors": [
+    {
+     "ref": "S1",
+     "metric": "pm25",
+     "pattern": "spike",
+     "status": "critical"
+    }
+   ]
+  }
+ ]
+}

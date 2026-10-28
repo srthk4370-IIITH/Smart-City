@@ -37,6 +37,7 @@ func main() {
 	}
 
 	initThermal()
+	initAgentVersion(*dir) // v1 (default) or v2 agent: agentversion.go
 	eng, err := NewEngine(*dir)
 	if err != nil {
 		log.Fatalf("engine: %v", err)
@@ -54,19 +55,27 @@ func main() {
 	hub := NewHub()
 	rsn := NewReasoner(genie, eng, *dir, hub.Publish)
 	rsn.Mode = *mode
+	health := NewHealthTracker()
 	eng.onEvent = rsn.HandleCandidates
 	eng.onTick = func(sim int64) {
+		rsn.RefineTick(sim) // re-analyses due at 1.5 h / 3 h of sensor time (refine.go)
 		hub.Publish("tick", map[string]any{"sim_time": sim, "sim_time_ist": time.Unix(sim, 0).In(IST).Format("Mon 02 Jan 15:04"), "npu": genie.Status()})
 		// push live sensor values to the dashboard (no polling needed)
 		_, states, _ := eng.Snapshot()
+		rsn.WorkflowTick(sim, states) // approval lifecycle timers + live return to normal (workflow.go)
 		live := make([]map[string]any, 0, len(states))
 		for _, st := range states {
 			live = append(live, map[string]any{"node": st.Node, "metric": st.Metric, "role": st.Role, "last": st.Last,
 				"sma_1h": st.SMA1h, "ema_1h": st.EMA1h, "slope_per_h": st.SlopePerH, "pattern": st.Pattern,
 				"status": st.Status, "injected": st.Injected, "data_ok": st.DataOK, "updated": st.Updated,
-				"abnormal_for": st.AbnormalFor, "reported": st.Reported, "persist_readings": persistReadings})
+				"abnormal_for": st.AbnormalFor, "reported": st.Reported, "persist_readings": persistReadings,
+				"quality": st.Quality, "quality_reason": st.QualityWhy, "maint_until": st.MaintUntil})
 		}
 		hub.Publish("live", map[string]any{"sim_time": sim, "sensors": live})
+		// per-domain health tiles (domainhealth.go): pushed only when something on them changed
+		if hv, changed := health.Update(eng, rsn); changed {
+			hub.Publish("health", hv)
+		}
 	}
 	go func() {
 		for {
@@ -77,9 +86,9 @@ func main() {
 			eng.Tick()
 		}
 	}()
-	srv := &Server{eng: eng, rsn: rsn, genie: genie, hub: hub, dir: *dir, start: time.Now()}
-	log.Printf("edge-agent: %d live sensors (sliders / %s), clock from %s, agent model: %s (available=%v), listening on %s",
-		len(eng.states), "/api/ingest", eng.Meta.StartIST, genie.AgentModel().Name, genie.AgentModel().Available, *port)
+	srv := &Server{eng: eng, rsn: rsn, genie: genie, hub: hub, health: health, dir: *dir, start: time.Now()}
+	log.Printf("edge-agent: %d live sensors (sliders / %s), clock from %s, agent model: %s (available=%v, agent %s), listening on %s",
+		len(eng.states), "/api/ingest", eng.Meta.StartIST, genie.AgentModel().Name, genie.AgentModel().Available, agentVer, *port)
 	// header and idle timeouts stop slow or abandoned clients holding connections open; no write
 	// timeout, because /api/events is a long-lived stream
 	hsrv := &http.Server{Addr: *port, Handler: srv.routes(), ReadHeaderTimeout: 10 * time.Second,

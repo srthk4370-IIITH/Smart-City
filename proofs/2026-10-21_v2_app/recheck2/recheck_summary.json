@@ -1,0 +1,470 @@
+[
+ {
+  "case": "improve:ventilation_failure",
+  "incident": "INC-0036",
+  "stages": [
+   {
+    "stage": "early",
+    "severity": "warning",
+    "title": "CO2 exponential increase: KH building, level 03, indoor air sensor 03",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "co2",
+      "pattern": "exponential_increase",
+      "status": "warning",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": null
+   },
+   {
+    "stage": "1.5h",
+    "severity": "normal",
+    "title": "CO2 spike judged normal: KH building, level 03, indoor air sensor 03",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "co2",
+      "pattern": "spike",
+      "status": "normal",
+      "kept": null,
+      "curbed": true,
+      "note": "resolved: warning -> normal, spike back to baseline since 16:05 (AI: event no longer active)"
+     }
+    ],
+    "sse_change": "curbed"
+   },
+   {
+    "stage": "3h",
+    "severity": "normal",
+    "title": "CO2 spike judged normal: KH building, level 03, indoor air sensor 03",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "co2",
+      "pattern": "spike",
+      "status": "normal",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": "same"
+   }
+  ],
+  "verdict": "curbed"
+ },
+ {
+  "case": "improve:tank_leak",
+  "incident": "INC-0037",
+  "stages": [
+   {
+    "stage": "early",
+    "severity": "critical",
+    "title": "Tank level gradual decrease: KH building, level 98, water tank level sensor 00",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "level",
+      "pattern": "gradual_decrease",
+      "status": "critical",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": null
+   },
+   {
+    "stage": "1.5h",
+    "severity": "critical",
+    "title": "Tank level throttling: KH building, level 98, water tank level sensor 00",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "level",
+      "pattern": "throttling",
+      "status": "critical",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": "same"
+   },
+   {
+    "stage": "3h",
+    "severity": "critical",
+    "title": "Tank level step increase: KH building, level 98, water tank level sensor 00",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "level",
+      "pattern": "step_increase",
+      "status": "critical",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": "same"
+   }
+  ],
+  "verdict": "same"
+ },
+ {
+  "case": "improve:power_throttling",
+  "incident": "INC-0038",
+  "stages": [
+   {
+    "stage": "early",
+    "severity": "warning",
+    "title": "Power gradual increase: KH building, level 04, room energy meter 01",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "power_kw",
+      "pattern": "gradual_increase",
+      "status": "warning",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": null
+   },
+   {
+    "stage": "1.5h",
+    "severity": "normal",
+    "title": "Power spike judged normal: KH building, level 04, room energy meter 01",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "power_kw",
+      "pattern": "spike",
+      "status": "normal",
+      "kept": null,
+      "curbed": true,
+      "note": "resolved: warning -> normal, spike back to baseline since 15:00 (AI: event no longer active)"
+     }
+    ],
+    "sse_change": "curbed"
+   },
+   {
+    "stage": "3h",
+    "severity": "critical",
+    "title": "Power spike: KH building, level 04, room energy meter 01",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "power_kw",
+      "pattern": "spike",
+      "status": "critical",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": "elevated"
+   }
+  ],
+  "verdict": "elevated"
+ },
+ {
+  "case": "improve:stuck_sensor",
+  "incident": "INC-0039",
+  "stages": [
+   {
+    "stage": "early",
+    "severity": "sensor_fault",
+    "title": "Temperature flatline: KH building, level 03, indoor air sensor 03",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "temp",
+      "pattern": "flatline",
+      "status": "sensor_fault",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": null
+   },
+   {
+    "stage": "1.5h",
+    "severity": "sensor_fault",
+    "title": "Temperature flatline: KH building, level 03, indoor air sensor 03",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "temp",
+      "pattern": "flatline",
+      "status": "sensor_fault",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": "same"
+   },
+   {
+    "stage": "3h",
+    "severity": "sensor_fault",
+    "title": "Temperature flatline: KH building, level 03, indoor air sensor 03",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "temp",
+      "pattern": "flatline",
+      "status": "sensor_fault",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": "same"
+   }
+  ],
+  "verdict": "same"
+ },
+ {
+  "case": "improve:pm_spike",
+  "incident": "INC-0040",
+  "stages": [
+   {
+    "stage": "early",
+    "severity": "critical",
+    "title": "PM2.5 spike: KN building, outdoor air station",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "pm25",
+      "pattern": "spike",
+      "status": "critical",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": null
+   },
+   {
+    "stage": "1.5h",
+    "severity": "normal",
+    "title": "PM2.5 spike judged normal: KN building, outdoor air station",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "pm25",
+      "pattern": "spike",
+      "status": "normal",
+      "kept": null,
+      "curbed": true,
+      "note": "resolved: critical -> normal, spike back to baseline since 14:35 (AI: event no longer active)"
+     }
+    ],
+    "sse_change": "curbed"
+   },
+   {
+    "stage": "3h",
+    "severity": "critical",
+    "title": "PM2.5 spike: KN building, outdoor air station",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "pm25",
+      "pattern": "spike",
+      "status": "critical",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": "elevated"
+   }
+  ],
+  "verdict": "same"
+ },
+ {
+  "case": "hold:ventilation_failure",
+  "incident": "INC-0041",
+  "stages": [
+   {
+    "stage": "early",
+    "severity": "warning",
+    "title": "CO2 exponential increase: KH building, level 03, indoor air sensor 03",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "co2",
+      "pattern": "exponential_increase",
+      "status": "warning",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": null
+   },
+   {
+    "stage": "1.5h",
+    "severity": "critical",
+    "title": "CO2 throttling: KH building, level 03, indoor air sensor 03",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "co2",
+      "pattern": "throttling",
+      "status": "critical",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": "elevated"
+   },
+   {
+    "stage": "3h",
+    "severity": "critical",
+    "title": "CO2 throttling: KH building, level 03, indoor air sensor 03",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "co2",
+      "pattern": "throttling",
+      "status": "critical",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": "same"
+   }
+  ],
+  "verdict": "elevated"
+ },
+ {
+  "case": "hold:tank_leak",
+  "incident": "INC-0042",
+  "stages": [
+   {
+    "stage": "early",
+    "severity": "critical",
+    "title": "Tank level gradual decrease: KH building, level 98, water tank level sensor 00",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "level",
+      "pattern": "gradual_decrease",
+      "status": "critical",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": null
+   },
+   {
+    "stage": "1.5h",
+    "severity": "critical",
+    "title": "Tank level gradual decrease: KH building, level 98, water tank level sensor 00",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "level",
+      "pattern": "gradual_decrease",
+      "status": "critical",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": "same"
+   },
+   {
+    "stage": "3h",
+    "severity": "critical",
+    "title": "Tank level gradual decrease: KH building, level 98, water tank level sensor 00",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "level",
+      "pattern": "gradual_decrease",
+      "status": "critical",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": "same"
+   }
+  ],
+  "verdict": "same"
+ },
+ {
+  "case": "hold:power_throttling",
+  "incident": "INC-0043",
+  "stages": [
+   {
+    "stage": "early",
+    "severity": "warning",
+    "title": "Power gradual increase: KH building, level 04, room energy meter 01",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "power_kw",
+      "pattern": "gradual_increase",
+      "status": "warning",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": null
+   },
+   {
+    "stage": "1.5h",
+    "severity": "critical",
+    "title": "Power throttling: KH building, level 04, room energy meter 01",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "power_kw",
+      "pattern": "throttling",
+      "status": "critical",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": "elevated"
+   },
+   {
+    "stage": "3h",
+    "severity": "critical",
+    "title": "Power throttling: KH building, level 04, room energy meter 01",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "power_kw",
+      "pattern": "throttling",
+      "status": "critical",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": "same"
+   }
+  ],
+  "verdict": "elevated"
+ },
+ {
+  "case": "hold:heat_buildup",
+  "incident": null
+ }
+]

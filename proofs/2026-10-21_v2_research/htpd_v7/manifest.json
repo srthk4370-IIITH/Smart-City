@@ -1,0 +1,19 @@
+{
+  "what": "htpd v7: agent token cap, JSON abort, label trie, role draft corpus, logits-only-read rows, logprobs, streaming, agent KV layouts, synth prefix cache",
+  "date": "2026-10-21",
+  "source": "Code/smart-city-edge-agent/app/htpd/{htpd.cpp,htpd_logic.h,test_logic.cpp,bench_stream.cpp,build_htpd.sh,make_role_draft.py,make_cases.py,host_e2e.py,host_e2e_layouts.py}",
+  "build": {
+    "script": "app/htpd/build_htpd.sh (docker ghcr.io/snapdragon-toolchain/arm64-android:v0.7, NDK r29, exact CMake compile+link lines of build-snapdragon, llama.cpp 620d2225 + app/htpd/patches)",
+    "reproduction_check": "v6 source rebuilt with the script -> md5 f741c85d6e40a24b9210e817e1cddec7, identical to build-snapdragon/bin/htpd",
+    "v7_binary": "C:/Users/hp/gpu_work/htpd_v7/bin/htpd",
+    "v7_md5": "086b1e741f834e6e8d4eb694eac426a5",
+    "role_draft_file": "C:/Users/hp/gpu_work/htpd_v7/role_draft_v2.jsonl (md5 9057f4203bfa014dc5908ad36cf690b1, TRAIN completions only)",
+    "needed_libs": "unchanged vs v6 (libllama, libggml*, same as /data/local/tmp/llama.cpp/lib)"
+  },
+  "tests": {
+    "test_logic.txt": "unit + corpus test on all 4738 v2 device outputs (proofs/2026-10-20_v2_post/device)",
+    "bench_stream.txt": "host cost of the streaming line (14 streams) and of the label check",
+    "host_e2e/": "x86 CPU end to end, ft_device_q4exact.gguf, 2 v2 prompts: v6 binary vs v7 (checks.json, results.json, logs). The layouts/cap rerun was killed by the session for low laptop memory (partial log only)."
+  },
+  "device": "not run (main session owns adb); see PROTOCOL.md and the A/B plan in the agent report"
+}

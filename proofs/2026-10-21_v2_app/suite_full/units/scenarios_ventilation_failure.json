@@ -1,0 +1,597 @@
+{
+ "phase": "scenarios",
+ "key": "scenarios/ventilation_failure",
+ "seconds": 112.5,
+ "checks": [
+  {
+   "check": "ventilation_failure: injectable",
+   "ok": true,
+   "hard": true,
+   "evidence": "info: HTTP 200"
+  },
+  {
+   "check": "ventilation_failure: incident raised",
+   "ok": true,
+   "hard": true,
+   "evidence": "info: ['INC-0702'] after 21s"
+  },
+  {
+   "check": "ventilation_failure INC-0702: no timeout following the incident",
+   "ok": true,
+   "hard": true,
+   "evidence": "info: reached ['early', '1.5h', '3h']"
+  },
+  {
+   "check": "ventilation_failure INC-0702: final state done/done_with_errors",
+   "ok": true,
+   "hard": true,
+   "evidence": "info: done"
+  },
+  {
+   "check": "ventilation_failure INC-0702: final state is 'done' (no errors)",
+   "ok": true,
+   "hard": false,
+   "evidence": "info: done"
+  },
+  {
+   "check": "ventilation_failure INC-0702: refined through 3h",
+   "ok": true,
+   "hard": true,
+   "evidence": "info: stages ['early', '1.5h', '3h'] note=''"
+  },
+  {
+   "check": "ventilation_failure INC-0702 early: severity decided by reasoner",
+   "ok": true,
+   "hard": false,
+   "evidence": "info: warning"
+  },
+  {
+   "check": "ventilation_failure INC-0702 early: title present",
+   "ok": true,
+   "hard": true,
+   "evidence": "info: CO2 exponential increase: KH building, level 03, indoor air sensor 03"
+  },
+  {
+   "check": "ventilation_failure INC-0702 early: every NPU agent passed policy",
+   "ok": true,
+   "hard": false,
+   "evidence": "info: []"
+  },
+  {
+   "check": "ventilation_failure INC-0702 1.5h: severity decided by reasoner",
+   "ok": true,
+   "hard": false,
+   "evidence": "info: critical"
+  },
+  {
+   "check": "ventilation_failure INC-0702 1.5h: title present",
+   "ok": true,
+   "hard": true,
+   "evidence": "info: CO2 throttling: KH building, level 03, indoor air sensor 03"
+  },
+  {
+   "check": "ventilation_failure INC-0702 1.5h: every NPU agent passed policy",
+   "ok": true,
+   "hard": false,
+   "evidence": "info: []"
+  },
+  {
+   "check": "ventilation_failure INC-0702 3h: severity decided by reasoner",
+   "ok": true,
+   "hard": false,
+   "evidence": "info: critical"
+  },
+  {
+   "check": "ventilation_failure INC-0702 3h: title present",
+   "ok": true,
+   "hard": true,
+   "evidence": "info: CO2 throttling: KH building, level 03, indoor air sensor 03"
+  },
+  {
+   "check": "ventilation_failure INC-0702 3h: every NPU agent passed policy",
+   "ok": true,
+   "hard": false,
+   "evidence": "info: []"
+  },
+  {
+   "check": "ventilation_failure INC-0702: 3 sensor-stage windows trained, >= family floor, cover onset + 1 h",
+   "ok": true,
+   "hard": true,
+   "evidence": "info: 3 rows"
+  },
+  {
+   "check": "ventilation_failure INC-0702: window equals recomputed WindowN",
+   "ok": true,
+   "hard": false,
+   "evidence": ""
+  },
+  {
+   "check": "ventilation_failure: NPU idle afterwards",
+   "ok": true,
+   "hard": true,
+   "evidence": "info: waited 0.0s"
+  }
+ ],
+ "data": {
+  "scenario": "ventilation_failure",
+  "incidents": [
+   "INC-0702"
+  ],
+  "t_to_incident_s": 21.5,
+  "follow": {
+   "INC-0702": {
+    "stages": {
+     "early": {
+      "id": "INC-0702",
+      "stage": "early",
+      "state": "done",
+      "severity": "warning",
+      "severity_final": true,
+      "title": "CO2 exponential increase: KH building, level 03, indoor air sensor 03",
+      "rule_title": "CO2 exponential increase: KH building, level 03, indoor air sensor 03",
+      "refine_note": null,
+      "next_refine_sim": 1791978300,
+      "created_sim": 1791972900,
+      "total_ms": 5725,
+      "stage_ms": 5725,
+      "npu_calls": 1,
+      "stage_npu_calls": 1,
+      "revisions": 1,
+      "revision_list": [
+       {
+        "stage": "early",
+        "sim_end": 1791972900,
+        "ms": 5725,
+        "severity": "warning",
+        "title": "CO2 exponential increase: KH building, level 03, indoor air sensor 03",
+        "sensors": [
+         {
+          "ref": "S1",
+          "metric": "co2",
+          "pattern": "exponential_increase",
+          "status": "warning",
+          "kept": null,
+          "no_data": null
+         }
+        ]
+       }
+      ],
+      "n_llm_agents": 1,
+      "n_flagged": 1,
+      "n_context": 4,
+      "sensors": [
+       {
+        "ref": "S1",
+        "node": "SR-AQ-KH03-03",
+        "metric": "co2",
+        "role": "air_quality",
+        "win_n_raw": null,
+        "win_n": 48,
+        "window_end": 1791972900,
+        "rule_pattern": "exponential_increase",
+        "rule_status": "warning",
+        "pattern": "exponential_increase",
+        "status": "warning",
+        "onset": "13:50",
+        "fault_kind": null,
+        "confidence": 0.87,
+        "llm": true,
+        "model": "Llama 3.2 3B smart-city agent (fine-tuned, w4a16)",
+        "valid": true,
+        "errors": null,
+        "repairs": null,
+        "latency_ms": 5721.143,
+        "ttft_ms": 707.3,
+        "gen_tokens": 83,
+        "tokens_per_s": 16.57679249051328,
+        "early_stopped": true,
+        "long_range": [
+         "12 h view: level shifted +189 ppm about 0.6 h ago and stayed (9.5x normal variation)"
+        ]
+       }
+      ],
+      "final": {
+       "model": "deterministic (related domains verified steady)",
+       "valid": true,
+       "errors": null,
+       "latency_ms": 0,
+       "ttft_ms": 0,
+       "gen_tokens": 0,
+       "tokens_per_s": 0,
+       "label": "ventilation_issue",
+       "severity": "warning",
+       "domains": [
+        "air_quality"
+       ]
+      },
+      "timeline_all": {
+       "batched_n": [],
+       "orchestrated_n": [
+        1
+       ],
+       "solo_reruns": 0,
+       "solo_still_invalid": 0,
+       "npu_unavailable_reruns": 0,
+       "npu_still_unavailable": 0,
+       "cached": 0,
+       "synth_rejected": 0,
+       "npu_retries": 0
+      },
+      "timeline_new": {
+       "batched_n": [],
+       "orchestrated_n": [
+        1
+       ],
+       "solo_reruns": 0,
+       "solo_still_invalid": 0,
+       "npu_unavailable_reruns": 0,
+       "npu_still_unavailable": 0,
+       "cached": 0,
+       "synth_rejected": 0,
+       "npu_retries": 0
+      },
+      "timeline_len": 6,
+      "timeline_tail": [
+       "Event gated: 5 sensor(s) flagged, mode 3",
+       "Orchestrator: 1 sensor(s) to NPU agents, 4 related sensor(s) checked by context agents in parallel",
+       "Air Quality agent analysing SR-AQ-KH03-03 co2 on NPU (fine-tuned)",
+       "Air Quality agent done in 5.7s (first token 0.7s, 83 tokens): exponential_increase / warning (policy PASSED)",
+       "Related domains checked and steady (4 context agents): isolated event, no synthesizer call needed",
+       "Finished in 5.7s, 1 NPU call(s)"
+      ],
+      "t_since_follow_s": 0.0
+     },
+     "1.5h": {
+      "id": "INC-0702",
+      "stage": "1.5h",
+      "state": "done",
+      "severity": "critical",
+      "severity_final": true,
+      "title": "CO2 throttling: KH building, level 03, indoor air sensor 03",
+      "rule_title": "CO2 exponential increase: KH building, level 03, indoor air sensor 03",
+      "refine_note": null,
+      "next_refine_sim": 1791983700,
+      "created_sim": 1791972900,
+      "total_ms": 5725,
+      "stage_ms": 3787,
+      "npu_calls": 1,
+      "stage_npu_calls": 1,
+      "revisions": 2,
+      "revision_list": [
+       {
+        "stage": "early",
+        "sim_end": 1791972900,
+        "ms": 5725,
+        "severity": "warning",
+        "title": "CO2 exponential increase: KH building, level 03, indoor air sensor 03",
+        "sensors": [
+         {
+          "ref": "S1",
+          "metric": "co2",
+          "pattern": "exponential_increase",
+          "status": "warning",
+          "kept": null,
+          "no_data": null
+         }
+        ]
+       },
+       {
+        "stage": "1.5h",
+        "sim_end": 1791978300,
+        "ms": 3787,
+        "severity": "critical",
+        "title": "CO2 throttling: KH building, level 03, indoor air sensor 03",
+        "sensors": [
+         {
+          "ref": "S1",
+          "metric": "co2",
+          "pattern": "throttling",
+          "status": "critical",
+          "kept": null,
+          "no_data": null
+         }
+        ]
+       }
+      ],
+      "n_llm_agents": 1,
+      "n_flagged": 1,
+      "n_context": 4,
+      "sensors": [
+       {
+        "ref": "S1",
+        "node": "SR-AQ-KH03-03",
+        "metric": "co2",
+        "role": "air_quality",
+        "win_n_raw": 54,
+        "win_n": 54,
+        "window_end": 1791978300,
+        "rule_pattern": "throttling",
+        "rule_status": "critical",
+        "pattern": "throttling",
+        "status": "critical",
+        "onset": "15:00",
+        "fault_kind": null,
+        "confidence": 0.87,
+        "llm": true,
+        "model": "Llama 3.2 3B smart-city agent (fine-tuned, w4a16)",
+        "valid": true,
+        "errors": null,
+        "repairs": null,
+        "latency_ms": 3780.23,
+        "ttft_ms": 713.1,
+        "gen_tokens": 88,
+        "tokens_per_s": 28.80429445844653,
+        "early_stopped": true,
+        "long_range": [
+         "12 h view: level shifted +1.3e+03 ppm about 1.0 h ago and stayed (65.2x normal variation)"
+        ]
+       }
+      ],
+      "final": {
+       "model": "deterministic (related domains verified steady)",
+       "valid": true,
+       "errors": null,
+       "latency_ms": 0,
+       "ttft_ms": 0,
+       "gen_tokens": 0,
+       "tokens_per_s": 0,
+       "label": "ventilation_issue",
+       "severity": "critical",
+       "domains": [
+        "air_quality"
+       ]
+      },
+      "timeline_all": {
+       "batched_n": [],
+       "orchestrated_n": [
+        1
+       ],
+       "solo_reruns": 0,
+       "solo_still_invalid": 0,
+       "npu_unavailable_reruns": 0,
+       "npu_still_unavailable": 0,
+       "cached": 0,
+       "synth_rejected": 0,
+       "npu_retries": 0
+      },
+      "timeline_new": {
+       "batched_n": [],
+       "orchestrated_n": [],
+       "solo_reruns": 0,
+       "solo_still_invalid": 0,
+       "npu_unavailable_reruns": 0,
+       "npu_still_unavailable": 0,
+       "cached": 0,
+       "synth_rejected": 0,
+       "npu_retries": 0
+      },
+      "timeline_len": 7,
+      "timeline_tail": [
+       "Refined at 1.5 h (windows to 17:15 sensor time, 1 NPU call(s), 3.8s): severity warning -> critical; CO2: exponential increase/warning -> throttling/critical"
+      ],
+      "t_since_follow_s": 14.2
+     },
+     "3h": {
+      "id": "INC-0702",
+      "stage": "3h",
+      "state": "done",
+      "severity": "critical",
+      "severity_final": true,
+      "title": "CO2 throttling: KH building, level 03, indoor air sensor 03",
+      "rule_title": "CO2 exponential increase: KH building, level 03, indoor air sensor 03",
+      "refine_note": null,
+      "next_refine_sim": null,
+      "created_sim": 1791972900,
+      "total_ms": 5725,
+      "stage_ms": 2123,
+      "npu_calls": 1,
+      "stage_npu_calls": 1,
+      "revisions": 3,
+      "revision_list": [
+       {
+        "stage": "early",
+        "sim_end": 1791972900,
+        "ms": 5725,
+        "severity": "warning",
+        "title": "CO2 exponential increase: KH building, level 03, indoor air sensor 03",
+        "sensors": [
+         {
+          "ref": "S1",
+          "metric": "co2",
+          "pattern": "exponential_increase",
+          "status": "warning",
+          "kept": null,
+          "no_data": null
+         }
+        ]
+       },
+       {
+        "stage": "1.5h",
+        "sim_end": 1791978300,
+        "ms": 3787,
+        "severity": "critical",
+        "title": "CO2 throttling: KH building, level 03, indoor air sensor 03",
+        "sensors": [
+         {
+          "ref": "S1",
+          "metric": "co2",
+          "pattern": "throttling",
+          "status": "critical",
+          "kept": null,
+          "no_data": null
+         }
+        ]
+       },
+       {
+        "stage": "3h",
+        "sim_end": 1791983700,
+        "ms": 2123,
+        "severity": "critical",
+        "title": "CO2 throttling: KH building, level 03, indoor air sensor 03",
+        "sensors": [
+         {
+          "ref": "S1",
+          "metric": "co2",
+          "pattern": "throttling",
+          "status": "critical",
+          "kept": null,
+          "no_data": null
+         }
+        ]
+       }
+      ],
+      "n_llm_agents": 1,
+      "n_flagged": 1,
+      "n_context": 4,
+      "sensors": [
+       {
+        "ref": "S1",
+        "node": "SR-AQ-KH03-03",
+        "metric": "co2",
+        "role": "air_quality",
+        "win_n_raw": 60,
+        "win_n": 60,
+        "window_end": 1791983700,
+        "rule_pattern": "dip",
+        "rule_status": "critical",
+        "pattern": "throttling",
+        "status": "critical",
+        "onset": "15:05",
+        "fault_kind": null,
+        "confidence": 0.87,
+        "llm": true,
+        "model": "Llama 3.2 3B smart-city agent (fine-tuned, w4a16)",
+        "valid": true,
+        "errors": null,
+        "repairs": null,
+        "latency_ms": 2117.144,
+        "ttft_ms": 711.4,
+        "gen_tokens": 86,
+        "tokens_per_s": 61.69296987087518,
+        "early_stopped": true,
+        "long_range": [
+         "12 h view: level shifted +1.31e+03 ppm about 2.5 h ago and stayed (65.3x normal variation)"
+        ]
+       }
+      ],
+      "final": {
+       "model": "deterministic (related domains verified steady)",
+       "valid": true,
+       "errors": null,
+       "latency_ms": 0,
+       "ttft_ms": 0,
+       "gen_tokens": 0,
+       "tokens_per_s": 0,
+       "label": "ventilation_issue",
+       "severity": "critical",
+       "domains": [
+        "air_quality"
+       ]
+      },
+      "timeline_all": {
+       "batched_n": [],
+       "orchestrated_n": [
+        1
+       ],
+       "solo_reruns": 0,
+       "solo_still_invalid": 0,
+       "npu_unavailable_reruns": 0,
+       "npu_still_unavailable": 0,
+       "cached": 0,
+       "synth_rejected": 0,
+       "npu_retries": 0
+      },
+      "timeline_new": {
+       "batched_n": [],
+       "orchestrated_n": [],
+       "solo_reruns": 0,
+       "solo_still_invalid": 0,
+       "npu_unavailable_reruns": 0,
+       "npu_still_unavailable": 0,
+       "cached": 0,
+       "synth_rejected": 0,
+       "npu_retries": 0
+      },
+      "timeline_len": 8,
+      "timeline_tail": [
+       "Refined at 3 h (windows to 18:45 sensor time, 1 NPU call(s), 2.1s): no change"
+      ],
+      "t_since_follow_s": 32.4
+     }
+    },
+    "order": [
+     "early",
+     "1.5h",
+     "3h"
+    ],
+    "final_state": "done",
+    "timed_out": false
+   }
+  },
+  "window_rows": [
+   {
+    "incident": "INC-0702",
+    "stage": "early",
+    "ref": "S1",
+    "metric": "co2",
+    "role": "air_quality",
+    "win_n": 48,
+    "hours": 4.0,
+    "early_pattern": "exponential_increase",
+    "early_family": "trend",
+    "pattern": "exponential_increase",
+    "status": "warning",
+    "prev_onset_age": null,
+    "expected_n": 48,
+    "family_floor": 48,
+    "trained": true,
+    "covers_onset": true,
+    "floor_ok": true,
+    "exact": true,
+    "ok": true
+   },
+   {
+    "incident": "INC-0702",
+    "stage": "1.5h",
+    "ref": "S1",
+    "metric": "co2",
+    "role": "air_quality",
+    "win_n": 54,
+    "hours": 4.5,
+    "early_pattern": "exponential_increase",
+    "early_family": "trend",
+    "pattern": "throttling",
+    "status": "critical",
+    "prev_onset_age": 42,
+    "expected_n": 54,
+    "family_floor": 48,
+    "trained": true,
+    "covers_onset": true,
+    "floor_ok": true,
+    "exact": true,
+    "ok": true
+   },
+   {
+    "incident": "INC-0702",
+    "stage": "3h",
+    "ref": "S1",
+    "metric": "co2",
+    "role": "air_quality",
+    "win_n": 60,
+    "hours": 5.0,
+    "early_pattern": "exponential_increase",
+    "early_family": "trend",
+    "pattern": "throttling",
+    "status": "critical",
+    "prev_onset_age": 46,
+    "expected_n": 60,
+    "family_floor": 48,
+    "trained": true,
+    "covers_onset": true,
+    "floor_ok": true,
+    "exact": true,
+    "ok": true
+   }
+  ]
+ }
+}

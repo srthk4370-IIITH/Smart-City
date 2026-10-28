@@ -48,6 +48,16 @@ var idRe = regexp.MustCompile(`\bE\d+\b`)
 var refRe = regexp.MustCompile(`\bS\d+\.E\d+\b`)
 var actuation = regexp.MustCompile(`(?i)\b(shut ?off|shut down|switch off|turn off|cut power|disable|override|bypass|force close|evacuate)\b`)
 
+// recommendOff is a RECOMMENDATION to switch something off ("recommend switching the AC off"), allowed
+// since v2's switch_off_ac action (HVAC running in an empty room): the operator still approves it. Commands
+// ("switch off the pump", "turn off the AC now") stay blocked.
+var recommendOff = regexp.MustCompile(`(?i)\b(recommend|suggest|consider|advise)\w*\b[^.\[]{0,30}?\b(switch|turn)(ing)?\b[^.\[]{0,20}?\boff\b`)
+
+// blocksActuation reports actuation language once recommendation phrases are set aside.
+func blocksActuation(text string) bool {
+	return actuation.MatchString(recommendOff.ReplaceAllString(text, " "))
+}
+
 func contains(list []string, s string) bool {
 	for _, x := range list {
 		if x == s {
@@ -87,7 +97,11 @@ var reField = map[string]*regexp.Regexp{
 	"status":       regexp.MustCompile(`"status"\s*:\s*"?([A-Za-z_]+)"?`),
 	"likely_cause": regexp.MustCompile(`"likely_cause"\s*:\s*"?([A-Za-z_]+)"?`),
 	"action":       regexp.MustCompile(`"action"\s*:\s*"?([A-Za-z_]+)"?`),
+	"onset":        regexp.MustCompile(`"onset"\s*:\s*"(\d{1,2}:\d{2})"`),
+	"fault_kind":   regexp.MustCompile(`"fault_kind"\s*:\s*"?([A-Za-z_]+)"?`),
 }
+var reActive = regexp.MustCompile(`"event_active"\s*:\s*(true|false)`)
+var reOnset = regexp.MustCompile(`^([01]?\d|2[0-3]):[0-5]\d$`)
 var reConf = regexp.MustCompile(`"confidence"\s*:\s*([0-9]*\.?[0-9]+)`)
 var reObs = regexp.MustCompile(`"([^"]*\[E\d+[^"]*)"`) // observations always cite evidence ids
 
@@ -150,13 +164,22 @@ func salvageFinding(text string) (*Finding, bool) {
 	if m := reConf.FindStringSubmatch(text); m != nil {
 		fmt.Sscanf(m[1], "%f", &f.Confidence)
 	}
+	f.Onset, f.FaultKind = get("onset"), get("fault_kind")
+	if m := reActive.FindStringSubmatch(text); m != nil {
+		v := m[1] == "true"
+		f.EventActive = &v
+	}
 	return &f, true
 }
 
 var reportIDRe = regexp.MustCompile(`S\d+\.E\d+`)
 
 func isAgentCause(c string) bool {
-	for _, cs := range Causes {
+	causes := Causes
+	if agentV2() {
+		causes = CausesV2
+	}
+	for _, cs := range causes {
 		if contains(cs, c) {
 			return true
 		}
@@ -164,7 +187,13 @@ func isAgentCause(c string) bool {
 	return false
 }
 
-func checkAgent(s SensorRef, res GenieResult, prompt string) AgentCall {
+func checkAgent(s SensorRef, res GenieResult, prompt string) AgentCall { return checkAgentWin(s, res, prompt, nil) }
+
+// checkAgentWin: checkAgent plus the Track B post-rules (postrules.go, htpd_profile post_rules=, default off) on
+// win, the window the prompt was built from. They run before the whitelist checks and the action derivation, so a
+// corrected cause or status is what the gate checks and what the action is derived from.
+// hv (optional): the deterministic HVAC rule finding on the agent's own window (post rule hvac_rule).
+func checkAgentWin(s SensorRef, res GenieResult, prompt string, win []float64, hv ...*Finding) AgentCall {
 	call := AgentCall{Ref: s.Ref, Role: s.Role, Model: res.Model, FineTuned: res.FineTuned, LatencyMs: res.LatencyMs, Raw: res.Text, Prompt: prompt}
 	if res.Error != "" {
 		call.Errors = append(call.Errors, "NPU error: "+res.Error)
@@ -187,18 +216,26 @@ func checkAgent(s SensorRef, res GenieResult, prompt string) AgentCall {
 	}
 	f.Pattern, f.Status, f.LikelyCause, f.Action = normEnum(f.Pattern), normEnum(f.Status), normEnum(f.LikelyCause), normEnum(f.Action)
 	f.Observations = mergeStrayIDs(f.Observations)
-	call.Parsed = &f
-	pats := ContPatterns
-	if s.Role == "occupancy" {
-		pats = OccPatterns
+	if on := postRules(); on != nil && len(win) > 0 {
+		for _, c := range applyPostRules(on, s.Role, s.Metric, s.Node, s.End, win, &f, prompt) {
+			call.Repairs = append(call.Repairs, fmt.Sprintf("post-rule %s: %s '%s' -> '%s'", c.rule, c.field, c.from, c.to))
+		}
 	}
+	if on := postRules(); on["hvac_rule"] && s.Role == "hvac" && len(hv) > 0 && hv[0] != nil {
+		for _, c := range applyHVACRule(hv[0], &f) {
+			call.Repairs = append(call.Repairs, fmt.Sprintf("post-rule %s: %s '%s' -> '%s'", c.rule, c.field, c.from, c.to))
+		}
+	}
+	call.ClaimFlags = claimFlags(s.Role, s.End, prompt, f.Observations)
+	call.Parsed = &f
+	pats, causes := agentPatterns(s.Role), agentCauses(s.Role) // v1 or v2 whitelists (agentversion.go)
 	if !contains(pats, f.Pattern) {
 		call.Errors = append(call.Errors, "unknown pattern '"+f.Pattern+"'")
 	}
 	if !contains([]string{"normal", "warning", "critical", "sensor_fault"}, f.Status) {
 		call.Errors = append(call.Errors, "unknown status '"+f.Status+"'")
 	}
-	if !contains(Causes[s.Role], f.LikelyCause) {
+	if !contains(causes, f.LikelyCause) {
 		call.Errors = append(call.Errors, "cause '"+f.LikelyCause+"' not allowed for "+s.Role)
 	}
 	// Action is a deterministic function of (cause, status) in our taxonomy - the very mapping that
@@ -207,8 +244,8 @@ func checkAgent(s SensorRef, res GenieResult, prompt string) AgentCall {
 	// its cause was right 81.5%, i.e. it sometimes picked the wrong action from a correct cause.
 	// Deriving makes action track cause exactly. The model's raw value stays in call.Raw for audit, and
 	// a disagreement is recorded because it is a useful drift signal, not an error.
-	if contains(Causes[s.Role], f.LikelyCause) {
-		derived := ActionOf(f.LikelyCause, f.Status)
+	if contains(causes, f.LikelyCause) {
+		derived := ActionOfRole(s.Role, f.LikelyCause, f.Status)
 		if f.Action != "" && f.Action != derived {
 			call.Repairs = append(call.Repairs, "action '"+f.Action+"' replaced by '"+derived+"', derived from cause '"+f.LikelyCause+"'")
 		} else if f.Action == "" && !trimAction() {
@@ -218,7 +255,7 @@ func checkAgent(s SensorRef, res GenieResult, prompt string) AgentCall {
 		}
 		f.Action = derived
 	}
-	if !contains(Actions, f.Action) {
+	if !actionAllowed(f.Action) {
 		call.Errors = append(call.Errors, "action '"+f.Action+"' not whitelisted")
 	}
 	if f.Confidence < 0 || f.Confidence > 1 {
@@ -231,6 +268,9 @@ func checkAgent(s SensorRef, res GenieResult, prompt string) AgentCall {
 	for _, e := range s.Evidence {
 		valid[e.ID] = true
 	}
+	for id := range promptEvidenceIDs(prompt) { // v2 prompts also show E9/E10
+		valid[id] = true
+	}
 	for _, o := range f.Observations {
 		ids := idRe.FindAllString(o, -1)
 		if len(ids) == 0 {
@@ -241,9 +281,21 @@ func checkAgent(s SensorRef, res GenieResult, prompt string) AgentCall {
 				call.Errors = append(call.Errors, "hallucinated evidence id "+id)
 			}
 		}
-		if actuation.MatchString(o) {
+		if blocksActuation(o) {
 			call.Errors = append(call.Errors, "actuation language blocked")
 		}
+	}
+	// v2 fields are optional and never fail a finding: an invalid value is dropped and noted
+	if f.FaultKind != "" {
+		f.FaultKind = normEnum(f.FaultKind)
+		if f.Status != "sensor_fault" || !contains(FaultKinds, f.FaultKind) {
+			call.Repairs = append(call.Repairs, "fault_kind '"+f.FaultKind+"' dropped (only a known kind with status sensor_fault)")
+			f.FaultKind = ""
+		}
+	}
+	if f.Onset != "" && !reOnset.MatchString(f.Onset) {
+		call.Repairs = append(call.Repairs, "onset '"+f.Onset+"' dropped (not HH:MM)")
+		f.Onset = ""
 	}
 	call.Valid = len(call.Errors) == 0
 	return call
@@ -379,7 +431,7 @@ func (r *Reasoner) checkReport(res GenieResult, prompt string, sensors []SensorR
 	if !contains(ReportLabels, rep.Label) {
 		rc.Errors = append(rc.Errors, "unknown label '"+rep.Label+"'")
 	}
-	if !contains(Actions, rep.Action) {
+	if !actionAllowed(rep.Action) {
 		rc.Errors = append(rc.Errors, "action '"+rep.Action+"' not whitelisted")
 	}
 	valid := map[string]bool{}
@@ -387,6 +439,9 @@ func (r *Reasoner) checkReport(res GenieResult, prompt string, sensors []SensorR
 		valid[s.Ref] = true // sensor-level citation of a flagged sensor
 		for _, e := range s.Evidence {
 			valid[s.Ref+"."+e.ID] = true
+		}
+		for _, l := range s.LongRange {
+			valid[s.Ref+"."+l.ID] = true
 		}
 	}
 	// models sometimes pack several ids into one string ("S1.E5,S1.E7") or append the evidence text
@@ -415,7 +470,7 @@ func (r *Reasoner) checkReport(res GenieResult, prompt string, sensors []SensorR
 			rc.Errors = append(rc.Errors, fmt.Sprintf("hallucinated evidence id %q", id))
 		}
 	}
-	if actuation.MatchString(rep.RootCause + " " + rep.Explanation) {
+	if blocksActuation(rep.RootCause + " " + rep.Explanation) {
 		rc.Errors = append(rc.Errors, "actuation language blocked")
 	}
 	if rep.Confidence < 0 || rep.Confidence > 1 {

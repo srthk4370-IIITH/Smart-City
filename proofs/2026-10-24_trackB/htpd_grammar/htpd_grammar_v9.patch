@@ -1,0 +1,170 @@
+diff --git a/Code/smart-city-edge-agent/app/htpd/htpd.cpp b/Code/smart-city-edge-agent/app/htpd/htpd.cpp
+index 84c04f7..7744048 100644
+--- a/Code/smart-city-edge-agent/app/htpd/htpd.cpp
++++ b/Code/smart-city-edge-agent/app/htpd/htpd.cpp
+@@ -58,6 +58,12 @@
+ //                            {"match":"<substring of the prompt>","texts":[...]}, first match wins).
+ //                            Verified like every other draft, so outputs are unchanged.
+ //     HTPD_SYNTH_PREFIX_CACHE=1  (with HTPD_PREFIX_CACHE=1) also cache the synthesizer's system-turn KV
++//     HTPD_GRAMMAR=1|2       (v9, proofs/2026-10-24_trackB/GRAMMAR_DESIGN.md) per-stream GBNF constraint via
++//                            llama_sampler_init_grammar, checked lazily on the greedy/trie choice. 1 = request
++//                            "grammar": ["<gbnf for the continuation after the prefill>" | null, ...] only;
++//                            2 = request, else HTPD_GRAMMAR_DIR/agent_v2_<role>.gbnf picked by the system prompt.
++//                            Identical to plain greedy whenever the greedy token is on-grammar. Also adds
++//                            fault_kind to the prompt-parsed label keys (HTPD_TRIE_KEYS can then name it).
+ //     HTPD_LOGITS_READ=1     (with HTPD_DRAFT=1) request logits only for the rows that are read (pending +
+ //                            real drafts); pad rows past a short draft get none, so lm_head runs on fewer rows.
+ //
+@@ -133,6 +139,7 @@ struct StreamOpt {
+     Labels labels;                            // abort length rule labels (request, else prompt-parsed)
+     Labels trie_labels;                       // HTPD_PATTERN_TRIE: constrain argmax with these (empty = off)
+     const htpd::NgramTable * table = nullptr; // static draft source
++    std::shared_ptr<llama_sampler> grammar;   // HTPD_GRAMMAR: this stream's GBNF state (null = off)
+ };
+ 
+ static const llama_vocab * g_vocab;
+@@ -144,6 +151,8 @@ static int g_trie = 0;           // HTPD_PATTERN_TRIE
+ static std::vector<std::string> g_trie_keys = {"pattern", "status"};
+ static bool g_role_draft = false;  // HTPD_ROLE_DRAFT
+ static bool g_logits_read = false; // HTPD_LOGITS_READ
++static int g_grammar = 0;          // HTPD_GRAMMAR: 1 = request "grammar" only; 2 = request, else HTPD_GRAMMAR_DIR role file
++static std::string g_grammar_dir;  // HTPD_GRAMMAR_DIR: agent_v2_<role>.gbnf (proofs/2026-10-24_trackB/grammar)
+ static std::vector<std::string> g_pieces;  // token -> piece, filled once when a feature needs it
+ static std::vector<std::pair<std::string, htpd::NgramTable>> g_file_tables;  // HTPD_ROLE_DRAFT_FILE
+ // v8: --lora-synth. g_kv_tag != 0 while the current context runs with an adapter (one id per distinct scale);
+@@ -201,7 +210,7 @@ static bool allowed_tok(llama_token t, const htpd::JState & st, const Labels & L
+ // greedy pick under the label constraint (HTPD_PATTERN_TRIE): the plain argmax when it is allowed (so the
+ // output is plain greedy whenever greedy already stays on-label), else the highest-logit allowed token
+ // (first index on ties, like argmax). The top 64 are tried first; a full scan is the fallback.
+-static llama_token pick(const float * logits, int n_vocab, const Scanner & sc, const StreamOpt * o, int * forced) {
++static llama_token pick_label(const float * logits, int n_vocab, const Scanner & sc, const StreamOpt * o, int * forced) {
+     llama_token t = argmax(logits, n_vocab);
+     if (!o || o->trie_labels.empty()) return t;
+     const Labels & L = o->trie_labels;
+@@ -230,6 +239,80 @@ static llama_token pick(const float * logits, int n_vocab, const Scanner & sc, c
+     return best;
+ }
+ 
++// HTPD_GRAMMAR: the stream's GBNF (llama_sampler_init_grammar) as a mask on greedy, applied lazily like
++// llama-server's grammar_first sampling: the greedy (or trie) choice is tested alone first, so a stream that stays
++// on-grammar costs one stack walk per token; only a rejected token masks the whole vocabulary (one pass over
++// 128k pieces) and takes the highest-logit allowed token (first index on ties, like argmax). The kept token is
++// accepted into the grammar state here: every pick() result is consumed by the caller (draft verification stops
++// at the first mismatch, after consuming that pick), so the state stays in step with the stream's text.
++static llama_token grammar_pick(const float * logits, int n_vocab, llama_sampler * g, llama_token t, int * forced) {
++    llama_token_data one = {t, logits[t], 0.0f};
++    llama_token_data_array a1 = {&one, 1, -1, false};
++    llama_sampler_apply(g, &a1);
++    if (!std::isfinite(a1.data[0].logit)) {
++        static std::vector<llama_token_data> cand;  // decode loop is single-threaded
++        cand.resize(n_vocab);
++        for (int i = 0; i < n_vocab; ++i) cand[i] = {i, logits[i], 0.0f};
++        llama_token_data_array a = {cand.data(), (size_t) n_vocab, -1, false};
++        llama_sampler_apply(g, &a);
++        llama_token best = -1;
++        float bv = -INFINITY;
++        for (size_t i = 0; i < a.size; ++i)
++            if (std::isfinite(a.data[i].logit) && (best < 0 || a.data[i].logit > bv)) { best = a.data[i].id; bv = a.data[i].logit; }
++        if (best < 0) return t;  // grammar has no continuation (cannot happen before the stop rule fires): stay greedy, no accept
++        if (best != t && forced) (*forced)++;
++        t = best;
++    }
++    llama_sampler_accept(g, t);
++    return t;
++}
++
++static llama_token pick(const float * logits, int n_vocab, const Scanner & sc, const StreamOpt * o, int * forced) {
++    llama_token t = pick_label(logits, n_vocab, sc, o, forced);
++    if (o && o->grammar) t = grammar_pick(logits, n_vocab, o->grammar.get(), t, forced);
++    return t;
++}
++
++// HTPD_GRAMMAR=2: the role's grammar file, chosen by the system prompt's "You are the <Role> agent" line. Parsed once
++// per file into a prototype sampler; each stream gets a clone (fresh state).
++static std::shared_ptr<llama_sampler> grammar_for(const std::string & prompt, const std::string * req_gbnf) {
++    static std::map<std::string, std::shared_ptr<llama_sampler>> protos;  // GBNF text -> parsed prototype
++    std::string gbnf;
++    if (req_gbnf) gbnf = *req_gbnf;
++    else if (g_grammar >= 2 && !g_grammar_dir.empty()) {
++        static const std::pair<const char *, const char *> roles[] = {
++            {"You are the Air Quality agent", "air_quality"}, {"You are the Water agent", "water"},
++            {"You are the Power agent", "power"}, {"You are the Occupancy agent", "occupancy"},
++            {"You are the Weather agent", "weather"}, {"You are the HVAC agent", "hvac"}};
++        static std::map<std::string, std::string> files;
++        for (auto & r : roles) {
++            if (prompt.find(r.first) == std::string::npos) continue;
++            auto it = files.find(r.second);
++            if (it == files.end()) {
++                std::string path = g_grammar_dir + "/agent_v2_" + r.second + ".gbnf", s;
++                if (FILE * f = fopen(path.c_str(), "rb")) {
++                    char buf[4096];
++                    size_t k;
++                    while ((k = fread(buf, 1, sizeof buf, f)) > 0) s.append(buf, k);
++                    fclose(f);
++                } else fprintf(stderr, "htpd: grammar file %s missing - role unconstrained\n", path.c_str());
++                it = files.emplace(r.second, s).first;
++            }
++            gbnf = it->second;
++            break;
++        }
++    }
++    if (gbnf.empty()) return nullptr;
++    auto it = protos.find(gbnf);
++    if (it == protos.end()) {
++        llama_sampler * p = llama_sampler_init_grammar(g_vocab, gbnf.c_str(), "root");
++        if (!p) fprintf(stderr, "htpd: grammar failed to parse - stream unconstrained\n");
++        it = protos.emplace(gbnf, std::shared_ptr<llama_sampler>(p, [](llama_sampler * s) { if (s) llama_sampler_free(s); })).first;
++    }
++    if (!it->second) return nullptr;
++    return std::shared_ptr<llama_sampler>(llama_sampler_clone(it->second.get()), llama_sampler_free);
++}
++
+ // run prompts as parallel sequences 0..n-1 on ctx; returns per-prompt outputs and prefill time
+ // ------------------------------------------------------------------ streaming ("stream":true)
+ //
+@@ -689,7 +772,7 @@ static std::vector<Out> run_batch(llama_context * ctx, const std::vector<std::st
+         if (out[s].stop == "abort") { n_abort++; fprintf(stderr, "htpd: stream %d aborted after %d tokens: %s\n", s, out[s].tokens, out[s].abort_why.c_str()); }
+         n_forced += out[s].forced;
+     }
+-    if (g_trie || g_json_abort) fprintf(stderr, "htpd: %d streams, %d aborted, %d forced tokens\n", n, n_abort, n_forced);
++    if (g_trie || g_json_abort || g_grammar) fprintf(stderr, "htpd: %d streams, %d aborted, %d forced tokens\n", n, n_abort, n_forced);
+     return out;
+ }
+ 
+@@ -871,6 +954,8 @@ int main(int argc, char ** argv) {
+     g_json_abort = env_int("HTPD_JSON_ABORT", 0);
+     g_abort_maxval = (size_t) std::max(1, env_int("HTPD_JSON_ABORT_MAXVAL", 48));
+     g_trie = env_int("HTPD_PATTERN_TRIE", 0);
++    g_grammar = env_int("HTPD_GRAMMAR", 0);
++    if (const char * gd = getenv("HTPD_GRAMMAR_DIR"); gd && *gd) g_grammar_dir = gd;
+     g_role_draft = env_int("HTPD_ROLE_DRAFT", 0) != 0;
+     g_logits_read = env_int("HTPD_LOGITS_READ", 0) != 0;
+     if (const char * tk = getenv("HTPD_TRIE_KEYS"); tk && *tk) {
+@@ -1017,20 +1102,25 @@ int main(int argc, char ** argv) {
+                 } else {
+                     // per-stream options (agents only)
+                     std::vector<StreamOpt> opts;
+-                    if (agents && (g_trie || g_json_abort || g_role_draft)) {
++                    if (agents && (g_trie || g_json_abort || g_role_draft || g_grammar)) {
+                         opts.resize(prompts.size());
+                         // request draft tables, cached by text set; cleared between requests only (pointers)
+                         static std::map<std::string, htpd::NgramTable> req_tables;
+                         if (req_tables.size() >= 16) req_tables.clear();
+                         const JVal * labels = req.get("labels");
+                         const JVal * drafts = req.get("draft");
++                        const JVal * grammars = req.get("grammar");  // v9: per-prompt GBNF strings (null = none)
+                         for (size_t i = 0; i < prompts.size(); ++i) {
++                            if (g_grammar) {
++                                const JVal * gi = grammars && grammars->type == JVal::ARR && i < grammars->arr.size() ? &grammars->arr[i] : nullptr;
++                                opts[i].grammar = grammar_for(prompts[i], gi && gi->type == JVal::STR && !gi->str.empty() ? &gi->str : nullptr);
++                            }
+                             const JVal * li = labels && labels->type == JVal::ARR && i < labels->arr.size() ? &labels->arr[i] : nullptr;
+                             // request labels win; otherwise the enum lists the prompt itself states
+                             Labels req_l = htpd::labels_from_json(li);
+                             const bool from_req = !req_l.empty();
+                             opts[i].labels = from_req ? req_l
+-                                                      : htpd::labels_from_prompt(prompts[i], {"pattern", "status", "likely_cause", "action"});
++                                                      : htpd::labels_from_prompt(prompts[i], {"pattern", "status", "likely_cause", "fault_kind", "action"});
+                             if (g_trie >= 1 && from_req) opts[i].trie_labels = req_l;
+                             else if (g_trie >= 2)
+                                 for (auto & k : g_trie_keys)

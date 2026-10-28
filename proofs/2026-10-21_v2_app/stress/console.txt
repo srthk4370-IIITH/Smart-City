@@ -1,0 +1,159 @@
+== baseline ==
+  [PASS] baseline: backend alive
+  [PASS] baseline: NPU daemon alive
+  [PASS] baseline: board below 80 C (52 C)
+  [PASS] baseline: thermal guard not tripped
+
+== chaos (simultaneous): all sensors abnormal at once, 2 round(s) ==
+  [PASS] chaos simultaneous #1: incident raised
+  [PASS] chaos simultaneous #1: analysis finished
+  [PASS] chaos simultaneous #1: 14 NPU agents + synthesizer, 1 incident(s), 32.5s
+  [PASS] chaos simultaneous #1: cross-domain report passed policy
+  [PASS] chaos simultaneous #1: report names several domains
+  [PASS] chaos simultaneous #1: every agent passed policy
+  [PASS] chaos simultaneous #1: backend alive
+  [PASS] chaos simultaneous #1: NPU daemon alive
+  [FAIL] chaos simultaneous #1: board below 80 C (81 C)  - 81 C
+  [PASS] chaos simultaneous #1: thermal guard not tripped
+  [PASS] chaos simultaneous #2: incident raised
+  [PASS] chaos simultaneous #2: analysis finished
+  [PASS] chaos simultaneous #2: 13 NPU agents + synthesizer, 1 incident(s), 26.4s
+  [PASS] chaos simultaneous #2: cross-domain report passed policy
+  [PASS] chaos simultaneous #2: report names several domains
+  [FAIL] chaos simultaneous #2: every agent passed policy  - [["cause 'acidic_condition' not allowed for water", "action '' not whitelisted"]]
+  [PASS] chaos simultaneous #2: backend alive
+  [PASS] chaos simultaneous #2: NPU daemon alive
+  [FAIL] chaos simultaneous #2: board below 80 C (82 C)  - 82 C
+  [FAIL] chaos simultaneous #2: thermal guard not tripped  - True
+
+== chaos (staggered): all sensors abnormal at once, 1 round(s) ==
+  [PASS] chaos staggered #1: incident raised
+  [PASS] chaos staggered #1: analysis finished
+  [PASS] chaos staggered #1: 13 NPU agents + synthesizer, 1 incident(s), 26.6s
+  [PASS] chaos staggered #1: cross-domain report passed policy
+  [PASS] chaos staggered #1: report names several domains
+  [FAIL] chaos staggered #1: every agent passed policy  - [["cause 'acidic_condition' not allowed for water", "action '' not whitelisted"]]
+  [PASS] chaos staggered #1: backend alive
+  [PASS] chaos staggered #1: NPU daemon alive
+  [FAIL] chaos staggered #1: board below 80 C (91 C)  - 91 C
+  [PASS] chaos staggered #1: thermal guard not tripped
+
+== sensor faults ==
+  [PASS] stuck sensor: analysed without errors
+  [PASS] one-reading spike is reported as a spike
+  [PASS] flapping sensor does not satisfy the 8-reading gate
+
+== every scenario in Mode 3 ==
+  [PASS] M3 ventilation_failure: injectable
+  [PASS] M3 ventilation_failure: incident raised
+  [PASS] M3 ventilation_failure: finished
+  [PASS] M3 ventilation_failure: state done
+  [PASS] M3 ventilation_failure: report passed policy
+  [PASS] M3 pm_spike: injectable
+  [PASS] M3 pm_spike: incident raised
+  [PASS] M3 pm_spike: finished
+  [PASS] M3 pm_spike: state done
+  [PASS] M3 pm_spike: report passed policy
+  [PASS] M3 power_throttling: injectable
+  [PASS] M3 power_throttling: incident raised
+  [PASS] M3 power_throttling: finished
+  [PASS] M3 power_throttling: state done
+  [PASS] M3 power_throttling: report passed policy
+  [PASS] M3 load_surge: injectable
+  [PASS] M3 load_surge: incident raised
+  [PASS] M3 load_surge: finished
+  [PASS] M3 load_surge: state done
+  [PASS] M3 load_surge: report passed policy
+  [PASS] M3 tank_leak: injectable
+  [PASS] M3 tank_leak: incident raised
+  [PASS] M3 tank_leak: finished
+  [PASS] M3 tank_leak: state done
+  [PASS] M3 tank_leak: report passed policy
+  [PASS] M3 pump_cycling: injectable
+  [PASS] M3 pump_cycling: incident raised
+  [PASS] M3 pump_cycling: finished
+  [PASS] M3 pump_cycling: state done
+  [PASS] M3 pump_cycling: report passed policy
+  [PASS] M3 stuck_sensor: injectable
+  [PASS] M3 stuck_sensor: incident raised
+  [PASS] M3 stuck_sensor: finished
+  [PASS] M3 stuck_sensor: state done
+  [PASS] M3 stuck_sensor: report passed policy
+  [PASS] M3 heat_buildup: injectable
+  [PASS] M3 heat_buildup: incident raised
+  [PASS] M3 heat_buildup: finished
+  [PASS] M3 heat_buildup: state done
+  [PASS] M3 heat_buildup: report passed policy
+  [PASS] M3 off_hours_presence: injectable
+  [PASS] M3 off_hours_presence: incident raised
+  [PASS] M3 off_hours_presence: finished
+  [PASS] M3 off_hours_presence: state done
+  [PASS] M3 off_hours_presence: report passed policy
+  [PASS] M3 crowded_room: injectable
+  [PASS] M3 crowded_room: incident raised
+  [PASS] M3 crowded_room: finished
+  [PASS] M3 crowded_room: state done
+  [PASS] M3 crowded_room: report passed policy
+  [PASS] M3 crowded_room: cross-domain incident (>=2 flagged sensors)
+
+== every scenario in Mode 2 ==
+  [PASS] M2 ventilation_failure: injectable
+  [PASS] M2 ventilation_failure: incident raised
+  [PASS] M2 ventilation_failure: finished
+  [PASS] M2 ventilation_failure: state done
+  [PASS] M2 ventilation_failure: report passed policy
+  [PASS] M2 pm_spike: injectable
+  [PASS] M2 pm_spike: incident raised
+  [PASS] M2 pm_spike: finished
+  [PASS] M2 pm_spike: state done
+  [PASS] M2 pm_spike: report passed policy
+  [PASS] M2 power_throttling: injectable
+  [PASS] M2 power_throttling: incident raised
+  [PASS] M2 power_throttling: finished
+  [PASS] M2 power_throttling: state done
+  [PASS] M2 power_throttling: report passed policy
+  [PASS] M2 load_surge: injectable
+  [PASS] M2 load_surge: incident raised
+  [PASS] M2 load_surge: finished
+  [PASS] M2 load_surge: state done
+  [PASS] M2 load_surge: report passed policy
+  [PASS] M2 tank_leak: injectable
+  [PASS] M2 tank_leak: incident raised
+  [PASS] M2 tank_leak: finished
+  [PASS] M2 tank_leak: state done
+  [PASS] M2 tank_leak: report passed policy
+  [PASS] M2 pump_cycling: injectable
+  [PASS] M2 pump_cycling: incident raised
+  [PASS] M2 pump_cycling: finished
+  [PASS] M2 pump_cycling: state done
+  [PASS] M2 pump_cycling: report passed policy
+  [PASS] M2 stuck_sensor: injectable
+  [PASS] M2 stuck_sensor: incident raised
+  [PASS] M2 stuck_sensor: finished
+  [PASS] M2 stuck_sensor: state done
+  [PASS] M2 stuck_sensor: report passed policy
+  [PASS] M2 heat_buildup: injectable
+  [PASS] M2 heat_buildup: incident raised
+  [PASS] M2 heat_buildup: finished
+  [PASS] M2 heat_buildup: state done
+  [PASS] M2 heat_buildup: report passed policy
+  [PASS] M2 off_hours_presence: injectable
+  [PASS] M2 off_hours_presence: incident raised
+  [PASS] M2 off_hours_presence: finished
+  [PASS] M2 off_hours_presence: state done
+  [PASS] M2 off_hours_presence: report passed policy
+  [PASS] M2 crowded_room: injectable
+  [PASS] M2 crowded_room: incident raised
+  [PASS] M2 crowded_room: finished
+  [PASS] M2 crowded_room: state done
+  [PASS] M2 crowded_room: report passed policy
+
+==== 133/139 checks passed in 11.5 min ====
+Mode 3 analysis: n=15 min 1.8s  median 3.1s  max 32.5s
+  FAIL chaos simultaneous #1: board below 80 C (81 C): 81 C
+  FAIL chaos simultaneous #2: every agent passed policy: [["cause 'acidic_condition' not allowed for water", "action '' not whitelisted"]]
+  FAIL chaos simultaneous #2: board below 80 C (82 C): 82 C
+  FAIL chaos simultaneous #2: thermal guard not tripped: True
+  FAIL chaos staggered #1: every agent passed policy: [["cause 'acidic_condition' not allowed for water", "action '' not whitelisted"]]
+  FAIL chaos staggered #1: board below 80 C (91 C): 91 C
+report: C:\Users\hp\Desktop\qidk\Code\smart-city-edge-agent\app\tools\stress_report.json

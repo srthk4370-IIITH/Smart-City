@@ -1,0 +1,46 @@
+[
+ {
+  "name": "v2_3b_q4_0",
+  "path": "~/smartcity_runs/agents_v2/post/gguf/ft_v2_q4_0.gguf",
+  "q4_gb": 2.8,
+  "arch": {
+   "deployable": "yes",
+   "family": "llama (Llama-3.2-3B + v2 domain-agent LoRA, merged; imatrix Q4_0)",
+   "licence": "Llama 3.2 Community License",
+   "note": "deployed today in htpd; a reasoner LoRA on the same base is the P0 LoRA path (one model, one NPU client)"
+  }
+ },
+ {
+  "name": "llama32_3b_base_q4_0",
+  "path": "~/models/llama-3.2-3b-instruct-gguf/llama-3.2-3b-instruct-q4_0.gguf",
+  "q4_gb": 1.92,
+  "arch": {
+   "deployable": "conditional",
+   "family": "llama (Meta Llama-3.2-3B-Instruct, Q4_0 requantised from the P0 Q8_0)",
+   "licence": "Llama 3.2 Community License",
+   "note": "same arch/htpd path as v2; as a reasoner it is either a second model (time-shared) or the base under two LoRAs (agents + reasoner), cf. P0 host test A"
+  }
+ },
+ {
+  "name": "qwen35_4b_q4_0",
+  "path": "~/models/qwen3.5-4b-gguf/qwen3.5-4b-q4_0.gguf",
+  "q4_gb": 2.61,
+  "arch": {
+   "deployable": "conditional",
+   "family": "qwen35 (Qwen/Qwen3.5-4B, hybrid Gated DeltaNet + attention, 248k vocab)",
+   "licence": "Apache-2.0",
+   "note": "qwen35 arch and GATED_DELTA_NET/SSM_CONV HTP ops exist in our llama.cpp tree but are untested in htpd; recurrent state breaks htpd's per-stream prefix cache; must be time-shared with the 3B (unload agents) per HANDBOOK 2.27/2.37"
+  }
+ },
+ {
+  "name": "qwen35_2b_q4_0",
+  "path": "~/models/qwen3.5-2b-gguf/qwen3.5-2b-q4_0.gguf",
+  "q4_gb": 1.24,
+  "arch": {
+   "deployable": "conditional",
+   "family": "qwen35 (Qwen/Qwen3.5-2B)",
+   "licence": "Apache-2.0",
+   "note": "as Qwen3.5-4B (untested in htpd, time-shared)"
+  }
+ }
+]

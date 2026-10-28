@@ -1,0 +1,47 @@
+Early alert + refined re-analysis - laptop verification, 2026-10-16
+=====================================================================
+What: every finished Mode-3 incident is re-analysed on the windows that end 18 readings (1.5 h) and
+36 readings (3 h) of SENSOR time after its original window end (backend/refine.go). Same agents,
+synthesizer, policy gate, fallbacks and severity/title as the early analysis (reason.go analyse()).
+Early spike/dip that the refined window reads as steady -> previous finding kept ("event over").
+Why: proofs/2026-10-16_placement_study/RESULTS.md (pattern accuracy 42% at 40 min -> 67% at 1.5 h -> 88% at 3 h).
+
+How (no device touched, no NPU): host backend device/edge-agent-host (built by ~/bld.sh) in WSL with
+-mock (fake LLM: every agent answers stable/normal), fresh empty state dir, web/ symlinked to
+app/device/web. Headless Chrome over CDP (scripts/shoot2.mjs), 360x780 @2x. Launch: scripts/run2.sh.
+
+Real pipeline (no rewrite):
+  INC-0001  CO2 set to 2600 via /api/sensors, 2 s polls (demo default). inc0001_stage_poll_2s.log:
+            early done 18:10:33 (window end 09:50 sensor time) -> REFINED 1.5 h 18:11:10 (windows to 11:20)
+            -> REFINED 3 h 18:11:47 (windows to 12:50): ~37 s wall per stage, ~74 s alert -> 3 h.
+  INC-0002  PM2.5 set to max, 1 s polls, then set back to normal right after the early alert (the
+            refinements re-read it anyway). The report page was left OPEN; it switched to REFINED 1.5 h
+            and REFINED 3 h by itself (SSE "incident" event), see checks.json timeline.
+  01_early_detail_top          EARLY badge + "Next refinement at 17:55 sensor time"
+  02_refined_1_5h_detail_top   REFINED 1.5 h + next refinement at 19:25
+  03_refined_3h_detail_top     REFINED 3 h, no next line
+  04_history_real              History fold: 3 revisions, "Same findings" (mock agents never change)
+  05_refined_detail_full       whole page
+  06_sensor_sheet_real         sheet: refined window 15:30 -> 19:25 (event at the start of the window)
+  07_list_refined_marker       list rows: "Refined 3 h" marker, colour = current severity (FINE)
+  incident_*_api.json          raw API JSON (revisions, refine_stage, next_refine_sim, timeline)
+Synthetic (fetch interceptor rewrites INC-0002's JSON, because the mock agents cannot change their
+answer; the real backend behaviour for these cases is covered by Go tests, go_test_output.txt):
+  08_list_synthetic_changed    row now WARNING (refined severity colours the row)
+  09_history_synthetic_...     early spike/critical -> 1.5 h "kept early spike: event over" -> 3 h
+                               "spike/critical -> step increase/warning"
+  10_sensor_sheet_..._was_early "Was spike / Critical at the early stage"
+  11/12_..._kept               1.5 h stage with the kept spike: badge, next refinement, sheet note
+  13_light_synthetic_detail    light theme
+checks.json: documentElement.scrollWidth == 360 on every screen, no element past the right edge,
+no console errors/exceptions.
+
+Go tests (refine_test.go, real engine + pipeline, scripted mock agents): due at +18 and +36 readings
+(not at +17/+35, never again after 3 h), window ends exactly at the stage time, refined finding
+replaces early one and severity/title follow, spike->stable kept with the early window, spike->step
+replaced, approval + note untouched, event-gate state (alerted/reportedSev) untouched, queue order
+alert > requested job > refinement, a running refinement steps aside when an alert arrives and
+completes after it, revisions survive a store reload, old incidents without the fields load, and a
+restarted sensor history drops due refinements with a note. Full suite passes.
+
+NOT verified here: real NPU (htpd/Genie) timing, thermal behaviour, Android WebView.

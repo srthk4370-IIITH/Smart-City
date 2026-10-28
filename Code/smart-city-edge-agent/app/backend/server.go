@@ -33,45 +33,156 @@ type Scenario struct {
 	Targets     []Target `json:"targets"`
 }
 
+// Demo events last until "clear" (Hold), as a real fault does, so the 1.5 h and 3 h refinements read a
+// live event (team decision 2026-10-16). Spikes stay transient: a spike is over by nature.
 var Scenarios = []Scenario{
 	{"ventilation_failure", "Ventilation failure (KH level 03)", "CO2 rises exponentially in a room on KH level 03.", []string{"air_quality"},
-		[]Target{{"SR-AQ-KH03-03", "co2", "exp_rise", 30, 1300, false, nil}}},
+		[]Target{{"SR-AQ-KH03-03", "co2", "exp_rise", 30, 1300, true, nil}}},
 	{"pm_spike", "Outdoor PM2.5 spike", "Short burst of PM2.5 at the VN outdoor air station (e.g. nearby burning).", []string{"air_quality"},
 		[]Target{{"AQ-VN90-00", "pm25", "spike", 8, 120, false, []string{"AQ-KN00-00"}}}},
 	{"power_throttling", "Load hits a ceiling (throttling)", "Room load on KH level 04 climbs and then flat-lines at a cap.", []string{"power"},
-		[]Target{{"SR-EM-KH04-01", "power_kw", "throttle", 30, 18, false, nil}}},
+		[]Target{{"SR-EM-KH04-01", "power_kw", "throttle", 30, 18, true, nil}}},
 	{"load_surge", "Load surge spike (KH level 04)", "Short power spike on a KH level-04 room energy meter.", []string{"power"},
 		[]Target{{"SR-EM-KH04-02", "power_kw", "spike", 8, 30, false, []string{"SR-EM-KH04-01", "SR-EM-KH04-00", "EM-CR-SB00-00"}}}},
 	{"tank_leak", "Tank level falling (possible leak)", "KH tank level drains steadily without refill.", []string{"water"},
 		[]Target{{"WM-WL-KH98-00", "level", "ramp_down", 36, 45, true, nil}}},
 	{"pump_cycling", "Pump cycling (tank level)", "The KH tank level swings up and down repeatedly as the pump cycles on and off.", []string{"water"},
-		[]Target{{"WM-WL-KH00-00", "level", "oscillate", 36, 8, false, []string{"WM-WL-KH98-00"}}}},
+		[]Target{{"WM-WL-KH00-00", "level", "oscillate", 36, 8, true, []string{"WM-WL-KH98-00"}}}},
 	{"stuck_sensor", "Stuck temperature sensor", "Indoor temperature freezes at one value.", []string{"air_quality"},
-		[]Target{{"SR-AQ-KH00-02", "temp", "flatline", 30, 0, false, []string{"SR-AQ-KH03-03"}}}},
+		[]Target{{"SR-AQ-KH00-02", "temp", "flatline", 30, 0, true, []string{"SR-AQ-KH03-03"}}}},
 	{"heat_buildup", "Heat build-up", "Outdoor temperature climbs steadily at the rooftop station.", []string{"weather"},
-		[]Target{{"WE-VN04-00", "temp", "ramp_up", 36, 8, false, nil}}},
+		[]Target{{"WE-VN04-00", "temp", "ramp_up", 36, 8, true, nil}}},
 	{"off_hours_presence", "Presence at night", "A KH room reports occupancy (best demonstrated when the replay clock is 22:00-06:00).", []string{"occupancy"},
-		[]Target{{"SR-OC-GW-KH95-22", "occ", "set", 24, 1, false, []string{"SR-OC-GW-KH95-01"}}}},
+		[]Target{{"SR-OC-GW-KH95-22", "occ", "set", 24, 1, true, []string{"SR-OC-GW-KH95-01"}}}},
 	{"crowded_room", "Crowded room (cross-domain)", "Occupancy turns on, CO2 climbs and room power steps up together.", []string{"occupancy", "air_quality", "power"},
-		[]Target{{"SR-OC-GW-KH95-01", "occ", "set", 36, 1, false, nil},
+		[]Target{{"SR-OC-GW-KH95-01", "occ", "set", 36, 1, true, nil},
 			// SR-AQ-KH95-00 is not present in every topology; fall back to the KH03 AQ node so the
 			// cross-domain scenario stays injectable (PickTargets only remaps via Alt).
-			{"SR-AQ-KH95-00", "co2", "ramp_up", 36, 900, false, []string{"SR-AQ-KH03-03"}},
-			{"SR-EM-KH04-01", "power_kw", "step_up", 36, 6, false, []string{"SR-EM-KH04-02", "SR-EM-KH04-00"}}}},
+			{"SR-AQ-KH95-00", "co2", "ramp_up", 36, 900, true, []string{"SR-AQ-KH03-03"}},
+			{"SR-EM-KH04-01", "power_kw", "step_up", 36, 6, true, []string{"SR-EM-KH04-02", "SR-EM-KH04-00"}}}},
 }
 
 // ---------------------------------------------------------------- SSE hub
 type Hub struct {
 	mu   sync.Mutex
 	subs map[chan []byte]bool
+	// live text of every NPU call that is streaming or streamed recently, so a dashboard that
+	// opens an incident mid-run (or reconnects, or dropped an event) can catch up: /api/streams
+	streams map[string]*liveStream
+	batches map[string]liveBatch
 }
 
-func NewHub() *Hub { return &Hub{subs: map[chan []byte]bool{}} }
+// liveStream is one NPU call's text so far. Seq numbers its chunks (1 = first after a reset); a
+// client that sees a gap in seq re-reads the whole text from /api/streams.
+type liveStream struct {
+	Incident string    `json:"-"`
+	Ref      string    `json:"ref"`
+	Refine   bool      `json:"refine,omitempty"`
+	Text     string    `json:"text"`
+	Seq      int       `json:"seq"`
+	at       time.Time // last chunk
+}
+
+type liveBatch struct {
+	Refs   []string `json:"refs"`
+	Refine bool     `json:"refine,omitempty"`
+	AgoMs  int64    `json:"ago_ms"`
+	at     time.Time
+}
+
+const (
+	hubSubBuf     = 1024             // events queued per dashboard before it counts as stalled
+	liveStreamMax = 16 << 10         // bytes kept per call (an agent answer is ~300, a report ~1.5k)
+	liveStreamTTL = 30 * time.Minute // forget calls this long after their last chunk
+)
+
+func NewHub() *Hub {
+	return &Hub{subs: map[chan []byte]bool{}, streams: map[string]*liveStream{}, batches: map[string]liveBatch{}}
+}
+
+// track records token/rtoken/batch events and stamps each token chunk with its seq. Caller holds h.mu.
+func (h *Hub) track(kind string, data any) any {
+	m, ok := data.(map[string]any)
+	if !ok {
+		return data
+	}
+	inc, _ := m["incident"].(string)
+	now := time.Now()
+	if len(h.streams) > 0 && len(h.streams)%64 == 0 {
+		for k, s := range h.streams {
+			if now.Sub(s.at) > liveStreamTTL {
+				delete(h.streams, k)
+			}
+		}
+		for k, b := range h.batches {
+			if now.Sub(b.at) > liveStreamTTL {
+				delete(h.batches, k)
+			}
+		}
+	}
+	switch kind {
+	case "batch":
+		refs, _ := m["refs"].([]string)
+		refine, _ := m["refine"].(bool)
+		h.batches[inc+"|"+fmt.Sprint(refine)] = liveBatch{Refs: refs, Refine: refine, at: now}
+		return data
+	case "token", "rtoken":
+	default:
+		return data
+	}
+	ref, _ := m["ref"].(string)
+	text, _ := m["text"].(string)
+	reset, _ := m["reset"].(bool)
+	key := kind + "|" + inc + "|" + ref
+	s := h.streams[key]
+	if s == nil || reset {
+		s = &liveStream{Incident: inc, Ref: ref, Refine: kind == "rtoken"}
+		h.streams[key] = s
+	}
+	s.Seq++
+	if len(s.Text)+len(text) <= liveStreamMax {
+		s.Text += text
+	}
+	s.at = now
+	out := make(map[string]any, len(m)+1)
+	for k, v := range m {
+		out[k] = v
+	}
+	out["seq"] = s.Seq
+	return out
+}
+
+// Streams is what /api/streams returns for one incident: live text per call, and the latest batch.
+func (h *Hub) Streams(inc string) map[string]any {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	live, refine := []liveStream{}, []liveStream{}
+	for _, s := range h.streams {
+		if s.Incident != inc {
+			continue
+		}
+		if s.Refine {
+			refine = append(refine, *s)
+		} else {
+			live = append(live, *s)
+		}
+	}
+	out := map[string]any{"incident": inc, "streams": live, "refine_streams": refine}
+	for _, rf := range []bool{false, true} {
+		if b, ok := h.batches[inc+"|"+fmt.Sprint(rf)]; ok {
+			b.AgoMs = time.Since(b.at).Milliseconds()
+			out[map[bool]string{false: "batch", true: "refine_batch"}[rf]] = b
+		}
+	}
+	return out
+}
 
 func (h *Hub) Publish(kind string, data any) {
+	// one critical section: seq stamping and queueing happen in the same order for every client
+	h.mu.Lock()
+	data = h.track(kind, data)
 	b, _ := json.Marshal(data)
 	msg := []byte(fmt.Sprintf("event: %s\ndata: %s\n\n", kind, b))
-	h.mu.Lock()
 	for c := range h.subs {
 		select {
 		case c <- msg:
@@ -88,8 +199,11 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	c := make(chan []byte, 64)
+	w.Header().Set("Cache-Control", "no-cache, no-transform")
+	w.Header().Set("X-Accel-Buffering", "no") // never let a proxy in between hold the stream back
+	// A batched agent run streams 10 answers at once (one event per stream per decode step); 64
+	// slots could overflow during a brief WebView stall and Publish drops what does not fit
+	c := make(chan []byte, hubSubBuf)
 	h.mu.Lock()
 	h.subs[c] = true
 	h.mu.Unlock()
@@ -114,12 +228,13 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // ---------------------------------------------------------------- HTTP API
 type Server struct {
-	eng   *Engine
-	rsn   *Reasoner
-	genie *GenieRunner
-	hub   *Hub
-	dir   string
-	start time.Time
+	eng    *Engine
+	rsn    *Reasoner
+	genie  *GenieRunner
+	hub    *Hub
+	health *HealthTracker
+	dir    string
+	start  time.Time
 }
 
 func writeJSON(w http.ResponseWriter, v any) {
@@ -247,6 +362,9 @@ func (s *Server) routes() http.Handler {
 			rank := map[string]int{"critical": 3, "warning": 2, "sensor_fault": 1}
 			worst := "normal"
 			for _, st := range list {
+				if st.Quality == "maintenance" { // out of service: shown, never alarmed
+					continue
+				}
 				if rank[st.Status] > rank[worst] {
 					worst = st.Status
 				}
@@ -254,6 +372,14 @@ func (s *Server) routes() http.Handler {
 			roles[role] = map[string]any{"status": worst, "sensors": list}
 		}
 		writeJSON(w, map[string]any{"sim_time": sim, "roles": roles})
+	})
+	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
+		ht := s.health
+		if ht == nil { // a Server built without one (tests): no trend memory
+			ht = NewHealthTracker()
+		}
+		hv, _ := ht.Update(s.eng, s.rsn)
+		writeJSON(w, hv)
 	})
 	mux.HandleFunc("/api/series", func(w http.ResponseWriter, r *http.Request) {
 		h, _ := strconv.Atoi(r.URL.Query().Get("hours"))
@@ -283,6 +409,7 @@ func (s *Server) routes() http.Handler {
 	})
 	mux.HandleFunc("/api/incidents", func(w http.ResponseWriter, r *http.Request) {
 		list := s.rsn.List()
+		groups := s.rsn.Groups(list) // repeat incidents collapse into one card (workflow.go)
 		// ?limit=N returns only the newest N (the Android watchdog polls every 5 s and needs ~20)
 		if n, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && n > 0 && n < len(list) {
 			list = list[:n]
@@ -296,17 +423,49 @@ func (s *Server) routes() http.Handler {
 			TotalMs                                                  float64
 		}
 		out := []map[string]any{}
+		s.rsn.mu.RLock() // the workflow fields change under the reasoner lock (operator clicks, workflow tick)
 		for _, i := range list {
 			lab := i.Mode1.Label
 			if i.Final != nil && i.Final.Parsed != nil {
 				lab = i.Final.Parsed.Label
 			}
+			var sensors []string
+			pattern := ""
+			for _, sr := range i.Sensors {
+				if !sr.Context {
+					sensors = append(sensors, sr.Node+" "+sr.Metric)
+					if pattern == "" {
+						pattern = sr.Rule.Pattern
+					}
+				}
+			}
+			open, total := 0, 0
+			for _, st := range i.Steps {
+				if st.State != "withdrawn" {
+					total++
+				}
+				if st.State == "open" {
+					open++
+				}
+			}
+			var createdUnix int64
+			if t := wallOf(i); !t.IsZero() {
+				createdUnix = t.Unix()
+			}
+			g := groups[i.ID]
 			out = append(out, map[string]any{"id": i.ID, "state": i.State, "severity": i.Severity, "severity_final": i.SeverityFinal,
 				"title": i.Title, "mode": i.Mode,
 				"created_sim": i.CreatedSim, "created_sim_ist": time.Unix(i.CreatedSim, 0).In(IST).Format("Mon 15:04"),
-				"created_wall": i.CreatedWall, "roles": i.Roles, "injected": i.Injected, "label": lab, "approval": i.Approval,
-				"npu_calls": i.NPUCalls, "total_ms": i.TotalMs})
+				"created_wall": i.CreatedWall, "created_unix": createdUnix, "roles": i.Roles, "injected": i.Injected, "label": lab, "approval": i.Approval,
+				"npu_calls": i.NPUCalls, "total_ms": i.TotalMs,
+				"refine_stage": i.RefineStage, "next_refine_sim": i.NextRefineSim, "revisions": len(i.Revisions),
+				// approval lifecycle (workflow.go)
+				"workflow": wfOf(i), "owner": i.Owner, "acked_at": i.AckedAt, "resolved_at": i.ResolvedAt, "closed_at": i.ClosedAt,
+				"outcome": i.Outcome, "suggest_outcome": i.SuggestOutcome, "worse_at": i.WorseAt, "reminded": i.Reminded,
+				"steps_open": open, "steps_total": total, "sensors": sensors, "pattern": pattern,
+				"group": g.Lead, "group_size": g.Size})
 		}
+		s.rsn.mu.RUnlock()
 		writeJSON(w, out)
 	})
 	mux.HandleFunc("/api/incidents/", func(w http.ResponseWriter, r *http.Request) {
@@ -316,13 +475,55 @@ func (s *Server) routes() http.Handler {
 			http.Error(w, "not found", 404)
 			return
 		}
-		if len(parts) == 2 && r.Method == http.MethodPost {
+		// GET {id}/events: the append-only decision log; GET {id}/history: earlier incidents, steps,
+		// outcomes and maintenance on the same sensors (workflow.go)
+		if len(parts) == 2 && r.Method == http.MethodGet && (parts[1] == "events" || parts[1] == "history") {
+			if parts[1] == "events" {
+				s.rsn.mu.RLock()
+				ev := append([]IncEvent{}, inc.Events...)
+				s.rsn.mu.RUnlock()
+				writeJSON(w, map[string]any{"id": inc.ID, "events": ev})
+				return
+			}
+			h, err := s.rsn.History(inc.ID)
+			if err != nil {
+				wfHTTPError(w, err)
+				return
+			}
+			writeJSON(w, map[string]any{"id": inc.ID, "sensors": h})
+			return
+		}
+		if (len(parts) == 2 || (len(parts) == 3 && parts[1] == "steps")) && r.Method == http.MethodPost {
 			var body struct {
-				Note string `json:"note"`
+				Note     string `json:"note"`
+				Operator string `json:"operator"`
+				Outcome  string `json:"outcome"`
+				State    string `json:"state"`
+				Text     string `json:"text"`
 			}
 			readBody(r, &body)
 			if len(body.Note) > 500 {
 				http.Error(w, "note too long (max 500 characters)", 400)
+				return
+			}
+			// the approval lifecycle (workflow.go): acknowledge, per-step checklist, close with an outcome
+			if len(parts) == 3 || parts[1] == "ack" || parts[1] == "steps" || parts[1] == "close" {
+				var err error
+				switch {
+				case len(parts) == 3:
+					_, err = s.rsn.SetStep(inc.ID, parts[2], body.Operator, body.State, body.Note)
+				case parts[1] == "ack":
+					_, err = s.rsn.Ack(inc.ID, body.Operator)
+				case parts[1] == "steps":
+					_, err = s.rsn.AddStep(inc.ID, body.Operator, body.Text)
+				default:
+					_, err = s.rsn.Close(inc.ID, body.Operator, body.Outcome, body.Note, false)
+				}
+				if err != nil {
+					wfHTTPError(w, err)
+					return
+				}
+				writeJSON(w, map[string]any{"ok": true, "incident": s.rsn.Snapshot(inc.ID)})
 				return
 			}
 			// A decision before the analysis has finished would approve a recommendation the operator
@@ -338,14 +539,20 @@ func (s *Server) routes() http.Handler {
 			}
 			out := map[string]any{"ok": true}
 			switch parts[1] {
-			case "approve":
-				s.rsn.SetApproval(inc.ID, "approved", body.Note)
-			case "dismiss":
+			case "approve": // kept for the tools and tests: = acknowledge + every step accepted ("approve all")
+				if _, err := s.rsn.ApproveAll(inc.ID, body.Operator, body.Note); err != nil {
+					wfHTTPError(w, err)
+					return
+				}
+			case "dismiss": // = close as false alarm / no action needed; a note is required
 				if strings.TrimSpace(body.Note) == "" {
 					http.Error(w, "dismiss needs a note", 400)
 					return
 				}
-				s.rsn.SetApproval(inc.ID, "dismissed", body.Note)
+				if _, err := s.rsn.Close(inc.ID, body.Operator, body.Outcome, body.Note, true); err != nil {
+					wfHTTPError(w, err)
+					return
+				}
 			case "rerun":
 				mode, _ := strconv.Atoi(r.URL.Query().Get("mode"))
 				if mode < 1 || mode > 3 {
@@ -356,7 +563,7 @@ func (s *Server) routes() http.Handler {
 					if sr.Context {
 						continue // the orchestrator rebuilds the same related-domain context
 					}
-					cands = append(cands, Candidate{sr.Node, sr.Metric, sr.Role, sr.Rule, sr.Xs, sr.End, sr.Injected})
+					cands = append(cands, Candidate{sr.Node, sr.Metric, sr.Role, sr.Rule, sr.Xs, sr.End, sr.Injected, false, false})
 				}
 				out["queued_ahead"] = s.rsn.QueueAhead()
 				if !s.rsn.Submit(cands, mode) { // queued behind current work, never interleaved with it
@@ -364,13 +571,13 @@ func (s *Server) routes() http.Handler {
 					return
 				}
 			default:
-				http.Error(w, "unknown action "+parts[1]+" (approve, dismiss, rerun)", 400)
+				http.Error(w, "unknown action "+parts[1]+" (ack, steps, close, approve, dismiss, rerun)", 400)
 				return
 			}
 			writeJSON(w, out)
 			return
 		}
-		writeJSON(w, inc)
+		writeJSON(w, s.rsn.Snapshot(inc.ID))
 	})
 	mux.HandleFunc("/api/mode", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
@@ -470,14 +677,41 @@ func (s *Server) routes() http.Handler {
 		writeJSON(w, map[string]any{"noise_scale": ns, "sensors": s.eng.Sensors()})
 	})
 	// Real-device feed, same effect as a slider: {"node":..,"metric":..,"value":..}
+	// Real device feed (dataquality.go):
+	//   {"node","metric","value"}                      held like a slider (legacy; stops after 15 min silent)
+	//   {"node","metric","value","ts":unix,"quality"}  a measured reading at its device time
+	//   {"readings":[{node,metric,value,ts,quality},..]} a gateway batch (e.g. a backlog after a reconnect)
 	mux.HandleFunc("/api/ingest", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
-			Node   string   `json:"node"`
-			Metric string   `json:"metric"`
-			Value  *float64 `json:"value"`
+			Reading
+			Readings []Reading `json:"readings"`
 		}
-		if r.Method != http.MethodPost || readBody(r, &body) != nil || body.Value == nil {
-			http.Error(w, `POST {"node":"SR-AQ-KH03-03","metric":"co2","value":850}`, 400)
+		if r.Method != http.MethodPost || readBody(r, &body) != nil || (body.Value == nil && len(body.Readings) == 0) {
+			http.Error(w, `POST {"node":"SR-AQ-KH03-03","metric":"co2","value":850} (optional "ts" unix seconds, "quality" good|uncertain|bad, or {"readings":[...]})`, 400)
+			return
+		}
+		if len(body.Readings) > 5000 {
+			http.Error(w, "at most 5000 readings per batch", 400)
+			return
+		}
+		if body.Ts != 0 || len(body.Readings) > 0 {
+			if body.Value != nil {
+				body.Readings = append(body.Readings, body.Reading)
+			}
+			now := nowTime().Unix()
+			res := make([]string, 0, len(body.Readings))
+			for _, rd := range body.Readings {
+				st, err := s.eng.IngestReading(rd, now)
+				if err != nil {
+					st = "error: " + err.Error()
+				}
+				res = append(res, st)
+			}
+			writeJSON(w, map[string]any{"ok": true, "results": res})
+			return
+		}
+		if body.Quality == "bad" { // never stored, never held
+			writeJSON(w, map[string]any{"ok": true, "result": "rejected_bad"})
 			return
 		}
 		v, err := s.eng.SetSensor(body.Node, body.Metric, *body.Value, "api")
@@ -487,6 +721,38 @@ func (s *Server) routes() http.Handler {
 		}
 		s.hub.Publish("ingest", map[string]any{"node": body.Node, "metric": body.Metric, "value": v})
 		writeJSON(w, map[string]any{"ok": true, "stored": v})
+	})
+	// Maintenance / sensor replacement (dataquality.go): POST {"node","metric"(optional),"minutes",
+	// "reason","replaced"}. minutes 0 ends a window. replaced drops the old sensor's history.
+	mux.HandleFunc("/api/maintenance", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Node     string `json:"node"`
+			Metric   string `json:"metric"`
+			Minutes  int    `json:"minutes"`
+			Reason   string `json:"reason"`
+			Replaced bool   `json:"replaced"`
+			Operator string `json:"operator"`
+		}
+		if r.Method != http.MethodPost || readBody(r, &body) != nil || body.Node == "" || len(body.Reason) > 200 || len(body.Operator) > 80 {
+			http.Error(w, `POST {"node":"SR-AQ-KH03-03","metric":"co2","minutes":60,"reason":"calibration","replaced":false}`, 400)
+			return
+		}
+		ks, err := s.eng.SetMaintenance(body.Node, body.Metric, body.Minutes, body.Reason, body.Replaced)
+		if err != nil {
+			http.Error(w, err.Error(), 400)
+			return
+		}
+		// the sensor's memory (workflow.go): shown under "History of this sensor"
+		kind := "back_in_service"
+		switch {
+		case body.Replaced:
+			kind = "replaced"
+		case body.Minutes > 0:
+			kind = "out_of_service"
+		}
+		s.rsn.LogMaintenance(MaintRow{Node: body.Node, Metric: body.Metric, Kind: kind, Minutes: body.Minutes, Reason: body.Reason,
+			Operator: strings.Join(strings.Fields(body.Operator), " ")})
+		writeJSON(w, map[string]any{"ok": true, "sensors": ks})
 	})
 	mux.HandleFunc("/api/scenarios", func(w http.ResponseWriter, r *http.Request) { writeJSON(w, Scenarios) })
 	mux.HandleFunc("/api/inject", func(w http.ResponseWriter, r *http.Request) {
@@ -543,13 +809,17 @@ func (s *Server) routes() http.Handler {
 		}
 		f := RuleFinding(info.Role, body.Metric, body.Node, xs, sim)
 		ahead := s.rsn.QueueAhead()
-		if !s.rsn.Submit([]Candidate{{body.Node, body.Metric, info.Role, f, xs, sim, false}}, body.Mode) {
+		if !s.rsn.Submit([]Candidate{{body.Node, body.Metric, info.Role, f, xs, sim, false, false, false}}, body.Mode) {
 			http.Error(w, "analysis queue full, try again shortly", http.StatusTooManyRequests)
 			return
 		}
 		writeJSON(w, map[string]any{"ok": true, "queued_ahead": ahead})
 	})
 	mux.Handle("/api/events", s.hub)
+	mux.HandleFunc("/api/streams", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		writeJSON(w, s.hub.Streams(r.URL.Query().Get("incident")))
+	})
 	web := http.FileServer(http.Dir(filepath.Join(s.dir, "web")))
 	// Always revalidate the dashboard files. Without this the WebView judged freshness from
 	// Last-Modified, which is meaningless here: the board's clock resets to 2023 on every boot while

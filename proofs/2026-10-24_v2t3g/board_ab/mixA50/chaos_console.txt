@@ -1,0 +1,46 @@
+== baseline ==
+  [PASS] baseline: backend alive
+  [PASS] baseline: NPU daemon alive
+  [PASS] baseline: board below 80 C (51 C)
+  [PASS] baseline: thermal guard not tripped
+
+== chaos (simultaneous): all sensors abnormal at once, 2 round(s) ==
+  [PASS] chaos simultaneous #1: incident raised
+  [PASS] chaos simultaneous #1: analysis finished
+  [PASS] chaos simultaneous #1: 9 NPU agents + synthesizer, 1 incident(s), 16.7s
+  [PASS] chaos simultaneous #1: cross-domain report passed policy
+  [PASS] chaos simultaneous #1: report names several domains
+  [PASS] chaos simultaneous #1: every agent passed policy
+  [PASS] chaos simultaneous #1: backend alive
+  [PASS] chaos simultaneous #1: NPU daemon alive
+  [PASS] chaos simultaneous #1: board below 80 C (46 C)
+  [PASS] chaos simultaneous #1: thermal guard not tripped
+  [PASS] chaos simultaneous #2: incident raised
+  [PASS] chaos simultaneous #2: analysis finished
+  [PASS] chaos simultaneous #2: 14 NPU agents + synthesizer, 1 incident(s), 24.5s
+  [PASS] chaos simultaneous #2: cross-domain report passed policy
+  [PASS] chaos simultaneous #2: report names several domains
+  [PASS] chaos simultaneous #2: every agent passed policy
+  [PASS] chaos simultaneous #2: backend alive
+  [PASS] chaos simultaneous #2: NPU daemon alive
+  [FAIL] chaos simultaneous #2: board below 80 C (88 C)  - 88 C
+  [FAIL] chaos simultaneous #2: thermal guard not tripped  - True
+
+== chaos (staggered): all sensors abnormal at once, 1 round(s) ==
+  [PASS] chaos staggered #1: incident raised
+  [PASS] chaos staggered #1: analysis finished
+  [PASS] chaos staggered #1: 14 NPU agents + synthesizer, 1 incident(s), 26.6s
+  [PASS] chaos staggered #1: cross-domain report passed policy
+  [PASS] chaos staggered #1: report names several domains
+  [PASS] chaos staggered #1: every agent passed policy
+  [PASS] chaos staggered #1: backend alive
+  [PASS] chaos staggered #1: NPU daemon alive
+  [FAIL] chaos staggered #1: board below 80 C (85 C)  - 85 C
+  [PASS] chaos staggered #1: thermal guard not tripped
+
+==== 31/34 checks passed in 2.8 min ====
+Mode 3 analysis: n=3 min 16.7s  median 24.5s  max 26.6s
+  FAIL chaos simultaneous #2: board below 80 C (88 C): 88 C
+  FAIL chaos simultaneous #2: thermal guard not tripped: True
+  FAIL chaos staggered #1: board below 80 C (85 C): 85 C
+report: C:\Users\hp\Desktop\qidk\Code\smart-city-edge-agent\app\tools\stress_report.json

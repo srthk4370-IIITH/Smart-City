@@ -1,0 +1,54 @@
+.qa-search { margin-top: 26px; display: grid; gap: 8px; max-width: 640px; }
+.qa-search input {
+  width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-pill);
+  padding: 13px 18px; color: var(--text); font-size: 1rem;
+}
+.qa-search input::placeholder { color: var(--muted); }
+.qa-search input:focus-visible { outline: none; border-color: var(--accent); }
+.qa-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.qa-chips button { cursor: pointer; background: transparent; }
+.qa-chips button[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+.qa-list { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
+.qa-item { scroll-margin-top: 80px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
+.qa-item.is-open { border-color: var(--line-strong); }
+.qa-q {
+  width: 100%; display: flex; gap: 14px; align-items: baseline; text-align: left; cursor: pointer;
+  background: transparent; border: 0; color: var(--text); padding: 16px 18px; font-size: 1.05rem; font-weight: 500;
+}
+.qa-q:hover { color: var(--accent-text); }
+.qa-q .qa-cat { flex: none; min-width: 9ch; }
+.qa-q .qa-t { flex: 1; min-width: 0; }
+.qa-q .qa-ico { flex: none; color: var(--muted); transition: transform var(--fade); }
+.qa-item.is-open .qa-ico { transform: rotate(45deg); }
+.qa-body { padding: 0 18px 18px; display: grid; gap: 14px; }
+.qa-answer { font-size: var(--fs-lead); color: var(--text); max-width: 70ch; }
+.qa-links { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.qa-stats { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.04em; color: var(--silver); }
+.qa-stats b { color: var(--text); font-weight: 500; }
+.qa-notes summary { cursor: pointer; color: var(--muted); font-size: var(--fs-small); }
+.qa-notes p { color: var(--silver); font-size: var(--fs-small); margin-top: 6px; max-width: 80ch; }
+.qa-more { margin-top: 14px; }
+.qa-empty { margin-top: 12px; }
+
+.qa-unmeasured { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
+.qa-unmeasured li { display: grid; gap: 4px; }
+.qa-unmeasured b { font-weight: 500; }
+.qa-unmeasured span { color: var(--silver); font-size: var(--fs-small); }
+.qa-nextlist { margin: 4px 0 0; padding-left: 18px; color: var(--silver); font-size: var(--fs-small); display: grid; gap: 4px; }
+.qa-back { margin-top: 28px; }
+
+@media (max-width: 560px) {
+  .qa-q { flex-wrap: wrap; gap: 4px 10px; padding: 14px; font-size: 1rem; }
+  .qa-q .qa-cat { min-width: 0; width: 100%; order: -1; }
+  .qa-body { padding: 0 14px 14px; }
+}
+
+/* use case, first on the page */
+.qa-uc { border-bottom: 1px solid var(--line); padding-bottom: 36px; }
+.qa-uc .statement { margin-bottom: 18px; }
+.qa-uc__grid { margin-top: 22px; }
+.qa-uc .qa-list { margin-top: 18px; }
+
+/* The component display rule otherwise wins over the HTML hidden attribute. */
+.qa-body[hidden] { display: none; }

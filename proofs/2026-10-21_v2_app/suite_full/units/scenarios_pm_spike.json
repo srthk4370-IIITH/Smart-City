@@ -1,0 +1,591 @@
+{
+ "phase": "scenarios",
+ "key": "scenarios/pm_spike",
+ "seconds": 103.0,
+ "checks": [
+  {
+   "check": "pm_spike: injectable",
+   "ok": true,
+   "hard": true,
+   "evidence": "info: HTTP 200"
+  },
+  {
+   "check": "pm_spike: incident raised",
+   "ok": true,
+   "hard": true,
+   "evidence": "info: ['INC-0703'] after 14s"
+  },
+  {
+   "check": "pm_spike INC-0703: no timeout following the incident",
+   "ok": true,
+   "hard": true,
+   "evidence": "info: reached ['early', '1.5h', '3h']"
+  },
+  {
+   "check": "pm_spike INC-0703: final state done/done_with_errors",
+   "ok": true,
+   "hard": true,
+   "evidence": "info: done"
+  },
+  {
+   "check": "pm_spike INC-0703: final state is 'done' (no errors)",
+   "ok": true,
+   "hard": false,
+   "evidence": "info: done"
+  },
+  {
+   "check": "pm_spike INC-0703: refined through 3h",
+   "ok": true,
+   "hard": true,
+   "evidence": "info: stages ['early', '1.5h', '3h'] note=''"
+  },
+  {
+   "check": "pm_spike INC-0703 early: severity decided by reasoner",
+   "ok": true,
+   "hard": false,
+   "evidence": "info: critical"
+  },
+  {
+   "check": "pm_spike INC-0703 early: title present",
+   "ok": true,
+   "hard": true,
+   "evidence": "info: PM2.5 spike: KN building, outdoor air station"
+  },
+  {
+   "check": "pm_spike INC-0703 early: every NPU agent passed policy",
+   "ok": true,
+   "hard": false,
+   "evidence": "info: []"
+  },
+  {
+   "check": "pm_spike INC-0703 1.5h: severity decided by reasoner",
+   "ok": true,
+   "hard": false,
+   "evidence": "info: critical"
+  },
+  {
+   "check": "pm_spike INC-0703 1.5h: title present",
+   "ok": true,
+   "hard": true,
+   "evidence": "info: PM2.5 spike: KN building, outdoor air station"
+  },
+  {
+   "check": "pm_spike INC-0703 1.5h: every NPU agent passed policy",
+   "ok": true,
+   "hard": false,
+   "evidence": "info: []"
+  },
+  {
+   "check": "pm_spike INC-0703 3h: severity decided by reasoner",
+   "ok": true,
+   "hard": false,
+   "evidence": "info: critical"
+  },
+  {
+   "check": "pm_spike INC-0703 3h: title present",
+   "ok": true,
+   "hard": true,
+   "evidence": "info: PM2.5 spike: KN building, outdoor air station"
+  },
+  {
+   "check": "pm_spike INC-0703 3h: every NPU agent passed policy",
+   "ok": true,
+   "hard": false,
+   "evidence": "info: []"
+  },
+  {
+   "check": "pm_spike INC-0703: 3 sensor-stage windows trained, >= family floor, cover onset + 1 h",
+   "ok": true,
+   "hard": true,
+   "evidence": "info: 3 rows"
+  },
+  {
+   "check": "pm_spike INC-0703: window equals recomputed WindowN",
+   "ok": true,
+   "hard": false,
+   "evidence": ""
+  },
+  {
+   "check": "pm_spike: NPU idle afterwards",
+   "ok": true,
+   "hard": true,
+   "evidence": "info: waited 0.0s"
+  }
+ ],
+ "data": {
+  "scenario": "pm_spike",
+  "incidents": [
+   "INC-0703"
+  ],
+  "t_to_incident_s": 14.1,
+  "follow": {
+   "INC-0703": {
+    "stages": {
+     "early": {
+      "id": "INC-0703",
+      "stage": "early",
+      "state": "done",
+      "severity": "critical",
+      "severity_final": true,
+      "title": "PM2.5 spike: KN building, outdoor air station",
+      "rule_title": "PM2.5 spike: KN building, outdoor air station",
+      "refine_note": null,
+      "next_refine_sim": 1791975900,
+      "created_sim": 1791970500,
+      "total_ms": 3189,
+      "stage_ms": 3189,
+      "npu_calls": 1,
+      "stage_npu_calls": 1,
+      "revisions": 1,
+      "revision_list": [
+       {
+        "stage": "early",
+        "sim_end": 1791970500,
+        "ms": 3189,
+        "severity": "critical",
+        "title": "PM2.5 spike: KN building, outdoor air station",
+        "sensors": [
+         {
+          "ref": "S1",
+          "metric": "pm25",
+          "pattern": "spike",
+          "status": "critical",
+          "kept": null,
+          "no_data": null
+         }
+        ]
+       }
+      ],
+      "n_llm_agents": 1,
+      "n_flagged": 1,
+      "n_context": 2,
+      "sensors": [
+       {
+        "ref": "S1",
+        "node": "AQ-KN00-00",
+        "metric": "pm25",
+        "role": "air_quality",
+        "win_n_raw": null,
+        "win_n": 48,
+        "window_end": 1791970500,
+        "rule_pattern": "spike",
+        "rule_status": "critical",
+        "pattern": "spike",
+        "status": "critical",
+        "onset": "14:25",
+        "fault_kind": null,
+        "confidence": 0.85,
+        "llm": true,
+        "model": "Llama 3.2 3B smart-city agent (fine-tuned, w4a16)",
+        "valid": true,
+        "errors": null,
+        "repairs": null,
+        "latency_ms": 3184.737,
+        "ttft_ms": 391.7,
+        "gen_tokens": 106,
+        "tokens_per_s": 38.07608031897698,
+        "early_stopped": true,
+        "long_range": []
+       }
+      ],
+      "final": {
+       "model": "deterministic (related domains verified steady)",
+       "valid": true,
+       "errors": null,
+       "latency_ms": 0,
+       "ttft_ms": 0,
+       "gen_tokens": 0,
+       "tokens_per_s": 0,
+       "label": "air_pollution_event",
+       "severity": "critical",
+       "domains": [
+        "air_quality"
+       ]
+      },
+      "timeline_all": {
+       "batched_n": [],
+       "orchestrated_n": [
+        1
+       ],
+       "solo_reruns": 0,
+       "solo_still_invalid": 0,
+       "npu_unavailable_reruns": 0,
+       "npu_still_unavailable": 0,
+       "cached": 0,
+       "synth_rejected": 0,
+       "npu_retries": 0
+      },
+      "timeline_new": {
+       "batched_n": [],
+       "orchestrated_n": [
+        1
+       ],
+       "solo_reruns": 0,
+       "solo_still_invalid": 0,
+       "npu_unavailable_reruns": 0,
+       "npu_still_unavailable": 0,
+       "cached": 0,
+       "synth_rejected": 0,
+       "npu_retries": 0
+      },
+      "timeline_len": 6,
+      "timeline_tail": [
+       "Event gated: 3 sensor(s) flagged, mode 3",
+       "Orchestrator: 1 sensor(s) to NPU agents, 2 related sensor(s) checked by context agents in parallel",
+       "Air Quality agent analysing AQ-KN00-00 pm25 on NPU (fine-tuned)",
+       "Air Quality agent done in 3.2s (first token 0.4s, 106 tokens): spike / critical (policy PASSED)",
+       "Related domains checked and steady (2 context agents): isolated event, no synthesizer call needed",
+       "Finished in 3.2s, 1 NPU call(s)"
+      ],
+      "t_since_follow_s": 0.0
+     },
+     "1.5h": {
+      "id": "INC-0703",
+      "stage": "1.5h",
+      "state": "done",
+      "severity": "critical",
+      "severity_final": true,
+      "title": "PM2.5 spike: KN building, outdoor air station",
+      "rule_title": "PM2.5 spike: KN building, outdoor air station",
+      "refine_note": null,
+      "next_refine_sim": 1791981300,
+      "created_sim": 1791970500,
+      "total_ms": 3189,
+      "stage_ms": 2076,
+      "npu_calls": 1,
+      "stage_npu_calls": 1,
+      "revisions": 2,
+      "revision_list": [
+       {
+        "stage": "early",
+        "sim_end": 1791970500,
+        "ms": 3189,
+        "severity": "critical",
+        "title": "PM2.5 spike: KN building, outdoor air station",
+        "sensors": [
+         {
+          "ref": "S1",
+          "metric": "pm25",
+          "pattern": "spike",
+          "status": "critical",
+          "kept": null,
+          "no_data": null
+         }
+        ]
+       },
+       {
+        "stage": "1.5h",
+        "sim_end": 1791975900,
+        "ms": 2076,
+        "severity": "critical",
+        "title": "PM2.5 spike: KN building, outdoor air station",
+        "sensors": [
+         {
+          "ref": "S1",
+          "metric": "pm25",
+          "pattern": "spike",
+          "status": "critical",
+          "kept": null,
+          "no_data": null
+         }
+        ]
+       }
+      ],
+      "n_llm_agents": 1,
+      "n_flagged": 1,
+      "n_context": 2,
+      "sensors": [
+       {
+        "ref": "S1",
+        "node": "AQ-KN00-00",
+        "metric": "pm25",
+        "role": "air_quality",
+        "win_n_raw": 96,
+        "win_n": 96,
+        "window_end": 1791975900,
+        "rule_pattern": "spike",
+        "rule_status": "critical",
+        "pattern": "spike",
+        "status": "critical",
+        "onset": "14:25",
+        "fault_kind": null,
+        "confidence": 0.58,
+        "llm": true,
+        "model": "Llama 3.2 3B smart-city agent (fine-tuned, w4a16)",
+        "valid": true,
+        "errors": null,
+        "repairs": null,
+        "latency_ms": 2069.127,
+        "ttft_ms": 859.6,
+        "gen_tokens": 106,
+        "tokens_per_s": 88.52513779856355,
+        "early_stopped": true,
+        "long_range": []
+       }
+      ],
+      "final": {
+       "model": "deterministic (related domains verified steady)",
+       "valid": true,
+       "errors": null,
+       "latency_ms": 0,
+       "ttft_ms": 0,
+       "gen_tokens": 0,
+       "tokens_per_s": 0,
+       "label": "air_pollution_event",
+       "severity": "critical",
+       "domains": [
+        "air_quality"
+       ]
+      },
+      "timeline_all": {
+       "batched_n": [],
+       "orchestrated_n": [
+        1
+       ],
+       "solo_reruns": 0,
+       "solo_still_invalid": 0,
+       "npu_unavailable_reruns": 0,
+       "npu_still_unavailable": 0,
+       "cached": 0,
+       "synth_rejected": 0,
+       "npu_retries": 0
+      },
+      "timeline_new": {
+       "batched_n": [],
+       "orchestrated_n": [],
+       "solo_reruns": 0,
+       "solo_still_invalid": 0,
+       "npu_unavailable_reruns": 0,
+       "npu_still_unavailable": 0,
+       "cached": 0,
+       "synth_rejected": 0,
+       "npu_retries": 0
+      },
+      "timeline_len": 7,
+      "timeline_tail": [
+       "Refined at 1.5 h (windows to 16:35 sensor time, 1 NPU call(s), 2.1s): no change"
+      ],
+      "t_since_follow_s": 12.2
+     },
+     "3h": {
+      "id": "INC-0703",
+      "stage": "3h",
+      "state": "done",
+      "severity": "critical",
+      "severity_final": true,
+      "title": "PM2.5 spike: KN building, outdoor air station",
+      "rule_title": "PM2.5 spike: KN building, outdoor air station",
+      "refine_note": null,
+      "next_refine_sim": null,
+      "created_sim": 1791970500,
+      "total_ms": 3189,
+      "stage_ms": 1730,
+      "npu_calls": 1,
+      "stage_npu_calls": 1,
+      "revisions": 3,
+      "revision_list": [
+       {
+        "stage": "early",
+        "sim_end": 1791970500,
+        "ms": 3189,
+        "severity": "critical",
+        "title": "PM2.5 spike: KN building, outdoor air station",
+        "sensors": [
+         {
+          "ref": "S1",
+          "metric": "pm25",
+          "pattern": "spike",
+          "status": "critical",
+          "kept": null,
+          "no_data": null
+         }
+        ]
+       },
+       {
+        "stage": "1.5h",
+        "sim_end": 1791975900,
+        "ms": 2076,
+        "severity": "critical",
+        "title": "PM2.5 spike: KN building, outdoor air station",
+        "sensors": [
+         {
+          "ref": "S1",
+          "metric": "pm25",
+          "pattern": "spike",
+          "status": "critical",
+          "kept": null,
+          "no_data": null
+         }
+        ]
+       },
+       {
+        "stage": "3h",
+        "sim_end": 1791981300,
+        "ms": 1730,
+        "severity": "critical",
+        "title": "PM2.5 spike: KN building, outdoor air station",
+        "sensors": [
+         {
+          "ref": "S1",
+          "metric": "pm25",
+          "pattern": "spike",
+          "status": "critical",
+          "kept": null,
+          "no_data": null
+         }
+        ]
+       }
+      ],
+      "n_llm_agents": 1,
+      "n_flagged": 1,
+      "n_context": 2,
+      "sensors": [
+       {
+        "ref": "S1",
+        "node": "AQ-KN00-00",
+        "metric": "pm25",
+        "role": "air_quality",
+        "win_n_raw": 96,
+        "win_n": 96,
+        "window_end": 1791981300,
+        "rule_pattern": "spike",
+        "rule_status": "critical",
+        "pattern": "spike",
+        "status": "critical",
+        "onset": "14:25",
+        "fault_kind": null,
+        "confidence": 0.58,
+        "llm": true,
+        "model": "Llama 3.2 3B smart-city agent (fine-tuned, w4a16)",
+        "valid": true,
+        "errors": null,
+        "repairs": null,
+        "latency_ms": 1725.989,
+        "ttft_ms": 510.1,
+        "gen_tokens": 106,
+        "tokens_per_s": 88.20837147374554,
+        "early_stopped": true,
+        "long_range": []
+       }
+      ],
+      "final": {
+       "model": "deterministic (related domains verified steady)",
+       "valid": true,
+       "errors": null,
+       "latency_ms": 0,
+       "ttft_ms": 0,
+       "gen_tokens": 0,
+       "tokens_per_s": 0,
+       "label": "air_pollution_event",
+       "severity": "critical",
+       "domains": [
+        "air_quality"
+       ]
+      },
+      "timeline_all": {
+       "batched_n": [],
+       "orchestrated_n": [
+        1
+       ],
+       "solo_reruns": 0,
+       "solo_still_invalid": 0,
+       "npu_unavailable_reruns": 0,
+       "npu_still_unavailable": 0,
+       "cached": 0,
+       "synth_rejected": 0,
+       "npu_retries": 0
+      },
+      "timeline_new": {
+       "batched_n": [],
+       "orchestrated_n": [],
+       "solo_reruns": 0,
+       "solo_still_invalid": 0,
+       "npu_unavailable_reruns": 0,
+       "npu_still_unavailable": 0,
+       "cached": 0,
+       "synth_rejected": 0,
+       "npu_retries": 0
+      },
+      "timeline_len": 8,
+      "timeline_tail": [
+       "Refined at 3 h (windows to 18:05 sensor time, 1 NPU call(s), 1.7s): no change"
+      ],
+      "t_since_follow_s": 30.3
+     }
+    },
+    "order": [
+     "early",
+     "1.5h",
+     "3h"
+    ],
+    "final_state": "done",
+    "timed_out": false
+   }
+  },
+  "window_rows": [
+   {
+    "incident": "INC-0703",
+    "stage": "early",
+    "ref": "S1",
+    "metric": "pm25",
+    "role": "air_quality",
+    "win_n": 48,
+    "hours": 4.0,
+    "early_pattern": "spike",
+    "early_family": "transient",
+    "pattern": "spike",
+    "status": "critical",
+    "prev_onset_age": null,
+    "expected_n": 48,
+    "family_floor": 48,
+    "trained": true,
+    "covers_onset": true,
+    "floor_ok": true,
+    "exact": true,
+    "ok": true
+   },
+   {
+    "incident": "INC-0703",
+    "stage": "1.5h",
+    "ref": "S1",
+    "metric": "pm25",
+    "role": "air_quality",
+    "win_n": 96,
+    "hours": 8.0,
+    "early_pattern": "spike",
+    "early_family": "transient",
+    "pattern": "spike",
+    "status": "critical",
+    "prev_onset_age": 27,
+    "expected_n": 96,
+    "family_floor": 96,
+    "trained": true,
+    "covers_onset": true,
+    "floor_ok": true,
+    "exact": true,
+    "ok": true
+   },
+   {
+    "incident": "INC-0703",
+    "stage": "3h",
+    "ref": "S1",
+    "metric": "pm25",
+    "role": "air_quality",
+    "win_n": 96,
+    "hours": 8.0,
+    "early_pattern": "spike",
+    "early_family": "transient",
+    "pattern": "spike",
+    "status": "critical",
+    "prev_onset_age": 45,
+    "expected_n": 96,
+    "family_floor": 96,
+    "trained": true,
+    "covers_onset": true,
+    "floor_ok": true,
+    "exact": true,
+    "ok": true
+   }
+  ]
+ }
+}

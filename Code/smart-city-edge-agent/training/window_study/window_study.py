@@ -121,7 +121,7 @@ def build(a):
     calm, real = defaultdict(list), defaultdict(list)
     for (role, node, metric), s in series.items():
         for end, xs in windows_full(s, stride=12):
-            if G.split_of(end) != "test":
+            if G.split_of(end) != a.split:
                 continue
             if role == "occupancy":
                 real[role].append((node, metric, end, [1.0 if v >= 0.5 else 0.0 for v in xs]))
@@ -224,8 +224,11 @@ def build(a):
     with open(out / "cases.jsonl", "w", encoding="utf-8") as fh:
         for c in cases:
             fh.write(json.dumps(c) + "\n")
-    # every prompt per length (exactly what the NPU receives)
     n_tok = defaultdict(list)
+    if a.no_prompts:
+        print(f"{len(cases)} cases written (no prompts)")
+        return
+    # every prompt per length (exactly what the NPU receives)
     tok = None
     try:
         from tokenizers import Tokenizer
@@ -548,6 +551,8 @@ def main():
     ap.add_argument("--long", type=int, default=8, help="step_old and drift_long cases per role")
     ap.add_argument("--subthr", type=int, default=10, help="sub-threshold spike cases per role")
     ap.add_argument("--real", type=int, default=24, help="real windows per role (variety probe)")
+    ap.add_argument("--split", default="test", choices=["train", "dev", "test"], help="months to draw windows from")
+    ap.add_argument("--no-prompts", action="store_true", help="cases only (detector tuning needs no NPU prompts)")
     ap.add_argument("--batch", type=int, default=8)
     ap.add_argument("--port", type=int, default=8091)
     ap.add_argument("--hot", type=int, default=85, help="pause before a batch at this board temperature (C)")

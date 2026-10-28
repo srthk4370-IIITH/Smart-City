@@ -1,0 +1,11 @@
+{
+  "date": "2026-10-21",
+  "what": "Token streaming audit and fix: htpd client, Prefetch/Run, reasoner sinks, SSE hub, dashboard",
+  "files": {
+    "htpd_stream_protocol.md": "proposal for htpd.cpp (optional \"stream\":true progress lines); client already supports it",
+    "e2e_fake_htpd.json": "raw timings: whole backend against a fake htpd, today's protocol vs streaming (go test -run TestStreamingEndToEnd with SCE_STREAM_PROOF set)",
+    "ui_stream_check.js": "browser-free check of app.js token handling (seq order, reset, duplicates, gap -> /api/streams resync, refine split); run: node ui_stream_check.js <path to app.js>"
+  },
+  "tests": "app/backend/htpdstream_test.go: TestHtpdStreamingBatch, TestHtpdNonStreamingStillWorks, TestHtpdSynthStreams, TestHubTokenOrderAndResync, TestStreamingEndToEnd, TestTokenSinkWholeUTF8; full go test ./... green",
+  "not_measured": "on-device numbers: needs htpd.cpp streaming plus a device run by the main session"
+}

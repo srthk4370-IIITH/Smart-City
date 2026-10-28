@@ -320,33 +320,45 @@ type Finding struct {
 	LikelyCause  string   `json:"likely_cause"`
 	Confidence   float64  `json:"confidence"`
 	Action       string   `json:"action"`
+	// v2 schema fields (training/RETRAIN_V2_SPEC.md, frozen 2026-10-16); the v1 model never emits them
+	EventActive *bool  `json:"event_active,omitempty"` // still happening at the window end
+	Onset       string `json:"onset,omitempty"`        // HH:MM sensor time the event started
+	FaultKind   string `json:"fault_kind,omitempty"`   // only with status sensor_fault, one of FaultKinds
 }
+
+// mkFinding is a v1-shaped finding (the six fields the rules fill).
+func mkFinding(pattern, status string, obs []string, cause string, conf float64, action string) Finding {
+	return Finding{Pattern: pattern, Status: status, Observations: obs, LikelyCause: cause, Confidence: conf, Action: action}
+}
+
+// FaultKinds is the frozen v2 fault_kind enum.
+var FaultKinds = []string{"stuck", "bias", "drift", "noise", "dropout", "saturation", "quantised"}
 
 func occLabelFinding(pattern string, s OccStats, end int64) Finding {
 	frac := fmt.Sprintf("%.2f", s.OccupiedFrac)
 	t := func(i int) string { return IdxTime(end, i) }
 	switch pattern {
 	case "vacant":
-		return Finding{pattern, "normal", []string{"Room unoccupied for the whole 4-hour window [E2,E1]"}, "vacant", 0.95, "none"}
+		return mkFinding(pattern, "normal", []string{"Room unoccupied for the whole 4-hour window [E2,E1]"}, "vacant", 0.95, "none")
 	case "occupied":
-		return Finding{pattern, "normal", []string{"Room occupied for most of the window (fraction " + frac + ") [E2]"}, "normal_occupancy", 0.92, "none"}
+		return mkFinding(pattern, "normal", []string{"Room occupied for most of the window (fraction " + frac + ") [E2]"}, "normal_occupancy", 0.92, "none")
 	case "arrival":
-		return Finding{pattern, "normal", []string{"Room became occupied at " + t(s.FirstOn) + " and is still occupied [E4,E1]"}, "arrival", 0.9, "none"}
+		return mkFinding(pattern, "normal", []string{"Room became occupied at " + t(s.FirstOn) + " and is still occupied [E4,E1]"}, "arrival", 0.9, "none")
 	case "departure":
-		return Finding{pattern, "normal", []string{"Room was occupied until " + t(s.LastOn) + " and is now empty [E5,E1]"}, "departure", 0.9, "none"}
+		return mkFinding(pattern, "normal", []string{"Room was occupied until " + t(s.LastOn) + " and is now empty [E5,E1]"}, "departure", 0.9, "none")
 	case "intermittent":
 		if s.Toggles >= 12 {
-			return Finding{pattern, "sensor_fault", []string{fmt.Sprintf("State flips %d times in 4 hours, too often for real movement [E3]", s.Toggles)}, "sensor_fault", 0.75, "check_sensor"}
+			return mkFinding(pattern, "sensor_fault", []string{fmt.Sprintf("State flips %d times in 4 hours, too often for real movement [E3]", s.Toggles)}, "sensor_fault", 0.75, "check_sensor")
 		}
-		return Finding{pattern, "normal", []string{fmt.Sprintf("Presence comes and goes: %d state changes, occupied fraction %s [E3,E2]", s.Toggles, frac)}, "intermittent_presence", 0.85, "monitor"}
+		return mkFinding(pattern, "normal", []string{fmt.Sprintf("Presence comes and goes: %d state changes, occupied fraction %s [E3,E2]", s.Toggles, frac)}, "intermittent_presence", 0.85, "monitor")
 	case "off_hours_presence":
 		lo := "never"
 		if s.LastOn >= 0 {
 			lo = t(s.LastOn)
 		}
-		return Finding{pattern, "warning", []string{"Presence detected during off-hours (occupied fraction " + frac + ") [E6,E2]", "Last occupied at " + lo + " [E5]"}, "off_hours_presence", 0.85, "request_facility_review"}
+		return mkFinding(pattern, "warning", []string{"Presence detected during off-hours (occupied fraction " + frac + ") [E6,E2]", "Last occupied at " + lo + " [E5]"}, "off_hours_presence", 0.85, "request_facility_review")
 	}
-	return Finding{pattern, "normal", []string{"No rule [E1]"}, "vacant", 0.5, "none"}
+	return mkFinding(pattern, "normal", []string{"No rule [E1]"}, "vacant", 0.5, "none")
 }
 
 // RuleFinding = Mode 1 output for one window (deterministic, no LLM).
@@ -365,7 +377,7 @@ func RuleFinding(role, metric, node string, xs []float64, end int64) Finding {
 	if pattern == "stable" {
 		conf = 0.8
 	}
-	return Finding{pattern, status, obs, cause, conf, ActionOf(cause, status)}
+	return mkFinding(pattern, status, obs, cause, conf, ActionOf(cause, status))
 }
 
 func absAll(xs []float64) []float64 {

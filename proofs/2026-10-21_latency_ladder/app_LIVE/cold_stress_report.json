@@ -1,0 +1,891 @@
+{
+ "results": [
+  {
+   "check": "baseline: backend alive",
+   "ok": true,
+   "evidence": "info: backend\ndaemon"
+  },
+  {
+   "check": "baseline: NPU daemon alive",
+   "ok": true,
+   "evidence": "info: backend\ndaemon"
+  },
+  {
+   "check": "baseline: board below 80 C (49 C)",
+   "ok": true,
+   "evidence": "info: 49 C"
+  },
+  {
+   "check": "baseline: thermal guard not tripped",
+   "ok": true,
+   "evidence": "info: False"
+  },
+  {
+   "check": "chaos simultaneous #1: incident raised",
+   "ok": true,
+   "evidence": "info: INC-0141"
+  },
+  {
+   "check": "chaos simultaneous #1: analysis finished",
+   "ok": true,
+   "evidence": "info: INC-0141"
+  },
+  {
+   "check": "chaos simultaneous #1: 14 NPU agents + synthesizer, 1 incident(s), 26.1s",
+   "ok": true,
+   "evidence": "info: done"
+  },
+  {
+   "check": "chaos simultaneous #1: cross-domain report passed policy",
+   "ok": true,
+   "evidence": "info: None"
+  },
+  {
+   "check": "chaos simultaneous #1: report names several domains",
+   "ok": true,
+   "evidence": "info: ['air_quality', 'hvac', 'weather', 'power', 'water']"
+  },
+  {
+   "check": "chaos simultaneous #1: every agent passed policy",
+   "ok": true,
+   "evidence": "info: []"
+  },
+  {
+   "check": "chaos simultaneous #1: backend alive",
+   "ok": true,
+   "evidence": "info: backend\ndaemon"
+  },
+  {
+   "check": "chaos simultaneous #1: NPU daemon alive",
+   "ok": true,
+   "evidence": "info: backend\ndaemon"
+  },
+  {
+   "check": "chaos simultaneous #1: board below 80 C (83 C)",
+   "ok": false,
+   "evidence": "83 C"
+  },
+  {
+   "check": "chaos simultaneous #1: thermal guard not tripped",
+   "ok": true,
+   "evidence": "info: False"
+  },
+  {
+   "check": "chaos simultaneous #2: incident raised",
+   "ok": true,
+   "evidence": "info: INC-0142"
+  },
+  {
+   "check": "chaos simultaneous #2: analysis finished",
+   "ok": true,
+   "evidence": "info: INC-0142"
+  },
+  {
+   "check": "chaos simultaneous #2: 14 NPU agents + synthesizer, 1 incident(s), 24.5s",
+   "ok": true,
+   "evidence": "info: done"
+  },
+  {
+   "check": "chaos simultaneous #2: cross-domain report passed policy",
+   "ok": true,
+   "evidence": "info: None"
+  },
+  {
+   "check": "chaos simultaneous #2: report names several domains",
+   "ok": true,
+   "evidence": "info: ['air_quality', 'hvac', 'weather', 'water', 'power']"
+  },
+  {
+   "check": "chaos simultaneous #2: every agent passed policy",
+   "ok": true,
+   "evidence": "info: []"
+  },
+  {
+   "check": "chaos simultaneous #2: backend alive",
+   "ok": true,
+   "evidence": "info: backend\ndaemon"
+  },
+  {
+   "check": "chaos simultaneous #2: NPU daemon alive",
+   "ok": true,
+   "evidence": "info: backend\ndaemon"
+  },
+  {
+   "check": "chaos simultaneous #2: board below 80 C (95 C)",
+   "ok": false,
+   "evidence": "95 C"
+  },
+  {
+   "check": "chaos simultaneous #2: thermal guard not tripped",
+   "ok": false,
+   "evidence": "True"
+  },
+  {
+   "check": "chaos staggered #1: incident raised",
+   "ok": true,
+   "evidence": "info: INC-0144"
+  },
+  {
+   "check": "chaos staggered #1: analysis finished",
+   "ok": true,
+   "evidence": "info: INC-0144"
+  },
+  {
+   "check": "chaos staggered #1: 13 NPU agents + synthesizer, 1 incident(s), 24.2s",
+   "ok": true,
+   "evidence": "info: done"
+  },
+  {
+   "check": "chaos staggered #1: cross-domain report passed policy",
+   "ok": true,
+   "evidence": "info: None"
+  },
+  {
+   "check": "chaos staggered #1: report names several domains",
+   "ok": true,
+   "evidence": "info: ['air_quality', 'weather', 'occupancy', 'power', 'water']"
+  },
+  {
+   "check": "chaos staggered #1: every agent passed policy",
+   "ok": false,
+   "evidence": "[[\"cause 'acidic_condition' not allowed for water\", \"action '' not whitelisted\"]]"
+  },
+  {
+   "check": "chaos staggered #1: backend alive",
+   "ok": true,
+   "evidence": "info: backend\ndaemon"
+  },
+  {
+   "check": "chaos staggered #1: NPU daemon alive",
+   "ok": true,
+   "evidence": "info: backend\ndaemon"
+  },
+  {
+   "check": "chaos staggered #1: board below 80 C (95 C)",
+   "ok": false,
+   "evidence": "95 C"
+  },
+  {
+   "check": "chaos staggered #1: thermal guard not tripped",
+   "ok": false,
+   "evidence": "True"
+  }
+ ],
+ "incidents": [
+  {
+   "tag": "chaos simultaneous #1",
+   "id": "INC-0141",
+   "mode": 3,
+   "state": "done",
+   "title": "Sensor fault: CO2 critical, Wind speed critical, pH critical (+11 more)",
+   "npu_calls": 15,
+   "total_ms": 26082,
+   "agents": [
+    {
+     "ref": "S1",
+     "role": "air_quality",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "step_increase",
+     "status": "sensor_fault",
+     "cause": "sensor_fault",
+     "action": "check_sensor",
+     "observations": [
+      "PM2.5 jumped +214.6 ug/m3 at 10:05 and did not return [E5,E1]",
+      "The new level appeared instantly; sensor bias likely [E5,E1]"
+     ]
+    },
+    {
+     "ref": "S2",
+     "role": "power",
+     "valid": true,
+     "errors": null,
+     "repairs": [
+      "disagreement with the rule surfaced in the report: Power (S2): the AI judged this step increase/normal, but the deterministic rule that raised this incident found exponential increase/critical - review before deciding."
+     ],
+     "pattern": "step_increase",
+     "status": "normal",
+     "cause": "equipment_startup",
+     "action": "monitor",
+     "observations": [
+      "Power jumped +990.78 kW at 10:05 and did not return [E5,E1]",
+      "Routine start-up of loads at 10:05 [E5]"
+     ]
+    },
+    {
+     "ref": "S3",
+     "role": "hvac",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "saturation",
+     "status": "sensor_fault",
+     "cause": "sensor_fault",
+     "action": "check_sensor",
+     "observations": [
+      "Room value stuck at 10.9 C limit, sensor saturated [E2,E3]"
+     ]
+    },
+    {
+     "ref": "S4",
+     "role": "hvac",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "saturation",
+     "status": "sensor_fault",
+     "cause": "sensor_fault",
+     "action": "check_sensor",
+     "observations": [
+      "Room value stuck at 38.0 C limit, sensor saturated [E2,E3]"
+     ]
+    },
+    {
+     "ref": "S5",
+     "role": "air_quality",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "throttling",
+     "status": "critical",
+     "cause": "ventilation_insufficient",
+     "action": "inspect_ventilation",
+     "observations": [
+      "CO2 flattened at its maximum 2143 ppm [E2,E8]",
+      "2143 ppm is over the critical limit (1500 ppm) [E2]"
+     ]
+    },
+    {
+     "ref": "S6",
+     "role": "air_quality",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "step_increase",
+     "status": "sensor_fault",
+     "cause": "sensor_fault",
+     "action": "check_sensor",
+     "observations": [
+      "Humidity jumped +33.5 % at 10:05 and did not return [E5,E1]",
+      "Physically implausible jump at 10:05; check calibration [E5]"
+     ]
+    },
+    {
+     "ref": "S7",
+     "role": "power",
+     "valid": true,
+     "errors": null,
+     "repairs": [
+      "disagreement with the rule surfaced in the report: Power (S7): the AI judged this step increase/normal, but the deterministic rule that raised this incident found throttling/critical - review before deciding."
+     ],
+     "pattern": "step_increase",
+     "status": "normal",
+     "cause": "equipment_startup",
+     "action": "monitor",
+     "observations": [
+      "Power jumped +13.94 kW at 10:05 and did not return [E5,E1]",
+      "Weekday morning start-up at 10:05, routine [E5]"
+     ]
+    },
+    {
+     "ref": "S8",
+     "role": "weather",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "step_increase",
+     "status": "sensor_fault",
+     "cause": "sensor_fault",
+     "action": "check_sensor",
+     "observations": [
+      "Temperature jumped +12.7 C at 10:05 and did not return [E5,E1]",
+      "The new level appeared instantly; sensor bias likely [E5,E1]"
+     ]
+    },
+    {
+     "ref": "S9",
+     "role": "weather",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "step_increase",
+     "status": "critical",
+     "cause": "weather_front",
+     "action": "request_facility_review",
+     "observations": [
+      "Wind speed jumped +24.42 m/s at 10:05 and did not return [E5,E1]",
+      "Reading 27.40 m/s breaks the critical limit 15 m/s [E1]"
+     ]
+    },
+    {
+     "ref": "S10",
+     "role": "water",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "step_increase",
+     "status": "critical",
+     "cause": "sensor_fault",
+     "action": "check_sensor",
+     "observations": [
+      "Level up from 7.21 to 10.67 pH, step at 10:05 [E7,E5]",
+      "13.59 pH is over the critical limit (9.0) [E1]"
+     ]
+    },
+    {
+     "ref": "S11",
+     "role": "water",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "step_increase",
+     "status": "critical",
+     "cause": "high_demand",
+     "action": "inspect_water_system",
+     "observations": [
+      "Level change: Flow jumped at 10:05, now 29.12 m3/h [E5,E1]",
+      "A level shift at 10:15 preceded this [E9]"
+     ]
+    },
+    {
+     "ref": "S12",
+     "role": "weather",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "step_increase",
+     "status": "sensor_fault",
+     "cause": "sensor_fault",
+     "action": "check_sensor",
+     "observations": [
+      "Humidity jumped +25.3 % at 10:05 and did not return [E5,E1]",
+      "Physically implausible jump at 10:05; check calibration [E5]"
+     ]
+    },
+    {
+     "ref": "S13",
+     "role": "water",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "step_increase",
+     "status": "sensor_fault",
+     "cause": "sensor_fault",
+     "action": "check_sensor",
+     "observations": [
+      "Level change: TDS jumped at 10:05, now 906 ppm [E5,E1]",
+      "Physically implausible jump at 10:05; check calibration [E5]"
+     ]
+    },
+    {
+     "ref": "S14",
+     "role": "water",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "step_increase",
+     "status": "critical",
+     "cause": "tank_overflow_risk",
+     "action": "inspect_water_system",
+     "observations": [
+      "Tank level jumped +140.4 level at 10:05 and did not return [E5,E1]",
+      "Level 443.5 level is past the high mark of 186.5; overflow risk [E2]"
+     ]
+    }
+   ],
+   "report": {
+    "model": "Llama 3.2 3B smart-city agent (fine-tuned, w4a16)",
+    "valid": true,
+    "errors": null,
+    "repairs": [
+     "object closed with ']' instead of '}'",
+     "affected_domains completed with abnormal flagged domains: power, water",
+     "2 AI/rule disagreement(s) surfaced for review"
+    ],
+    "label": "sensor_fault",
+    "action": "check_sensor",
+    "domains": [
+     "air_quality",
+     "hvac",
+     "weather",
+     "power",
+     "water"
+    ],
+    "root_cause": "sensor_fault",
+    "explanation": "Readings jump +214.6 ug/m3 at 10:05 with no AC or occupancy change [S1.E5,S2.E1] AI and rules disagree: Power (S2): the AI judged this step increase/normal, but the deterministic rule that raised this incident found exponential increase/critical - review before deciding. Power (S7): the AI judged this step increase/normal, but the deterministic rule that raised this incident found throttling/critical - review before deciding."
+   }
+  },
+  {
+   "tag": "chaos simultaneous #2",
+   "id": "INC-0142",
+   "mode": 3,
+   "state": "done",
+   "title": "Air pollution event: PM2.5 critical, CO2 critical, Wind speed critical (+11 more)",
+   "npu_calls": 15,
+   "total_ms": 24455,
+   "agents": [
+    {
+     "ref": "S1",
+     "role": "air_quality",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "step_increase",
+     "status": "critical",
+     "cause": "outdoor_pollution_ingress",
+     "action": "inspect_ventilation",
+     "observations": [
+      "PM2.5 jumped +42.5 ug/m3 at 10:05 and did not return [E5,E1]",
+      "284.1 ug/m3 exceeds the critical limit of 120 ug/m3 [E1]"
+     ]
+    },
+    {
+     "ref": "S2",
+     "role": "hvac",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "saturation",
+     "status": "sensor_fault",
+     "cause": "sensor_fault",
+     "action": "check_sensor",
+     "observations": [
+      "Room value stuck at 39.4 C limit, sensor saturated [E2,E3]"
+     ]
+    },
+    {
+     "ref": "S3",
+     "role": "air_quality",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "stable",
+     "status": "critical",
+     "cause": "normal_conditions",
+     "action": "monitor",
+     "observations": [
+      "CO2 within a narrow band, 2101 to 2149 ppm [E3,E2]",
+      "Limit 1500 ppm exceeded, value 2114 ppm [E1]"
+     ]
+    },
+    {
+     "ref": "S4",
+     "role": "weather",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "step_increase",
+     "status": "sensor_fault",
+     "cause": "sensor_fault",
+     "action": "check_sensor",
+     "observations": [
+      "Temperature jumped +5.0 C at 10:05 and did not return [E5,E1]",
+      "The new level appeared instantly; sensor bias likely [E5,E1]"
+     ]
+    },
+    {
+     "ref": "S5",
+     "role": "weather",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "step_decrease",
+     "status": "critical",
+     "cause": "normal_weather",
+     "action": "monitor",
+     "observations": [
+      "Wind speed dropped -4.64 m/s at 10:05 and did not recover [E5,E1]",
+      "22.59 m/s exceeds the critical limit of 15 m/s [E1]"
+     ]
+    },
+    {
+     "ref": "S6",
+     "role": "water",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "step_decrease",
+     "status": "critical",
+     "cause": "tank_draining",
+     "action": "request_facility_review",
+     "observations": [
+      "New lower level after 10:05: 12.40 pH [E5,E1]",
+      "12.40 pH is over the critical limit (9.0) [E1]"
+     ]
+    },
+    {
+     "ref": "S7",
+     "role": "hvac",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "saturation",
+     "status": "sensor_fault",
+     "cause": "sensor_fault",
+     "action": "check_sensor",
+     "observations": [
+      "Room value stuck at 40.5 C limit, sensor saturated [E2,E3]"
+     ]
+    },
+    {
+     "ref": "S8",
+     "role": "hvac",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "bias_jump",
+     "status": "sensor_fault",
+     "cause": "sensor_fault",
+     "action": "check_sensor",
+     "observations": [
+      "Sudden +5.7 C offset at 10:05, unit state unchanged [E7,E5]"
+     ]
+    },
+    {
+     "ref": "S9",
+     "role": "power",
+     "valid": true,
+     "errors": null,
+     "repairs": [
+      "disagreement with the rule surfaced in the report: Power (S9): the AI judged this step increase/normal, but the deterministic rule that raised this incident found throttling/warning - review before deciding."
+     ],
+     "pattern": "step_increase",
+     "status": "normal",
+     "cause": "equipment_startup",
+     "action": "monitor",
+     "observations": [
+      "Power jumped +204.90 kW at 10:05 and did not return [E5,E1]",
+      "Routine start-up of loads at 10:05 [E5]"
+     ]
+    },
+    {
+     "ref": "S10",
+     "role": "air_quality",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "stable",
+     "status": "warning",
+     "cause": "normal_conditions",
+     "action": "monitor",
+     "observations": [
+      "Humidity holding steady; trend -1.2 %/h is negligible [E4]",
+      "84.1 % exceeds the warning limit of 70 % [E1]"
+     ]
+    },
+    {
+     "ref": "S11",
+     "role": "power",
+     "valid": true,
+     "errors": null,
+     "repairs": [
+      "disagreement with the rule surfaced in the report: Power (S11): the AI judged this step decrease/normal, but the deterministic rule that raised this incident found step decrease/warning - review before deciding."
+     ],
+     "pattern": "step_decrease",
+     "status": "normal",
+     "cause": "normal_load",
+     "action": "none",
+     "observations": [
+      "Power dropped -16.59 kW at 10:05 and did not recover [E5,E1]",
+      "Building load falls at 10:05, as usual [E5]"
+     ]
+    },
+    {
+     "ref": "S12",
+     "role": "weather",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "step_increase",
+     "status": "warning",
+     "cause": "weather_front",
+     "action": "monitor",
+     "observations": [
+      "Humidity jumped +10.6 % at 10:05 and did not return [E5,E1]",
+      "95.5 % exceeds the warning limit of 90 % [E1]"
+     ]
+    },
+    {
+     "ref": "S13",
+     "role": "water",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "step_decrease",
+     "status": "warning",
+     "cause": "supply_interruption",
+     "action": "inspect_water_system",
+     "observations": [
+      "Level change: Flow dropped at 10:05, now 26.35 m3/h [E5,E1]"
+     ]
+    },
+    {
+     "ref": "S14",
+     "role": "water",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "step_decrease",
+     "status": "warning",
+     "cause": "tank_draining",
+     "action": "monitor",
+     "observations": [
+      "Tank level dropped -387.7 level at 10:05 and did not recover [E5,E1]",
+      "Also a lasting shift of -385.2 level at 10:20 [E9]"
+     ]
+    }
+   ],
+   "report": {
+    "model": "Llama 3.2 3B smart-city agent (fine-tuned, w4a16)",
+    "valid": true,
+    "errors": null,
+    "repairs": [
+     "affected_domains completed with abnormal flagged domains: hvac, weather, water, power",
+     "label 'air_quality' invalid, mapped stated root_cause 'outdoor_pollution_ingress' to 'air_pollution_event'",
+     "2 AI/rule disagreement(s) surfaced for review"
+    ],
+    "label": "air_pollution_event",
+    "action": "monitor",
+    "domains": [
+     "air_quality",
+     "hvac",
+     "weather",
+     "water",
+     "power"
+    ],
+    "root_cause": "outdoor_pollution_ingress",
+    "explanation": "Outdoor PM change within the usual range [S1.E1] AI and rules disagree: Power (S9): the AI judged this step increase/normal, but the deterministic rule that raised this incident found throttling/warning - review before deciding. Power (S11): the AI judged this step decrease/normal, but the deterministic rule that raised this incident found step decrease/warning - review before deciding."
+   }
+  },
+  {
+   "tag": "chaos staggered #1",
+   "id": "INC-0144",
+   "mode": 3,
+   "state": "done",
+   "title": "Sensor fault: Power critical, Temperature critical, Wind speed critical (+10 more)",
+   "npu_calls": 14,
+   "total_ms": 24225,
+   "agents": [
+    {
+     "ref": "S1",
+     "role": "air_quality",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "step_decrease",
+     "status": "sensor_fault",
+     "cause": "sensor_fault",
+     "action": "check_sensor",
+     "observations": [
+      "PM2.5 dropped -262.4 ug/m3 at 10:05 and did not recover [E5,E1]",
+      "The new level appeared instantly; sensor bias likely [E5,E1]"
+     ]
+    },
+    {
+     "ref": "S2",
+     "role": "air_quality",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "step_increase",
+     "status": "sensor_fault",
+     "cause": "sensor_fault",
+     "action": "check_sensor",
+     "observations": [
+      "Temperature jumped +16.3 C at 11:00 and did not return [E5,E1]",
+      "The new level appeared instantly; sensor bias likely [E5,E1]"
+     ]
+    },
+    {
+     "ref": "S3",
+     "role": "power",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "step_increase",
+     "status": "critical",
+     "cause": "equipment_startup",
+     "action": "inspect_electrical",
+     "observations": [
+      "Power jumped +2.64 kW at 10:05 and did not return [E5,E1]",
+      "A level shift at 10:15 preceded this [E9]"
+     ]
+    },
+    {
+     "ref": "S4",
+     "role": "weather",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "oscillation",
+     "status": "critical",
+     "cause": "weather_front",
+     "action": "request_facility_review",
+     "observations": [
+      "Temperature swings between 29.8 and 48.7 C [E3,E2]",
+      "48.6 C is over the critical limit (42 C) [E1]"
+     ]
+    },
+    {
+     "ref": "S5",
+     "role": "weather",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "step_decrease",
+     "status": "critical",
+     "cause": "normal_weather",
+     "action": "monitor",
+     "observations": [
+      "Wind speed dropped -19.87 m/s at 10:05 and did not recover [E5,E1]",
+      "20.10 m/s exceeds the critical limit of 15 m/s [E1]"
+     ]
+    },
+    {
+     "ref": "S6",
+     "role": "water",
+     "valid": false,
+     "errors": [
+      "cause 'acidic_condition' not allowed for water",
+      "action '' not whitelisted"
+     ],
+     "repairs": null,
+     "pattern": "dip",
+     "status": "critical",
+     "cause": "acidic_condition",
+     "action": "",
+     "observations": [
+      "One sharp dip to 7.16 pH (10:10) [E3]",
+      "12.36 pH exceeds the critical limit of 9.0 [E1]"
+     ]
+    },
+    {
+     "ref": "S7",
+     "role": "water",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "throttling",
+     "status": "critical",
+     "cause": "tank_overflow_risk",
+     "action": "inspect_water_system",
+     "observations": [
+      "Tank level flattened at its maximum 437.7 level [E2,E8]",
+      "Level 437.7 level is past the high mark of 186.5; overflow risk [E2]"
+     ]
+    },
+    {
+     "ref": "S8",
+     "role": "hvac",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "bias_jump",
+     "status": "sensor_fault",
+     "cause": "sensor_fault",
+     "action": "check_sensor",
+     "observations": [
+      "Sudden -14.1 C offset at 10:05, unit state unchanged [E7,E5]"
+     ]
+    },
+    {
+     "ref": "S9",
+     "role": "hvac",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "bias_jump",
+     "status": "sensor_fault",
+     "cause": "sensor_fault",
+     "action": "check_sensor",
+     "observations": [
+      "Sudden -15.2 C offset at 10:05, unit state unchanged [E7,E5]"
+     ]
+    },
+    {
+     "ref": "S10",
+     "role": "hvac",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "bias_jump",
+     "status": "sensor_fault",
+     "cause": "sensor_fault",
+     "action": "check_sensor",
+     "observations": [
+      "Sudden -18.8 C offset at 10:05, unit state unchanged [E7,E5]"
+     ]
+    },
+    {
+     "ref": "S11",
+     "role": "air_quality",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "step_decrease",
+     "status": "sensor_fault",
+     "cause": "sensor_fault",
+     "action": "check_sensor",
+     "observations": [
+      "CO2 stepped down -1670.8 ppm at 10:05 and stayed [E5,E1]",
+      "Physically implausible jump at 10:05; check calibration [E5]"
+     ]
+    },
+    {
+     "ref": "S12",
+     "role": "power",
+     "valid": true,
+     "errors": null,
+     "repairs": [
+      "disagreement with the rule surfaced in the report: Power (S12): the AI judged this step increase/normal, but the deterministic rule that raised this incident found dip/warning - review before deciding."
+     ],
+     "pattern": "step_increase",
+     "status": "normal",
+     "cause": "equipment_startup",
+     "action": "monitor",
+     "observations": [
+      "Power jumped +1234.53 kW at 11:05 and did not return [E5,E1]",
+      "Routine start-up of loads at 11:05 [E5]"
+     ]
+    },
+    {
+     "ref": "S13",
+     "role": "water",
+     "valid": true,
+     "errors": null,
+     "repairs": null,
+     "pattern": "step_increase",
+     "status": "critical",
+     "cause": "high_demand",
+     "action": "inspect_water_system",
+     "observations": [
+      "Level up from 26.25 to 25.81 m3/h, step at 10:35 [E7,E5]",
+      "A level shift at 10:50 preceded this [E9]"
+     ]
+    }
+   ],
+   "report": {
+    "model": "Llama 3.2 3B smart-city agent (fine-tuned, w4a16)",
+    "valid": true,
+    "errors": null,
+    "repairs": [
+     "object closed with ']' instead of '}'",
+     "affected_domains completed with abnormal flagged domains: power, water",
+     "1 AI/rule disagreement(s) surfaced for review"
+    ],
+    "label": "sensor_fault",
+    "action": "check_sensor",
+    "domains": [
+     "air_quality",
+     "weather",
+     "occupancy",
+     "power",
+     "water"
+    ],
+    "root_cause": "sensor_fault",
+    "explanation": "Sensors jumped -262.4 ug/m3 and +16.3 C at 10:05, without returning [S1.E5,S2.E5] AI and rules disagree: Power (S12): the AI judged this step increase/normal, but the deterministic rule that raised this incident found dip/warning - review before deciding."
+   }
+  }
+ ]
+}

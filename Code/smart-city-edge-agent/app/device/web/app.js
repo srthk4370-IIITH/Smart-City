@@ -57,7 +57,9 @@ function pill(status, extra) {
 }
 function toast(msg, err) {
   const t = h('div', { class: 'toast' + (err ? ' err' : ''), text: msg });
-  $('#toasts').append(t);
+  const box = $('#toasts');
+  while (box.children.length >= 2) box.firstElementChild.remove(); // at most 2 toasts on screen
+  box.append(t);
   setTimeout(() => t.remove(), err ? 6000 : 3000);
 }
 async function api(path, opt) {
@@ -92,6 +94,7 @@ const IC = {
   weather: '<path d="M7 18a4 4 0 0 1 0-8 5 5 0 0 1 9.6-1A4.5 4.5 0 0 1 17 18z"/>',
   hvac: '<path d="M12 3v18M4.2 7.5l15.6 9M19.8 7.5L4.2 16.5"/>',
   multi: '<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>',
+  eng: '<path d="M8 9l-4 3 4 3M16 9l4 3-4 3M13.5 6l-3 12"/>',
 };
 function icon(name, size) {
   const s = document.createElementNS(NS, 'svg');
@@ -128,6 +131,9 @@ const S = {
   view: 'sensors', sensorMap: new Map(), drawer: null, open: new Set(), draft: {}, sse: false,
   pendingNewest: null, lastLiveEv: 0, lastLive: 0, lastStatus: 0, lastDrawer: 0, lastIncList: 0,
   filter: 'all', incFilter: 'all', stream: {}, cardStream: {}, autoOpened: {}, trkPct: {}, modeTimer: 0, fold: {},
+  health: null, simNow: 0, lastHealth: 0, eng: false,
+  // UX v34: checklist "not needed" form, footer close/dismiss form, sensor history cache, list filters
+  ckNN: null, footForm: null, hist: {}, histReq: {}, incQ: '', incDom: 'all', incDate: 'any', grpOpen: new Set(),
 };
 
 /* ============================== theme + segmented ============================== */
@@ -142,6 +148,29 @@ function bindTheme() {
     try { localStorage.setItem('sce-theme', t); } catch (e) { /* private mode */ }
     applyTheme(t);
   };
+}
+/* Engineering view: modes, NPU/model badges, evidence ids, prompts and pipeline steps for evaluators and
+   engineers. Off by default so an operator sees plain language; one tap (header or About) shows it all. */
+function applyEng(on) {
+  S.eng = !!on;
+  document.body.classList.toggle('eng', S.eng);
+  const b = $('#eng'); if (b) { b.setAttribute('aria-pressed', S.eng ? 'true' : 'false'); b.classList.toggle('on', S.eng); }
+  const sw = $('#eng-sw'); if (sw) sw.setAttribute('aria-checked', S.eng ? 'true' : 'false');
+}
+function setEng(on) {
+  try { localStorage.setItem('sce-eng', on ? '1' : '0'); } catch (e) { /* private mode */ }
+  applyEng(on);
+  if (S.inc) renderIncDetail();
+  if (FS.ref) renderSensorSheet(true);
+  if (S.drawer && S.drawer.data) renderDrawer();
+  toast(on ? 'Engineering view on: modes, models and evidence shown' : 'Engineering view off');
+}
+function bindEng() {
+  let on = false; try { on = localStorage.getItem('sce-eng') === '1'; } catch (e) { /* private mode */ }
+  $('#eng').replaceChildren(icon('eng'));
+  $('#eng').onclick = () => setEng(!S.eng);
+  const sw = $('#eng-sw'); if (sw) sw.onclick = () => setEng(!S.eng);
+  applyEng(on);
 }
 function initSeg(seg) {
   if (!$('.thumb', seg)) seg.prepend(h('i', { class: 'thumb' }));
@@ -214,6 +243,8 @@ async function refreshIncidents() {
     S.incs = (Array.isArray(l) ? l : []).sort((a, b) => (+b.id.slice(4) || 0) - (+a.id.slice(4) || 0));
     S.lastIncList = Date.now();
     renderIncList();
+    shiftSummary(); // "Since 14:05: 2 new · 1 got worse · 1 resolved" (once per opening)
+    renderHealth(); // tiles count decisions still owed per domain
     if (S.pendingNewest) {
       const nw = S.incs.find((i) => !S.pendingNewest.has(i.id));
       if (nw) { S.pendingNewest = null; closeSheet('sheet'); location.hash = '#incidents'; selectIncident(nw.id); }
@@ -243,8 +274,15 @@ function renderStatus() {
   if (rp.poll_ms && SN.pollSeg && rp.poll_ms !== SN.pollMs) { SN.pollMs = rp.poll_ms; setSeg(SN.pollSeg, rp.poll_ms); }
   renderMode();
   updateHero();
-  setText($('#n-inc'), st.incidents ? st.incidents : '');
+  setBadge();
   renderAboutModel();
+}
+// the Incidents tab badge counts decisions waiting (what the operator owes), not every incident ever
+function setBadge() {
+  const n = (S.incs || []).filter((i) => wfOfI(i) === 'needs_decision').length;
+  const b = $('#n-inc'); if (!b) return;
+  setText(b, n ? n : '');
+  setAttr(b, 'aria-label', n ? n + ' decision' + (n === 1 ? '' : 's') + ' waiting' : '');
 }
 const H = {};
 function buildHero() {
@@ -260,12 +298,15 @@ function buildHero() {
   $('#hero').append(h('div', { class: 'hero' },
     h('div', { class: 'hero-top' }, H.ico, h('div', {}, H.t, H.s)),
     h('div', { class: 'hero-stats' }, stat('sCrit', 'Critical'), stat('sWarn', 'Warnings'), stat('sFault', 'Faults'), stat('sTot', 'Sensors')),
-    h('div', { class: 'hero-sys' }, H.npu, H.model, H.therm, H.run, H.mem)));
+    h('div', { class: 'hero-sys eng-only' }, H.npu, H.model, H.therm, H.run, H.mem)));
 }
 function updateHero() {
   if (!H.ico) return;
   let crit = 0, warn = 0, fault = 0, tot = 0, worst = 'normal';
-  if (S.live) for (const r in S.live.roles) {
+  if (S.health && Array.isArray(S.health.domains)) for (const d of S.health.domains) {
+    if (d.context_only) continue;
+    const c = d.counts || {}; crit += c.critical || 0; warn += c.warning || 0; fault += c.sensor_fault || 0; tot += d.sensors || 0;
+  } else if (S.live) for (const r in S.live.roles) {
     if (r === 'hvac') continue;
     for (const s of S.live.roles[r].sensors) {
       tot++;
@@ -274,7 +315,7 @@ function updateHero() {
   }
   if (crit) worst = 'critical'; else if (warn) worst = 'warning'; else if (fault) worst = 'sensor_fault';
   const title = !S.live ? 'Checking campus ...' : crit ? 'Action needed' : warn ? 'A few things to watch' : fault ? 'Some sensors need a check' : 'All clear';
-  const sub = !S.live ? '' : crit ? crit + ' critical reading' + (crit === 1 ? '' : 's') + ' right now' : warn ? warn + ' reading' + (warn === 1 ? '' : 's') + ' above normal' : fault ? fault + ' sensor' + (fault === 1 ? '' : 's') + ' look faulty or flat' : 'Everything is within normal range';
+  const sub = !S.live ? '' : crit ? crit + ' critical reading' + (crit === 1 ? '' : 's') + ' right now' : warn ? warn + ' reading' + (warn === 1 ? '' : 's') + ' above normal' : fault ? fault + ' sensor' + (fault === 1 ? ' looks' : 's look') + ' faulty or stuck' : 'Everything is within normal range';
   setCls(H.ico, 'hero-ico ' + stClass(worst));
   const want = worst === 'normal' ? 'shield' : worst === 'critical' ? 'bell' : 'alert';
   if (H.ico.dataset.i !== want) { H.ico.dataset.i = want; H.ico.replaceChildren(icon(want)); }
@@ -301,6 +342,392 @@ function updateHero() {
   setText(H.mem, dv.mem_available_mb != null ? (dv.mem_available_mb >= 1024 ? (dv.mem_available_mb / 1024).toFixed(1) + ' GB' : dv.mem_available_mb + ' MB') + ' free' : '');
   H.mem.style.display = dv.mem_available_mb != null ? '' : 'none';
 }
+
+/* ----- plain language ----- */
+/* Operator wording (proofs/2026-10-21_ux/UX_RESEARCH.md). Every screen leads with plain words; the
+   engineering terms (patterns, evidence ids, modes, NPU, agents) stay available behind "Technical
+   details" or the Engineering view. These maps only translate enums the backend already emits. */
+const METRIC_NAME = { co2: 'CO2', pm25: 'PM2.5', pm10: 'PM10', temp: 'Temperature', rh: 'Humidity', level: 'Tank level', flow: 'Water flow',
+  tds: 'Water TDS', ph: 'Water pH', power_kw: 'Power', pf: 'Power factor', wind: 'Wind speed', occ: 'Occupancy', ac_units_on: 'AC units on',
+  room_temp: 'Room temperature', setpoint: 'AC setpoint', ac_on: 'AC running' };
+const metricName = (m) => METRIC_NAME[m] || nice(m);
+// "KH building, level 98, water tank level sensor 00" -> "KH-98 tank"; the full location stays in title / detail
+function placeShort(loc) {
+  const s = String(loc || '');
+  let m = /^(\w+) substation/i.exec(s);
+  if (m) return m[1] + ' substation';
+  m = /^(\w+) building(?:, level (\w+))?(?:, (.*))?$/i.exec(s);
+  if (!m) return s.length > 24 ? s.slice(0, 23) + '…' : s;
+  const code = m[1] + (m[2] ? '-' + m[2] : ''), rest = (m[3] || '').replace(/\s*\(.*\)\s*$/, '');
+  let q = '', k;
+  if (/outdoor/i.test(rest)) q = 'outdoor';
+  else if (/rooftop/i.test(rest)) q = 'rooftop';
+  else if ((k = /AC indoor unit (\d+)/i.exec(rest))) q = 'AC unit ' + k[1];
+  else if (/AC units/i.test(rest)) q = 'AC';
+  else if ((k = /^room (?:occupancy sensor|energy meter) (\d+)/i.exec(rest))) q = 'room ' + k[1];
+  else if (/water tank/i.test(rest)) q = 'tank';
+  return q ? code + ' ' + q : code;
+}
+const sensorLabel = (metric, loc) => metricName(metric) + ' · ' + placeShort(loc);
+const PATTERN_PLAIN = { spike: 'had a brief spike', dip: 'had a brief dip', gradual_increase: 'rising steadily', gradual_decrease: 'falling steadily',
+  step_increase: 'jumped up and stayed', step_decrease: 'dropped and stayed down', exponential_increase: 'rising faster and faster',
+  oscillation: 'swinging up and down', throttling: 'flattened at a cap', flatline: 'stuck at one value', erratic: 'jumping around irregularly',
+  stable: 'steady', vacant: 'empty', occupied: 'occupied', arrival: 'people arriving', departure: 'people leaving', intermittent: 'occupied on and off',
+  off_hours_presence: 'occupied out of hours', too_hot: 'too hot', too_cold: 'too cold', slow_recovery: 'slow to cool down', no_cooling_effect: 'not cooling',
+  short_cycling: 'switching on and off too often', stuck_on: 'stuck on', stuck_off: 'stuck off', running_empty_room: 'running in an empty room',
+  unit_alarm: 'reporting a unit alarm', normal_cycling: 'cycling normally', pull_down: 'cooling the room down', setback_drift: 'drifting after setback',
+  bias_jump: 'reading jumped by an offset (sensor)', biased_reading: 'reading offset (sensor)', calibration_drift: 'drifting off calibration (sensor)',
+  dropout: 'readings dropping out', saturation: 'maxed out (sensor)', quantised: 'reading in coarse steps (sensor)',
+  stuck: 'stuck at one value', bias: 'reading offset (sensor)', drift: 'drifting off calibration (sensor)', noise: 'noisy readings (sensor)',
+  slow_drift: 'drifting slowly', level_shift: 'shifted to a new level and stayed',
+  warning: 'above normal', critical: 'at a critical level', sensor_fault: 'faulty', context: 'shown for context' };
+const patternPlain = (p) => PATTERN_PLAIN[p] || nice(p);
+const STEADY = { stable: 1, normal_cycling: 1, context: 1 }; // shapes that say nothing about level
+const CAUSE_PLAIN = { normal_conditions: 'normal conditions', occupancy_load: 'many people in the room', ventilation_insufficient: 'not enough fresh air',
+  outdoor_pollution_ingress: 'outdoor pollution getting in', indoor_emission_source: 'a source of fumes or dust indoors', hvac_cooling_issue: 'the AC not cooling properly',
+  humidity_control_issue: 'humidity not being controlled', sensor_fault: 'a faulty sensor', normal_usage: 'normal use', high_demand: 'high water demand',
+  possible_leak: 'a possible leak', tank_filling: 'the tank filling', tank_draining: 'the tank draining', supply_interruption: 'the water supply being interrupted',
+  pump_cycling: 'the pump switching on and off', water_quality_issue: 'a water quality problem', tank_overflow_risk: 'the tank may overflow',
+  fill_valve_stuck: 'the tank fill valve may be stuck', normal_load: 'normal load', load_surge: 'a sudden load surge', equipment_startup: 'equipment starting up',
+  load_drop_or_outage: 'a load drop or outage', capacity_limit_throttling: 'the load hitting a capacity limit', gradual_load_growth: 'load slowly growing',
+  cyclic_equipment: 'equipment cycling', power_quality_issue: 'poor power quality', normal_weather: 'normal weather', heat_buildup: 'heat building up',
+  cooling_trend: 'it is cooling down', weather_front: 'a weather front', gusty_wind: 'gusty wind', diurnal_cycle: 'the normal day/night cycle',
+  vacant: 'the room is empty', normal_occupancy: 'normal occupancy', arrival: 'people arriving', departure: 'people leaving',
+  intermittent_presence: 'people coming and going', off_hours_presence: 'someone present out of hours', normal_operation: 'normal operation',
+  scheduled_off: 'the unit is off as scheduled', high_heat_load: 'a high heat load', ac_not_cooling: 'the AC not cooling', overcooling: 'the room being overcooled',
+  ac_off_heat_gain: 'the room heating up with the AC off', short_cycling_control: 'the AC control switching too often', schedule_or_control_fault: 'a schedule or control fault',
+  unit_not_starting: 'the unit not starting', unoccupied_running: 'the AC running in an empty room', unit_alarm: 'a unit alarm' };
+const causePlain = (c) => CAUSE_PLAIN[c] || nice(c);
+// mirrors domainhealth.go actionStep: a recommendation for a person; the app switches nothing
+const ACTION_TEXT = { none: 'No action needed', monitor: 'Keep watching the flagged readings; no on-site action yet',
+  inspect_ventilation: 'Ask facilities to inspect ventilation (fresh-air dampers, AHU fan) in the affected area',
+  inspect_hvac: 'Ask facilities to inspect the HVAC unit (setpoint, compressor, filters)',
+  check_sensor: 'Check the flagged sensor on site (power, mounting, calibration) before trusting it',
+  inspect_water_system: 'Inspect the water system: tank, pumps, valves and pipes for leaks',
+  inspect_electrical: 'Ask an electrician to inspect the feeder and panel of the flagged meter',
+  review_schedule: 'Review the occupancy and equipment schedule for the area',
+  request_facility_review: 'Raise a facility review with the incident\'s evidence',
+  switch_off_ac: 'Switch off the AC in the empty room (your decision; the app switches nothing)' };
+const actionText = (a) => ACTION_TEXT[a] || nice(a);
+// why it matters, by the report label (cause -> consequence, ISA-18.2 alarm rationale)
+const LABEL_IMPACT = {
+  ventilation_issue: 'Stale air (high CO2) makes people drowsy and is a sign ventilation is not keeping up.',
+  hvac_or_thermal_issue: 'Rooms may become uncomfortable and the AC may waste energy.',
+  occupancy_driven_load: 'More people than usual are driving up air and power use.',
+  air_pollution_event: 'Dust can get into the buildings; people with breathing problems may be affected.',
+  water_leak_or_overuse: 'Water is being lost or used faster than normal; the tank can run dry.',
+  water_supply_issue: 'The building\'s water supply may be interrupted, or the tank may overflow.',
+  water_quality_issue: 'The water may not be safe to drink until it is checked.',
+  power_load_anomaly: 'Unusual electrical load can trip breakers or overheat equipment.',
+  power_quality_issue: 'Poor power quality wastes energy and can damage equipment.',
+  weather_driven: 'The weather is changing cooling load and indoor comfort.',
+  sensor_fault: 'A faulty sensor can hide a real problem: its readings cannot be trusted until it is checked.',
+  normal_operation: 'Nothing abnormal was confirmed. Dismiss it with a short note if you agree.',
+  unknown: 'The cause is unclear, so a person should take a look.' };
+const DOMAIN_IMPACT = { air_quality: 'Air quality affects the health and comfort of people in the room.', water: 'Water problems can cut supply or waste water.',
+  power: 'Power problems can trip equipment or waste energy.', occupancy: 'Unexpected presence can be a security or energy issue.',
+  weather: 'Weather changes the load on cooling and drainage.', hvac: 'AC problems affect comfort and energy use.' };
+// confidence as a word; the number stays one tap away (People + AI Guidebook: categories over raw scores)
+function confWord(c) {
+  if (typeof c !== 'number' || !isFinite(c)) return { w: 'Unknown', k: 'none' };
+  return c >= 0.8 ? { w: 'High', k: 'high' } : c >= 0.6 ? { w: 'Medium', k: 'med' } : { w: 'Low', k: 'low' };
+}
+// model text without evidence ids and pipeline notes ("[E9]", "(S2)", "(from domain agent finding)")
+const stripRefs = (t) => String(t || '').replace(/\s*\[[^\]]*\]/g, '').replace(/\s*\((?:S\d+(?:\.E\d+)?(?:,\s*)?)+\)/g, '')
+  .replace(/\s*\(from [^)]*\)/gi, '').replace(/\s+([.,;])/g, '$1').replace(/\s{2,}/g, ' ').trim();
+// model sentences -> one paragraph: evidence ids stripped, each sentence closed with punctuation
+function joinSentences(list) {
+  return (list || []).map(stripRefs).filter(Boolean).map((t) => t.charAt(0).toUpperCase() + t.slice(1) + (/[.!?]$/.test(t) ? '' : '.')).join(' ');
+}
+// the reasoner/rule title -> one plain headline ("Tank level falling slowly · KH-98 tank")
+function plainTitle(t) {
+  const s = String(t || '');
+  let m = /^(\d+) sensors (?:alarming|confirmed): (.*)$/.exec(s);
+  if (m) return m[1] + ' sensors need attention: ' + m[2];
+  m = /^All clear: (\d+) sensors checked/.exec(s);
+  if (m) return 'All clear: ' + m[1] + ' sensors checked, nothing wrong';
+  m = /^(.*?)\s*judged normal: (.+)$/.exec(s);
+  if (m) return (m[1].trim() || 'Sensor') + ' checked: normal · ' + placeShort(m[2]);
+  m = /^([^:]+): (.+ (?:building|substation).*)$/.exec(s);
+  if (!m) return s;
+  const head = m[1], place = placeShort(m[2]);
+  let name = '', rest = head;
+  for (const v of Object.values(METRIC_NAME).concat(['Temperature', 'Humidity', 'Power', 'Flow'])) {
+    if (head.toLowerCase().startsWith(v.toLowerCase() + ' ') && v.length > name.length) { name = v; rest = head.slice(v.length + 1); }
+  }
+  if (!name) return head + ' · ' + place;
+  const r0 = rest.trim(), paren = (/\s*(\([^)]*\))$/.exec(r0) || [])[1] || '', p = r0.replace(/\s*\([^)]*\)$/, '').replace(/ /g, '_');
+  return name + ' ' + (PATTERN_PLAIN[p] ? PATTERN_PLAIN[p] + (paren ? ' ' + paren : '') : r0) + ' · ' + place;
+}
+/* ----- end plain language ----- */
+
+/* ----- domain health ----- */
+/* Level-1 overview (ISA-101): one tile per domain, worst first, grey when normal, colour + glyph + word
+   when not. A tile says what the state is, since when, what changed and the one thing to do now; a tap
+   opens the domain (Level 2: open incidents, all steps, its sensors). GET /api/health, SSE "health";
+   backend domainhealth.go. */
+// approval lifecycle (workflow.go): glyph + word, never colour alone
+const WF_WORD = { analysing: { g: '◌', w: 'Analysing' }, needs_decision: { g: '●', w: 'Needs decision' }, in_progress: { g: '▶', w: 'In progress' },
+  resolved: { g: '✓', w: 'Resolved' }, closed: { g: '◻', w: 'Closed' }, interrupted: { g: '○', w: 'Interrupted' } };
+// data quality (dataquality.go): good | uncertain | bad | stale | maintenance
+const Q_WORD = { uncertain: 'Data uncertain', bad: 'Data unusable', stale: 'Not reporting', maintenance: 'Out of service' };
+const qGlyph = (q) => (q === 'maintenance' ? '⊘' : '◆');
+function qualityChip(s) {
+  const q = s && s.quality; if (!q || q === 'good' || !Q_WORD[q]) return null;
+  return h('span', { class: 'qchip q-' + q, title: s.quality_reason || Q_WORD[q] }, h('i', { 'aria-hidden': 'true', text: qGlyph(q) }), Q_WORD[q]);
+}
+// the reason one tap away (sheets): a button that shows / hides it
+function qualityBtn(s, k) {
+  const q = s && s.quality; if (!q || q === 'good' || !Q_WORD[q]) return null;
+  const open = S.qOpen === k, id = 'qr-' + String(k).replace(/[^\w-]/g, '_');
+  return h('span', { class: 'qwrap' }, h('button', { type: 'button', class: 'qchip q-' + q, 'aria-expanded': open ? 'true' : 'false', 'aria-controls': id,
+    onclick: (e) => { S.qOpen = open ? null : k; const b = e.currentTarget, r = b.nextSibling; b.setAttribute('aria-expanded', open ? 'false' : 'true'); if (r) r.hidden = open; } },
+  h('i', { 'aria-hidden': 'true', text: qGlyph(q) }), Q_WORD[q]), h('span', { class: 'qreason', id, hidden: open ? null : true, text: s.quality_reason || Q_WORD[q] }));
+}
+const DH_WORD = { normal: 'Normal', warning: 'Warning', critical: 'Critical', sensor_fault: 'Sensor problem', insufficient_data: 'Starting up', none: 'Info only' };
+const DH_HINT = { critical: 'act now', warning: 'check soon', sensor_fault: 'readings unreliable', insufficient_data: 'collecting readings' };
+const DH_RANK = { critical: 5, warning: 4, sensor_fault: 3, insufficient_data: 2, normal: 1, none: 0 };
+const DH_NAME = { air_quality: 'Air quality', water: 'Water', power: 'Power', occupancy: 'Occupancy', weather: 'Weather', hvac: 'HVAC' };
+const DH_SRC = { report: 'AI report', agent: 'Domain agent', playbook: 'Standard playbook' };
+const DH_STAGE = { provisional: 'provisional', early: 'early', '1.5h': '1.5 h', '3h': '3 h' };
+function dhAgo(sec) {
+  if (!(sec >= 0) || sec < 60) return 'under 1 min';
+  const m = Math.floor(sec / 60);
+  return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h' + (m % 60 ? ' ' + (m % 60) + ' min' : '');
+}
+function healthModel(d, now) {
+  const lv = d.context_only ? 'none' : (d.headline || 'normal');
+  const word = DH_WORD[lv] || nice(lv), hint = DH_HINT[lv] || '';
+  const title = DH_NAME[d.domain] || roleTitle[d.domain] || nice(d.domain);
+  const c = d.counts || {}, n = d.sensors || 0, parts = [];
+  if (c.critical) parts.push(c.critical + ' critical');
+  if (c.warning) parts.push(c.warning + ' warning');
+  if (d.sensor_faults) parts.push(d.sensor_faults + ' faulty');
+  if (c.insufficient_data) parts.push(c.insufficient_data + ' starting up');
+  if (d.out_of_service) parts.push(d.out_of_service + ' out of service');
+  const counts = d.context_only ? d.context_sensors + ' sensor' + (d.context_sensors === 1 ? '' : 's') + ' shown for context'
+    : parts.length ? parts.join(', ') + ' of ' + n + ' sensor' + (n === 1 ? '' : 's') : (n === 1 ? 'Its sensor is normal' : 'All ' + n + ' sensors normal');
+  const tr = d.trend === 'elevated' || d.trend === 'curbed' ? d.trend : 'steady';
+  const from = DH_WORD[d.trend_from] || nice(d.trend_from);
+  const changed = tr === 'elevated' ? '↑ Got worse (was ' + from + ')' : tr === 'curbed' ? (lv === 'normal' ? '✓ Back to normal (was ' + from + ')' : '↓ Improving (was ' + from + ')') : '';
+  const trendText = tr === 'elevated' ? '↑ Elevated from ' + from : tr === 'curbed' ? '↓ Curbed from ' + from : 'Steady';
+  const stale = (d.stale || []).length;
+  const data = d.fresh !== false || lv === 'insufficient_data' ? '' : stale + ' sensor' + (stale === 1 ? ' is' : 's are') + ' not reporting fresh readings';
+  const ai = d.raised_by_ai ? 'The AI review rated this ' + (DH_WORD[d.status] || d.status) + '; the live readings alone say ' + (DH_WORD[d.live_status] || d.live_status) + '.' : '';
+  const incs = (d.incidents || []).map((i) => ({ id: i.id, sev: i.severity, title: i.title || '', plain: plainTitle(i.title || i.id), state: i.state, workflow: i.workflow, owner: i.owner,
+    text: i.id + ' · ' + (i.state === 'running' ? 'Analysing' : (SEV_LABEL[i.severity] || nice(i.severity))) + (i.workflow && i.workflow !== 'analysing' && WF_WORD[i.workflow] ? ' · ' + WF_WORD[i.workflow].w + (i.workflow === 'in_progress' && i.owner ? ' (' + i.owner + ')' : '') : '') + (DH_STAGE[i.refine_stage] && i.refine_stage !== 'early' ? ' · re-checked ' + DH_STAGE[i.refine_stage] : '') +
+      (i.change === 'elevated' ? ' ↑' : i.change === 'curbed' ? ' ↓' : '') }));
+  // "1 needs decision · 1 in progress (Ravi)": every incident that is not closed, whatever its state
+  const wfc = {}, owners = [], rOwners = [];
+  for (const i of d.incidents || []) {
+    if (!i.workflow) continue; wfc[i.workflow] = (wfc[i.workflow] || 0) + 1;
+    const o = i.workflow === 'in_progress' ? owners : i.workflow === 'resolved' ? rOwners : null;
+    if (o && i.owner && !o.includes(i.owner)) o.push(i.owner);
+  }
+  const wfSum = [wfc.analysing ? wfc.analysing + ' analysing' : '', wfc.needs_decision ? wfc.needs_decision + ' needs decision' : '',
+    wfc.in_progress ? wfc.in_progress + ' in progress' + (owners.length ? ' (' + owners.join(', ') + ')' : '') : '',
+    wfc.resolved ? wfc.resolved + ' back to normal' + (rOwners.length ? ' (' + rOwners.join(', ') + ')' : '') : '', wfc.interrupted ? wfc.interrupted + ' interrupted' : ''].filter(Boolean).join(' · ');
+  const dq = d.data_quality || [], qn = {};
+  dq.forEach((x) => { qn[x.quality] = (qn[x.quality] || 0) + 1; });
+  const qual = Object.keys(qn).map((q) => qn[q] + ' ' + (Q_WORD[q] || q).toLowerCase()).join(' · ');
+  const abnormal = lv === 'warning' || lv === 'critical' || lv === 'sensor_fault';
+  const steps = abnormal ? (d.steps || []).map((s) => s.text) : [];
+  const fromAI = abnormal && (d.steps || []).some((s) => s.source !== 'playbook');
+  const src = !steps.length ? '' : fromAI ? 'Suggested by the AI analysis. You decide; nothing is switched automatically.' : 'Standard playbook steps (no AI recommendation yet).';
+  const ago = dhAgo(now - d.since);
+  const since = d.since ? 'since ' + hm(d.since) + ' (' + ago + ')' : '';
+  const todo = steps[0] || '';
+  const aria = [title + ': ' + word + (hint ? ', ' + hint : ''), changed.replace(/^[↑↓✓] /, ''), since, counts, data, ai,
+    incs.length ? incs.length + ' open incident' + (incs.length === 1 ? '' : 's') + (wfSum ? ': ' + wfSum : '') : '', qual ? 'Sensor data: ' + qual : '', todo ? 'Do now: ' + todo : '', 'Open details'].filter(Boolean).join('. ');
+  return { domain: d.domain, title, lv, cls: stClass(lv), glyph: STATUS_GLYPH[lv] || '○', word, hint, trend: tr, trendText, changed, since, ago, counts, data, ai,
+    incs, steps, src, todo, abnormal, rank: DH_RANK[lv] || 0, wide: abnormal, aria, raw: d, wfSum, qual, dq };
+}
+const DH = { tiles: {}, prev: {}, stripSig: '', t: 0, open: null, sheetSig: '' };
+function openIncidentFromHealth(id) { selectIncident(id); }
+function dhOrder(list) { // worst first, then the fixed domain order (stable while nothing changes)
+  return list.slice().sort((a, b) => b.rank - a.rank || ROLE_ORDER.indexOf(a.domain) - ROLE_ORDER.indexOf(b.domain));
+}
+// decisions still owed in a domain that the health window no longer counts as open (older than 12 h of
+// sensor time, or from before a clock restart): they must not disappear from the domain's view
+function pendingFor(domain, skip) {
+  const ids = new Set((skip || []).map((i) => i.id));
+  return (S.incs || []).filter((i) => (i.workflow ? i.workflow === 'needs_decision' : i.approval === 'pending' && i.state !== 'running') && (i.roles || []).includes(domain) && !ids.has(i.id));
+}
+function dhTileBody(t, m) {
+  const older = pendingFor(m.domain, m.incs).length;
+  fill(t.root,
+    h('span', { class: 'dh-top' }, h('span', { class: 'dh-ico', 'aria-hidden': 'true' }, icon(m.domain)), h('span', { class: 'dh-name', text: m.title }),
+      h('span', { class: 'dh-st ' + m.cls }, h('i', { 'aria-hidden': 'true', text: m.glyph }), m.word)),
+    h('span', { class: 'dh-sum' }, m.counts),
+    m.changed ? h('span', { class: 'dh-chg ' + m.trend, text: m.changed }) : null,
+    m.data ? h('span', { class: 'dh-stale', text: '○ ' + m.data }) : null,
+    m.qual ? h('span', { class: 'dh-q' }, h('i', { 'aria-hidden': 'true', text: '◆' }), 'Data: ' + m.qual) : null,
+    m.todo ? h('span', { class: 'dh-do' }, h('b', { text: 'Do now: ' }), m.todo) : null,
+    h('span', { class: 'dh-foot' }, h('span', { class: 'dh-time', text: m.abnormal || m.trend !== 'steady' ? m.since : '' }),
+      m.incs.length ? h('span', { class: 'dh-n', text: m.wfSum || (m.incs.length + ' open incident' + (m.incs.length === 1 ? '' : 's')) })
+        : older ? h('span', { class: 'dh-n', text: older + ' awaiting decision' }) : null,
+      h('span', { class: 'dh-go', 'aria-hidden': 'true', text: '›' })));
+  t.time = $('.dh-time', t.root);
+}
+function renderHealth() {
+  const hv = S.health, grid = $('#dh-grid');
+  if (!hv || !Array.isArray(hv.domains) || !grid) return;
+  const ph = $('.empty', grid); if (ph) ph.remove();
+  const now = Math.max(S.simNow || 0, hv.sim_time || 0);
+  const said = [];
+  const ms = dhOrder(hv.domains.map((d) => healthModel(d, now)));
+  ms.forEach((m, idx) => {
+    let t = DH.tiles[m.domain];
+    if (!t) {
+      t = DH.tiles[m.domain] = {};
+      t.root = h('button', { type: 'button', class: 'dh-tile', tabindex: '0', onclick: () => openDomain(m.domain) });
+    }
+    if (grid.children[idx] !== t.root) grid.insertBefore(t.root, grid.children[idx] || null);
+    setCls(t.root, 'dh-tile ' + m.cls + (m.lv === 'normal' || m.lv === 'none' ? ' calm' : '') + (m.wide ? ' wide' : ''));
+    setAttr(t.root, 'aria-label', m.aria);
+    const sig = JSON.stringify([m.lv, m.counts, m.changed, m.data, m.todo, m.incs.length, m.wfSum, m.qual, pendingFor(m.domain, m.incs).length, m.abnormal || m.trend !== 'steady']);
+    if (t.sig !== sig) { t.sig = sig; dhTileBody(t, m); }
+    else if (t.time) setText(t.time, m.abnormal || m.trend !== 'steady' ? m.since : ''); // a tick only moves the time
+    const was = DH.prev[m.domain];
+    if (was && was !== m.lv) said.push(m.title + (m.trend === 'curbed' ? ' improved to ' : m.trend === 'elevated' ? ' got worse: ' : ' now ') + m.word);
+    DH.prev[m.domain] = m.lv;
+  });
+  if (said.length) setText($('#dh-live'), said.join('. '));
+  const bad = ms.filter((m) => m.abnormal);
+  setText($('#dh-sub'), !bad.length ? 'All ' + ms.length + ' areas normal'
+    : bad.length + ' of ' + ms.length + ' areas ' + (bad.length === 1 ? 'needs' : 'need') + ' attention: ' + bad.map((m) => m.title + ' (' + m.word.toLowerCase() + ')').join(', '));
+  setCls($('#dh-sub'), 'dh-sum0' + (bad.length ? ' ' + bad[0].cls + ' bad' : ''));
+  renderHealthConn();
+  const strip = $('#dh-strip');
+  if (strip) {
+    const sig = JSON.stringify(ms.map((m) => [m.domain, m.lv, m.trend, m.word]));
+    if (sig !== DH.stripSig) {
+      DH.stripSig = sig;
+      fill(strip, ms.map((m) => h('button', { type: 'button', class: 'dh-chip ' + m.cls, onclick: () => openDomain(m.domain),
+        'aria-label': m.title + ': ' + m.word + (m.trend !== 'steady' ? ', ' + (m.trend === 'elevated' ? 'got worse' : 'improving') : '') + '. Open details' },
+        h('span', { class: 'g', 'aria-hidden': 'true', text: m.glyph }), roleShort[m.domain] || m.title,
+        m.trend !== 'steady' ? h('span', { class: 'dh-tr ' + m.trend, 'aria-hidden': 'true', text: m.trend === 'elevated' ? '↑' : '↓' }) : null)));
+    }
+  }
+  if (DH.open) renderDomainSheet();
+}
+// "Live" when the backend has been heard from recently; otherwise say the tiles may be out of date
+function renderHealthConn() {
+  const e = $('#dh-conn'); if (!e) return;
+  const seen = Math.max(S.lastStatus || 0, S.lastLiveEv || 0, S.lastHealth || 0);
+  const live = S.sse && seen && Date.now() - seen < 12000;
+  setCls(e, 'dh-conn ' + (live ? 'on' : 'off'));
+  setText(e, live ? '● Live' : '○ Not updating');
+  setAttr(e, 'title', live ? 'Receiving live updates from the edge device' : 'No update for a while: values shown may be out of date');
+  const dec = $('#dh-dec');
+  if (dec) {
+    const n = (S.incs || []).filter((i) => (i.workflow ? i.workflow === 'needs_decision' : i.approval === 'pending' && i.state !== 'running')).length;
+    dec.hidden = !n;
+    setText(dec, n + ' decision' + (n === 1 ? '' : 's') + ' waiting ›');
+  }
+}
+// Level 2: one domain - what is wrong, what to do, its open incidents and its sensors
+function openDomain(domain) {
+  DH.open = domain; DH.sheetSig = '';
+  $('#dsheet-bd').scrollTop = 0; // a newly opened domain starts at its status, not where the last one was left
+  renderDomainSheet();
+  openSheet('dsheet');
+  const x = $('#dsheet [data-close]'); if (x) x.focus();
+}
+function renderDomainSheet() {
+  const hv = S.health, dom = DH.open; if (!dom || !hv) return;
+  const d = (hv.domains || []).find((x) => x.domain === dom); if (!d) return;
+  const now = Math.max(S.simNow || 0, hv.sim_time || 0), m = healthModel(d, now);
+  const live = ((S.live && S.live.roles[dom]) || {}).sensors || [];
+  const older = pendingFor(dom, m.incs);
+  const sig = JSON.stringify([m.lv, m.counts, m.changed, m.since, m.data, m.ai, m.incs, m.steps, m.dq, older.map((i) => i.id), live.map((s) => [s.node, s.metric, s.status, s.last, s.quality])]);
+  if (sig === DH.sheetSig) return;
+  DH.sheetSig = sig;
+  setText($('#dsheet-t'), m.title);
+  const bd = $('#dsheet-bd'), sc = bd.scrollTop;
+  const sorted = live.slice().sort((a, b) => (DH_RANK[b.status] || 0) - (DH_RANK[a.status] || 0) || (a.node + a.metric).localeCompare(b.node + b.metric));
+  const sensRow = (s) => h('button', { type: 'button', class: 'ds-row ' + stClass(s.status), title: s.node + ' · ' + s.location, onclick: () => openSensor(s.node, s.metric),
+    'aria-label': metricName(s.metric) + ', ' + s.location + ': ' + (s.metric === 'occ' ? (s.last ? 'occupied' : 'vacant') : fmt(s.last) + ' ' + (s.unit || '')) + ', ' + (STATUS_LABEL[s.status] || nice(s.status)) + '. Open chart' },
+    h('span', { class: 'ds-g', 'aria-hidden': 'true', text: STATUS_GLYPH[s.status] || '○' }),
+    h('span', { class: 'ds-n' }, h('b', { text: metricName(s.metric) }), h('span', { text: placeShort(s.location) })),
+    h('span', { class: 'ds-v', text: s.metric === 'occ' ? (s.last ? 'Occupied' : 'Vacant') : s.metric === 'ac_on' ? (s.last >= 0.5 ? 'On' : 'Off') : fmt(s.last) + (s.unit && s.unit !== '0/1' ? ' ' + s.unit : '') }),
+    s.quality === 'maintenance' ? h('span', { class: 'ds-s', text: '⊘ Out of service' }) : h('span', { class: 'ds-s', text: STATUS_LABEL[s.status] || nice(s.status) }),
+    s.quality !== 'maintenance' ? qualityChip(s) : null);
+  const staleNames = (d.stale || []).map((k) => { const [node, metric] = k.split(' '); const s = live.find((x) => x.node === node && x.metric === metric); return s ? sensorLabel(metric, s.location) : k; });
+  const kv = (rows) => h('dl', { class: 'kv' }, rows.map(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })]));
+  fill(bd,
+    h('div', { class: 'ds-head ' + m.cls },
+      h('div', { class: 'ds-big' }, h('span', { 'aria-hidden': 'true', text: m.glyph }), ' ' + m.word, m.hint ? h('small', { text: ' · ' + m.hint }) : null),
+      h('p', { text: m.counts + (m.since && (m.abnormal || m.trend !== 'steady') ? ' · ' + m.since : '') }),
+      m.changed ? h('p', { class: 'dh-chg ' + m.trend, text: m.changed }) : null,
+      m.ai ? h('p', { class: 'ds-ai', text: m.ai }) : null,
+      m.data ? h('p', { class: 'dh-stale', text: '○ ' + m.data + (staleNames.length ? ': ' + staleNames.join(', ') : '') }) : null),
+    m.dq.length ? h('section', { class: 'op-sec' }, h('h3', { text: 'Sensor data quality (' + m.dq.length + ')' }),
+      h('ul', { class: 'dq-list' }, m.dq.map((x) => { const [node, metric] = String(x.sensor).split(' '); const s = live.find((y) => y.node === node && y.metric === metric);
+        return h('li', {}, h('span', { class: 'qchip q-' + x.quality }, h('i', { 'aria-hidden': 'true', text: qGlyph(x.quality) }), Q_WORD[x.quality] || x.quality), ' ',
+          h('b', { text: s ? sensorLabel(metric, s.location) : x.sensor }), x.reason ? h('span', { class: 'muted', text: ': ' + x.reason }) : null); })),
+      h('p', { class: 'op-note', text: 'Problems with the data, not with the facility. Out-of-service sensors are shown but never raise an alarm.' })) : null,
+    m.steps.length ? h('section', { class: 'op-sec' }, h('h3', { text: 'What to do now' }),
+      h('ol', { class: 'op-steps' }, m.steps.map((s) => h('li', { text: s }))), h('p', { class: 'op-note', text: m.src })) : null,
+    m.incs.length ? h('section', { class: 'op-sec' }, h('h3', { text: 'Open incidents (' + m.incs.length + ')' }),
+      h('div', { class: 'ds-incs' }, m.incs.map((i) => h('button', { type: 'button', class: 'ds-inc sev-' + (i.state === 'running' ? 'pending' : i.sev), onclick: () => openIncidentFromHealth(i.id),
+        'aria-label': 'Open incident ' + i.id + ': ' + i.plain + ', ' + i.text.replace(/ ↑$/, ', got worse').replace(/ ↓$/, ', improved') },
+        h('b', { text: i.plain }), h('span', { text: i.text }))))) :
+      (m.abnormal && !older.length ? h('p', { class: 'op-note', text: 'No incident yet: the AI is asked once a reading stays abnormal for 8 readings in a row.' }) : null),
+    older.length ? h('section', { class: 'op-sec' }, h('h3', { text: 'Earlier, still awaiting your decision (' + older.length + ')' }),
+      h('div', { class: 'ds-incs' }, older.slice(0, 5).map((i) => h('button', { type: 'button', class: 'ds-inc sev-' + (SEV_LABEL[i.severity] ? (i.severity === 'info' ? 'normal' : i.severity) : 'pending'), onclick: () => openIncidentFromHealth(i.id),
+        'aria-label': 'Open incident ' + i.id + ': ' + plainTitle(i.title) },
+        h('b', { text: plainTitle(i.title) }), h('span', { text: i.id + ' · ' + (SEV_LABEL[i.severity] || nice(i.severity)) + ' · ' + (i.created_sim_ist || '') })))),
+      older.length > 5 ? h('a', { class: 'dh-dec', href: '#incidents', onclick: () => closeSheet('dsheet'), text: 'All ' + older.length + ' in Incidents ›' }) : null) : null,
+    h('section', { class: 'op-sec' }, h('h3', { text: 'Sensors (' + live.length + ')' }),
+      live.length ? h('div', { class: 'ds-list' }, sorted.map(sensRow)) : h('p', { class: 'op-note', text: 'Loading sensors ...' }),
+      h('p', { class: 'op-note', text: 'Tap a sensor for its chart.' })),
+    h('details', { class: 'tech eng-open' }, h('summary', { text: 'Technical details' }),
+      h('div', { class: 'tech-bd' }, kv([['Headline', d.headline], ['Process status', d.status + (d.raised_by_ai ? ' (raised by AI review)' : '')], ['Live status', d.live_status],
+        ['Trend', m.trendText], ['Since (sensor time)', d.since ? dhm(d.since) + ' IST' : '-'], ['Counts', JSON.stringify(d.counts || {})],
+        ['Judged / context sensors', d.sensors + ' / ' + d.context_sensors], ['Fresh', d.fresh ? 'yes' : 'no' + (d.stale ? ' (' + d.stale.join(', ') + ')' : '')],
+        ['Step sources', (d.steps || []).map((s) => (DH_SRC[s.source] || s.source) + (s.action ? ' ' + s.action : '') + (s.incident ? ' ' + s.incident : '')).join('; ') || '-']]))));
+  if (S.eng) $$('details.eng-open', bd).forEach((x) => { x.open = true; });
+  bd.scrollTop = sc;
+}
+async function refreshHealth() {
+  try { S.health = await api('/api/health'); S.lastHealth = Date.now(); renderHealth(); updateHero(); } catch (e) { /* offline */ }
+}
+function refreshHealthSoon() { clearTimeout(DH.t); DH.t = setTimeout(refreshHealth, 400); }
+// A refinement moved an incident's severity: a toast that opens it when raised, a quiet note when lowered.
+function onIncChange(d) {
+  const i = S.incs.find((x) => x.id === d.id) || {};
+  const doms = (i.roles || []).map((r) => roleShort[r] || nice(r)).join(', ');
+  const sev = SEV_LABEL[i.severity] || nice(i.severity);
+  const at = DH_STAGE[d.refined] ? ' at the ' + DH_STAGE[d.refined] + ' re-check' : '';
+  if (d.change === 'reminder') {
+    const t = h('div', { class: 'toast err act', role: 'alert' }, h('span', { class: 'tmsg', text: '! ' + d.id + ' is ' + sev + ' and nobody has taken it for 15 min' + (doms ? ' · ' + doms : '') }),
+      h('button', { type: 'button', text: 'Open', onclick: () => { t.remove(); selectIncident(d.id); } }));
+    $('#toasts').append(t); setTimeout(() => t.remove(), 12000);
+    return;
+  }
+  if (d.workflow_change === 'resolved' && d.change !== 'elevated') { toast('✓ ' + d.id + ' is back to normal: close it when you have checked'); return; }
+  if (d.change === 'elevated') {
+    // one coalesced alert, not a stack: several re-checks finishing together used to pile up full-width
+    // toasts over the open sheet (board, 2026-10-23)
+    S.elev = (S.elev || []).filter((x) => x !== d.id).concat(d.id);
+    let t = $('#elev-toast');
+    const msg = (S.elev.length > 1 ? '↑ ' + S.elev.length + ' incidents got worse · latest ' + d.id + ': now ' : '↑ ' + d.id + ' got worse: now ') + sev + at + (doms ? ' · ' + doms : '') +
+      (d.reack ? ' · acknowledge it again' : '');
+    if (!t || !S.elevMsg) {
+      S.elevMsg = h('span', { class: 'tmsg' });
+      t = h('div', { id: 'elev-toast', class: 'toast err act', role: 'alert' }, S.elevMsg,
+        h('button', { type: 'button', text: 'Open', onclick: () => { const id = S.elev[S.elev.length - 1]; t.remove(); S.elev = []; S.elevMsg = null; selectIncident(id); } }));
+      $('#toasts').append(t);
+    }
+    S.elevMsg.textContent = msg;
+    clearTimeout(S.elevTimer);
+    S.elevTimer = setTimeout(() => { t.remove(); S.elev = []; S.elevMsg = null; }, 9000);
+  } else if (d.change === 'curbed') {
+    toast('↓ ' + d.id + ' improved: now ' + sev + at);
+  }
+}
+/* ----- end domain health ----- */
 
 /* ============================== LIVE view ============================== */
 const cards = {}; let chipsBuilt = false;
@@ -359,10 +786,10 @@ function makeTile(s) {
   t.val = h('div', { class: 'val' });
   t.spark = h('svg', { class: 'spark', viewBox: '0 0 116 38', preserveAspectRatio: 'none', 'aria-hidden': 'true' });
   t.sma = h('span'); t.trend = h('span', { class: 'trend' });
-  t.pat = h('span', { class: 'chip' }); t.cause = h('span', { class: 'cause' });
+  t.pat = h('span', { class: 'chip' }); t.cause = h('span', { class: 'cause' }); t.q = h('span', { class: 'qslot' });
   t.root = h('button', { class: 'row', type: 'button' },
     h('div', { class: 'nm' }, t.met, t.loc), t.stc, t.val, t.spark,
-    h('div', { class: 'meta' }, t.sma, t.trend), h('div', { class: 'chipsr' }, t.pat, t.cause));
+    h('div', { class: 'meta' }, t.sma, t.trend), h('div', { class: 'chipsr' }, t.q, t.pat, t.cause));
   t.root.onclick = () => openSensor(s.node, s.metric);
   return t;
 }
@@ -377,23 +804,28 @@ function trendOf(s) {
 function updateTile(t, s) {
   t.s = s;
   const occ = s.role === 'occupancy';
-  setCls(t.root, 'row ' + stClass(s.status) + (isGrey(s.status) ? ' grey' : ''));
-  setText(t.met, s.metric); setText(t.loc, s.location); setAttr(t.loc, 'title', s.node + ' - ' + s.location);
-  const sc = STATUS_GLYPH[s.status] + ' ' + (STATUS_LABEL[s.status] || s.status);
-  setText(t.stc, sc); setCls(t.stc, 'pill stp ' + stClass(s.status));
+  const oos = s.quality === 'maintenance', q = s.quality && s.quality !== 'good' && !oos ? s.quality : '';
+  setCls(t.root, 'row ' + (oos ? 'st-none grey oos' : stClass(s.status) + (isGrey(s.status) ? ' grey' : '')));
+  setText(t.met, metricName(s.metric)); setText(t.loc, placeShort(s.location)); setAttr(t.loc, 'title', s.node + ' - ' + s.location);
+  setAttr(t.root, 'aria-label', metricName(s.metric) + ', ' + s.location + ': ' + (oos ? 'out of service' : (STATUS_LABEL[s.status] || s.status)) +
+    (q ? '. ' + (Q_WORD[q] || q) + (s.quality_reason ? ': ' + s.quality_reason : '') : '') + '. Open chart');
+  const sc = oos ? '⊘ Out of service' : STATUS_GLYPH[s.status] + ' ' + (STATUS_LABEL[s.status] || s.status);
+  setText(t.stc, sc); setCls(t.stc, 'pill stp ' + (oos ? 'st-none' : stClass(s.status)));
+  const qs = q + '|' + (s.quality_reason || '');
+  if (t.qs !== qs) { t.qs = qs; fill(t.q, qualityChip(q ? s : null)); }
   if (occ) setText(t.val, s.last ? 'Occupied' : 'Vacant');
   else if (!t.valInit || t.lastVal !== s.last) t.val.replaceChildren(fmt(s.last), h('small', { text: s.unit || '' }));
   t.valInit = true; t.lastVal = s.last;
   if (occ) { setText(t.sma, 'state ' + (s.last ? '1' : '0') + ' · ' + (s.points_24h || 0) + ' readings today'); setText(t.trend, ''); }
   else {
-    setText(t.sma, s.sma_1h == null ? 'SMA - · EMA -' : 'SMA ' + fmt(s.sma_1h) + ' · EMA ' + fmt(s.ema_1h));
+    setText(t.sma, S.eng ? (s.sma_1h == null ? 'SMA - · EMA -' : 'SMA ' + fmt(s.sma_1h) + ' · EMA ' + fmt(s.ema_1h)) : (s.sma_1h == null ? '' : '1 h average ' + fmt(s.sma_1h)));
     const tr = trendOf(s);
     setText(t.trend, tr ? tr.arrow + ' ' + tr.txt : ''); setCls(t.trend, 'trend ' + (tr ? tr.cls : ''));
   }
   const pat = s.pattern && s.pattern !== '-' ? s.pattern : null;
   t.pat.style.display = pat ? '' : 'none';
-  if (pat && t.pat.dataset.p !== pat) { t.pat.dataset.p = pat; t.pat.innerHTML = patIcon(pat) + esc(nice(pat)); }
-  setText(t.cause, isGrey(s.status) ? (s.status === 'insufficient_data' ? 'Warming up: waiting for enough history' : 'No data yet') : nice(s.likely_cause));
+  if (pat && t.pat.dataset.p !== pat) { t.pat.dataset.p = pat; t.pat.innerHTML = patIcon(pat) + esc(patternPlain(pat)); }
+  setText(t.cause, isGrey(s.status) ? (s.status === 'insufficient_data' ? 'Starting up: waiting for enough readings' : 'No data yet') : causePlain(s.likely_cause));
 }
 
 /* sparklines: visible rows only, one row at most every 10 s, two requests at a time */
@@ -479,6 +911,7 @@ function closeSheet(id) {
   const s = $('#' + id); if (!s.classList.contains('open')) return;
   s.classList.remove('open'); s.setAttribute('aria-hidden', 'true');
   if (id === 'sheet') S.drawer = null;
+  if (id === 'dsheet') { DH.open = null; DH.sheetSig = ''; }
   if (id === 'isheet') { closeSensorSheet(); S.incId = null; S.inc = null; S.incText = ''; }
   if (!$('.sheet.open')) { $('#scrim').classList.remove('on'); document.body.classList.remove('noscroll'); }
   hidePop(true);
@@ -583,8 +1016,8 @@ function renderBigChart(box, s, hours, occ, height) { // height: optional, for t
 async function openSensor(node, metric) {
   S.drawer = { node, metric, data: null, promptOpen: false };
   const live = S.sensorMap.get(key(node, metric)) || {};
-  setText($('#sheet-t'), metric + ' · ' + node);
-  $('#sheet-bd').replaceChildren(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Loading ' + metric + ' ...'));
+  setText($('#sheet-t'), live.location ? sensorLabel(metric, live.location) : metricName(metric) + ' · ' + node);
+  $('#sheet-bd').replaceChildren(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Loading ' + metricName(metric) + ' ...'));
   $('#sheet-ft').replaceChildren();
   openSheet('sheet');
   await loadDrawer();
@@ -618,43 +1051,45 @@ function renderDrawer() {
   const chart = h('div', {});
   const kv = h('dl', { class: 'kv' });
   const row = (k, v) => kv.append(h('dt', { text: k }), h('dd', {}, v));
-  row('Node', d.node + ' (' + nice(s.role) + ')');
   row('Where', live.location || '-');
-  if (!occ) { row('SMA / EMA 1 h', fmt(live.sma_1h) + ' / ' + fmt(live.ema_1h) + ' ' + (s.unit || '')); const tr = trendOf(live); row('Trend', tr ? tr.arrow + ' ' + tr.txt : '-'); }
-  row('Pattern', (live.pattern && live.pattern !== '-') ? nice(live.pattern) : '-');
-  row('Likely cause', nice(live.likely_cause));
-  if (s.limits) row('Limits', 'warn ' + s.limits.warn + ' · crit ' + s.limits.crit + ' (' + s.limits.dir + ')');
+  if (!occ) { row(S.eng ? 'SMA / EMA 1 h' : '1 h average', S.eng ? fmt(live.sma_1h) + ' / ' + fmt(live.ema_1h) + ' ' + (s.unit || '') : fmt(live.sma_1h) + ' ' + (s.unit || '')); const tr = trendOf(live); row('Trend', tr ? tr.arrow + ' ' + tr.txt : '-'); }
+  row('Shape', (live.pattern && live.pattern !== '-') ? patternPlain(live.pattern) : '-');
+  row('Likely cause', causePlain(live.likely_cause));
+  if (s.limits) row('Alarm limits', 'warning ' + s.limits.warn + ' · critical ' + s.limits.crit + (s.limits.dir === 'low' ? ' (too low)' : s.limits.dir === 'both' ? ' (either side)' : ' (too high)'));
+  if (S.eng) row('Node', d.node + ' (' + nice(s.role) + ')');
   const canAnalyze = !!win && s.role !== 'hvac';
   const btn = h('button', { class: 'btn primary', type: 'button', style: 'width:100%', disabled: canAnalyze ? null : true,
     onclick: async () => {
       btn.disabled = true;
       try { S.pendingNewest = new Set(S.incs.map((i) => i.id)); const r = await post('/api/analyze', { node: d.node, metric: d.metric }); toast(r && r.queued_ahead ? 'Queued: ' + r.queued_ahead + ' analysis ahead on the NPU' : 'AI agents are on it (mode ' + (S.status ? S.status.mode : '?') + ')'); setTimeout(refreshIncidents, 500); setTimeout(refreshIncidents, 1500); }
       catch (e) { S.pendingNewest = null; toast('Analyse: ' + e.message, true); btn.disabled = false; }
-    } }, icon('multi'), 'Analyse with AI agents');
+    } }, icon('multi'), 'Ask the AI to check this sensor');
   const body = [
-    h('div', { class: 'rep-h', style: 'margin-bottom:10px' }, live.status ? pill(live.status) : null),
+    h('div', { class: 'rep-h', style: 'margin-bottom:10px' }, live.quality === 'maintenance' ? h('span', { class: 'pill st-none', text: '⊘ Out of service' }) : live.status ? pill(live.status) : null,
+      live.quality !== 'maintenance' ? qualityBtn(live, 'drawer:' + d.node + ':' + d.metric) : null),
     h('div', { class: 'sheet-big' }, occ ? (live.last ? 'Occupied' : 'Vacant') : fmt(live.last) + ' ' + (s.unit || '')),
     h('p', { class: 'muted', style: 'margin:2px 0 14px', text: live.location || d.node }),
     chart,
     h('div', { class: 'card', style: 'margin-top:14px' }, kv),
+    maintSec(d, live),
     h('div', { class: 'card' },
-      h('h3', { style: 'margin-bottom:8px;font-size:17px', text: 'Rule engine says (Mode 1, no AI)' }),
+      h('h3', { style: 'margin-bottom:8px;font-size:17px', text: S.eng ? 'Rule engine says (Mode 1, no AI)' : 'Automatic check (rules, no AI)' }),
       rf ? h('div', {},
-        h('div', { class: 'rep-h', style: 'margin-bottom:8px' }, pill(rf.status), h('span', { class: 'chip', html: patIcon(rf.pattern) + esc(nice(rf.pattern)) })),
+        h('div', { class: 'rep-h', style: 'margin-bottom:8px' }, pill(rf.status), h('span', { class: 'chip', html: patIcon(rf.pattern) + esc(patternPlain(rf.pattern)) })),
         h('dl', { class: 'kv' },
-          h('dt', { text: 'Likely cause' }), h('dd', { text: nice(rf.likely_cause) }),
-          h('dt', { text: 'Confidence' }), h('dd', { text: pct(rf.confidence) }),
-          h('dt', { text: 'Action' }), h('dd', { text: nice(rf.action) })),
-        h('ul', { class: 'obs' }, (rf.observations || []).map((o) => h('li', {}, evChipsInText(o, win.evidence)))))
+          h('dt', { text: 'Likely cause' }), h('dd', { text: causePlain(rf.likely_cause) }),
+          h('dt', { text: 'Confidence' }), h('dd', { text: confWord(rf.confidence).w + (S.eng ? ' (' + pct(rf.confidence) + ')' : '') }),
+          h('dt', { text: 'Suggested action' }), h('dd', { text: actionText(rf.action) })),
+        h('ul', { class: 'obs' }, (rf.observations || []).map((o) => h('li', {}, S.eng ? evChipsInText(o, win.evidence) : stripRefs(o)))))
         : h('div', { class: 'muted', text: s.role === 'hvac' ? 'HVAC nodes are context only: no agent window.' : 'Not enough history yet for this sensor.' })),
-    win ? h('div', { class: 'card' }, h('h3', { style: 'margin-bottom:6px;font-size:17px', text: 'Evidence E1..E8' }),
+    win && S.eng ? h('div', { class: 'card' }, h('h3', { style: 'margin-bottom:6px;font-size:17px', text: 'Evidence E1..E8' }),
       h('p', { class: 'muted', style: 'font-size:13.5px;margin-bottom:6px', text: 'Computed statistics. These are the only facts the AI may cite.' }),
       h('ul', { class: 'evlist' }, (win.evidence || []).map((e) => h('li', {}, h('b', { text: e.ID }), h('span', { text: e.Text }))))) : null,
-    win ? h('details', { ontoggle: (e) => { d.promptOpen = e.target.open; }, open: d.promptOpen ? true : null },
+    win && S.eng ? h('details', { ontoggle: (e) => { d.promptOpen = e.target.open; }, open: d.promptOpen ? true : null },
       h('summary', { text: 'Prompt sent to the on-device LLM' }), h('pre', { text: win.prompt || '' })) : null,
   ];
   bd.replaceChildren(...body.filter(Boolean));
-  $('#sheet-ft').replaceChildren(h('p', { class: 'foot-hint', text: canAnalyze ? 'Uses the current mode. The result appears under Incidents.' : 'No AI analysis available for this sensor.' }), btn);
+  $('#sheet-ft').replaceChildren(h('p', { class: 'foot-hint', text: canAnalyze ? 'The result appears under Incidents and waits for your decision.' : 'No AI check is available for this sensor (shown for context).' }), btn);
   renderBigChart(chart, s, 8, occ);
   bd.scrollTop = sc;
 }
@@ -690,6 +1125,7 @@ function refChip(inc, token) {
 
 /* ============================== INCIDENTS ============================== */
 const incEls = new Map();
+const grpEls = new Map(); // group lead id -> wrapper (lead card + "N related")
 const wallMs = (inc) => { const t = Date.parse((inc.created_wall || '').replace(' ', 'T')); return isNaN(t) ? null : t; };
 function elapsedOf(inc) {
   if (inc.state !== 'running') return inc.total_ms > 0 ? inc.total_ms / 1000 : null;
@@ -703,20 +1139,23 @@ function usualSecs(mode) {
 function primaryRole(roles) { return (roles && roles.length > 1) ? (roles[0]) : (roles && roles[0]) || 'multi'; }
 function renderIncChips() {
   const box = $('#inc-chips'); if (!box.firstChild) {
-    [['all', 'All'], ['pending', 'Needs your decision'], ['running', 'Live now'], ['done', 'Decided']].forEach(([k, t]) => {
-      box.append(h('button', { type: 'button', class: 'fchip' + (k === S.incFilter ? ' on' : ''), 'data-k': k, onclick: () => {
-        S.incFilter = k; $$('#inc-chips .fchip').forEach((x) => x.classList.toggle('on', x.dataset.k === k)); applyIncFilter();
+    INC_STATE.forEach(([k, t]) => {
+      box.append(h('button', { type: 'button', class: 'fchip' + (k === S.incFilter ? ' on' : ''), 'data-k': k, 'aria-pressed': k === S.incFilter ? 'true' : 'false', onclick: () => {
+        S.incFilter = k; $$('#inc-chips .fchip').forEach((x) => { x.classList.toggle('on', x.dataset.k === k); x.setAttribute('aria-pressed', x.dataset.k === k ? 'true' : 'false'); }); applyIncFilter();
       } }, h('span', { text: t }), h('span', { class: 'n' })));
     });
   }
-  const cnt = { all: S.incs.length, pending: S.incs.filter((i) => i.approval === 'pending' && i.state !== 'running').length, running: S.incs.filter((i) => i.state === 'running').length, done: S.incs.filter((i) => i.approval !== 'pending').length };
-  $$('#inc-chips .fchip').forEach((x) => setText($('.n', x), cnt[x.dataset.k]));
+  const cnt = { all: S.incs.length, running: S.incs.filter((i) => i.state === 'running').length };
+  S.incs.forEach((i) => { const w = wfOfI(i); cnt[w] = (cnt[w] || 0) + 1; });
+  $$('#inc-chips .fchip').forEach((x) => setText($('.n', x), cnt[x.dataset.k] || 0));
 }
+// state (workflow), domain, date and free text; 'pending' / 'done' kept for old links
 function incMatches(i) {
-  return S.incFilter === 'all' || (S.incFilter === 'pending' && i.approval === 'pending' && i.state !== 'running') ||
-    (S.incFilter === 'running' && i.state === 'running') || (S.incFilter === 'done' && i.approval !== 'pending');
+  const f = S.incFilter || 'all', w = wfOfI(i);
+  const st = f === 'all' || (f === 'running' ? i.state === 'running' : f === 'pending' ? w === 'needs_decision' : f === 'done' ? w === 'closed' : w === f);
+  return st && (!S.incDom || S.incDom === 'all' || (i.roles || []).includes(S.incDom)) && incDateOk(i) && (!S.incQ || incText(i).includes(S.incQ));
 }
-function applyIncFilter() { S.incs.forEach((i) => { const e = incEls.get(i.id); if (e) e.root.hidden = !incMatches(i); }); }
+function applyIncFilter() { renderIncList(); }
 function flaggedRoles(i) {
   if (!i.sensors) { // list payload: roles + count from the title
     const m = /^(\d+) sensors/.exec(i.title || '');
@@ -733,11 +1172,11 @@ function multiFlag(i) {
 }
 function renderIncList() {
   const box = $('#inc-list');
-  setText($('#n-inc'), S.incs.length ? S.incs.length : '');
+  setBadge();
   renderIncChips();
-  if (!S.incs.length) { box.replaceChildren(h('div', { class: 'empty', style: 'grid-column:1/-1', text: 'All quiet. Incidents appear when the event gate flags a sensor. Change a value on the Sensors tab to trigger one.' })); incEls.clear(); return; }
-  const em = $('.empty', box); if (em) em.remove();
-  S.incs.forEach((i, idx) => {
+  renderHealthConn();
+  if (!S.incs.length) { box.replaceChildren(h('div', { class: 'empty', style: 'grid-column:1/-1', text: 'All quiet. An incident appears when a reading stays abnormal for a while; you will be asked to decide on each one.' })); incEls.clear(); grpEls.clear(); return; }
+  S.incs.forEach((i) => {
     let e = incEls.get(i.id);
     if (!e) { e = { root: h('button', { class: 'icard', type: 'button', onclick: () => selectIncident(i.id) }) }; incEls.set(i.id, e); }
     const sig = JSON.stringify(i);
@@ -746,37 +1185,67 @@ function renderIncList() {
       const rr = primaryRole(i.roles);
       // coloured by the reasoner's severity; neutral while analysing (sevOf)
       setCls(e.root, 'icard sevrow sev-' + sevOf(i).k);
-      const running = i.state === 'running';
+      const running = i.state === 'running', plain = plainTitle(i.title);
+      const doms = (i.roles || []).map((r) => roleShort[r] || nice(r)).join(', ');
+      const wf = wfOfI(i), wfw = (WF_WORD[wf] || { w: nice(wf) }).w;
+      setAttr(e.root, 'aria-label', plain + '. ' + sevOf(i).t + '. ' + wfw + (i.owner && wf !== 'closed' ? ', ' + i.owner : '') + (i.outcome ? ', ' + (OUTCOME_TEXT[i.outcome] || nice(i.outcome)) : '') + '. ' + i.id);
       fill(e.root,
         h('div', { class: 'top' },
           h('div', { class: 'dico', style: '--cb:' + (ROLE_COLOR[(i.roles || []).length > 1 ? 'multi' : rr] || ROLE_COLOR.multi) }, icon((i.roles || []).length > 1 ? 'multi' : rr)),
           h('div', { style: 'min-width:0;flex:1' },
-            h('div', { class: 'ttl', text: i.title }),
-            h('div', { class: 'sub' }, sevTag(i), h('span', { class: 'pill ghost', text: 'Mode ' + i.mode }),
-              running ? h('span', { class: 'livepill', text: 'LIVE' }) : null,
-              h('span', { class: 'chip', text: nice(i.label) }), multiFlag(i)))),
+            h('div', { class: 'ttl', text: plain, title: i.title }),
+            h('div', { class: 'sub' }, sevTag(i), running ? h('span', { class: 'livepill', text: 'LIVE' }) : null,
+              i.refine_stage && i.refine_stage !== 'early' ? stageTag(i) : null, multiFlag(i),
+              h('span', { class: 'pill ghost eng-only', text: 'Mode ' + i.mode }), h('span', { class: 'chip eng-only', text: nice(i.label) })))),
         running ? h('div', { class: 'prog' }) : null,
         // live token preview, so a running incident visibly streams from the list view too.
         // Seeded from S.cardStream because the card is rebuilt whenever the incident JSON changes.
         running ? h('pre', { class: 'cstream', 'data-cs': i.id, text: S.cardStream[i.id] || '' }) : null,
         h('div', { class: 'foot' },
-          h('span', { text: i.id + ' · sensor time ' + (i.created_sim_ist || '-') }),
-          h('span', { text: i.npu_calls + ' NPU call' + (i.npu_calls === 1 ? '' : 's') + (running ? '' : ' · ' + (i.total_ms / 1000).toFixed(1) + ' s') }),
-          h('span', { class: 'appr ' + i.approval, text: running ? 'Working ...' : i.approval === 'pending' ? 'Needs your decision' : nice(i.approval) })));
+          h('span', { text: i.id + (doms ? ' · ' + doms : '') + ' · ' + (i.created_sim_ist || '-') }),
+          h('span', { class: 'eng-only', text: i.npu_calls + ' NPU call' + (i.npu_calls === 1 ? '' : 's') + (running ? '' : ' · ' + (i.total_ms / 1000).toFixed(1) + ' s') }),
+          wfChip(i)),
+        (i.steps_total && wf !== 'closed') || etaEl(i) ? h('div', { class: 'foot2' },
+          i.steps_total && wf !== 'closed' ? h('span', { class: 'stepsn', text: (i.steps_total - i.steps_open) + ' of ' + i.steps_total + ' steps ticked' }) : null,
+          wf !== 'closed' ? etaEl(i) : null) : null);
     }
-    if (box.children[idx] !== e.root) box.insertBefore(e.root, box.children[idx] || null);
   });
   const ids = new Set(S.incs.map((i) => i.id));
   for (const [id, e] of incEls) if (!ids.has(id)) { e.root.remove(); incEls.delete(id); }
-  applyIncFilter();
+  // filter, then collapse repeats (same sensor, or same domain + pattern, within 30 min: backend group)
+  const vis = S.incs.filter(incMatches), groups = new Map();
+  for (const i of vis) { const g = i.group || i.id; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(i); }
+  const want = [];
+  for (const [g, members] of groups) {
+    let ge = grpEls.get(g);
+    if (!ge) { ge = { root: h('div', { class: 'igrp' }), btn: null }; grpEls.set(g, ge); }
+    const lead = members[0], rest = members.slice(1), open = S.grpOpen.has(g);
+    const kids = [incEls.get(lead.id).root];
+    if (rest.length) {
+      const lid = 'rel-' + g;
+      kids.push(h('button', { type: 'button', class: 'irel', 'aria-expanded': open ? 'true' : 'false', 'aria-controls': lid,
+        onclick: () => { open ? S.grpOpen.delete(g) : S.grpOpen.add(g); renderIncList(); } },
+      (open ? '▾ ' : '▸ ') + rest.length + ' related', h('span', { class: 'muted', text: ' · same sensor or same pattern within 30 min' })));
+      if (open) kids.push(h('div', { class: 'irel-list', id: lid }, rest.map((i) => incEls.get(i.id).root)));
+    }
+    if (ge.root.children.length !== kids.length || kids.some((k, n) => ge.root.children[n] !== k)) ge.root.replaceChildren(...kids);
+    want.push(ge.root);
+  }
+  for (const [g, ge] of grpEls) if (!groups.has(g)) { ge.root.remove(); grpEls.delete(g); }
+  want.forEach((el, idx) => { if (box.children[idx] !== el) box.insertBefore(el, box.children[idx] || null); });
+  while (box.children.length > want.length) box.lastElementChild.remove();
+  if (!want.length) box.replaceChildren(h('div', { class: 'empty', style: 'grid-column:1/-1', text: 'No incident matches these filters.' }));
 }
 async function selectIncident(id) {
-  S.incId = id; S.incText = ''; S.inc = null;
+  S.incId = id; S.incText = ''; S.inc = null; S.ckNN = null; S.footForm = null;
+  delete S.hist[id]; delete S.histReq[id]; // History of this sensor: always fresh on open
   setText($('#isheet-t'), id);
   $('#inc-detail').replaceChildren(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Loading ' + id + ' ...'));
   $('#inc-foot').replaceChildren(); $('#inc-foot').dataset.sig = '';
   openSheet('isheet');
   await refreshIncDetail(true);
+  // opened mid-run: show what the agents have typed so far, not only what arrives from now on
+  if (S.incId === id && S.inc && (S.inc.state === 'running' || ST.rlast[id])) resyncStreams(id);
 }
 
 function gate(valid, errors) {
@@ -809,6 +1278,9 @@ function reportBody(inc, r) {
       h('span', { class: 'muted' }, h('span', { class: 'confbar' }, h('i', { style: 'width:' + Math.round((r.confidence || 0) * 100) + '%' })), ' ' + pct(r.confidence) + ' sure')),
     h('p', { style: 'margin:10px 0 4px;font-weight:700;font-size:16.5px', text: r.root_cause || '-' }),
     r.explanation ? h('p', { class: 'muted', style: 'margin:4px 0', text: r.explanation }) : null,
+    // severity basis (reasoner v3, severityGuard): the rules' view vs the reasoner's, and why the shown one differs
+    r.severity_basis ? h('p', { class: 'muted', style: 'margin:4px 0;font-size:13px', text: 'Severity basis: rules ' + nice(r.severity_basis.rule) +
+      ' · reasoner ' + nice(r.severity_basis.reasoner) + (r.severity_basis.guard ? ' · ' + r.severity_basis.guard : '') }) : null,
     h('dl', { class: 'kv', style: 'margin-top:12px' },
       h('dt', { text: 'Suggested action' }), h('dd', { style: 'font-weight:700', text: nice(r.action) }),
       h('dt', { text: 'Affected' }), h('dd', {}, (r.affected_domains || []).length ? (r.affected_domains || []).map((d) => h('span', { class: 'chip', style: 'margin:0 6px 4px 0', text: roleTitle[d] || nice(d) })) : '-'),
@@ -819,7 +1291,7 @@ function reportBody(inc, r) {
 /* ----- order-tracking model ----- */
 function fastText(model) { return /related domains verified steady/i.test(model || '') ? 'Related domains verified steady \u2192 isolated event, no synthesizer call' : 'Single domain \u2192 no synthesizer call needed'; }
 function trackModel(inc) {
-  const run = inc.state === 'running', mode = inc.mode, f = inc.final;
+  const run = inc.state === 'running', mode = inc.mode, f = inc.final && !inc.final.preliminary ? inc.final : null; // stage 1 is not the report
   const ns = (inc.sensors || []).length, na = (inc.agents || []).length;
   const fast = !!(f && isFastModel(f.model));
   const steps = [];
@@ -837,7 +1309,7 @@ function trackModel(inc) {
   if (mode === 1) steps.push({ t: 'Safety check', s: 'Skipped — nothing from AI to check', st: 'skip' });
   else steps.push({ t: 'Safety check', s: f ? (f.valid ? 'Policy gate passed' : 'Policy gate rejected the output') : run ? 'Checks every AI output before you see it' : 'Not reached', st: f ? (f.valid ? 'done' : 'fail') : run ? 'pending' : 'fail' });
   const decided = inc.approval && inc.approval !== 'pending';
-  steps.push({ t: 'Awaiting your approval', s: run ? 'Starts when the analysis is ready' : decided ? (inc.approval === 'approved' ? 'Approved by you' : 'Dismissed by you') : 'Needs your decision — nothing happens automatically', st: run ? 'pending' : decided ? 'done' : 'active' });
+  steps.push({ t: 'Awaiting your decision', s: run ? 'Starts when the analysis is ready' : decided ? (inc.approval === 'approved' ? 'Taken by an operator' : 'Dismissed') : 'Needs your decision — nothing happens automatically', st: run ? 'pending' : decided ? 'done' : 'active' });
   let done = 0; steps.forEach((x) => { if (x.st === 'done' || x.st === 'skip') done += 1; else if (x.st === 'active') done += 0.5; else if (x.st === 'fail') done += 1; });
   const rejected = mode !== 1 && !run && (!f || !f.valid);
   const title = run ? (mode === 1 ? 'Running the rules ...' : mode === 2 ? 'The model is reading your sensors ...' : na < ns ? 'Agents are thinking ...' : 'Writing the report ...')
@@ -870,48 +1342,156 @@ function updateElapsed() {
 }
 
 /* ----- token streaming ----- */
+// Tokens arrive as SSE "token" events (one NPU call = one ref; the first chunk of a call carries
+// reset, every chunk a per-call seq). A batched htpd run streams all agents at once, so events are
+// only buffered here and painted once per animation frame. A gap in seq (dropped event, page opened
+// mid-run, reconnect) is repaired from /api/streams, which holds each call's text so far.
+// Refinements (1.5 h / 3 h) stream as "rtoken" into S.rstream and a separate panel: the report page
+// keeps showing the finished analysis until the refined one replaces it.
 function streamKeyOf(incId, ref) { return incId + ':' + ref; }
-function onToken(d) {
+const ST = { seq: {}, first: {}, batch: {}, rbatch: {}, rseq: {}, rlast: {}, dirty: new Set(), cards: new Set(), raf: 0, sync: {} };
+S.rstream = {};
+function onToken(d, refine) {
   if (!d || !d.incident || !d.ref) return;
-  const k = streamKeyOf(d.incident, d.ref);
-  S.stream[k] = (S.stream[k] || '') + (d.text || '');
-  // The card preview is updated whether or not the incident is open, so the list itself shows the
-  // model thinking. Without this, tokens were only ever painted into an already-open detail sheet,
-  // so from the incident list the answer simply appeared all at once after ~17 s.
-  S.cardStream[d.incident] = ((S.cardStream[d.incident] || '') + (d.text || '')).slice(-240);
-  const cs = $('.cstream[data-cs="' + d.incident + '"]');
-  if (cs) { cs.textContent = S.cardStream[d.incident]; cs.scrollTop = cs.scrollHeight; }
-  if (S.incId !== d.incident) return;
-  const el = $('#inc-detail [data-s="' + d.ref + '"]');
-  if (el) { el.textContent = S.stream[k]; el.scrollTop = el.scrollHeight; }
-  else if (!onToken.t) onToken.t = setTimeout(() => { onToken.t = 0; refreshIncDetail(true); }, 250);
+  const k = streamKeyOf(d.incident, d.ref), buf = refine ? S.rstream : S.stream, seqs = refine ? ST.rseq : ST.seq;
+  if (d.reset) { buf[k] = ''; seqs[k] = 0; }
+  if (d.seq != null) {
+    const want = (seqs[k] || 0) + 1;
+    if (d.seq < want) return;                                  // already have it (resync overlap)
+    if (d.seq > want) { resyncStreams(d.incident); return; }   // missed something: fetch the whole text
+    seqs[k] = d.seq;
+  }
+  buf[k] = (buf[k] || '') + (d.text || '');
+  if (refine) { ST.rlast[d.incident] = Date.now(); }
+  else {
+    if (ST.first[k] == null) ST.first[k] = Date.now();
+    // The card preview is updated whether or not the incident is open, so the list itself shows the
+    // model thinking. Without this, tokens were only ever painted into an already-open detail sheet,
+    // so from the incident list the answer simply appeared all at once after ~17 s.
+    S.cardStream[d.incident] = ((S.cardStream[d.incident] || '') + (d.text || '')).slice(-240);
+    ST.cards.add(d.incident);
+  }
+  if (S.incId === d.incident) ST.dirty.add((refine ? 'r|' : '') + d.ref);
+  if (!ST.raf) ST.raf = requestAnimationFrame(paintStreams);
 }
-function liveCard(ref, role, text, note) {
+// keep a stream pinned to its end only while the reader is at the end (they may scroll up to read)
+function paintPre(el, text) {
+  if (el.textContent === text) return;
+  const stick = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
+  el.textContent = text;
+  if (stick) el.scrollTop = el.scrollHeight;
+}
+function paintStreams() {
+  ST.raf = 0;
+  for (const id of ST.cards) { const cs = $('.cstream[data-cs="' + id + '"]'); if (cs) paintPre(cs, S.cardStream[id] || ''); }
+  ST.cards.clear();
+  if (!S.incId) { ST.dirty.clear(); return; }
+  let missing = false;
+  for (const key of ST.dirty) {
+    const refine = key.startsWith('r|'), ref = refine ? key.slice(2) : key, k = streamKeyOf(S.incId, ref);
+    const el = $('#inc-detail [data-' + (refine ? 'rs' : 's') + '="' + ref + '"]');
+    if (!el) { missing = true; continue; }
+    paintPre(el, (refine ? S.rstream : S.stream)[k] || '');
+    if (!refine) {
+      // rebuild the pill only when its words change (a rebuilt spinner restarts its animation)
+      const pill = $('#inc-detail [data-sp="' + ref + '"]'), p = pill && streamPill(S.incId, ref);
+      if (p && pill.textContent !== p.textContent) fill(pill, p);
+    }
+  }
+  ST.dirty.clear();
+  // a call that has no box yet (first token of an agent, a refinement starting): rebuild once
+  if (missing && !paintStreams.t) paintStreams.t = setTimeout(() => { paintStreams.t = 0; refreshIncDetail(true); }, 200);
+}
+async function resyncStreams(id) {
+  if (ST.sync[id]) return; ST.sync[id] = 1;
+  try {
+    const r = await api('/api/streams?incident=' + encodeURIComponent(id));
+    const take = (list, buf, seqs) => (list || []).forEach((s) => {
+      const k = streamKeyOf(id, s.ref);
+      if ((seqs[k] || 0) <= s.seq) { buf[k] = s.text; seqs[k] = s.seq; }
+    });
+    take(r.streams, S.stream, ST.seq); take(r.refine_streams, S.rstream, ST.rseq);
+    if ((r.refine_streams || []).length) ST.rlast[id] = ST.rlast[id] || Date.now();
+    if (r.batch) ST.batch[id] = { at: Date.now() - r.batch.ago_ms, refs: new Set(r.batch.refs || []) };
+    if (r.refine_batch) ST.rbatch[id] = { at: Date.now() - r.refine_batch.ago_ms, refs: new Set(r.refine_batch.refs || []) };
+    (r.streams || []).forEach((s) => { const k = streamKeyOf(id, s.ref); if (ST.first[k] == null && s.text) ST.first[k] = -1; });
+    if (S.incId === id && S.inc) renderIncDetail();
+  } catch (e) { /* the next token or incident event retries */ }
+  finally { setTimeout(() => { delete ST.sync[id]; }, 1000); }
+}
+function onBatch(d) {
+  if (!d || !d.incident) return;
+  (d.refine ? ST.rbatch : ST.batch)[d.incident] = { at: Date.now(), refs: new Set(d.refs || []) };
+  if (d.refine) ST.rlast[d.incident] = Date.now();
+  if (S.incId === d.incident && S.inc) renderIncDetail();
+}
+// thinking (in the batch, reading its prompt) -> streaming (first token after N s) -> done (card replaced)
+function streamPill(incId, ref) {
+  const k = streamKeyOf(incId, ref), b = ST.batch[incId], tx = S.stream[k], f = ST.first[k];
+  const spin = h('span', { class: 'spin', style: 'width:12px;height:12px;border-width:2px' });
+  if (tx) return h('span', { class: 'pill orange' }, spin, 'Generating' + (b && f > 0 ? ' · first token ' + ((f - b.at) / 1000).toFixed(1) + ' s' : ''));
+  return h('span', { class: 'pill orange' }, spin, b && b.refs.has(ref) ? 'Reading the readings' : 'On the NPU');
+}
+function liveCard(incId, ref, role, text, note) {
   return h('div', { class: 'card agent st-none' },
-    h('div', { class: 'rep-h' }, h('b', { text: ref + ' · ' + (role ? (roleTitle[role] || role) + ' agent' : 'Model') }), h('span', { class: 'pill orange' }, h('span', { class: 'spin', style: 'width:12px;height:12px;border-width:2px' }), text ? 'Generating' : 'On the NPU')),
+    h('div', { class: 'rep-h' }, h('b', { text: ref + ' · ' + (role ? (roleTitle[role] || role) + ' agent' : 'Model') }), h('span', { 'data-sp': ref }, streamPill(incId, ref))),
     h('pre', { class: 'stream live', 'data-s': ref, text: text || '' }),
     h('div', { class: 'muted', style: 'font-size:13px;margin-top:6px', text: note }));
 }
-
-function renderIncFoot(inc) {
-  const f = $('#inc-foot'), sig = inc.id + '|' + inc.approval + '|' + inc.state;
-  if (f.dataset.sig === sig) return; f.dataset.sig = sig;
-  const running = inc.state === 'running', decided = inc.approval && inc.approval !== 'pending';
-  if (decided) { f.replaceChildren(h('div', { class: 'foot-row' }, h('span', { class: 'pill ' + (inc.approval === 'approved' ? 'st-normal' : 'ghost') , text: nice(inc.approval).toUpperCase() }), h('span', { class: 'muted', style: 'font-size:14px', text: inc.approval_note ? 'Note: ' + inc.approval_note : 'Decision recorded. No actuator was triggered.' }))); return; }
-  const ta = h('input', { class: 'note-in', type: 'text', placeholder: 'Note (required to dismiss)', 'aria-label': 'Operator note', maxlength: '300', oninput: (e) => { S.draft[inc.id] = e.target.value; ta.classList.remove('need'); } });
-  ta.value = S.draft[inc.id] || '';
-  const act = async (kind) => {
-    const note = ta.value.trim();
-    if (kind === 'dismiss' && !note) { ta.classList.add('need'); ta.focus(); toast('Add a short note to dismiss', true); return; }
-    try { await post('/api/incidents/' + inc.id + '/' + kind, { note }); toast(kind === 'approve' ? 'Approved. Decision recorded' : 'Dismissed'); delete S.draft[inc.id]; await Promise.all([refreshIncidents(), refreshIncDetail(true), refreshStatus()]); }
-    catch (e) { toast(kind + ': ' + e.message, true); }
-  };
-  f.replaceChildren(h('p', { class: 'foot-hint', text: running ? 'Waiting for the analysis to finish ...' : inc.state === 'failed' ? 'No report: rerun this incident from the menu, or dismiss it with a note.' : 'Requires human approval — no automatic actuation.' }), ta,
-    h('div', { class: 'foot-row', style: 'margin-top:10px' },
-      h('button', { class: 'btn danger', type: 'button', text: 'Dismiss', onclick: () => act('dismiss') }),
-      h('button', { class: 'btn primary', type: 'button', disabled: running || inc.state === 'failed' ? true : null, text: 'Approve', onclick: () => act('approve') })));
+// a 1.5 h / 3 h refinement in progress: its agents and report typing live, below the current report
+const STAGE_NEXT = { early: '1.5h', '1.5h': '3h' };
+function refiningCard(inc) {
+  const last = ST.rlast[inc.id];
+  if (!last || Date.now() - last > 90000) return null; // nothing heard for 90 s: it finished or stepped aside
+  const pre = streamKeyOf(inc.id, '');
+  const refs = Object.keys(S.rstream).filter((k) => k.startsWith(pre)).map((k) => k.slice(pre.length));
+  const rb = ST.rbatch[inc.id];
+  if (rb) rb.refs.forEach((r) => { if (!refs.includes(r)) refs.push(r); });
+  if (!refs.length) return null;
+  refs.sort((a, b) => (a === 'final') - (b === 'final') || a.localeCompare(b, undefined, { numeric: true }));
+  const stage = STAGE_NEXT[inc.refine_stage || 'early'];
+  return h('div', { class: 'card refining' },
+    h('div', { class: 'rep-h' }, h('b', { text: 'Re-checking now' + (stage ? ' (' + (stage === '3h' ? '3 h' : '1.5 h') + ' view)' : '') }),
+      h('span', { class: 'pill orange' }, h('span', { class: 'spin', style: 'width:12px;height:12px;border-width:2px' }), 'Live')),
+    h('p', { class: 'muted', style: 'font-size:13.5px;margin:4px 0 0', text: 'The AI is reading a longer stretch of the sensors. The current result stays until the new one is ready.' }),
+    refs.map((r) => h('div', { class: 'rf-row' }, h('span', { class: 'rf-ref', text: r === 'final' ? 'Report' : r }),
+      h('pre', { class: 'stream live rf', 'data-rs': r, text: S.rstream[streamKeyOf(inc.id, r)] || '' }))));
+}
+function clearRefine(id) {
+  const pre = streamKeyOf(id, '');
+  for (const k of Object.keys(S.rstream)) if (k.startsWith(pre)) { delete S.rstream[k]; delete ST.rseq[k]; }
+  delete ST.rbatch[id]; delete ST.rlast[id];
 }
 
+// long operator notes show three lines in the footer; tap/Enter shows the whole note (scrolls if huge)
+let footNoteOpen = null; // incident id whose note is expanded (survives footer re-renders)
+function toggleFootNote(e) { const n = e.currentTarget, on = !n.classList.contains('open'); n.classList.toggle('open', on); n.setAttribute('aria-expanded', String(on)); footNoteOpen = on ? n.dataset.id : null; }
+function renderIncFoot(inc, force) {
+  const f = $('#inc-foot'), wf = wfOfI(inc), ff = S.footForm && S.footForm.id === inc.id ? S.footForm : null;
+  const sig = [inc.id, inc.approval, inc.state, wf, inc.owner, inc.suggest_outcome, inc.outcome, ff ? ff.kind + ff.outcome : '', opName()].join('|');
+  if (!force && f.dataset.sig === sig) return; f.dataset.sig = sig;
+  if (wf === 'closed') {
+    const by = inc.closed_by === 'system' ? 'automatically' : inc.closed_by ? 'by ' + inc.closed_by : '';
+    const note = (inc.outcome ? (OUTCOME_TEXT[inc.outcome] || nice(inc.outcome)) : 'Decision recorded') + (by ? ' · ' + by : '') + (inc.closed_at ? ' · ' + dclock(inc.closed_at) : '') +
+      ((inc.outcome_note || inc.approval_note) && (inc.outcome_note || inc.approval_note) !== 'auto' ? ' · Note: ' + (inc.outcome_note || inc.approval_note) : '') + '. Nothing was switched automatically.';
+    f.replaceChildren(h('div', { class: 'foot-row' }, h('span', { class: 'pill ghost', text: '◻ CLOSED' }), h('span', { class: 'muted foot-note' + (footNoteOpen === inc.id ? ' open' : ''), 'data-id': inc.id, role: 'button', tabindex: '0', 'aria-expanded': String(footNoteOpen === inc.id), title: 'Tap to show the whole note', text: note, onclick: toggleFootNote, onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleFootNote(e); } } })));
+    return;
+  }
+  if (ff) { f.replaceChildren(footForm(inc)); return; }
+  const running = wf === 'analysing', failed = wf === 'interrupted', owned = wf === 'in_progress' || (wf === 'resolved' && inc.owner);
+  const hint = running ? 'Waiting for the analysis to finish ...' : failed ? 'No report: re-run this incident (Technical details), or dismiss it with a note.'
+    : owned ? (inc.owner ? inc.owner + ' is on it' + (inc.acked_at ? ' since ' + dclock(inc.acked_at) : '') + '. ' : '') + 'Tick the steps above, then close it with how it ended.'
+      : 'I\'m on it = you take this and work through the steps. Dismiss = not needed (note required). Nothing switches automatically.';
+  const me = opName();
+  fill(f, h('p', { class: 'foot-hint', text: hint }),
+    h('div', { class: 'foot-row' },
+      h('button', { class: 'btn danger', type: 'button', disabled: running ? true : null, text: 'Dismiss…', onclick: () => openFootForm(inc, 'dismiss') }),
+      owned || wf === 'resolved'
+        ? h('button', { class: 'btn primary', type: 'button', text: 'Close…', onclick: () => openFootForm(inc, 'close') })
+        : h('button', { class: 'btn primary', type: 'button', disabled: running || failed ? true : null, onclick: () => wfAct(inc, '/ack', {}, 'Recorded: you are on it') },
+          'I\'m on it' + (me ? ' (' + me + ')' : ''))),
+    owned && inc.owner && me && inc.owner !== me && !running ? h('button', { type: 'button', class: 'btn sm plain', onclick: () => wfAct(inc, '/ack', {}, 'You took this over') }, 'Take over as ' + me) : null);
+}
 /* ----- severity: decided by the cross-domain reasoner (backend severity.go) -----
    The severity an incident opens with is the rule engine's and only provisional; the agents often
    disagree. So nothing is coloured until the analysis has finished and the reasoner has decided:
@@ -930,28 +1510,27 @@ function sevTag(i) {
 }
 
 /* ----- flagged-sensor chips + floating sensor sheet ----- */
-const METRIC_NAME = { co2: 'CO2', pm25: 'PM2.5', pm10: 'PM10', temp: 'Temperature', rh: 'Humidity', level: 'Tank level', flow: 'Flow',
-  tds: 'TDS', ph: 'pH', power_kw: 'Power', pf: 'Power factor', wind: 'Wind speed', occ: 'Occupancy', ac_units_on: 'AC units on' };
 const CTX_GLYPH = { normal: '○', warning: '△', critical: '□', sensor_fault: '◇' }; // hollow: seen, not flagged
 // What this sensor's final finding is: its agent's (when it passed the policy gate), else the rule
 // finding the report fell back to. Mode 1 and 2 have no per-sensor agents.
 function sensorVerdict(inc, s) {
   const a = (inc.agents || []).find((x) => x.ref === s.ref) || null, rf = s.rule_finding || {};
-  if (a && a.parsed && a.valid) return { st: a.parsed.status, a, f: a.parsed };
+  // the 12 h check raises a sensor its agent called normal to a warning (title.go longRangeRaise)
+  if (a && a.parsed && a.valid) return { st: a.parsed.status === 'normal' && !s.context && (s.long_range || []).length ? 'warning' : a.parsed.status, a, f: a.parsed };
   if (a) return { st: rf.status, a, f: null };
   // related sensors are only seen (most get a CPU context agent at the end): show their rule view meanwhile
   if (inc.state === 'running' && inc.mode !== 1 && !s.context) return { st: 'pending', a: null, f: null };
   return { st: rf.status, a: null, f: null };
 }
 function sensorChip(inc, s) {
-  const v = sensorVerdict(inc, s), name = METRIC_NAME[s.metric] || nice(s.metric), pend = v.st === 'pending';
+  const v = sensorVerdict(inc, s), name = metricName(s.metric), pend = v.st === 'pending';
   const glyph = pend ? '◌' : s.context ? (CTX_GLYPH[v.st] || '○') : (STATUS_GLYPH[v.st] || '○');
-  const said = pend ? 'waiting for its agent' : (STATUS_LABEL[v.st] || nice(v.st));
-  return h('button', { type: 'button', class: 'schip ' + stClass(pend ? 'none' : v.st) + (s.context ? ' ctx' : '') + (pend ? ' pend' : ''), 'data-ref': s.ref,
-    'aria-haspopup': 'dialog', 'aria-label': name + ', ' + (s.location || s.node) + (s.context ? ', related, not flagged' : '') + ': ' + said + '. Open details',
+  const said = pend ? 'waiting for the AI' : (STATUS_LABEL[v.st] || nice(v.st));
+  return h('button', { type: 'button', class: 'schip ' + stClass(pend ? 'none' : v.st) + (s.context ? ' ctx' : '') + (pend ? ' pend' : ''), 'data-ref': s.ref, title: s.location || s.node,
+    'aria-haspopup': 'dialog', 'aria-label': name + ', ' + (s.location || s.node) + (s.context ? ', checked for context' : '') + ': ' + said + '. Open details',
     onclick: (e) => openSensorSheet(inc.id, s.ref, e.currentTarget) },
   h('i', { class: 'sglyph', 'aria-hidden': 'true', text: glyph }),
-  h('span', { class: 'schip-t' }, h('b', { text: name }), h('span', { text: s.location || s.node })));
+  h('span', { class: 'schip-t' }, h('b', { text: name }), h('span', { text: placeShort(s.location || s.node) + ' · ' + said })));
 }
 const FS = { inc: null, ref: null, opener: null, sig: '' };
 function openSensorSheet(incId, ref, opener) {
@@ -988,52 +1567,57 @@ function renderSensorSheet(force) {
   if (!inc || inc.id !== FS.inc) { closeSensorSheet(); return; }
   const s = (inc.sensors || []).find((x) => x.ref === FS.ref); if (!s) return;
   const v = sensorVerdict(inc, s), a = v.a, p = v.f, rf = s.rule_finding;
-  const sig = JSON.stringify([v.st, a && a.raw, a && a.valid, inc.state]);
+  const sig = JSON.stringify([v.st, a && a.raw, a && a.valid, inc.state, inc.refine_stage, s.window_end, S.eng]);
   if (!force && sig === FS.sig) return;
   FS.sig = sig;
   const bd = $('#fs-bd'), sc = bd.scrollTop;
-  const name = METRIC_NAME[s.metric] || nice(s.metric), occ = s.role === 'occupancy', n = (s.window || []).length;
+  const name = metricName(s.metric), occ = s.role === 'occupancy', n = (s.window || []).length;
   const pts = (s.window || []).map((x, i) => [(s.window_end || 0) - (n - 1 - i) * 300, x]);
-  setText($('#fs-t'), s.ref + ' · ' + name);
+  setText($('#fs-t'), (S.eng ? s.ref + ' · ' : '') + name + ' · ' + placeShort(s.location || s.node));
   const kv = (rows) => h('dl', { class: 'kv', style: 'margin-top:10px' }, rows.map(([k, val]) => [h('dt', { text: k }), h('dd', { text: val })]));
-  const patChip = (f) => h('span', { class: 'chip', html: patIcon(f.pattern) + esc(nice(f.pattern)) });
+  const patChip = (f) => h('span', { class: 'chip', html: patIcon(f.pattern) + esc(patternPlain(f.pattern)) });
+  const obs = (list) => h('ul', { class: 'obs' }, (list || []).map((o) => h('li', {}, S.eng ? evChipsInText(o, s.evidence) : stripRefs(o))));
   const chart = h('div', { class: 'fs-chart' });
   const out = [
-    h('div', { class: 'rep-h' }, v.st === 'pending' ? h('span', { class: 'pill ghost', text: 'Waiting for its agent' }) : pill(v.st),
-      s.context ? h('span', { class: 'pill ghost', text: 'Seen · not flagged' }) : null),
-    h('p', { class: 'muted', style: 'margin:6px 0 10px', text: s.node + ' · ' + (s.location || '-') }),
+    h('div', { class: 'rep-h' }, v.st === 'pending' ? h('span', { class: 'pill ghost', text: 'Waiting for the AI' }) : pill(v.st),
+      s.context ? h('span', { class: 'pill ghost', text: 'Checked for context' }) : null),
+    h('p', { class: 'muted', style: 'margin:6px 0 10px', text: (s.location || '-') + (S.eng ? ' · ' + s.node : '') }),
     s.why ? h('div', { class: 'banner', style: 'margin-bottom:10px;font-weight:500;font-size:13.5px;padding:8px 12px' }, icon('info', 20), h('span', { text: 'Checked because: ' + s.why })) : null,
     chart,
-    h('p', { class: 'muted fs-cap', text: n ? 'The window its agent read: ' + n + ' readings, ' + hm(pts[0][0]) + ' → ' + hm(pts[n - 1][0]) + ' IST' : 'No window stored for this sensor.' }),
+    h('p', { class: 'muted fs-cap', text: n ? 'The readings the AI looked at: ' + hm(pts[0][0]) + ' → ' + hm(pts[n - 1][0]) + ' IST (' + n + ' readings)' : 'No readings stored for this sensor.' }),
+    // 12 h checks for what the 4 h agent misses (longrange.go); given to the reasoner as S#.E9/E10
+    (s.long_range || []).length ? h('div', { class: 'banner', style: 'margin:4px 0 10px;font-size:13.5px;padding:8px 12px;display:block' },
+      h('div', { style: 'font-weight:600;margin-bottom:4px', text: 'Longer view (last 12 h)' }),
+      ...s.long_range.map((l) => h('div', { text: S.eng ? l.text.replace(/^12 h view: /, '') + ' [' + l.id + ']' : l.text.replace(/^12 h view: /, '').replace(/\s*\(r2 [^)]*\)/, '') }))) : null,
   ];
   const ctxA = a && isCtxAgent(a);
-  const who = ctxA ? 'Context agent (rules, CPU)' : a ? (roleTitle[s.role] || nice(s.role)) + ' agent (NPU)' : inc.mode === 3 ? (roleTitle[s.role] || nice(s.role)) + ' agent' : 'Agent';
-  const sec = h('div', { class: 'fs-sec' }, h('h3', { text: who + ' says' }));
+  const who = !S.eng ? 'What the AI found' : ctxA ? 'Context agent (rules, CPU)' : a ? (roleTitle[s.role] || nice(s.role)) + ' agent (NPU)' : inc.mode === 3 ? (roleTitle[s.role] || nice(s.role)) + ' agent' : 'Agent';
+  const sec = h('div', { class: 'fs-sec' }, h('h3', { text: who + (S.eng ? ' says' : '') }));
   if (p) {
-    sec.append(h('div', { class: 'rep-h', style: 'margin-top:8px' }, pill(p.status), patChip(p)),
-      kv([['Likely cause', nice(p.likely_cause)], ['Confidence', pct(p.confidence)], ['Action', nice(p.action)]]),
-      h('ul', { class: 'obs' }, (p.observations || []).map((o) => h('li', {}, evChipsInText(o, s.evidence)))));
-    if (!ctxA) sec.append(h('div', { style: 'margin-top:10px' }, gate(a.valid, a.errors)), statChips(a));
-  } else if (a) sec.append(h('div', { style: 'margin-top:8px' }, gate(a.valid, a.errors)), h('p', { class: 'muted', style: 'margin-top:8px', text: 'Its output was rejected, so the rule finding below stands for this sensor.' }));
-  else if (v.st === 'pending') sec.append(h('p', { class: 'muted', style: 'margin-top:6px', text: inc.mode === 2 ? 'Single mode reads every sensor in one call; the result appears in the reasoner card.' : 'This agent has not answered yet. Its output appears here when it does.' }));
-  else sec.append(h('p', { class: 'muted', style: 'margin-top:6px', text: inc.mode === 1 ? 'Rules mode: no AI agent ran. The rule finding is below.' : inc.mode === 2 ? 'Single mode reads every sensor in one call, so there is no per-sensor agent.' : 'No agent output stored for this sensor.' }));
+    const cw = confWord(p.confidence);
+    sec.append(h('div', { class: 'rep-h', style: 'margin-top:8px' }, pill(p.status), patChip(p)), earlyNote(inc, s, p) || '',
+      kv([['Likely cause', causePlain(p.likely_cause)], ['Confidence', cw.w + (S.eng ? ' (' + pct(p.confidence) + ')' : '')], ['Suggested action', actionText(p.action)]]),
+      obs(p.observations));
+    if (!ctxA && S.eng) sec.append(h('div', { style: 'margin-top:10px' }, gate(a.valid, a.errors)), statChips(a));
+  } else if (a) sec.append(S.eng ? h('div', { style: 'margin-top:8px' }, gate(a.valid, a.errors)) : '', h('p', { class: 'muted', style: 'margin-top:8px', text: 'The AI answer for this sensor failed the safety check, so the automatic rule result below is used.' }));
+  else if (v.st === 'pending') sec.append(h('p', { class: 'muted', style: 'margin-top:6px', text: inc.mode === 2 ? 'One AI call reads every sensor; its result appears in the report.' : 'The AI has not answered for this sensor yet. Its result appears here when it does.' }));
+  else sec.append(h('p', { class: 'muted', style: 'margin-top:6px', text: inc.mode === 1 ? 'No AI was used (rules only). The rule result is below.' : inc.mode === 2 ? 'One AI call read every sensor at once, so there is no per-sensor answer. See the report.' : 'No AI result stored for this sensor.' }));
   out.push(sec);
   // the rule that raised the alarm, whenever there is no agent finding or the agent sees it differently
   if (rf && (!p || p.status !== rf.status || p.pattern !== rf.pattern)) {
-    out.push(h('div', { class: 'fs-sec' }, h('h3', { text: p ? 'Rule engine said (raised the alarm)' : 'Rule finding' }),
+    out.push(h('div', { class: 'fs-sec' }, h('h3', { text: p ? 'Automatic rule check (raised the alarm)' : 'Automatic rule check' }),
       h('div', { class: 'rep-h', style: 'margin-top:8px' }, pill(rf.status), patChip(rf)),
-      kv([['Likely cause', nice(rf.likely_cause)], ['Action', nice(rf.action)]]),
-      p ? null : h('ul', { class: 'obs' }, (rf.observations || []).map((o) => h('li', {}, evChipsInText(o, s.evidence))))));
+      kv([['Likely cause', causePlain(rf.likely_cause)], ['Suggested action', actionText(rf.action)]]),
+      p ? null : obs(rf.observations)));
   }
   const ek = inc.id + ':' + s.ref + ':ev';
-  out.push(h('details', { open: S.open.has(ek) ? true : null, ontoggle: (e) => { e.target.open ? S.open.add(ek) : S.open.delete(ek); } },
+  if (S.eng) out.push(h('details', { open: S.open.has(ek) ? true : null, ontoggle: (e) => { e.target.open ? S.open.add(ek) : S.open.delete(ek); } },
     h('summary', { text: 'Evidence ' + s.ref + '.E1..E' + (s.evidence || []).length }),
     h('ul', { class: 'evlist', style: 'padding:6px 16px 10px' }, (s.evidence || []).map((e) => h('li', {}, h('b', { text: e.ID }), h('span', { text: e.Text }))))));
   bd.replaceChildren(...out.filter(Boolean));
   renderBigChart(chart, { points: pts, metric: name }, 4, occ, 210);
   bd.scrollTop = sc;
 }
-
 /* ----- detail page pieces ----- */
 // One collapsible section. Open state is remembered only once the operator has toggled it, so a
 // section can default open while the incident runs and closed once it is done.
@@ -1051,8 +1635,59 @@ function doneLine(inc) {
   const el = elapsedOf(inc);
   return h('div', { class: 'donein' }, h('span', { text: 'Done in' }), h('b', { text: el == null ? '-' : el.toFixed(1) + ' s' }));
 }
+/* ----- early alert + refined re-analysis (backend refine.go) -----
+   A Mode-3 incident is analysed when the alert fires (~40 min into the event) and again on the
+   windows that end 1.5 h and 3 h later in sensor time, when the agents read the shape far better.
+   The page says which analysis it shows, when the next is due, and what each one changed. */
+const STAGE_TEXT = { provisional: 'Provisional AI', early: 'At alert', '1.5h': 'Re-checked 1.5 h', '3h': 'Re-checked 3 h' };
+function stageTag(i) {
+  if (!STAGE_TEXT[i.refine_stage]) return null;
+  const prov = i.refine_stage === 'provisional';
+  const ref = i.refine_stage !== 'early' && !prov;
+  return h('span', { class: 'stagetag' + (prov ? ' prov' : ref ? ' ref' : ''), text: STAGE_TEXT[i.refine_stage],
+    title: prov ? 'AI read of a young event window; the full analysis replaces it when the event has lasted 40 min'
+      : ref ? 'The AI looked again with a longer view of the event' : 'First analysis at the alert; checked again after 1.5 h and 3 h' });
+}
+function refineLine(inc) {
+  if (inc.next_refine_sim && NEXT_STAGE[inc.refine_stage]) return h('p', { class: 'refnext' }, etaEl(inc), ' (due ' + hm(inc.next_refine_sim) + ' sensor time)');
+  const t = inc.next_refine_sim ? 'Next re-check at ' + hm(inc.next_refine_sim) + ' (sensor time)' : inc.refine_note || '';
+  return t ? h('p', { class: 'refnext', text: t }) : null;
+}
+// what one revision changed against the one before it, per flagged sensor
+function revChanges(prev, cur) {
+  const was = {}; ((prev && prev.sensors) || []).forEach((s) => { was[s.ref] = s; });
+  const out = [];
+  (cur.sensors || []).forEach((s) => {
+    const name = METRIC_NAME[s.metric] || nice(s.metric), p = was[s.ref];
+    if (s.kept || s.no_data) out.push(name + ': ' + s.note);
+    else if (p && (p.pattern !== s.pattern || p.status !== s.status)) out.push(name + ': ' + patternPlain(p.pattern) + ' (' + (STATUS_LABEL[p.status] || nice(p.status)) + ') → ' + patternPlain(s.pattern) + ' (' + (STATUS_LABEL[s.status] || nice(s.status)) + ')');
+  });
+  return out;
+}
+function historyFold(inc) {
+  const rv = inc.revisions || []; if (!rv.length) return null;
+  const items = rv.map((r, k) => {
+    const ch = k ? revChanges(rv[k - 1], r) : [];
+    return h('li', {},
+      h('div', { class: 'hh' }, h('span', { class: 'stagetag' + (k ? ' ref' : ''), text: STAGE_TEXT[r.stage] || r.stage }), sevTag({ state: 'done', severity: r.severity }),
+        h('span', { class: 'muted', text: 'windows to ' + hm(r.sim_end) + (r.npu_calls ? ' · ' + r.npu_calls + ' NPU call' + (r.npu_calls === 1 ? '' : 's') : '') })),
+      h('div', { class: 'ht', text: r.title }),
+      h('div', { class: 'hc', text: !k ? 'Analysed at the alert' : ch.length ? ch.join(' · ') : 'Same findings' }));
+  }).reverse(); // newest first
+  return fold(inc.id + ':hist', 'History (' + rv.length + ')', false, h('div', { class: 'card' }, h('ul', { class: 'hist' }, items)));
+}
+// this sensor at the early stage, when the refined view says something else
+function earlyNote(inc, s, p) {
+  const rv = inc.revisions || []; if (rv.length < 2) return null;
+  const e = (rv[0].sensors || []).find((x) => x.ref === s.ref), cur = (rv[rv.length - 1].sensors || []).find((x) => x.ref === s.ref);
+  if (cur && cur.kept && cur.note) return h('p', { class: 'refnext', text: cur.note[0].toUpperCase() + cur.note.slice(1) });
+  if (!e || !p || (e.pattern === p.pattern && e.status === p.status)) return null;
+  return h('p', { class: 'refnext', text: 'At the alert it was ' + patternPlain(e.pattern) + ' (' + (STATUS_LABEL[e.status] || nice(e.status)) + ')' });
+}
+
 function reasonerCard(inc) {
-  const f = inc.final, running = inc.state === 'running', fast = !!(f && isFastModel(f.model)), v = sevOf(inc);
+  const pre = inc.final && inc.final.preliminary ? inc.final : null; // two-stage report: stage 1 while the reasoner writes
+  const f = pre ? null : inc.final, running = inc.state === 'running', fast = !!(f && isFastModel(f.model)), v = sevOf(inc);
   const card = h('div', { class: 'card reasoner sev-' + v.k },
     h('div', { class: 'rep-h rz-h' }, h('h3', { text: inc.mode === 1 ? 'Rule summary (Mode 1, no AI)' : 'Cross-domain reasoner' }), sevTag(inc)));
   const wait = (t, s) => h('div', { class: 'rz-wait' }, h('b', { text: t }), h('p', { class: 'muted', text: s }));
@@ -1068,6 +1703,11 @@ function reasonerCard(inc) {
       card.append(h('div', { style: 'margin-top:12px' }, reportBody(inc, f.parsed)));
     } else card.append(h('div', { class: 'muted', style: 'margin-top:10px', text: 'The model output could not be parsed into a report.' }));
     if (!fast) card.append(details(inc.id + ':final:raw', 'Raw model output', f.raw), details(inc.id + ':final:prompt', 'Prompt (synthesizer)', f.prompt));
+  } else if (running && pre) {
+    const tx = S.stream[streamKeyOf(inc.id, 'final')];
+    card.append(h('div', { class: 'banner', style: 'margin-bottom:12px' }, icon('clock'), h('span', { text: 'Preliminary report from the rules and the agent findings. The AI reasoner is writing the full report and will replace this one.' })));
+    if (pre.parsed) card.append(h('div', { style: 'margin-top:12px;opacity:.85' }, reportBody(inc, pre.parsed)));
+    card.append(h('pre', { class: 'stream live', 'data-s': 'final', text: tx || '' }), h('div', { class: 'muted', style: 'font-size:13px;margin-top:6px', text: 'Reasoner typing live …' }));
   } else if (running) {
     // reserved from the start so the page does not jump when the report arrives; no animation
     const tx = S.stream[streamKeyOf(inc.id, 'final')];
@@ -1080,36 +1720,172 @@ function reasonerCard(inc) {
   return card;
 }
 
+/* ----- operator summary (what is happening / why it matters / what to do / what changed) ----- */
+// The result the operator acts on: the AI report when it passed the safety check, else the rule result.
+function mainReport(inc) {
+  const f = inc.final;
+  if (inc.mode === 1) return inc.mode1_report ? { r: inc.mode1_report, src: 'rules' } : null;
+  if (f && f.preliminary && f.parsed) return { r: f.parsed, src: 'rules', preliminary: true };
+  if (f && f.valid && f.parsed) return { r: f.parsed, src: 'ai' };
+  if (f && inc.mode1_report) return { r: inc.mode1_report, src: 'rules', rejected: true };
+  return null;
+}
+const REV_LABEL = { early: 'At the alert', '1.5h': 'Re-check after 1.5 h', '3h': 'Re-check after 3 h' };
+const SEV_RANK = { normal: 0, info: 0, sensor_fault: 1, warning: 2, critical: 3 };
+// the re-checks as a story: one row per analysis, each saying what it changed (elevated / curbed / resolved)
+function revStory(inc) {
+  const rv = inc.revisions || [];
+  const rows = rv.map((r, k) => {
+    const pv = rv[k - 1];
+    let ch = 'First analysis', cls = 'first';
+    if (pv) {
+      const a = SEV_RANK[pv.severity] || 0, b = SEV_RANK[r.severity] || 0;
+      [ch, cls] = b > a ? ['↑ Got worse', 'elevated'] : b < a ? (b === 0 ? ['✓ Resolved', 'resolved'] : ['↓ Improved', 'curbed']) : ['No change', 'same'];
+    }
+    return { label: REV_LABEL[r.stage] || nice(r.stage), at: r.sim_end ? hm(r.sim_end) : '', sev: r.severity, ch, cls, detail: pv ? revChanges(pv, r) : [] };
+  });
+  let verdict = '';
+  if (rows.length > 1) {
+    const a = rv[0], z = rv[rv.length - 1], sa = SEV_LABEL[a.severity] || nice(a.severity), sz = SEV_LABEL[z.severity] || nice(z.severity);
+    const ra = SEV_RANK[a.severity] || 0, rz = SEV_RANK[z.severity] || 0, nre = rows.length - 1;
+    verdict = rz > ra ? 'Got worse since the alert: ' + sa + ' → ' + sz : rz < ra ? (rz === 0 ? 'Resolved: the re-check found nothing wrong any more (was ' + sa + ')' : 'Improved since the alert: ' + sa + ' → ' + sz)
+      : 'Checked again ' + (nre === 1 ? 'once' : nre === 2 ? 'twice' : nre + ' times') + ': still ' + sz;
+  }
+  return { rows, verdict };
+}
+function confButton(inc, c) {
+  const cw = confWord(c), k = inc.id + ':conf', shown = S.eng || S.open.has(k);
+  const num = h('span', { class: 'conf-n', text: ' · ' + pct(c), hidden: shown ? null : true });
+  const b = h('button', { type: 'button', class: 'conf conf-' + cw.k, 'aria-expanded': shown ? 'true' : 'false',
+    title: 'Tap to show the model\'s own score', onclick: () => {
+      const o = b.getAttribute('aria-expanded') !== 'true'; o ? S.open.add(k) : S.open.delete(k);
+      b.setAttribute('aria-expanded', o ? 'true' : 'false'); num.hidden = !o;
+    } }, h('span', { class: 'confbar' }, h('i', { style: 'width:' + Math.round((c || 0) * 100) + '%' })), ' ' + cw.w, num);
+  return b;
+}
+function findingOf(inc, s) { const v = sensorVerdict(inc, s); return { st: v.st, f: v.f || s.rule_finding || null }; }
+// like title.go what(): a steady shape with an abnormal status is named by its status ("above normal")
+function sensorPhrase(s, f, st) {
+  const where = placeShort(s.location || s.node), p = f && f.pattern;
+  const word = p && STEADY[p] && PATTERN_PLAIN[st] ? PATTERN_PLAIN[st] : p ? patternPlain(p) : 'checked';
+  return metricName(s.metric) + ' at ' + where + ' ' + word;
+}
+function happening(inc, flagged, related) {
+  const lead = [], obs = [], ok = [], bad = [];
+  for (const s of flagged) {
+    const { st, f } = findingOf(inc, s);
+    if (st === 'pending') continue;
+    lead.push(sensorPhrase(s, f, st) + (st && st !== 'normal' ? ' (' + (STATUS_LABEL[st] || nice(st)).toLowerCase() + ')' : ''));
+    ((f && f.observations) || []).slice(0, 2).forEach((o) => obs.push(o));
+  }
+  for (const s of related) {
+    const { st, f } = findingOf(inc, s);
+    (st && st !== 'normal' && st !== 'insufficient_data' ? bad : ok).push(sensorPhrase(s, f, st) + (st && st !== 'normal' && st !== 'insufficient_data' ? ' (' + (STATUS_LABEL[st] || nice(st)).toLowerCase() + ')' : ''));
+  }
+  const allNormal = flagged.length && flagged.every((s) => findingOf(inc, s).st === 'normal');
+  const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+  let rel = '';
+  if (bad.length) rel = 'Also abnormal nearby: ' + bad.join('; ') + '.';
+  if (ok.length) rel += (rel ? ' ' : '') + 'Checked nearby and normal: ' + ok.join('; ') + '.' + (!bad.length && !allNormal ? ' So the cause looks local.' : '');
+  return { lead: lead.length ? (allNormal ? 'Nothing abnormal confirmed: ' : '') + cap(lead.join('; ')) + '.' : '', obs: joinSentences(obs.slice(0, 3)), related: rel };
+}
+function opSummary(inc, main, flagged) {
+  const out = [], r = main && main.r;
+  const role = primaryRole(inc.roles);
+  if (main && main.rejected) out.push(h('div', { class: 'banner op-warn', role: 'note' }, icon('alert'), h('span', { text: 'The AI report failed the safety check, so the automatic rule result is shown. See Technical details.' })));
+  // what is happening: composed from each sensor's structured finding (pattern, status, place) so it reads
+  // the same in every mode; the model's own wording stays under Technical details
+  const hap = happening(inc, flagged, (inc.sensors || []).filter((x) => x.context));
+  const what = hap.lead || (r ? stripRefs(r.root_cause) : '');
+  out.push(h('section', { class: 'op-sec' }, h('h3', { text: 'What is happening' }),
+    h('p', { class: 'op-lead', text: what || 'No summary was produced.' }),
+    hap.obs ? h('p', { class: 'op-more', text: hap.obs }) : null,
+    hap.related ? h('p', { class: 'op-more', text: hap.related }) : null));
+  // why it matters: consequence from the report label, and the likely cause from the flagged sensors
+  const causes = [];
+  for (const sr of flagged) { const v = sensorVerdict(inc, sr), f = v.f || sr.rule_finding; if (f && f.likely_cause && !/^normal|sensor_fault$/.test(f.likely_cause) && !causes.includes(causePlain(f.likely_cause))) causes.push(causePlain(f.likely_cause)); }
+  out.push(h('section', { class: 'op-sec' }, h('h3', { text: 'Why it matters' }),
+    h('p', { text: (r && LABEL_IMPACT[r.label]) || DOMAIN_IMPACT[role] || 'A person should take a look.' }),
+    causes.length ? h('p', { class: 'op-more', text: 'Likely cause: ' + causes.slice(0, 2).join('; ') + '.' }) : null));
+  // what to do: the recommended action, then the domain playbook (de-duplicated)
+  const steps = [];
+  if (r && r.action && r.action !== 'none') steps.push(actionText(r.action));
+  const dh = S.health && (S.health.domains || []).find((d) => d.domain === role);
+  const sev = SEV_RANK[inc.severity] || 0;
+  if (sev > 0) ((dh && dh.steps) || []).forEach((st) => { if (steps.length < 3 && !steps.includes(st.text)) steps.push(st.text); });
+  if (inc.workflow && inc.state !== 'failed') out.push(checklist(inc)); // UX v34: per-step checklist (workflow.go)
+  else out.push(h('section', { class: 'op-sec' }, h('h3', { text: 'What to do' }),
+    steps.length && (sev > 0 || (r && r.action && r.action !== 'none')) ? h('ol', { class: 'op-steps' }, steps.map((t) => h('li', { text: t })))
+      : h('p', { text: 'Nothing to do on site. Dismiss it with a short note if you agree.' })));
+  // how sure (a word; the number one tap away)
+  if (r && typeof r.confidence === 'number') {
+    out.push(h('section', { class: 'op-sec op-row' }, h('h3', { text: 'How sure the AI is' }), confButton(inc, r.confidence),
+      h('p', { class: 'op-note', text: main.src === 'rules' ? 'From the automatic rules (no AI).' : 'Based on ' + flagged.length + ' flagged sensor' + (flagged.length === 1 ? '' : 's') + ' and the related ones it checked. The evidence is under Technical details.' })));
+  }
+  // what changed at the 1.5 h / 3 h re-checks
+  const st = revStory(inc), nx = refineLine(inc);
+  if (st.rows.length > 1 || nx) {
+    out.push(h('section', { class: 'op-sec' }, h('h3', { text: 'What changed since the alert' }),
+      st.verdict ? h('p', { class: 'op-lead', text: st.verdict }) : null,
+      st.rows.length ? h('ol', { class: 'op-rev' }, st.rows.map((x) => h('li', { class: 'rv-' + x.cls },
+        h('span', { class: 'rv-l', text: x.label + (x.at ? ' · ' + x.at : '') }), sevTag({ state: 'done', severity: x.sev }), h('span', { class: 'rv-c', text: x.ch }),
+        x.detail.length ? h('span', { class: 'rv-d', text: x.detail.join(' · ') }) : null))) : null,
+      nx));
+  }
+  return out;
+}
 function renderIncDetail() {
   const inc = S.inc, box = $('#inc-detail'); if (!inc) return;
   const running = inc.state === 'running';
   // finished calls no longer need their stream buffer
-  (inc.agents || []).forEach((a) => { delete S.stream[streamKeyOf(inc.id, a.ref)]; });
-  if (inc.final) delete S.stream[streamKeyOf(inc.id, 'final')];
+  const drop = (ref) => { const k = streamKeyOf(inc.id, ref); delete S.stream[k]; delete ST.first[k]; };
+  (inc.agents || []).forEach((a) => drop(a.ref));
+  if (inc.final) drop('final');
+  if (!running) delete ST.batch[inc.id];
   const parts = [];
-  setText($('#isheet-t'), inc.id);
-  parts.push(h('div', { class: 'ltitle', style: 'padding-top:2px' },
-    h('div', { class: 'rep-h', style: 'margin-bottom:8px' }, sevTag(inc), h('span', { class: 'pill ghost', text: 'Mode ' + inc.mode }),
-      running ? h('span', { class: 'livepill', text: 'LIVE' }) : null, multiFlag(inc)),
-    h('h1', { class: 'inc-title', style: 'font-size:26px;line-height:1.2', text: inc.title }),
-    h('p', { text: 'Sensor time ' + (inc.created_sim ? dhm(inc.created_sim) + ' IST' : '-') + ' · analysed ' + (inc.created_wall ? inc.created_wall.slice(-8) : '-') + ' · ' + (inc.sensors || []).length + ' sensors · ' + inc.npu_calls + ' NPU calls' })));
-  // while running the steps are the story; once done only the latency is worth keeping
-  parts.push(running ? trackCard(inc) : doneLine(inc));
-  // flagged sensors: titles only, tap for the chart and what that sensor's agent said
+  const doms = (inc.roles || []).map((r) => DH_NAME[r] || roleTitle[r] || nice(r));
+  setText($('#isheet-t'), inc.id + (doms.length ? ' · ' + doms.join(', ') : ''));
   const sensors = inc.sensors || [];
   const flagged = sensors.filter((s) => !s.context), related = sensors.filter((s) => s.context);
-  parts.push(h('div', { class: 'sec-h', text: 'Flagged sensors (' + flagged.length + ')' }), h('div', { class: 'schips' }, flagged.map((s) => sensorChip(inc, s))));
-  if (related.length) parts.push(h('div', { class: 'sec-h sub', text: 'Seen, not flagged (' + related.length + ')' }), h('div', { class: 'schips' }, related.map((s) => sensorChip(inc, s))));
-  parts.push(h('p', { class: 'muted schip-hint', text: 'Tap a sensor for its chart and what its agent concluded.' }));
-  // the reasoner's decision, reserved while the agents work
-  parts.push(h('div', { style: 'height:14px' }), reasonerCard(inc));
+  const main = running ? null : mainReport(inc);
+  // 1. headline: severity + decision state + plain title (the rules' title and the timing stay under Technical details)
+  parts.push(h('div', { class: 'op-head' },
+    h('div', { class: 'rep-h', style: 'margin-bottom:8px' }, sevTag(inc),
+      wfChip(inc),
+      stageTag(inc), running ? h('span', { class: 'livepill', text: 'LIVE' }) : null, multiFlag(inc)),
+    h('h1', { class: 'inc-title', text: plainTitle(inc.title), title: inc.title }),
+    h('p', { class: 'op-meta', text: (doms.join(', ') || 'Campus') + ' · detected ' + (inc.created_sim ? dhm(inc.created_sim) : '-') + ' (sensor time)' }),
+    wfOfI(inc) !== 'closed' && etaEl(inc) ? h('p', { class: 'op-meta' }, etaEl(inc)) : null));
+  const bn = wfBanner(inc); if (bn) parts.push(bn);
+  // 2. while the AI works: the progress steps (plain), its live text is under Technical details (open)
+  if (running) parts.push(trackCard(inc));
+  else if (inc.state === 'failed') parts.push(doneLine(inc));
+  // 3. what is happening / why / what to do / how sure / what changed
+  if (!running) parts.push(...opSummary(inc, main, flagged));
+  // 4. sensors: titles only, tap for the chart and what the AI found for that sensor
+  parts.push(h('section', { class: 'op-sec' }, h('h3', { text: 'Sensors involved (' + flagged.length + ')' }), h('div', { class: 'schips' }, flagged.map((s) => sensorChip(inc, s))),
+    related.length ? [h('h4', { class: 'op-h4', text: 'Also checked nearby (' + related.length + ')' }), h('div', { class: 'schips' }, related.map((s) => sensorChip(inc, s)))] : null,
+    h('p', { class: 'op-note', text: 'Tap a sensor for its chart and what the AI found.' })));
+  if (!running) { const hs = historySec(inc); if (hs) parts.push(hs); const tl = evTimeline(inc); if (tl) parts.push(tl); }
+  if (!running) { const rf = refiningCard(inc); if (rf) parts.push(rf); }
+  // 5. Technical details: the full engineering record (open while the AI works, or in Engineering view)
+  const tech = [];
+  tech.push(h('dl', { class: 'kv tech-kv' },
+    h('dt', { text: 'Incident' }), h('dd', { text: inc.id + ' · Mode ' + inc.mode + ' (' + ['Rules', 'Single model', 'Multi-agent'][inc.mode - 1] + ')' }),
+    h('dt', { text: 'Title' }), h('dd', { text: inc.title }),
+    inc.rule_title && inc.rule_title !== inc.title ? [h('dt', { text: 'Raised by the rules as' }), h('dd', { text: inc.rule_title })] : null,
+    h('dt', { text: 'Sensor time' }), h('dd', { text: inc.created_sim ? dhm(inc.created_sim) + ' IST' : '-' }),
+    h('dt', { text: 'Analysed (device time)' }), h('dd', { text: inc.created_wall || '-' }),
+    h('dt', { text: 'Work' }), h('dd', { text: sensors.length + ' sensors · ' + inc.npu_calls + ' NPU call' + (inc.npu_calls === 1 ? '' : 's') + (running ? '' : ' · ' + (elapsedOf(inc) == null ? '-' : elapsedOf(inc).toFixed(1) + ' s')) }),
+    main && main.r ? [h('dt', { text: 'Label / action' }), h('dd', { text: (main.r.label || '-') + ' / ' + (main.r.action || '-') })] : null));
+  tech.push(h('div', { style: 'height:12px' }), reasonerCard(inc));
   // compare (rerun) sits with the decision it questions; approve/dismiss stay in the sheet footer
   const seg = makeSeg([{ v: 1, t: 'Rules' }, { v: 2, t: 'Single' }, { v: 3, t: 'Agents' }], async (m) => {
     try { S.pendingNewest = new Set(S.incs.map((i) => i.id)); const r = await post('/api/incidents/' + inc.id + '/rerun?mode=' + m); toast(r && r.queued_ahead ? 'Rerun queued: ' + r.queued_ahead + ' ahead on the NPU' : 'Re-running ' + inc.id + ' in mode ' + m); setTimeout(refreshIncidents, 400); setTimeout(refreshIncidents, 1500); }
     catch (e) { S.pendingNewest = null; toast('Rerun: ' + e.message, true); }
   }, 'Re-run in another mode');
   setSeg(seg, inc.mode); $$('button', seg).forEach((b) => b.setAttribute('aria-pressed', 'false'));
-  parts.push(h('div', { class: 'card' }, h('h3', { style: 'font-size:17px;margin-bottom:4px', text: 'Compare modes' }), h('p', { class: 'muted', style: 'font-size:14px;margin-bottom:10px', text: 'Re-analyse the same frozen sensor windows in another mode. A new incident is created.' }), seg));
+  tech.push(h('div', { class: 'card' }, h('h3', { style: 'font-size:17px;margin-bottom:4px', text: 'Compare modes' }), h('p', { class: 'muted', style: 'font-size:14px;margin-bottom:10px', text: 'Re-analyse the same frozen sensor windows in another mode. A new incident is created.' }), seg));
   // agents: NPU agents (streaming + metrics) and compact CPU context agents
   const ag = h('div', { class: 'agents' }), cg = h('div', { class: 'agents' });
   let nextShown = false;
@@ -1140,26 +1916,365 @@ function renderIncDetail() {
         h('div', { style: 'margin-top:10px' }, gate(a.valid, a.errors)),
         details(inc.id + ':' + a.ref + ':raw', 'Raw model output', a.raw), details(inc.id + ':' + a.ref + ':prompt', 'Prompt', a.prompt)));
     } else if (running && inc.mode === 3 && !s.context) {
-      const tx = S.stream[streamKeyOf(inc.id, s.ref)];
-      if (tx || !nextShown) { nextShown = true; ag.append(liveCard(s.ref, s.role, tx, s.node + ' ' + s.metric + ' — ' + s.location)); }
-      else ag.append(h('div', { class: 'card agent st-none' }, h('div', { class: 'rep-h' }, h('b', { text: s.ref + ' · ' + (roleTitle[s.role] || s.role) + ' agent' }), h('span', { class: 'pill ghost', text: 'Queued' })), h('div', { class: 'muted', style: 'font-size:14px;margin-top:6px', text: 'Waiting for the NPU (one job at a time).' })));
+      const tx = S.stream[streamKeyOf(inc.id, s.ref)], b = ST.batch[inc.id], inBatch = b && b.refs.has(s.ref);
+      // batched (htpd): every agent of the batch is on the NPU at once, so each gets its live box
+      if (tx || inBatch || !nextShown) { nextShown = true; ag.append(liveCard(inc.id, s.ref, s.role, tx, s.node + ' ' + s.metric + ' — ' + s.location)); }
+      else ag.append(h('div', { class: 'card agent st-none' }, h('div', { class: 'rep-h' }, h('b', { text: s.ref + ' · ' + (roleTitle[s.role] || s.role) + ' agent' }), h('span', { class: 'pill ghost', text: 'Queued' })), h('div', { class: 'muted', style: 'font-size:14px;margin-top:6px', text: 'Waiting for the NPU.' })));
     }
   }
   // open while running so the agents are seen thinking; collapsed once the reasoner has decided
   const nNpu = running ? ag.children.length : (inc.agents || []).filter((a) => !isCtxAgent(a)).length;
-  if (ag.children.length) parts.push(fold(inc.id + ':agents', 'NPU agents (' + nNpu + ')', running, ag));
-  if (cg.children.length) parts.push(fold(inc.id + ':ctx', 'Context agents (' + cg.children.length + ', CPU)', false, cg));
+  if (ag.children.length) tech.push(fold(inc.id + ':agents', 'NPU agents (' + nNpu + ')', running, ag));
+  if (cg.children.length) tech.push(fold(inc.id + ':ctx', 'Context agents (' + cg.children.length + ', CPU)', false, cg));
   const m1 = inc.mode1_report;
-  if (m1 && inc.mode !== 1) parts.push(fold(inc.id + ':m1', 'Mode 1 rules baseline', false,
+  const hist = historyFold(inc); if (hist) tech.push(hist);
+  if (m1 && inc.mode !== 1) tech.push(fold(inc.id + ':m1', 'Mode 1 rules baseline', false,
     h('div', { class: 'card shadowc' }, h('p', { class: 'muted', style: 'margin-bottom:10px;font-size:14px', text: 'Deterministic rule engine, no AI. Always computed for comparison.' }), reportBody(inc, m1))));
-  parts.push(fold(inc.id + ':log', 'Activity log', false, h('div', { class: 'card' }, h('ul', { class: 'tl', id: 'tl' }, (inc.timeline || []).map((t) => h('li', {}, h('time', { text: t.t }), h('span', { text: t.msg })))))));
-  const bd = $('#inc-detail'), sc = bd.scrollTop;
+  tech.push(fold(inc.id + ':log', 'Activity log', false, h('div', { class: 'card' }, h('ul', { class: 'tl', id: 'tl' }, (inc.timeline || []).map((t) => h('li', {}, h('time', { text: t.t }), h('span', { text: t.msg })))))));
+  parts.push(h('div', { class: 'tech-wrap' }, fold(inc.id + ':tech', running ? 'Technical details · AI working live' : 'Technical details (modes, agents, evidence, log)', running || S.eng, tech)));
+  const bd = $('#inc-detail'), sc = bd.scrollTop, ae = document.activeElement, fk = ae && ae.dataset && ae.dataset.k, sel = fk ? [ae.selectionStart, ae.selectionEnd] : null;
   box.replaceChildren(...parts);
+  if (fk) { const n = box.querySelector('[data-k="' + fk.replace(/"/g, '') + '"]'); if (n) { n.focus(); try { n.setSelectionRange(sel[0], sel[1]); } catch (e) { /* not a text input */ } } }
   renderIncFoot(inc);
   const tl = $('#tl'); if (tl) tl.scrollTop = tl.scrollHeight;
   bd.scrollTop = sc;
+  $$('#inc-detail .stream.live').forEach((p) => { p.scrollTop = p.scrollHeight; }); // rebuilt boxes resume at the newest text
   if (FS.ref) renderSensorSheet(false);
 }
+/* ============================== APPROVAL LIFECYCLE (UX v34) ==============================
+   Backend: workflow.go. Spec: proofs/2026-10-23_reasoner_research/APPROVAL_AND_MEMORY.md §3.
+   One field, workflow, kept apart from severity: Analysing -> Needs decision -> In progress ->
+   Resolved -> Closed. "I'm on it" records who; each step is Done or Not needed; Close needs an
+   outcome; Dismiss needs a note. Nothing is ever switched automatically. */
+const OUTCOME_TEXT = { fixed_by_action: 'Fixed by action', sensor_replaced: 'Sensor replaced', sensor_repaired: 'Sensor repaired or recalibrated',
+  resolved_on_its_own: 'Resolved on its own', false_alarm: 'False alarm', no_action_needed: 'No action needed' };
+const OUTCOMES = ['fixed_by_action', 'sensor_replaced', 'sensor_repaired', 'resolved_on_its_own', 'false_alarm', 'no_action_needed'];
+const NOTE_NEEDED = { false_alarm: 1, no_action_needed: 1 };
+const EV_TEXT = { created: 'Alert raised', analysed: 'Report ready', interrupted: 'Analysis interrupted', ack: 'Acknowledged: on it',
+  approve_all: 'Accepted every step', step_done: 'Done', step_not_needed: 'Not needed', step_reopened: 'Reopened', step_added: 'Step added',
+  step_withdrawn: 'No longer suggested', recheck_elevated: 'Re-check: got worse', recheck_curbed: 'Re-check: improved', recheck_same: 'Re-check: no change',
+  recheck_resolved: 'Re-check: back to normal', recheck_after_close: 'Re-check after closing', resolved: 'Back to normal', abnormal_again: 'Abnormal again',
+  reminder: 'Reminder: still needs a decision', closed: 'Closed', dismissed: 'Dismissed', auto_closed: 'Closed automatically' };
+const wfOfI = (i) => i.workflow || (i.state === 'running' ? 'analysing' : i.state === 'failed' ? 'interrupted' : i.approval === 'approved' ? 'in_progress' : i.approval === 'dismissed' ? 'closed' : 'needs_decision');
+const clock = (u) => { if (!u) return ''; const d = new Date(u * 1000); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+const dclock = (u) => { if (!u) return ''; const d = new Date(u * 1000), t = new Date(); return (d.toDateString() === t.toDateString() ? '' : pad(d.getDate()) + ' ' + MON[d.getMonth()] + ' ') + clock(u); };
+function wfChip(i) {
+  const w = wfOfI(i), m = WF_WORD[w] || { g: '○', w: nice(w) };
+  const extra = (w === 'in_progress' || w === 'resolved') && i.owner ? ' · ' + i.owner : w === 'closed' && i.outcome ? ' · ' + (OUTCOME_TEXT[i.outcome] || nice(i.outcome)) : '';
+  return h('span', { class: 'dec wfchip wf-' + w }, h('i', { 'aria-hidden': 'true', text: m.g }), m.w + extra);
+}
+
+/* ----- who is using this shared device (name picker, no password; DECISIONS.md) ----- */
+const OP = { list: [], cur: '', at: 0, then: null };
+const OP_IDLE = 30 * 60 * 1000; // the chosen name is forgotten after 30 min without a decision
+function opSave() {
+  try { localStorage.setItem('sce-ops', JSON.stringify(OP.list)); localStorage.setItem('sce-op', JSON.stringify({ name: OP.cur, at: OP.at })); } catch (e) { /* private mode */ }
+}
+function opLoad() {
+  try {
+    const l = JSON.parse(localStorage.getItem('sce-ops') || '[]'); if (Array.isArray(l)) OP.list = l.filter((x) => typeof x === 'string' && x.trim()).slice(0, 30);
+    const c = JSON.parse(localStorage.getItem('sce-op') || 'null'); if (c && c.name && Date.now() - c.at < OP_IDLE) { OP.cur = c.name; OP.at = c.at; }
+  } catch (e) { /* private mode or bad data: start empty */ }
+  renderOpBtn();
+}
+function opName() { if (OP.cur && Date.now() - OP.at > OP_IDLE) { OP.cur = ''; renderOpBtn(); } return OP.cur; }
+function opTouch() { OP.at = Date.now(); opSave(); }
+function renderOpBtn() {
+  const b = $('#op'); if (!b) return;
+  fill(b, icon('occupancy', 18), h('span', { class: 'op-n', text: OP.cur || 'Who?' }));
+  setAttr(b, 'aria-label', OP.cur ? 'Operator: ' + OP.cur + '. Change' : 'Choose who is using this device');
+}
+function withOperator(fn) {
+  const n = opName();
+  if (n) { opTouch(); return Promise.resolve(fn(n)); }
+  return new Promise((res) => openOpSheet((name) => res(fn(name))));
+}
+function openOpSheet(then) { OP.then = then || null; renderOpSheet(); openSheet('opsheet'); const x = $('#opsheet .op-pick'); if (x) x.focus(); else { const i = $('#op-new'); if (i) i.focus(); } }
+function pickOp(name) {
+  OP.cur = name; OP.at = Date.now(); opSave(); renderOpBtn(); closeSheet('opsheet');
+  toast('Decisions are now recorded as ' + name);
+  const f = OP.then; OP.then = null; if (f) f(name);
+}
+function renderOpSheet() {
+  const inp = h('input', { id: 'op-new', class: 'note-in', type: 'text', maxlength: '40', placeholder: 'Your name', 'aria-label': 'Add a name', autocomplete: 'off' });
+  const add = () => {
+    const n = inp.value.replace(/\s+/g, ' ').trim(); if (!n) { inp.focus(); return; }
+    if (!OP.list.includes(n)) OP.list.push(n);
+    pickOp(n);
+  };
+  inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') add(); });
+  fill($('#opsheet-bd'),
+    h('p', { class: 'op-note', text: 'Every decision is recorded with your name and the time. There is no password: this is a shared device.' }),
+    OP.list.length ? h('div', { class: 'op-list', role: 'list' }, OP.list.map((n) => h('div', { class: 'op-item', role: 'listitem' },
+      h('button', { type: 'button', class: 'btn op-pick' + (n === OP.cur ? ' primary' : ''), 'aria-pressed': n === OP.cur ? 'true' : 'false', onclick: () => pickOp(n) }, n),
+      h('button', { type: 'button', class: 'btn op-del', 'aria-label': 'Remove ' + n + ' from this device', onclick: () => { OP.list = OP.list.filter((x) => x !== n); if (OP.cur === n) OP.cur = ''; opSave(); renderOpBtn(); renderOpSheet(); } }, icon('x', 18)))))
+      : h('p', { class: 'muted', text: 'No names on this device yet.' }),
+    h('h3', { class: 'op-h', text: 'Add a name' }),
+    h('div', { class: 'ck-add' }, inp, h('button', { type: 'button', class: 'btn sm tint', onclick: add }, 'Add and use')));
+}
+
+/* ----- next re-check countdown: sensor time converted to the poll rate (2 s polls = 150x) ----- */
+const NEXT_STAGE = { early: '1.5 h', '1.5h': '3 h' };
+function etaText(next) {
+  const now = Math.max(S.simNow || 0, (S.status && S.status.sim_time) || 0);
+  if (!next || !now) return '';
+  const rp = (S.status && S.status.replay) || {}, poll = rp.poll_ms || 2000, per = rp.speed_buckets_per_poll || 1;
+  const rem = next - now; if (rem <= 0) return 'due now';
+  const s = Math.ceil(rem / 300 / per) * poll / 1000;
+  return s < 90 ? 'in ~' + Math.max(1, Math.round(s)) + ' s' : 'in ' + dhAgo(s);
+}
+function nextCheckText(i) {
+  if (!i.next_refine_sim || !NEXT_STAGE[i.refine_stage]) return '';
+  return 'Next check at ' + NEXT_STAGE[i.refine_stage] + ' · ' + etaText(i.next_refine_sim);
+}
+function etaEl(i) {
+  const t = nextCheckText(i);
+  return t ? h('span', { class: 'eta', 'data-next': String(i.next_refine_sim), 'data-stage': i.refine_stage, title: 'Re-check due at ' + hm(i.next_refine_sim) + ' sensor time', text: t }) : null;
+}
+function tickEtas() { $$('[data-next]').forEach((e) => setText(e, nextCheckText({ next_refine_sim: +e.dataset.next, refine_stage: e.dataset.stage }))); }
+
+/* ----- actions ----- */
+async function wfAct(inc, path, body, okMsg) {
+  return withOperator(async (op) => {
+    try {
+      const r = await post('/api/incidents/' + inc.id + path, Object.assign({ operator: op }, body || {}));
+      if (okMsg) toast(okMsg);
+      await Promise.all([refreshIncidents(), refreshIncDetail(true)]);
+      refreshHealthSoon();
+      return r || true;
+    } catch (e) { toast(e.message, true); return false; }
+  });
+}
+
+/* ----- the checklist (replaces "What to do" once the backend has built it) ----- */
+const STEP_GLYPH = { open: '☐', done: '☑', not_needed: '⊘', withdrawn: '–' };
+const NN_REASONS = ['Already fine', 'Not possible now', 'Wrong suggestion'];
+const SRC_WORD = { report: 'From the AI report', agent: 'From the domain agent', rules: 'From the automatic rules', playbook: 'Standard playbook', rule: 'Repair rule (fault came back within 30 days)' };
+function checklist(inc) {
+  const wf = wfOfI(inc), live = wf !== 'closed' && wf !== 'analysing' && wf !== 'interrupted';
+  const all = inc.steps || [];
+  const steps = all.filter((s) => s.state !== 'withdrawn' || ((wf === 'in_progress' || wf === 'resolved') && s.by));
+  const counted = steps.filter((s) => s.state !== 'withdrawn'), ticked = counted.filter((s) => s.state !== 'open').length;
+  const own = all.filter((s) => s.source === 'operator').length;
+  const items = steps.map((s) => {
+    const k = inc.id + ':' + s.id, nn = S.ckNN === k;
+    const by = s.state === 'done' || s.state === 'not_needed' ? (s.state === 'done' ? 'Done' : 'Not needed') + (s.by ? ' · ' + s.by : '') + (s.at ? ' · ' + dclock(s.at) : '') + (s.note ? ' · “' + s.note + '”' : '') : '';
+    const tags = [s.new ? 'New since you acknowledged' : null, s.accepted && s.state === 'open' ? 'Accepted' : null, s.state === 'withdrawn' ? 'No longer suggested' : null].filter(Boolean);
+    let act = null;
+    if (live && s.state === 'open') {
+      act = nn ? nnForm(inc, s, k) : h('div', { class: 'ck-act' },
+        h('button', { type: 'button', class: 'btn sm tint', 'aria-label': 'Mark done: ' + s.text, onclick: () => wfAct(inc, '/steps/' + s.id, { state: 'done' }, 'Step marked done') }, icon('check'), 'Done'),
+        h('button', { type: 'button', class: 'btn sm', 'aria-label': 'Mark not needed: ' + s.text, onclick: () => { S.ckNN = k; renderIncDetail(); } }, 'Not needed'));
+    } else if (live && (s.state === 'done' || s.state === 'not_needed')) {
+      act = h('div', { class: 'ck-act' }, h('button', { type: 'button', class: 'btn sm plain', 'aria-label': 'Undo: ' + s.text, onclick: () => wfAct(inc, '/steps/' + s.id, { state: 'open' }, 'Step reopened') }, 'Undo'));
+    }
+    return h('li', { class: 'ck ck-' + s.state },
+      h('div', { class: 'ck-row' }, h('span', { class: 'ck-g', 'aria-hidden': 'true', text: STEP_GLYPH[s.state] || '☐' }),
+        h('div', { class: 'ck-body' }, h('div', { class: 'ck-t', text: s.text }),
+          tags.length ? h('div', { class: 'ck-tags' }, tags.map((t) => h('span', { class: 'ck-tag', text: t }))) : null,
+          s.why ? h('div', { class: 'ck-why', text: 'Why: ' + s.why }) : null,
+          h('div', { class: 'ck-src', text: (s.source === 'operator' ? 'Added by ' + (s.by || 'an operator') : (SRC_WORD[s.source] || nice(s.source))) + (s.added_at_stage && s.added_at_stage !== 'early' ? ' · at the ' + (DH_STAGE[s.added_at_stage] || s.added_at_stage) + ' re-check' : '') }),
+          by ? h('div', { class: 'ck-by', text: by }) : null)),
+      act);
+  });
+  return h('section', { class: 'op-sec ck-sec' }, h('h3', { text: 'What to do' + (counted.length ? ' · ' + ticked + ' of ' + counted.length + ' ticked' : '') }),
+    steps.length ? h('ol', { class: 'cklist' }, items) : h('p', { text: 'No step suggested. If you agree nothing is needed, dismiss it with a short note.' }),
+    live && own < 5 ? addStepForm(inc) : null,
+    live ? h('p', { class: 'op-note', text: 'Mark each step Done or Not needed. Not right? Mark it Not needed and add your own. Nothing switches automatically.' }) : null);
+}
+function nnForm(inc, s, k) {
+  const dk = 'nn:' + k;
+  const inp = h('input', { class: 'note-in', type: 'text', maxlength: '300', placeholder: 'Why not needed? (optional)', 'aria-label': 'Why is this step not needed? (optional)', 'data-k': dk, oninput: (e) => { S.draft[dk] = e.target.value; } });
+  inp.value = S.draft[dk] || '';
+  const send = (note) => wfAct(inc, '/steps/' + s.id, { state: 'not_needed', note }, 'Step marked not needed').then((ok) => { if (ok) { S.ckNN = null; delete S.draft[dk]; renderIncDetail(); } });
+  return h('div', { class: 'ck-nn' },
+    h('div', { class: 'ck-reasons', role: 'group', 'aria-label': 'Quick reasons' }, NN_REASONS.map((t) => h('button', { type: 'button', class: 'fchip', text: t, onclick: () => send(t) }))),
+    inp,
+    h('div', { class: 'ck-act' }, h('button', { type: 'button', class: 'btn sm', text: 'Cancel', onclick: () => { S.ckNN = null; renderIncDetail(); } }),
+      h('button', { type: 'button', class: 'btn sm primary', text: 'Not needed', onclick: () => send(inp.value.trim()) })));
+}
+function addStepForm(inc) {
+  const k = 'add:' + inc.id;
+  const inp = h('input', { class: 'note-in', type: 'text', maxlength: '200', placeholder: 'Add my own step', 'aria-label': 'Add my own step', 'data-k': k, oninput: (e) => { S.draft[k] = e.target.value; } });
+  inp.value = S.draft[k] || '';
+  const go = () => { const t = inp.value.trim(); if (!t) { inp.focus(); return; } wfAct(inc, '/steps', { text: t }, 'Step added').then((ok) => { if (ok) { delete S.draft[k]; renderIncDetail(); } }); };
+  inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+  return h('div', { class: 'ck-add' }, inp, h('button', { type: 'button', class: 'btn sm tint', onclick: go }, '+ Add step'));
+}
+
+/* ----- banners: got worse after an acknowledgement, back to normal (close?), reminder ----- */
+function wfBanner(inc) {
+  const wf = wfOfI(inc), ev = (inc.events || []).slice().reverse();
+  const lastAck = ev.find((e) => e.event === 'ack'), lastWorse = ev.find((e) => e.event === 'recheck_elevated');
+  if (wf === 'needs_decision' && inc.owner && lastWorse && lastAck && lastWorse.seq > lastAck.seq) {
+    return h('div', { class: 'banner wfb crit', role: 'alert' }, h('span', { 'aria-hidden': 'true', text: '↑' }),
+      h('span', { text: 'Got worse since ' + inc.owner + ' acknowledged it (' + (lastWorse.detail || 're-check') + '). Please look again and acknowledge.' }));
+  }
+  if (wf === 'resolved') {
+    const since = inc.resolved_sim ? hm(inc.resolved_sim) + ' sensor time' : clock(inc.resolved_at);
+    return h('div', { class: 'banner wfb ok', role: 'status' }, h('span', { 'aria-hidden': 'true', text: '✓' }),
+      h('span', { text: 'Back to normal since ' + since + (inc.owner ? '' : ', not yet reviewed') + '. Close it' + (inc.suggest_outcome ? ' as “' + (OUTCOME_TEXT[inc.suggest_outcome] || nice(inc.suggest_outcome)) + '”' : '') + '?' }),
+      h('button', { type: 'button', class: 'btn sm primary', onclick: () => openFootForm(inc, 'close') }, 'Close…'));
+  }
+  if (wf === 'needs_decision' && inc.reminded) {
+    return h('div', { class: 'banner wfb warn', role: 'status' }, h('span', { 'aria-hidden': 'true', text: '!' }), h('span', { text: 'Critical and still waiting for someone to take it (over 15 min).' }));
+  }
+  return null;
+}
+
+/* ----- activity: the append-only event log as a small timeline ----- */
+function evTimeline(inc) {
+  const ev = (inc.events || []).slice().reverse(); if (!ev.length) return null;
+  const k = inc.id + ':evall', all = S.open.has(k), shown = all ? ev : ev.slice(0, 6);
+  const stepTxt = (id) => { const s = (inc.steps || []).find((x) => x.id === id); return s ? s.text : id; };
+  const what = (e) => (EV_TEXT[e.event] || nice(e.event)) + (e.step_id ? ': ' + stepTxt(e.step_id) : '') +
+    (e.outcome && (e.event === 'closed' || e.event === 'dismissed' || e.event === 'auto_closed') ? ' · ' + (OUTCOME_TEXT[e.outcome] || nice(e.outcome)) : '') +
+    (e.note && e.note !== 'auto' ? ' · “' + e.note + '”' : '') + (e.detail && !e.step_id && /^(recheck|resolved|reminder|analysed|created)/.test(e.event) ? ' · ' + e.detail : '');
+  return h('section', { class: 'op-sec' }, h('h3', { text: 'Activity (' + ev.length + ')' }),
+    h('ol', { class: 'evtl' }, shown.map((e) => h('li', { class: 'ev-' + e.event },
+      h('time', { text: dclock(e.at) }), h('b', { class: 'ev-who', text: e.actor === 'system' ? 'App' : e.actor === 'reasoner' ? 'AI' : e.actor }), h('span', { class: 'ev-what', text: what(e) })))),
+    ev.length > 6 ? h('button', { type: 'button', class: 'btn sm plain', 'aria-expanded': all ? 'true' : 'false', onclick: () => { all ? S.open.delete(k) : S.open.add(k); renderIncDetail(); } }, all ? 'Show less' : 'Show all ' + ev.length) : null,
+    h('p', { class: 'op-note', text: 'Times are the device clock. Every decision is kept, nothing is overwritten.' }));
+}
+
+/* ----- memory: History of this sensor (earlier incidents, steps, outcomes, maintenance) ----- */
+const MAINT_TEXT = { out_of_service: 'Marked out of service', back_in_service: 'Back in service', replaced: 'Sensor replaced' };
+async function loadHistory(id) {
+  try { const d = await api('/api/incidents/' + encodeURIComponent(id) + '/history'); S.hist[id] = d; if (S.incId === id && S.inc) renderIncDetail(); } catch (e) { S.hist[id] = { error: e.message }; }
+}
+function historySec(inc) {
+  if (inc.state === 'running') return null;
+  const d = S.hist[inc.id];
+  if (!d) { if (!S.histReq[inc.id]) { S.histReq[inc.id] = 1; loadHistory(inc.id); } return h('section', { class: 'op-sec' }, h('h3', { text: 'History of this sensor' }), h('p', { class: 'op-note', text: 'Loading …' })); }
+  if (d.error) return h('section', { class: 'op-sec' }, h('h3', { text: 'History of this sensor' }), h('p', { class: 'op-note', text: 'Could not load: ' + d.error }));
+  const secs = (d.sensors || []).map((sh) => {
+    const items = (sh.incidents || []).map((x) => h('li', { class: 'hs-i' },
+      h('button', { type: 'button', class: 'hs-open', onclick: () => selectIncident(x.id), 'aria-label': 'Open ' + x.id + ': ' + plainTitle(x.title) },
+        h('b', { text: x.id }), ' · ' + (x.created_wall || '').slice(5, 16) + ' · ' + (SEV_LABEL[x.severity] || nice(x.severity))),
+      h('div', { class: 'hs-o', text: (WF_WORD[x.workflow] || { w: nice(x.workflow) }).w + (x.outcome ? ': ' + (OUTCOME_TEXT[x.outcome] || nice(x.outcome)) : '') +
+        (x.closed_by ? ' · ' + (x.closed_by === 'system' ? 'automatically' : 'by ' + x.closed_by) : x.owner ? ' · ' + x.owner : '') + (x.outcome_note && x.outcome_note !== 'auto' ? ' · “' + x.outcome_note + '”' : '') + (x.legacy_decision ? ' (before checklists)' : '') }),
+      (x.steps || []).length ? h('ul', { class: 'hs-steps' }, x.steps.map((s) => h('li', { text: (STEP_GLYPH[s.state] || '') + ' ' + s.text + (s.by ? ' (' + s.by + ')' : '') + (s.note ? ': “' + s.note + '”' : '') }))) : null,
+      x.recurred_by ? h('div', { class: 'hs-rec', text: '↻ Came back within 7 days (' + x.recurred_by + '): that fix did not hold' }) : null));
+    const mts = (sh.maintenance || []).map((m) => h('li', { class: 'hs-m', text: '⊘ ' + (MAINT_TEXT[m.kind] || nice(m.kind)) + (m.minutes ? ' for ' + dhAgo(m.minutes * 60) : '') + (m.reason ? ' · ' + m.reason : '') + (m.operator ? ' · ' + m.operator : '') + ' · ' + dclock(m.at) }));
+    return h('div', { class: 'hs' }, h('h4', { class: 'op-h4', text: metricName(sh.metric) + ' · ' + placeShort(sh.location || sh.node) }),
+      items.length || mts.length ? h('ul', { class: 'hs-list' }, items, mts) : h('p', { class: 'op-note', text: 'No earlier incidents or maintenance on this sensor.' }));
+  });
+  return h('section', { class: 'op-sec' }, h('h3', { text: 'History of this sensor' }), secs.length ? secs : h('p', { class: 'op-note', text: 'No sensor to look up.' }));
+}
+
+/* ----- footer: I'm on it / Dismiss / Close with an outcome ----- */
+function openFootForm(inc, kind) { S.footForm = { id: inc.id, kind, outcome: kind === 'dismiss' ? 'no_action_needed' : (inc.suggest_outcome || '') }; renderIncFoot(inc, true); const n = $('#inc-foot .note-in'); if (n && kind === 'dismiss') n.focus(); }
+function footForm(inc) {
+  const ff = S.footForm, dismiss = ff.kind === 'dismiss', opts = dismiss ? ['false_alarm', 'no_action_needed'] : OUTCOMES;
+  const dk = 'foot:' + inc.id;
+  const ta = h('input', { class: 'note-in', type: 'text', maxlength: '500', 'data-k': dk, placeholder: NOTE_NEEDED[ff.outcome] ? 'Note (needed)' : 'Note (optional)',
+    'aria-label': 'Note' + (NOTE_NEEDED[ff.outcome] ? ' (needed)' : ' (optional)'), oninput: (e) => { S.draft[dk] = e.target.value; ta.classList.remove('need'); } });
+  ta.value = S.draft[dk] || '';
+  const go = async () => {
+    const note = ta.value.trim();
+    if (!ff.outcome) { toast('Choose how it ended', true); return; }
+    if (NOTE_NEEDED[ff.outcome] && !note) { ta.classList.add('need'); ta.focus(); toast('Add a short note for ' + OUTCOME_TEXT[ff.outcome].toLowerCase(), true); return; }
+    const ok = await wfAct(inc, dismiss ? '/dismiss' : '/close', { outcome: ff.outcome, note }, dismiss ? 'Dismissed: ' + OUTCOME_TEXT[ff.outcome] : 'Closed: ' + OUTCOME_TEXT[ff.outcome]);
+    if (ok) { S.footForm = null; delete S.draft[dk]; renderIncFoot(S.inc || inc, true); }
+  };
+  return h('div', { class: 'ffm' },
+    h('p', { class: 'foot-hint', id: 'ffm-q', text: dismiss ? 'Dismiss: why is nothing needed?' : 'Close: how did it end?' + (inc.suggest_outcome ? ' (pre-filled from what happened)' : '') }),
+    h('div', { class: 'ffm-opts', role: 'radiogroup', 'aria-labelledby': 'ffm-q' }, opts.map((o) => h('button', { type: 'button', role: 'radio', 'aria-checked': ff.outcome === o ? 'true' : 'false',
+      class: 'fchip' + (ff.outcome === o ? ' on' : ''), onclick: () => { ff.outcome = o; renderIncFoot(inc, true); } }, OUTCOME_TEXT[o]))),
+    ta,
+    h('div', { class: 'foot-row', style: 'margin-top:10px' }, h('button', { type: 'button', class: 'btn', onclick: () => { S.footForm = null; renderIncFoot(inc, true); } }, 'Cancel'),
+      h('button', { type: 'button', class: 'btn ' + (dismiss ? 'danger' : 'primary'), onclick: go }, dismiss ? 'Dismiss' : 'Close incident')));
+}
+
+/* ----- incident list: filters, search, grouping ----- */
+const INC_STATE = [['all', 'All'], ['needs_decision', 'Needs decision'], ['in_progress', 'In progress'], ['resolved', 'Resolved'], ['closed', 'Closed'], ['running', 'Analysing']];
+function incDateOk(i) {
+  const d = S.incDate; if (!d || d === 'any') return true;
+  const t = (i.created_unix || 0) * 1000 || wallMs(i) || 0, now = Date.now();
+  if (d === 'today') { const m = new Date(); m.setHours(0, 0, 0, 0); return t >= m.getTime(); }
+  return t >= now - (d === '24h' ? 864e5 : 7 * 864e5);
+}
+function incText(i) { return [i.id, i.title, plainTitle(i.title || ''), i.owner, (i.roles || []).map((r) => DH_NAME[r] || r).join(' '), (i.sensors || []).join(' '), OUTCOME_TEXT[i.outcome] || ''].join(' ').toLowerCase(); }
+function bindIncTools() {
+  const q = $('#inc-q'), dom = $('#inc-dom'), dt = $('#inc-date');
+  if (!q || q.dataset.b) return; q.dataset.b = '1';
+  dom.append(...ROLE_ORDER.map((r) => h('option', { value: r, text: DH_NAME[r] || r })));
+  q.addEventListener('input', () => { S.incQ = q.value.trim().toLowerCase(); renderIncList(); });
+  dom.addEventListener('change', () => { S.incDom = dom.value; renderIncList(); });
+  dt.addEventListener('change', () => { S.incDate = dt.value; renderIncList(); });
+}
+
+/* ----- shift summary: what happened since this device last looked (per device, localStorage) ----- */
+const SHIFT = { last: 0, done: false };
+function shiftInit() {
+  try { SHIFT.last = +localStorage.getItem('sce-last-visit') || 0; } catch (e) { SHIFT.last = 0; }
+  const mark = () => { try { localStorage.setItem('sce-last-visit', String(Date.now())); } catch (e) { /* private mode */ } };
+  setInterval(() => { if (!document.hidden && SHIFT.done) mark(); }, 60000);
+  document.addEventListener('visibilitychange', () => { if (document.hidden && SHIFT.done) mark(); });
+  SHIFT.mark = mark;
+}
+function shiftSummary() {
+  if (SHIFT.done || !S.lastIncList) return;
+  SHIFT.done = true;
+  const last = SHIFT.last; SHIFT.mark();
+  if (!last) return; // first visit on this device: nothing to compare with
+  const s = last / 1000, incs = S.incs || [];
+  const nw = incs.filter((i) => (i.created_unix || 0) > s).length;
+  const worse = incs.filter((i) => (i.worse_at || 0) > s).length;
+  const res = incs.filter((i) => (i.resolved_at || 0) > s || ((i.closed_at || 0) > s && (i.outcome === 'resolved_on_its_own' || i.outcome === 'fixed_by_action' || i.outcome === 'sensor_repaired' || i.outcome === 'sensor_replaced'))).length;
+  const box = $('#shift'); if (!box) return;
+  const d = new Date(last), since = (Date.now() - last > 864e5 ? pad(d.getDate()) + ' ' + MON[d.getMonth()] + ' ' : '') + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  const parts = [nw + ' new', worse + ' got worse', res + ' resolved'];
+  fill(box, h('span', { class: 'sh-t' }, h('b', { text: 'Since ' + since + ': ' }), parts.join(' · ')),
+    nw || worse ? h('a', { class: 'sh-go', href: '#incidents', text: 'See incidents ›' }) : null,
+    h('button', { type: 'button', class: 'ibtn sh-x', 'aria-label': 'Dismiss the summary since your last visit', onclick: () => { box.hidden = true; } }, icon('x', 18)));
+  box.hidden = false;
+}
+
+/* ----- maintenance on the sensor sheet (POST /api/maintenance; the backend never alarms an
+   out-of-service sensor) ----- */
+async function maintPost(d, body, msg) {
+  return withOperator(async (op) => {
+    try {
+      await post('/api/maintenance', Object.assign({ node: d.node, metric: d.metric, operator: op }, body));
+      toast(msg); d.mform = null; await refreshLive(); refreshHealthSoon(); await loadDrawer(true);
+    } catch (e) { toast('Maintenance: ' + e.message, true); }
+  });
+}
+function maintSec(d, live) {
+  const out = live.quality === 'maintenance';
+  const until = live.maint_until ? hm(live.maint_until) : '';
+  let body;
+  if (d.mform === 'oos') {
+    const t = h('input', { class: 'note-in', type: 'time', 'aria-label': 'Out of service until (sensor time, optional)', 'data-k': 'm-until' });
+    const why = h('input', { class: 'note-in', type: 'text', maxlength: '200', placeholder: 'Reason (optional)', 'aria-label': 'Reason (optional)', 'data-k': 'm-why' });
+    const go = () => {
+      let min = 24 * 60;
+      if (t.value) {
+        const [hh, mm] = t.value.split(':').map(Number), now = Math.max(S.simNow || 0, (S.status && S.status.sim_time) || 0) || Date.now() / 1000;
+        const p = istParts(now), cur = p.getUTCHours() * 60 + p.getUTCMinutes();
+        min = ((hh * 60 + mm) - cur + 1440) % 1440 || 1440;
+      }
+      maintPost(d, { minutes: min, reason: why.value.trim(), replaced: false }, 'Out of service for ' + dhAgo(min * 60) + ': no alarms from this sensor');
+    };
+    body = h('div', { class: 'mform' }, h('label', { class: 'mlbl' }, 'Until (sensor time, empty = 24 h)', t), why,
+      h('div', { class: 'foot-row' }, h('button', { type: 'button', class: 'btn', onclick: () => { d.mform = null; renderDrawer(); } }, 'Cancel'),
+        h('button', { type: 'button', class: 'btn primary', onclick: go }, 'Mark out of service')));
+  } else if (d.mform === 'repl') {
+    body = h('div', { class: 'mform' }, h('p', { class: 'op-note', text: 'Replaced: the old sensor\'s readings are dropped so the new one is never compared with them. The AI waits for a full 4 h window of new readings.' }),
+      h('div', { class: 'foot-row' }, h('button', { type: 'button', class: 'btn', onclick: () => { d.mform = null; renderDrawer(); } }, 'Cancel'),
+        h('button', { type: 'button', class: 'btn primary', onclick: () => maintPost(d, { minutes: 0, replaced: true, reason: 'sensor replaced' }, 'Sensor replaced: collecting new readings') }, 'Sensor replaced')));
+  } else {
+    body = h('div', { class: 'foot-row mbtns' },
+      out ? h('button', { type: 'button', class: 'btn tint', onclick: () => maintPost(d, { minutes: 0, replaced: false }, 'Back in service') }, 'Back in service')
+        : h('button', { type: 'button', class: 'btn', onclick: () => { d.mform = 'oos'; renderDrawer(); } }, 'Mark out of service'),
+      h('button', { type: 'button', class: 'btn', onclick: () => { d.mform = 'repl'; renderDrawer(); } }, 'Sensor replaced'));
+  }
+  return h('div', { class: 'card msec' }, h('h3', { style: 'margin-bottom:8px;font-size:17px', text: 'Maintenance' }),
+    out ? h('p', { class: 'oos', text: '⊘ Out of service' + (until ? ' until ' + until + ' (sensor time)' : '') + (live.quality_reason ? ' · ' + live.quality_reason.replace(/^out of service:?\s*/, '') : '') + '. Its readings are shown but never raise an alarm.' }) : null,
+    body);
+}
+/* ----- end approval lifecycle ----- */
 
 /* ============================== SENSORS (the user is the sensor) ============================== */
 const SN = { data: null, rows: new Map(), live: new Map(), buf: new Map(), touch: new Set(), local: new Map(), timers: new Map(), built: false,
@@ -1372,7 +2487,8 @@ function renderMapColors() {
 function buildAbout() {
   const gi = (n, t, s) => `<div class="gi"><div class="gn">${n}</div><div class="gk"><b>${t}</b><span>${s}</span></div></div>`;
   $('#about').innerHTML =
-    `<div class="card"><h3 style="font-size:19px;margin-bottom:6px">Everything runs on this device</h3><p class="muted">You set the sensor values on the Sensors tab (or a real device posts them) and a Qualcomm QIDK board analyses them. Statistics, rules, language-model calls and policy checks are all computed locally on the Hexagon NPU. <b style="color:var(--tx)">No cloud, no laptop, no internet connection is used for inference.</b></p></div>
+    `<div class="card eng-card"><div class="sn-top"><div class="sn-nm"><b>Engineering view</b><span class="loc">Shows reasoning modes, AI models, NPU status, evidence ids, prompts and the full pipeline on every screen. Off: plain language for operators. Also in the header (&lt;/&gt; button).</span></div><button type="button" id="eng-sw" class="sn-sw" role="switch" aria-checked="false" aria-label="Engineering view"><i></i></button></div></div>
+    <div class="card"><h3 style="font-size:19px;margin-bottom:6px">Everything runs on this device</h3><p class="muted">You set the sensor values on the Sensors tab (or a real device posts them) and a Qualcomm QIDK board analyses them. Statistics, rules, language-model calls and policy checks are all computed locally on the Hexagon NPU. <b style="color:var(--tx)">No cloud, no laptop, no internet connection is used for inference.</b></p></div>
     <div class="sec-h">The pipeline</div>
     <div class="glist">${[['Poll sensors', 'Every poll, each current sensor value becomes its next 5-minute reading.'], ['Stats and rules', 'SMA, EMA, trend, Bollinger bands and a rule-based pattern per sensor.'], ['Event gate', 'Only warning, critical or stuck sensors wake the AI, so the NPU stays free and cool.'], ['Domain agents on the NPU', 'One small agent per flagged sensor reads its evidence (E1..E8) and writes a finding.'], ['Synthesizer', 'Combines the agent findings into one cross-domain report.'], ['Safety check', 'The policy gate rejects bad JSON, unknown labels and made-up evidence ids.'], ['Human approval', 'Nothing is actuated automatically. You approve or dismiss every recommendation.']].map((x, i) => gi(i + 1, x[0], x[1])).join('')}</div>
     <div class="sec-h">How alerts work</div>
@@ -1397,6 +2513,8 @@ function renderAboutModel() {
 
 /* ============================== navigation ============================== */
 function setView(v) {
+  const deep = /^incident\/(INC-\d+)$/.exec(v || '');
+  if (deep) { setView('incidents'); selectIncident(deep[1]); try { history.replaceState(null, '', '#incidents'); } catch (e) { /* ignore */ } return; }
   if (!['sensors', 'live', 'incidents', 'map', 'about'].includes(v)) v = 'sensors';
   S.view = v;
   $$('.view').forEach((x) => x.classList.toggle('on', x.id === 'view-' + v));
@@ -1416,7 +2534,8 @@ function onLive(d) {
   for (const u of d.sensors) {
     const s = S.sensorMap.get(key(u.node, u.metric)); if (!s) continue;
     if (u.status !== s.status || u.pattern !== s.pattern) changed = true;
-    for (const k of ['last', 'sma_1h', 'ema_1h', 'slope_per_h', 'pattern', 'status', 'injected', 'data_ok', 'updated']) if (k in u) s[k] = u[k];
+    if (u.quality !== s.quality) changed = true;
+    for (const k of ['last', 'sma_1h', 'ema_1h', 'slope_per_h', 'pattern', 'status', 'injected', 'data_ok', 'updated', 'quality', 'quality_reason', 'maint_until']) if (k in u) s[k] = u[k];
   }
   for (const r in S.live.roles) { let w = 'normal'; for (const s of S.live.roles[r].sensors) if (sevRank(s.status) > sevRank(w)) w = s.status; S.live.roles[r].status = w; }
   S.lastLive = S.lastLiveEv = Date.now();
@@ -1427,22 +2546,27 @@ let es = null;
 function connect() {
   if (es) es.close();
   es = new EventSource('/api/events');
-  es.onopen = () => { S.sse = true; };
+  es.onopen = () => { S.sse = true; if (S.incId) resyncStreams(S.incId); }; // catch up on tokens sent while disconnected
   es.onerror = () => { S.sse = false; if (es.readyState === 2) setTimeout(connect, 3000); };
   const J = (e) => { try { return JSON.parse(e.data); } catch (x) { return {}; } };
   es.addEventListener('tick', (e) => {
     const d = J(e);
     if (d.sim_time_ist) { setText($('#c-time'), d.sim_time_ist.replace(/^\w+ \d+ \w+( \d+)? /, '') + ' IST'); setText($('#l-sub'), 'Sensor time ' + d.sim_time_ist + ' IST'); }
     if (d.npu && S.status) { S.status.npu = d.npu; updateHero(); }
+    if (d.sim_time) { S.simNow = d.sim_time; renderHealth(); } // time-in-state on the domain tiles
     const now = Date.now();
     if (now - S.lastLiveEv >= 15000 && now - S.lastLive >= 15000 && S.view !== 'about') refreshLive();
     if (now - S.lastStatus >= 4000) refreshStatus();
-    if (S.drawer && now - S.lastDrawer >= 5000) loadDrawer();
+    if (S.drawer && !S.drawer.mform && now - S.lastDrawer >= 5000) loadDrawer();
   });
   es.addEventListener('incident', (e) => {
     const d = J(e);
-    refreshIncidents();
+    if (d.id && d.refined) clearRefine(d.id); // the refined analysis is in; its live panel goes
+    const listed = refreshIncidents();
+    if (d.change || d.workflow_change === 'resolved') listed.then(() => onIncChange(d)); // re-check moved it, reminder, back to normal
+    refreshHealthSoon();
     if (d.id && d.id === S.incId) refreshIncDetail(false);
+    if (d.workflow_change === 'auto_closed' && d.id) delete S.hist[d.id];
     // Open a newly running incident so the agents are seen thinking, which is the whole point of
     // streaming tokens. Only when nothing else is open, so this can never steal the view from
     // someone reading another incident or working on the sensors tab.
@@ -1453,33 +2577,40 @@ function connect() {
     refreshStatus();
   });
   es.addEventListener('token', (e) => onToken(J(e)));
+  es.addEventListener('rtoken', (e) => onToken(J(e), true));
+  es.addEventListener('batch', (e) => onBatch(J(e)));
   es.addEventListener('live', (e) => onLive(J(e)));
+  es.addEventListener('health', (e) => { const d = J(e); if (d && Array.isArray(d.domains)) { S.health = d; S.lastHealth = Date.now(); renderHealth(); updateHero(); } });
   es.addEventListener('ingest', () => { snLater(); });
   es.addEventListener('mode', (e) => { const d = J(e); if (S.status && d.mode) { S.status.mode = d.mode; renderMode(); } });
 }
 
 /* ============================== boot ============================== */
 function boot() {
-  tabIcons(); buildAbout(); bindHeader(); bindTheme(); buildHero();
+  tabIcons(); buildAbout(); bindHeader(); bindTheme(); bindEng(); buildHero();
+  opLoad(); shiftInit(); bindIncTools();
+  $('#op').onclick = () => openOpSheet(null);
   window.addEventListener('hashchange', () => setView(location.hash.slice(1)));
-  $('#scrim').onclick = () => { closeSheet('sheet'); closeSheet('isheet'); };
+  $('#scrim').onclick = () => { closeSheet('opsheet'); closeSheet('sheet'); closeSheet('isheet'); closeSheet('dsheet'); };
   $$('[data-close]').forEach((b) => b.onclick = () => closeSheet(b.dataset.close));
   $('#fs-x').onclick = () => closeSensorSheet();
   $('#fs .fs-back').onclick = () => closeSensorSheet();
   $('#fs').addEventListener('keydown', trapFocus);
   $('#fs-bd').addEventListener('scroll', () => hidePop(true), { passive: true });
   window.addEventListener('popstate', () => { if (!$('#fs').hidden) closeSensorSheet(true); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { if (!$('#fs').hidden) closeSensorSheet(); else if ($('#isheet').classList.contains('open')) closeSheet('isheet'); else if ($('#sheet').classList.contains('open')) closeSheet('sheet'); else hidePop(true); } });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { if ($('#opsheet').classList.contains('open')) closeSheet('opsheet'); else if (!$('#fs').hidden) closeSensorSheet(); else if ($('#isheet').classList.contains('open')) closeSheet('isheet'); else if ($('#sheet').classList.contains('open')) closeSheet('sheet'); else if ($('#dsheet').classList.contains('open')) closeSheet('dsheet'); else hidePop(true); } });
   document.addEventListener('click', (e) => { if (!e.target.closest || !e.target.closest('.chip.ev')) hidePop(true); });
   $('#sheet-bd').addEventListener('scroll', () => hidePop(true), { passive: true });
   $('#inc-detail').addEventListener('scroll', () => hidePop(true), { passive: true });
   setView(location.hash.slice(1) || 'sensors');
-  refreshStatus(); refreshLive(); refreshIncidents();
+  refreshStatus(); refreshLive(); refreshIncidents(); refreshHealth();
   connect();
   setInterval(sparkLoop, 1000); // each tick measures every tile (layout); 1 Hz is plenty for 10 s refreshes
   setInterval(() => { if (!document.hidden && Date.now() - SN.lastFetch > 4500) snFetch(); }, 1000);
   post('/api/replay', {}).then((r) => { if (r && r.poll_ms) { SN.pollMs = r.poll_ms; if (SN.pollSeg) setSeg(SN.pollSeg, r.poll_ms); } }).catch(() => {});
   setInterval(updateElapsed, 500);
+  setInterval(tickEtas, 2000); // "Next check at 1.5 h · in 23 min"
+  setInterval(() => { if (OP.cur && !opName()) toast('Name cleared after 30 min idle: choose who you are before the next decision'); }, 60000);
   setInterval(() => {
     if (!S.sse || Date.now() - S.lastLiveEv > 15000) { refreshStatus(); refreshLive(); }
     // Backend unreachable (restart, crash, reboot): say so instead of silently showing stale data.
@@ -1488,6 +2619,8 @@ function boot() {
     if (off && !ob) { ob = h('div', { id: 'offline', role: 'status', text: 'Reconnecting to the on-device backend ... values shown may be stale' }); document.body.appendChild(ob); }
     else if (!off && ob) ob.remove();
     if (Date.now() - S.lastIncList > 15000) refreshIncidents();
+    renderHealthConn();
+    if (!S.sse || Date.now() - S.lastHealth > 60000) refreshHealth();
     if (S.inc && S.inc.state === 'running') refreshIncDetail(false);
   }, 3000);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

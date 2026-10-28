@@ -1,0 +1,108 @@
+{
+ "checks": {
+  "B: v8 no flag == v7, all responses byte-identical (timings aside)": true,
+  "B: v8 --lora-synth agents == v7 agents": true,
+  "B: synth lora:false == v7 synth (after an adapter run; cache keyed)": true,
+  "B: asynth lora:0 == v7": true,
+  "B: adapter on twice -> identical (prefix cache per adapter)": true,
+  "B: lora_scale reported (1 on, 0 off)": true,
+  "A: v8 --lora-synth agents == v7 agents (base model, adapter not on agents)": true,
+  "A: synth lora:false == v7 on base": true
+ },
+ "info": {
+  "B": {
+   "synth0": {
+    "on_eq_base": true,
+    "on_eq_3d": false,
+    "sim_on_3d": 0.8734,
+    "sim_base_3d": 0.8734,
+    "sim_on_base": 1.0
+   },
+   "synth1": {
+    "on_eq_base": false,
+    "on_eq_3d": true,
+    "sim_on_3d": 1.0,
+    "sim_base_3d": 0.6905,
+    "sim_on_base": 0.8842
+   },
+   "asynth0": {
+    "on_eq_base": false,
+    "on_eq_3d": false,
+    "sim_on_3d": 0.8482,
+    "sim_base_3d": 1.0
+   },
+   "speed": {
+    "synth0_on": {
+     "tokens": 109,
+     "ttft_ms": 85053.7,
+     "ms": 96686.4,
+     "decode_tok_s": 9.28417306386308,
+     "prefill_ms": 85054.1
+    },
+    "synth0_off": {
+     "tokens": 109,
+     "ttft_ms": 90871.7,
+     "ms": 102303.3,
+     "decode_tok_s": 9.44749641345043,
+     "prefill_ms": 90872.0
+    },
+    "synth0_v7": {
+     "tokens": 109,
+     "ttft_ms": 95046.9,
+     "ms": 144505.3,
+     "decode_tok_s": 2.1836533329019945,
+     "prefill_ms": 95047.3
+    }
+   }
+  },
+  "A": {
+   "synth0": {
+    "on_eq_v2merged": true,
+    "sim_on_v2": 1.0,
+    "sim_base_v2": 0.1925,
+    "on": "sensor_fault\", \"label\": \"sensor_fault\", \"affected_domains\": [\"air_quality\", \"hvac_or_thermal_issue\", \"occupancy_driven_load\", \"weather_driven\"], \"evidence\": [\"S1.E5\", \"S4.E5\", \"S6.E5\", \"S5.E5\"], \"confidence\": 0.95, \"action\": \"check_sensor\", \"explanation\": \"Sensors jumped +215.3 ug/m3 at 10:10 and did not return; calibration likely [S1.E5,S6.E5]\"}",
+    "base": "High occupancy and sudden AC startup causing high power demand\", \"label\": \"occupancy_driven_load\", \"affected_domains\": [\"occupancy\", \"hvac\"], \"evidence\": [\"S15.E1\", \"S2.E1\", \"S3.E1\", \"S4.E1\", \"S7.E1\", \"S9.E1\", \"S10.E1\", \"S11.E1\"], \"confidence\": 0.95, \"action\": \"monitor\", \"explanation\": \"High occupancy and sudden AC startup in KH building led to high power demand, causing equipment startup and subs",
+    "v2": "sensor_fault\", \"label\": \"sensor_fault\", \"affected_domains\": [\"air_quality\", \"hvac_or_thermal_issue\", \"occupancy_driven_load\", \"weather_driven\"], \"evidence\": [\"S1.E5\", \"S4.E5\", \"S6.E5\", \"S5.E5\"], \"confidence\": 0.95, \"action\": \"check_sensor\", \"explanation\": \"Sensors jumped +215.3 ug/m3 at 10:10 and did not return; calibration likely [S1.E5,S6.E5]\"}"
+   },
+   "synth1": {
+    "on_eq_v2merged": true,
+    "sim_on_v2": 1.0,
+    "sim_base_v2": 0.0285,
+    "on": "sensor_fault\", \"label\": \"sensor_fault\", \"affected_domains\": [\"air_quality\", \"hvac_or_thermal_issue\", \"weather_driven\"], \"evidence\": [\"S1.E5\", \"S2.E3\", \"S4.E5\"], \"confidence\": 0.85, \"action\": \"check_sensor\", \"explanation\": \"Sensors jumped +259.3 ug/m3 at 10:10 and did not return; sensor bias likely [S1.E5,S4.E5]\"}",
+    "base": "HVAC system malfunctioning, causing temperature and humidity fluctuations, and impacting air quality and water usage.\", \"label\": \"hvac_or_thermal_issue\", \"affected_domains\": [\"hvac\", \"air_quality\", \"water\"], \"evidence\": [\"S2.E2\", \"S4.E5\", \"S12.E5\", \"S13.E5\", \"S14.E5\", \"S8.E7\"], \"confidence\": 0.98, \"action\": \"inspect_hvac\", \"explanation\": \"Temperature and humidity fluctuations in the HVAC system ar",
+    "v2": "sensor_fault\", \"label\": \"sensor_fault\", \"affected_domains\": [\"air_quality\", \"hvac_or_thermal_issue\", \"weather_driven\"], \"evidence\": [\"S1.E5\", \"S2.E3\", \"S4.E5\"], \"confidence\": 0.85, \"action\": \"check_sensor\", \"explanation\": \"Sensors jumped +259.3 ug/m3 at 10:10 and did not return; sensor bias likely [S1.E5,S4.E5]\"}"
+   },
+   "asynth0": {
+    "on_eq_v2merged": true,
+    "sim_on_v2": 1.0,
+    "sim_base_v2": 0.3508,
+    "on": "stable\", \"status\": \"normal\", \"observations\": [\"Humidity within a narrow band, 39.9 to 43.9 % [E3,E2]\"], \"likely_cause\": \"normal_conditions\", \"confidence\": 0.75, \"event_active\": false, \"onset\": \"08:00\", \"action\": \"none\"}",
+    "base": "oscillation\", \"status\": \"normal\", \"observations\": \"Indoor humidity level oscillating around 40.2% with a trend of decrease [E6,E7]\", \"likely_cause\": \"humidity_control_issue\", \"confidence\": 0.8, \"event_active\": false, \"onset\": \"08:00\", \"fault_kind\": \"none\", \"action\": \"monitor\"}",
+    "v2": "stable\", \"status\": \"normal\", \"observations\": [\"Humidity within a narrow band, 39.9 to 43.9 % [E3,E2]\"], \"likely_cause\": \"normal_conditions\", \"confidence\": 0.75, \"event_active\": false, \"onset\": \"08:00\", \"action\": \"none\"}"
+   },
+   "speed": {
+    "synth0_on": {
+     "tokens": 119,
+     "ttft_ms": 73917.4,
+     "ms": 92085.2,
+     "decode_tok_s": 6.495007650898842,
+     "prefill_ms": 73917.7
+    },
+    "synth0_off": {
+     "tokens": 128,
+     "ttft_ms": 76781.9,
+     "ms": 128679.5,
+     "decode_tok_s": 2.447126649401899,
+     "prefill_ms": 76782.2
+    },
+    "synth0_v7_base": {
+     "tokens": 128,
+     "ttft_ms": 77356.0,
+     "ms": 136657.5,
+     "decode_tok_s": 2.1415984418606615,
+     "prefill_ms": 77356.3
+    }
+   }
+  }
+ }
+}

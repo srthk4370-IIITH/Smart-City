@@ -1,0 +1,292 @@
+[
+ {
+  "case": "improve:power_throttling",
+  "incident": "INC-0082",
+  "stages": [
+   {
+    "stage": "early",
+    "severity": "warning",
+    "title": "Power gradual increase: KH building, level 04, room energy meter 01",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "power_kw",
+      "pattern": "gradual_increase",
+      "status": "warning",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": null
+   },
+   {
+    "stage": "1.5h",
+    "severity": "normal",
+    "title": "Power spike judged normal: KH building, level 04, room energy meter 01",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "power_kw",
+      "pattern": "spike",
+      "status": "normal",
+      "kept": null,
+      "curbed": true,
+      "note": "resolved: warning -> normal, spike back to baseline since 15:05 (AI: event no longer active)"
+     }
+    ],
+    "sse_change": "curbed"
+   },
+   {
+    "stage": "3h",
+    "severity": "normal",
+    "title": "Power spike judged normal: KH building, level 04, room energy meter 01",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "power_kw",
+      "pattern": "spike",
+      "status": "normal",
+      "kept": null,
+      "curbed": null,
+      "note": "still resolved: back to baseline since 15:05 (AI: event no longer active)"
+     }
+    ],
+    "sse_change": "same"
+   }
+  ],
+  "verdict": "curbed"
+ },
+ {
+  "case": "improve:pm_spike",
+  "incident": "INC-0083",
+  "stages": [
+   {
+    "stage": "early",
+    "severity": "critical",
+    "title": "PM2.5 spike: KN building, outdoor air station",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "pm25",
+      "pattern": "spike",
+      "status": "critical",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": null
+   },
+   {
+    "stage": "1.5h",
+    "severity": "normal",
+    "title": "PM2.5 spike judged normal: KN building, outdoor air station",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "pm25",
+      "pattern": "spike",
+      "status": "normal",
+      "kept": null,
+      "curbed": true,
+      "note": "resolved: critical -> normal, spike back to baseline since 14:35 (AI: event no longer active)"
+     }
+    ],
+    "sse_change": "curbed"
+   },
+   {
+    "stage": "3h",
+    "severity": "normal",
+    "title": "PM2.5 spike judged normal: KN building, outdoor air station",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "pm25",
+      "pattern": "spike",
+      "status": "normal",
+      "kept": null,
+      "curbed": null,
+      "note": "still resolved: back to baseline since 14:35 (AI: event no longer active)"
+     }
+    ],
+    "sse_change": "same"
+   }
+  ],
+  "verdict": "curbed"
+ },
+ {
+  "case": "improve:ventilation_failure",
+  "incident": "INC-0084",
+  "stages": [
+   {
+    "stage": "early",
+    "severity": "warning",
+    "title": "CO2 exponential increase: KH building, level 03, indoor air sensor 03",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "co2",
+      "pattern": "exponential_increase",
+      "status": "warning",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": null
+   },
+   {
+    "stage": "1.5h",
+    "severity": "normal",
+    "title": "CO2 spike judged normal: KH building, level 03, indoor air sensor 03",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "co2",
+      "pattern": "spike",
+      "status": "normal",
+      "kept": null,
+      "curbed": true,
+      "note": "resolved: warning -> normal, spike back to baseline since 16:05 (AI: event no longer active)"
+     }
+    ],
+    "sse_change": "curbed"
+   },
+   {
+    "stage": "3h",
+    "severity": "normal",
+    "title": "CO2 spike judged normal: KH building, level 03, indoor air sensor 03",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "co2",
+      "pattern": "spike",
+      "status": "normal",
+      "kept": null,
+      "curbed": null,
+      "note": "still resolved: back to baseline since 16:05 (AI: event no longer active)"
+     }
+    ],
+    "sse_change": "same"
+   }
+  ],
+  "verdict": "curbed"
+ },
+ {
+  "case": "hold:ventilation_failure",
+  "incident": "INC-0085",
+  "stages": [
+   {
+    "stage": "early",
+    "severity": "warning",
+    "title": "CO2 exponential increase: KH building, level 03, indoor air sensor 03",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "co2",
+      "pattern": "exponential_increase",
+      "status": "warning",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": null
+   },
+   {
+    "stage": "1.5h",
+    "severity": "critical",
+    "title": "CO2 throttling: KH building, level 03, indoor air sensor 03",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "co2",
+      "pattern": "throttling",
+      "status": "critical",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": "elevated"
+   },
+   {
+    "stage": "3h",
+    "severity": "critical",
+    "title": "CO2 throttling: KH building, level 03, indoor air sensor 03",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "co2",
+      "pattern": "throttling",
+      "status": "critical",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": "same"
+   }
+  ],
+  "verdict": "elevated"
+ },
+ {
+  "case": "hold:power_throttling",
+  "incident": "INC-0086",
+  "stages": [
+   {
+    "stage": "early",
+    "severity": "warning",
+    "title": "Power gradual increase: KH building, level 04, room energy meter 01",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "power_kw",
+      "pattern": "gradual_increase",
+      "status": "warning",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": null
+   },
+   {
+    "stage": "1.5h",
+    "severity": "critical",
+    "title": "Power throttling: KH building, level 04, room energy meter 01",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "power_kw",
+      "pattern": "throttling",
+      "status": "critical",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": "elevated"
+   },
+   {
+    "stage": "3h",
+    "severity": "critical",
+    "title": "Power throttling: KH building, level 04, room energy meter 01",
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "power_kw",
+      "pattern": "throttling",
+      "status": "critical",
+      "kept": null,
+      "curbed": null,
+      "note": null
+     }
+    ],
+    "sse_change": "same"
+   }
+  ],
+  "verdict": "elevated"
+ }
+]

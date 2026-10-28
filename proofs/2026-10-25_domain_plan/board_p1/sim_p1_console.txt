@@ -1,0 +1,8 @@
+## leak_from_tank_level: INC-0332 title='Tank level step decrease: KH building, level 98, water tank level sensor 00' sev=warning
+  S1 water: step_decrease/warning cause=tank_draining rules=[] flags=None
+  S2 water: stable/normal cause=normal_usage rules=[] flags=None
+  S3 occupancy: vacant/normal cause=vacant rules=[] flags=None
+  S4 weather: stable/normal cause=normal_weather rules=[] flags=None
+## ac_not_cooling_on: INC-0334 title='Room temperature no cooling effect: KH building, level 02, AC indoor unit 24' sev=critical
+  S1 hvac: no_cooling_effect/critical cause=ac_not_cooling rules=["post-rule hvac_rule: pattern 'stable' -> 'no_cooling_effect'", "post-rule hvac_rule: status 'normal' -> 'critical'", "post-rule hvac_rule: likely_cause 'normal_operation' -> 'ac_not_cooling'", "post-rule hvac_rule: event_active 'false' -> 'true'", "post-rule hvac_rule: onset '14:05' -> '16:30'"] flags=[{'kind': 'inside_band', 'obs': 0, 'claim': 'inside band', 'fact': 'room 28.1 C, band 21.0-26.0', 'evidence': ['E1', 'E3', 'E1']}]
+done

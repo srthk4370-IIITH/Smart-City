@@ -1,0 +1,27 @@
+{
+ "created": "2026-10-21",
+ "what": "D4 confidence recalibration of the v2 agent + accuracy analytics (no device, no retrain)",
+ "inputs_sha256_16": {
+  "2026-10-20_v2_post/device/placement_v2/samples.jsonl": "9e28b605ee488bb1",
+  "2026-10-20_v2_post/device/host400/samples.jsonl": "23ecdc238221f047",
+  "2026-10-20_v2_post/device/test_all/samples.jsonl": "a40f306a83ea70a0",
+  "2026-10-21_v2_confirm/placement_s24/samples.jsonl (held out)": "07d429d0c153a412",
+  "Code/smart-city-edge-agent/data/sft_v2/test.jsonl (prompts/labels of the test rows)": "6fdb17d5a5187913"
+ },
+ "commands": [
+  "py -3 c0_rows.py --placement ..\\..\\2026-10-21_v2_confirm\\placement_s24",
+  "py -3 c1_fit.py --apply",
+  "py -3 c2_analytics.py",
+  "wsl: go vet . && go test ./...  (app/backend)"
+ ],
+ "outputs": {
+  "rows.json": "one row per device answer (onset age as features_v2.go onsetAge, prompt numbers, truth)",
+  "calibration_metrics.json": "CV on fit set (variants x shrinkage A), held-out metrics, bootstrap CI",
+  "table_cells.md": "per (pattern, age) cell: fit k/m, Wilson CI, table value, held-out k/m",
+  "reliability.svg": "reliability diagram, CV and held-out, model vs D4",
+  "confidence_recal_v2.go.txt": "the generated Go table (also written into features_v2.go)",
+  "calibration.md": "method, results, app wiring, limits",
+  "analytics.md / analytics.json": "per role / sensor / month / pattern errors, 3 h app chain, status & cause analysis"
+ },
+ "go_testdata": "Code/smart-city-edge-agent/app/backend/testdata/d4_calib_fixtures.json (300 held-out answers)"
+}

@@ -46,6 +46,9 @@ type GenieResult struct {
 	// incident (see genieapp.go). It lives in the prompt cache like any other entry, but it is a
 	// real NPU call for this window, not a reused answer, so Run must not report it as Cached.
 	Prefetched bool `json:"-"`
+	// Streamed: the batch already sent this answer to the dashboard token by token (Prefetch with
+	// an onToken sink), so Run must not send it a second time when it picks the answer up.
+	Streamed bool `json:"-"`
 }
 
 type GenieRunner struct {
@@ -95,6 +98,24 @@ func (g *GenieRunner) cachePut(k [32]byte, r GenieResult) {
 		}
 	}
 	g.cache[k] = r
+}
+
+// Forget drops a prompt's cached answer, so the next Run of it goes to the NPU again (a solo re-run
+// of an invalid batched answer must not get the same answer back from the cache).
+func (g *GenieRunner) Forget(b ModelBundle, prompt string) {
+	ck := sha256.Sum256([]byte(b.Dir + "|" + b.Config + "|" + prompt))
+	g.cacheMu.Lock()
+	defer g.cacheMu.Unlock()
+	if _, ok := g.cache[ck]; !ok {
+		return
+	}
+	delete(g.cache, ck)
+	for i, k := range g.cacheKeys {
+		if k == ck {
+			g.cacheKeys = append(g.cacheKeys[:i], g.cacheKeys[i+1:]...)
+			break
+		}
+	}
 }
 
 // transientHTP reports errors where the HTP refused to set up a session (DSP-side allocation or device
@@ -177,9 +198,10 @@ func (g *GenieRunner) Run(ctx context.Context, b ModelBundle, prompt, prefill st
 		if hit.Prefetched {
 			// answered by this incident's batch: keep its real timings, and drop the mark so a
 			// genuine repeat of the same prompt later still counts as a cache hit
-			hit.Prefetched = false
+			streamed := hit.Streamed
+			hit.Prefetched, hit.Streamed = false, false
 			g.cachePut(ck, hit)
-			if onToken != nil {
+			if onToken != nil && !streamed {
 				onToken(hit.Text)
 			}
 			return hit
@@ -218,10 +240,12 @@ func (g *GenieRunner) Run(ctx context.Context, b ModelBundle, prompt, prefill st
 	gap := 250 * time.Millisecond
 	if g.lastDir != "" && g.lastDir != b.Dir {
 		gap = 2500 * time.Millisecond
-	} else if daemonUp() {
+	} else if htpdEnabled() || daemonUp() {
 		// The gap guards against one PROCESS's HTP teardown overlapping the next process's start.
 		// genied is one persistent process holding one dialog: there is no teardown between calls,
-		// so there is nothing to wait out.
+		// so there is nothing to wait out. The same holds for htpd (one resident process; the CLI is
+		// never spawned in htpd mode), where the 250 ms used to land between the agent batch and the
+		// synthesizer of every multi-domain incident (proofs/2026-10-21_latency_ladder).
 		gap = 0
 	}
 	if wait := gap - time.Since(g.lastEnd); !g.lastEnd.IsZero() && wait > 0 && !g.mock {
@@ -249,7 +273,7 @@ func (g *GenieRunner) Run(ctx context.Context, b ModelBundle, prompt, prefill st
 	var err error
 	if g.mock {
 		res.Backend = "mock"
-		text, err = mockGenerate(prompt)
+		text, err = mockGen(prompt)
 		text = strings.TrimPrefix(text, prefill)
 		if onToken != nil {
 			for _, w := range strings.SplitAfter(text, " ") {
@@ -515,6 +539,9 @@ func (g *GenieRunner) Status() NPUStatus {
 	return NPUStatus{Busy: g.busy.Load(), Queue: g.queue.Load(), Calls: g.calls.Load(), Errors: g.errorsN.Load(),
 		LastLatencyMs: g.lastMs.Load(), LastError: g.lastErr.Load().(string)}
 }
+
+// mockGen answers in mock mode; tests swap it for scripted agents (refine_test.go).
+var mockGen = mockGenerate
 
 // mockGenerate is only for laptop development without a device; never used on the QIDK.
 func mockGenerate(prompt string) (string, error) {

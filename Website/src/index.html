@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="theme-color" content="#141518">
+  <title>Edge AI evidence</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="vendor/fonts/inter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/deck.css">
+  <script src="vendor/bcryptjs/bcrypt.min.js" defer></script>
+  <script type="module" src="js/app.js"></script>
+</head>
+<body class="locked">
+  <a class="skip-link" href="#app">Skip to content</a>
+
+  <section id="gate" class="gate" aria-labelledby="gate-title">
+    <div class="gate__box fade-in">
+      <svg class="gate__mark" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+        <circle cx="24" cy="24" r="21"/><circle cx="24" cy="24" r="7" stroke="#4c7dff" stroke-width="2.2"/>
+        <path d="M24 3v10M24 35v10M3 24h10M35 24h10"/>
+      </svg>
+      <h1 id="gate-title" class="gate__title">Evidence, on request</h1>
+      <form autocomplete="off">
+        <label for="pw" class="sr-only">Password</label>
+        <input id="pw" type="password" autocomplete="current-password" placeholder="Password" required>
+        <button type="submit">Open</button>
+      </form>
+      <p class="gate__msg" role="alert" aria-live="assertive"></p>
+    </div>
+  </section>
+
+  <nav id="nav" class="nav" aria-label="Main">
+    <a class="nav__brand" href="#/deck" aria-label="Home">
+      <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><circle cx="24" cy="24" r="20"/><circle cx="24" cy="24" r="7" stroke="#4c7dff" stroke-width="4"/></svg>
+      Edge&nbsp;AI
+    </a>
+    <a class="nav__item" data-page="deck" href="#/deck">Deck</a>
+    <a class="nav__item" data-page="route" href="#/route">Route</a>
+    <a class="nav__item" data-page="decisions" href="#/decisions">Decisions</a>
+    <a class="nav__item" data-page="proofs" href="#/proofs">Proofs</a>
+    <a class="nav__item" data-page="rawdata" href="#/rawdata"><span class="nav__long">Raw data</span><span class="nav__short" aria-hidden="true">Data</span></a>
+    <a class="nav__item" data-page="qa" href="#/qa">Q&amp;A</a>
+    <button id="lock" class="nav__lock" type="button" aria-label="Lock the site" title="Lock">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+    </button>
+  </nav>
+
+  <main id="app" tabindex="-1"></main>
+  <noscript><p style="padding:24px">This site needs JavaScript (it decrypts the content in your browser).</p></noscript>
+</body>
+</html>

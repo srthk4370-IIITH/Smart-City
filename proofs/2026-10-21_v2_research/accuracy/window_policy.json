@@ -1,0 +1,167 @@
+{
+ "status": "RECOMMENDATION from device data (placement_v2, Q4_0 htpd); policy partly tuned on the same 183 events (CV estimate in window_study.md A5) -> confirm on a fresh placement seed before shipping",
+ "inputs_at_runtime": "stage (early / refine 1.5 h / refine 3 h), the EARLY call's pattern family and status, the previous stage's status",
+ "early": {
+  "n": 48,
+  "all_cases": true,
+  "why": "40 min: 4 h 74% vs 8 h 75% vs 12 h 70% (ns); 4 h has the fewest clean false alarms (18% vs 29%/27%)"
+ },
+ "refine_1_5h": {
+  "by_early_family": {
+   "transient": 96,
+   "step": 48,
+   "trend": 48,
+   "noisy": 48,
+   "flat": 144,
+   "stable": 48,
+   "invalid": 96
+  },
+  "sensor_fault": "144 if early family flat/noisy else 96"
+ },
+ "refine_3h": {
+  "by_early_family": {
+   "transient": 96,
+   "step": 96,
+   "trend": 48,
+   "noisy": 144,
+   "flat": 144,
+   "stable": 48,
+   "invalid": 96
+  },
+  "sensor_fault": "144 if early family flat/noisy else 96"
+ },
+ "families": {
+  "flat": [
+   "flatline"
+  ],
+  "transient": [
+   "dip",
+   "spike"
+  ],
+  "noisy": [
+   "erratic",
+   "oscillation"
+  ],
+  "stable": [
+   "stable"
+  ],
+  "trend": [
+   "exponential_increase",
+   "gradual_decrease",
+   "gradual_increase"
+  ],
+  "step": [
+   "step_decrease",
+   "step_increase",
+   "throttling"
+  ]
+ },
+ "constraints": [
+  "window must contain the onset plus >= 1 h of pre-onset baseline: n >= d + 12. Training never shows an event family whose onset is older than the window (sample_d <= n); only old_shift/long_drift/recurring reach outside, and only via the E9/E10 12 h lines (they score 94-100% there). With the stage times used (d <= 36) every n >= 48 satisfies it; if refinements are ever later than 3 h, raise n.",
+  "do not escalate to 12 h by severity alone: critical/warning early status did NOT do better at 12 h (A3: warning 3 h 89/84/73% for 4/8/12 h; critical 76/79/82% ns)",
+  "trend family (gradual/exponential): keep 4 h at every stage (3 h: 90/80/72% for 4/8/12 h; 1.5 h 86/72/76%)",
+  "transient (spike/dip) at refinement: 8 h (3 h: 80/93/89%) - the 3 h-old spike sits at the edge of a 4 h window",
+  "flat / sensor_fault: 12 h (3 h: 90/95/100%)",
+  "noisy (erratic/oscillation): 12 h at 3 h (n=11, 82/82/100%) - weak evidence; erratic by true class 57/86/81%",
+  "number of flagged sensors: not derivable from these single-sensor data; no evidence either way - do not use it until an app-level multi-sensor run measures it"
+ ],
+ "evaluation_through_app_chain": {
+  "current LadderN": {
+   "pattern_1_5h": [
+    0.792,
+    0.728,
+    0.845,
+    183
+   ],
+   "pattern_3h": [
+    0.858,
+    0.8,
+    0.901,
+    183
+   ],
+   "mean_n_3h": 106,
+   "clean_early_false_alarms_still_alarming_at_3h": "11/18",
+   "clean_all_status_not_normal_3h": "11/100",
+   "per_pattern_3h": {
+    "dip": "13/14",
+    "erratic": "16/21",
+    "exponential_increase": "16/21",
+    "flatline": "21/21",
+    "gradual_decrease": "11/14",
+    "gradual_increase": "16/21",
+    "oscillation": "13/15",
+    "spike": "18/21",
+    "step_decrease": "14/14",
+    "step_increase": "19/21"
+   }
+  },
+  "recommended (family x stage)": {
+   "pattern_1_5h": [
+    0.852,
+    0.794,
+    0.897,
+    183
+   ],
+   "pattern_3h": [
+    0.918,
+    0.869,
+    0.95,
+    183
+   ],
+   "mean_n_3h": 86,
+   "clean_early_false_alarms_still_alarming_at_3h": "12/18",
+   "clean_all_status_not_normal_3h": "14/100",
+   "per_pattern_3h": {
+    "dip": "13/14",
+    "erratic": "19/21",
+    "exponential_increase": "15/21",
+    "flatline": "21/21",
+    "gradual_decrease": "13/14",
+    "gradual_increase": "20/21",
+    "oscillation": "13/15",
+    "spike": "19/21",
+    "step_decrease": "14/14",
+    "step_increase": "21/21"
+   }
+  },
+  "fixed 4 h": {
+   "pattern_1_5h": [
+    0.836,
+    0.776,
+    0.883,
+    183
+   ],
+   "pattern_3h": [
+    0.842,
+    0.782,
+    0.887,
+    183
+   ],
+   "mean_n_3h": 48,
+   "clean_early_false_alarms_still_alarming_at_3h": "18/18",
+   "clean_all_status_not_normal_3h": "18/100",
+   "per_pattern_3h": {
+    "dip": "12/14",
+    "erratic": "12/21",
+    "exponential_increase": "15/21",
+    "flatline": "18/21",
+    "gradual_decrease": "13/14",
+    "gradual_increase": "19/21",
+    "oscillation": "13/15",
+    "spike": "19/21",
+    "step_decrease": "13/14",
+    "step_increase": "20/21"
+   }
+  },
+  "mcnemar_recommended_vs_ladder_1.5h": {
+   "ladder_only_right": 0,
+   "recommended_only_right": 11,
+   "p": 0.001
+  },
+  "mcnemar_recommended_vs_ladder_3h": {
+   "ladder_only_right": 1,
+   "recommended_only_right": 12,
+   "p": 0.003
+  }
+ }
+}

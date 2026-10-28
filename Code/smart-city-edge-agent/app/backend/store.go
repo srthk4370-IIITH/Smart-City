@@ -67,6 +67,7 @@ func (r *Reasoner) load() {
 			inc.State = "failed" // the process died mid-analysis; the operator can rerun it
 		}
 		backfillSeverity(&inc) // stored before the reasoner decided severity (severity.go)
+		migrateWorkflow(&inc)  // stored before the approval lifecycle (workflow.go)
 		c := inc
 		last[inc.ID] = &c
 		if n := incNum(inc.ID); n > r.seq {
@@ -86,7 +87,9 @@ func (r *Reasoner) load() {
 }
 
 func (r *Reasoner) persist(inc *Incident) {
+	r.mu.RLock() // operator clicks and the workflow tick change incidents under r.mu
 	b, err := json.Marshal(inc)
+	r.mu.RUnlock()
 	if err != nil {
 		return
 	}

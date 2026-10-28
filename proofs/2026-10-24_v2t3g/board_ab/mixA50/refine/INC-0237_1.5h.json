@@ -1,0 +1,848 @@
+{
+ "id": "INC-0237",
+ "mode": 3,
+ "state": "done",
+ "created_sim": 1792015800,
+ "created_wall": "2026-10-14 10:51:33",
+ "severity": "warning",
+ "severity_final": true,
+ "title": "Power flatline: KH building, level 04, room energy meter 01",
+ "rule_title": "Power spike: KH building, level 04, room energy meter 01",
+ "roles": [
+  "power"
+ ],
+ "injected": true,
+ "sensors": [
+  {
+   "ref": "S1",
+   "node": "SR-EM-KH04-01",
+   "metric": "power_kw",
+   "role": "power",
+   "location": "KH building, level 04, room energy meter 01",
+   "window_end": 1792021200,
+   "injected": true,
+   "window": [
+    20.990622462305858,
+    20.94396743886293,
+    20.992994885192147,
+    20.943761697608128,
+    20.99537640045079,
+    20.943661203225275,
+    20.997538396880195,
+    20.943666151984164,
+    20.995152659150996,
+    20.94377653421965,
+    20.992771799570267,
+    20.943992134350562,
+    20.99040046805755,
+    20.944312531300714,
+    20.98804329592369,
+    20.944737099321298,
+    20.985704886825644,
+    20.945265009212996,
+    20.983389807775378,
+    50.945895229945435,
+    50.98110258022029,
+    20.946626530670862,
+    20.978847671212613,
+    20.947457483127987,
+    20.976629484685102,
+    20.948386464431486,
+    20.974452352849955,
+    20.949411660241548,
+    20.972320527737807,
+    20.950531068307352,
+    20.970238172893357,
+    20.951742502377556,
+    20.96820935524377,
+    20.953043596470142,
+    20.966238037155797,
+    20.954431809493258,
+    20.964328068697128,
+    20.955904430208108,
+    20.96248318011701,
+    20.95745858252409,
+    20.960706974560953,
+    20.959091231115938,
+    20.95900292103359,
+    20.960799187351835,
+    20.95737434762361,
+    20.962579115520946,
+    20.95582443500382,
+    20.964427539348208
+   ],
+   "evidence": [
+    {
+     "ID": "E1",
+     "Stat": "last",
+     "Text": "last = 20.96 kW"
+    },
+    {
+     "ID": "E2",
+     "Stat": "max",
+     "Text": "max = 50.98 kW at 02:55"
+    },
+    {
+     "ID": "E3",
+     "Stat": "min",
+     "Text": "min = 2.97 kW at 21:40"
+    },
+    {
+     "ID": "E4",
+     "Stat": "slope",
+     "Text": "trend = +2.14 kW/h (r2 0.38)"
+    },
+    {
+     "ID": "E5",
+     "Stat": "max_jump",
+     "Text": "largest 5-min change = -30.03 kW at 03:00"
+    },
+    {
+     "ID": "E6",
+     "Stat": "sma",
+     "Text": "SMA 1h = 20.96, EMA 1h = 21.05, mean 8h = 18.43 kW"
+    },
+    {
+     "ID": "E7",
+     "Stat": "shape",
+     "Text": "halves 14.65 -> 22.21, curvature -6.96/h, oscillation crossings 2"
+    },
+    {
+     "ID": "E8",
+     "Stat": "flat",
+     "Text": "noise 3.106, longest flat run 6 pts, plateau at max 0 pts"
+    },
+    {
+     "ID": "E9",
+     "Stat": "long_view",
+     "Text": "12 h view: level shift +17.96 kW at 22:50 (57.2x normal variation)"
+    },
+    {
+     "ID": "E10",
+     "Stat": "episodes",
+     "Text": "recent episodes: 1 excursion beyond 3x normal noise in the last 12 h (largest 95.5x)"
+    }
+   ],
+   "global_evidence_ids": [
+    "ev:SR-EM-KH04-01:power_kw:last:1792021200",
+    "ev:SR-EM-KH04-01:power_kw:max:1792021200",
+    "ev:SR-EM-KH04-01:power_kw:min:1792021200",
+    "ev:SR-EM-KH04-01:power_kw:slope:1792021200",
+    "ev:SR-EM-KH04-01:power_kw:max_jump:1792021200",
+    "ev:SR-EM-KH04-01:power_kw:sma:1792021200",
+    "ev:SR-EM-KH04-01:power_kw:shape:1792021200",
+    "ev:SR-EM-KH04-01:power_kw:flat:1792021200",
+    "ev:SR-EM-KH04-01:power_kw:long_view:1792021200",
+    "ev:SR-EM-KH04-01:power_kw:episodes:1792021200"
+   ],
+   "rule_finding": {
+    "pattern": "spike",
+    "status": "warning",
+    "observations": [
+     "Power spiked to 50.98 kW at 02:55 and fell back to 20.96 kW [E2,E1]"
+    ],
+    "likely_cause": "load_surge",
+    "confidence": 0.7,
+    "action": "monitor"
+   },
+   "context": false,
+   "long_range": [
+    {
+     "id": "E9",
+     "kind": "level_shift",
+     "delta": 17.959866412779498,
+     "ago_pts": 76,
+     "sigma": 57.16852687269455,
+     "text": "12 h view: level shifted +18 kW about 6.3 h ago and stayed (57.2x normal variation)"
+    }
+   ],
+   "win_n": 96
+  },
+  {
+   "ref": "S2",
+   "node": "AC-KH03",
+   "metric": "ac_units_on",
+   "role": "hvac",
+   "location": "KH building, level 03, AC units",
+   "window_end": 1792021200,
+   "injected": false,
+   "window": [
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2
+   ],
+   "evidence": [
+    {
+     "ID": "E1",
+     "Stat": "last",
+     "Text": "last = 2 units"
+    },
+    {
+     "ID": "E2",
+     "Stat": "max",
+     "Text": "max = 2 units at 01:15"
+    },
+    {
+     "ID": "E3",
+     "Stat": "min",
+     "Text": "min = 2 units at 01:15"
+    },
+    {
+     "ID": "E4",
+     "Stat": "slope",
+     "Text": "trend = +0.0 units/h (r2 0.00)"
+    },
+    {
+     "ID": "E5",
+     "Stat": "max_jump",
+     "Text": "largest 5-min change = +0.0 units at 01:20"
+    },
+    {
+     "ID": "E6",
+     "Stat": "sma",
+     "Text": "SMA 1h = 2, EMA 1h = 2, mean 4h = 2 units"
+    },
+    {
+     "ID": "E7",
+     "Stat": "shape",
+     "Text": "halves 2 -> 2, curvature +0.0/h, oscillation crossings 0"
+    },
+    {
+     "ID": "E8",
+     "Stat": "flat",
+     "Text": "noise 0.00, longest flat run 48 pts, plateau at max 48 pts"
+    }
+   ],
+   "global_evidence_ids": [
+    "ev:AC-KH03:ac_units_on:last:1792021200",
+    "ev:AC-KH03:ac_units_on:max:1792021200",
+    "ev:AC-KH03:ac_units_on:min:1792021200",
+    "ev:AC-KH03:ac_units_on:slope:1792021200",
+    "ev:AC-KH03:ac_units_on:max_jump:1792021200",
+    "ev:AC-KH03:ac_units_on:sma:1792021200",
+    "ev:AC-KH03:ac_units_on:shape:1792021200",
+    "ev:AC-KH03:ac_units_on:flat:1792021200"
+   ],
+   "rule_finding": {
+    "pattern": "stable",
+    "status": "normal",
+    "observations": [
+     "AC units running: now 2, 1h average 2.0, max 2 [E1,E6,E2]"
+    ],
+    "likely_cause": "hvac_context",
+    "confidence": 0.8,
+    "action": "none"
+   },
+   "context": true,
+   "why": "AC is the main load"
+  },
+  {
+   "ref": "S3",
+   "node": "SR-OC-GW-KH95-01",
+   "metric": "occ",
+   "role": "occupancy",
+   "location": "KH building, room occupancy sensor 01 (gateway KH95)",
+   "window_end": 1792021200,
+   "injected": false,
+   "window": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "evidence": [
+    {
+     "ID": "E1",
+     "Stat": "last",
+     "Text": "current state = 0"
+    },
+    {
+     "ID": "E2",
+     "Stat": "occupied_frac",
+     "Text": "occupied fraction = 0.00"
+    },
+    {
+     "ID": "E3",
+     "Stat": "toggles",
+     "Text": "state changes = 0"
+    },
+    {
+     "ID": "E4",
+     "Stat": "first_on",
+     "Text": "first occupied at never"
+    },
+    {
+     "ID": "E5",
+     "Stat": "last_on",
+     "Text": "last occupied at never"
+    },
+    {
+     "ID": "E6",
+     "Stat": "time",
+     "Text": "window end 05:10 (off-hours)"
+    }
+   ],
+   "global_evidence_ids": [
+    "ev:SR-OC-GW-KH95-01:occ:last:1792021200",
+    "ev:SR-OC-GW-KH95-01:occ:occupied_frac:1792021200",
+    "ev:SR-OC-GW-KH95-01:occ:toggles:1792021200",
+    "ev:SR-OC-GW-KH95-01:occ:first_on:1792021200",
+    "ev:SR-OC-GW-KH95-01:occ:last_on:1792021200",
+    "ev:SR-OC-GW-KH95-01:occ:time:1792021200"
+   ],
+   "rule_finding": {
+    "pattern": "vacant",
+    "status": "normal",
+    "observations": [
+     "Room unoccupied for the whole 4-hour window [E2,E1]"
+    ],
+    "likely_cause": "vacant",
+    "confidence": 0.95,
+    "action": "none"
+   },
+   "context": true,
+   "why": "load follows occupancy"
+  },
+  {
+   "ref": "S4",
+   "node": "WE-VN04-00",
+   "metric": "temp",
+   "role": "weather",
+   "location": "VN building, level 04, rooftop weather station",
+   "window_end": 1792021200,
+   "injected": false,
+   "window": [
+    29.863766612942335,
+    29.90287831172339,
+    29.756932279153535,
+    30.21059800994249,
+    29.81115059615245,
+    29.450218065163956,
+    29.807108347714852,
+    29.917004727433497,
+    29.774091306187458,
+    29.972197642521966,
+    29.850630470234716,
+    29.715010142713876,
+    29.892073343341625,
+    30.244233702914105,
+    30.01927951381004,
+    29.94836594096326,
+    29.787348503236647,
+    30.068613125111476,
+    30.17090362345029,
+    30.12200655144039,
+    29.95132193471436,
+    30.08916784989975,
+    29.760872114812564,
+    30.176046401421708,
+    29.95762277710222,
+    30.431518526565867,
+    30.287019387059487,
+    30.17475017976919,
+    30.02259904523938,
+    29.992852398895042,
+    30.135770763061032,
+    29.892919122387802,
+    29.782674278093396,
+    30.194623890750513,
+    29.954313304227615,
+    30.280341395771707,
+    29.745911370585095,
+    30.065930358692654,
+    29.898756795865932,
+    29.836165296673478,
+    29.96690671176648,
+    30.12778070725115,
+    29.890389735832798,
+    30.361460929602398,
+    30.37503051752903,
+    29.984954060025675,
+    29.931576174089276,
+    29.90922182895699
+   ],
+   "evidence": [
+    {
+     "ID": "E1",
+     "Stat": "last",
+     "Text": "last = 29.9 C"
+    },
+    {
+     "ID": "E2",
+     "Stat": "max",
+     "Text": "max = 30.4 C at 03:20"
+    },
+    {
+     "ID": "E3",
+     "Stat": "min",
+     "Text": "min = 29.5 C at 01:40"
+    },
+    {
+     "ID": "E4",
+     "Stat": "slope",
+     "Text": "trend = +0.1 C/h (r2 0.10)"
+    },
+    {
+     "ID": "E5",
+     "Stat": "max_jump",
+     "Text": "largest 5-min change = -0.5 C at 04:15"
+    },
+    {
+     "ID": "E6",
+     "Stat": "sma",
+     "Text": "SMA 1h = 30.0, EMA 1h = 30.0, mean 4h = 30.0 C"
+    },
+    {
+     "ID": "E7",
+     "Stat": "shape",
+     "Text": "halves 29.9 -> 30.1, curvature +0.0/h, oscillation crossings 16"
+    },
+    {
+     "ID": "E8",
+     "Stat": "flat",
+     "Text": "noise 0.18, longest flat run 2 pts, plateau at max 0 pts"
+    }
+   ],
+   "global_evidence_ids": [
+    "ev:WE-VN04-00:temp:last:1792021200",
+    "ev:WE-VN04-00:temp:max:1792021200",
+    "ev:WE-VN04-00:temp:min:1792021200",
+    "ev:WE-VN04-00:temp:slope:1792021200",
+    "ev:WE-VN04-00:temp:max_jump:1792021200",
+    "ev:WE-VN04-00:temp:sma:1792021200",
+    "ev:WE-VN04-00:temp:shape:1792021200",
+    "ev:WE-VN04-00:temp:flat:1792021200"
+   ],
+   "rule_finding": {
+    "pattern": "stable",
+    "status": "normal",
+    "observations": [
+     "Temperature steady around 30.0 C, ranging only 29.5-30.4 [E6,E2,E3]"
+    ],
+    "likely_cause": "normal_weather",
+    "confidence": 0.8,
+    "action": "none"
+   },
+   "context": true,
+   "why": "heat drives cooling load"
+  }
+ ],
+ "mode1_report": {
+  "root_cause": "Rule engine: SR-EM-KH04-01 power_kw spike (warning); AC-KH03 ac_units_on stable (normal); SR-OC-GW-KH95-01 occ vacant (normal); WE-VN04-00 temp stable (normal)",
+  "label": "power_load_anomaly",
+  "affected_domains": [
+   "power",
+   "hvac",
+   "occupancy",
+   "weather"
+  ],
+  "evidence": [
+   "S1.E1",
+   "S2.E1",
+   "S3.E1",
+   "S4.E1"
+  ],
+  "confidence": 0.7,
+  "action": "monitor",
+  "explanation": "Power spiked to 50.98 kW at 02:55 and fell back to 20.96 kW [E2,E1]",
+  "requires_human_approval": true,
+  "severity": "warning"
+ },
+ "agents": [
+  {
+   "ttft_ms": 856.3,
+   "gen_tokens": 93,
+   "tokens_per_s": 27.569442385794325,
+   "early_stopped": true,
+   "ref": "S1",
+   "role": "power",
+   "model": "Llama 3.2 3B smart-city agent (fine-tuned, w4a16)",
+   "fine_tuned": true,
+   "latency_ms": 4242.987,
+   "raw": "{\"pattern\": \"flatline\", \"status\": \"sensor_fault\", \"observations\": [\"Power frozen at exactly 20.96 kW for 6 samples [E8,E1]\", \"Stair-step signal with -30.03 kW jumps [E5]\"], \"likely_cause\": \"sensor_fault\", \"confidence\": 0.95, \"event_active\": true, \"onset\": \"21:45\", \"fault_kind\": \"quantised\"}",
+   "parsed": {
+    "pattern": "flatline",
+    "status": "warning",
+    "observations": [
+     "Power frozen at exactly 20.96 kW for 6 samples [E8,E1]",
+     "Stair-step signal with -30.03 kW jumps [E5]"
+    ],
+    "likely_cause": "sensor_fault",
+    "confidence": 0.63,
+    "action": "check_sensor",
+    "event_active": true,
+    "onset": "21:45",
+    "fault_kind": "quantised"
+   },
+   "valid": true,
+   "errors": null,
+   "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are the Power agent of a smart-campus edge monitor (IIIT Hyderabad). You receive a 8-hour window of one sensor metric (5-minute samples) with precomputed statistics. Identify the pattern, judge severity, explain what you notice using only the given numbers, and cite evidence ids (E1..E10) that support each observation. Never invent values. Never order physical actuation; recommend at most an inspection action. Reply with one JSON object only. JSON keys: pattern (stable|spike|dip|gradual_increase|gradual_decrease|step_increase|step_decrease|exponential_increase|oscillation|throttling|flatline|erratic), status (normal|warning|critical|sensor_fault), observations (1-2 short strings, each ending with cited ids like [E1,E4]), likely_cause (normal_load|load_surge|equipment_startup|load_drop_or_outage|capacity_limit_throttling|gradual_load_growth|cyclic_equipment|power_quality_issue|sensor_fault), confidence (0-1), event_active (true|false), onset (HH:MM), fault_kind (stuck|bias|drift|noise|dropout|saturation|quantised, only if sensor_fault), action (none|monitor|inspect_ventilation|inspect_hvac|check_sensor|inspect_water_system|inspect_electrical|review_schedule|request_facility_review).<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nNODE: SR-EM-KH04-01 (KH building, level 04, room energy meter 01)\nMETRIC: power_kw [kW]\nWINDOW: Wed 14 Oct 21:15 -> 05:10 IST, 96 x 5 min\nSERIES (10-min means): 2.99 3.01 2.99 3.01 3.01 2.99 4.03 8.17 12.31 16.44 20.25 20.96 20.96 20.96 20.96 20.96 20.96 20.96 20.96 20.96 20.96 20.96 20.97 20.97 20.97 20.97 20.97 20.97 20.97 20.97 20.97 20.97 20.97 35.96 35.96 20.96 20.96 20.96 20.96 20.96 20.96 20.96 20.96 20.96 20.96 20.96 20.96 20.96\nEVIDENCE:\nE1 last = 20.96 kW\nE2 max = 50.98 kW at 02:55\nE3 min = 2.97 kW at 21:40\nE4 trend = +2.14 kW/h (r2 0.38)\nE5 largest 5-min change = -30.03 kW at 03:00\nE6 SMA 1h = 20.96, EMA 1h = 21.05, mean 8h = 18.43 kW\nE7 halves 14.65 -> 22.21, curvature -6.96/h, oscillation crossings 2\nE8 noise 3.106, longest flat run 6 pts, plateau at max 0 pts\nE9 12 h view: level shift +17.96 kW at 22:50 (57.2x normal variation)\nE10 recent episodes: 1 excursion beyond 3x normal noise in the last 12 h (largest 95.5x)<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n{\"pattern\": \""
+  },
+  {
+   "ttft_ms": 0,
+   "gen_tokens": 0,
+   "tokens_per_s": 0,
+   "early_stopped": false,
+   "ref": "S2",
+   "role": "hvac",
+   "model": "context agent (rules, CPU)",
+   "fine_tuned": false,
+   "latency_ms": 0,
+   "raw": "",
+   "parsed": {
+    "pattern": "stable",
+    "status": "normal",
+    "observations": [
+     "AC units running: now 2, 1h average 2.0, max 2 [E1,E6,E2]"
+    ],
+    "likely_cause": "hvac_context",
+    "confidence": 0.8,
+    "action": "none"
+   },
+   "valid": true,
+   "errors": null,
+   "prompt": ""
+  },
+  {
+   "ttft_ms": 0,
+   "gen_tokens": 0,
+   "tokens_per_s": 0,
+   "early_stopped": false,
+   "ref": "S3",
+   "role": "occupancy",
+   "model": "context agent (rules, CPU)",
+   "fine_tuned": false,
+   "latency_ms": 0,
+   "raw": "",
+   "parsed": {
+    "pattern": "vacant",
+    "status": "normal",
+    "observations": [
+     "Room unoccupied for the whole 4-hour window [E2,E1]"
+    ],
+    "likely_cause": "vacant",
+    "confidence": 0.95,
+    "action": "none"
+   },
+   "valid": true,
+   "errors": null,
+   "prompt": ""
+  },
+  {
+   "ttft_ms": 0,
+   "gen_tokens": 0,
+   "tokens_per_s": 0,
+   "early_stopped": false,
+   "ref": "S4",
+   "role": "weather",
+   "model": "context agent (rules, CPU)",
+   "fine_tuned": false,
+   "latency_ms": 0,
+   "raw": "",
+   "parsed": {
+    "pattern": "stable",
+    "status": "normal",
+    "observations": [
+     "Temperature steady around 30.0 C, ranging only 29.5-30.4 [E6,E2,E3]"
+    ],
+    "likely_cause": "normal_weather",
+    "confidence": 0.8,
+    "action": "none"
+   },
+   "valid": true,
+   "errors": null,
+   "prompt": ""
+  }
+ ],
+ "final": {
+  "ttft_ms": 0,
+  "gen_tokens": 0,
+  "tokens_per_s": 0,
+  "early_stopped": false,
+  "model": "deterministic (related domains verified steady)",
+  "latency_ms": 0,
+  "raw": "",
+  "parsed": {
+   "root_cause": "Power flatline on KH building, level 04, room energy meter 01 (sensor fault)",
+   "label": "sensor_fault",
+   "affected_domains": [
+    "power"
+   ],
+   "evidence": [
+    "S1.E8",
+    "S1.E1",
+    "S1.E5",
+    "S2.E1",
+    "S3.E1",
+    "S4.E1"
+   ],
+   "confidence": 0.63,
+   "action": "check_sensor",
+   "explanation": "Power frozen at exactly 20.96 kW for 6 samples [E8,E1] Stair-step signal with -30.03 kW jumps [E5] (from domain agent finding). Related domains checked and steady:  stable (S2), Occupancy vacant (S3), Temperature stable (S4), so the cause is local to this domain.",
+   "requires_human_approval": true,
+   "severity": "warning"
+  },
+  "valid": true,
+  "errors": null,
+  "prompt": ""
+ },
+ "total_ms": 2221,
+ "npu_calls": 1,
+ "timeline": [
+  {
+   "t": "07:14:58",
+   "msg": "Event gated: 4 sensor(s) flagged, mode 3"
+  },
+  {
+   "t": "07:14:58",
+   "msg": "Orchestrator: 1 sensor(s) to NPU agents, 3 related sensor(s) checked by context agents in parallel"
+  },
+  {
+   "t": "07:14:58",
+   "msg": "Power agent analysing SR-EM-KH04-01 power_kw on NPU (fine-tuned)"
+  },
+  {
+   "t": "07:15:00",
+   "msg": "Power agent done in 2.2s (first token 0.4s, 95 tokens): spike / warning (policy PASSED)"
+  },
+  {
+   "t": "07:15:00",
+   "msg": "Related domains checked and steady (3 context agents): isolated event, no synthesizer call needed"
+  },
+  {
+   "t": "07:15:00",
+   "msg": "Finished in 2.2s, 1 NPU call(s)"
+  },
+  {
+   "t": "07:15:21",
+   "msg": "Refined at 1.5 h (windows to 05:10 sensor time, 1 NPU call(s), 4.2s): Power: warning kept from early: the rule on the fresh window still reads warning (refined view: flatline sensor fault)"
+  }
+ ],
+ "approval": "pending",
+ "approval_note": "",
+ "refine_stage": "1.5h",
+ "next_refine_sim": 1792026600,
+ "sim_epoch": 1695280271483786943,
+ "revisions": [
+  {
+   "stage": "early",
+   "sim_end": 1792015800,
+   "wall": "2026-10-14 10:51:36",
+   "severity": "warning",
+   "title": "Power spike: KH building, level 04, room energy meter 01",
+   "label": "power_load_anomaly",
+   "npu_calls": 1,
+   "ms": 2221,
+   "sensors": [
+    {
+     "ref": "S1",
+     "metric": "power_kw",
+     "pattern": "spike",
+     "status": "warning"
+    }
+   ]
+  },
+  {
+   "stage": "1.5h",
+   "sim_end": 1792021200,
+   "wall": "2026-10-14 10:51:56",
+   "severity": "warning",
+   "title": "Power flatline: KH building, level 04, room energy meter 01",
+   "label": "sensor_fault",
+   "npu_calls": 1,
+   "ms": 4248,
+   "sensors": [
+    {
+     "ref": "S1",
+     "metric": "power_kw",
+     "pattern": "flatline",
+     "status": "warning",
+     "kept": true,
+     "note": "warning kept from early: the rule on the fresh window still reads warning (refined view: flatline sensor fault)"
+    }
+   ]
+  }
+ ],
+ "workflow": "needs_decision",
+ "needs_since": 1791955296,
+ "live_epoch": 1695280271483786943,
+ "steps": [
+  {
+   "id": "s1",
+   "source": "playbook",
+   "text": "Check which loads are running against the schedule",
+   "why": "Standard steps for a warning power alarm (no specific AI recommendation)",
+   "added_at_stage": "early",
+   "state": "withdrawn"
+  },
+  {
+   "id": "s2",
+   "source": "playbook",
+   "text": "Look for equipment left on after hours",
+   "why": "Standard steps for a warning power alarm (no specific AI recommendation)",
+   "added_at_stage": "early",
+   "state": "withdrawn"
+  },
+  {
+   "id": "s3",
+   "source": "playbook",
+   "text": "Re-check the meter over the next 30 min",
+   "why": "Standard steps for a warning power alarm (no specific AI recommendation)",
+   "added_at_stage": "early",
+   "state": "withdrawn"
+  },
+  {
+   "id": "s4",
+   "source": "report",
+   "action": "check_sensor",
+   "text": "Check the flagged sensor on site (power, mounting, calibration) before trusting it",
+   "why": "Power flatline on KH building, level 04, room energy meter 01 (sensor fault)",
+   "added_at_stage": "1.5h",
+   "state": "open"
+  }
+ ],
+ "events": [
+  {
+   "seq": 1,
+   "at": 1791955293,
+   "actor": "system",
+   "event": "created",
+   "detail": "4 sensor(s) flagged"
+  },
+  {
+   "seq": 2,
+   "at": 1791955296,
+   "actor": "reasoner",
+   "event": "analysed",
+   "detail": "severity warning"
+  },
+  {
+   "seq": 3,
+   "at": 1791955316,
+   "actor": "reasoner",
+   "event": "recheck_same",
+   "detail": "1.5 h re-check: no change"
+  },
+  {
+   "seq": 4,
+   "at": 1791955316,
+   "actor": "system",
+   "event": "step_withdrawn",
+   "step_id": "s1",
+   "detail": "no longer suggested after the 1.5 h re-check"
+  },
+  {
+   "seq": 5,
+   "at": 1791955316,
+   "actor": "system",
+   "event": "step_withdrawn",
+   "step_id": "s2",
+   "detail": "no longer suggested after the 1.5 h re-check"
+  },
+  {
+   "seq": 6,
+   "at": 1791955316,
+   "actor": "system",
+   "event": "step_withdrawn",
+   "step_id": "s3",
+   "detail": "no longer suggested after the 1.5 h re-check"
+  },
+  {
+   "seq": 7,
+   "at": 1791955316,
+   "actor": "system",
+   "event": "step_added",
+   "step_id": "s4",
+   "detail": "suggested by the 1.5 h re-check"
+  }
+ ]
+}

@@ -33,6 +33,7 @@ type SimSensor struct {
 	Source   string  `json:"source"`  // "slider" or "api" (who set the value last)
 	SetAt    int64   `json:"set_at"`  // wall-clock unix time of the last change
 	Default  float64 `json:"default"` // value from sensors.json, restored by "reset values"
+	clamped  bool    // the last API value was outside [Min, Max] and was clamped (dataquality.go)
 }
 
 type sensorFile struct {
@@ -75,7 +76,7 @@ func (e *Engine) reading(s *SimSensor) float64 {
 			return 1
 		}
 		return 0
-	case "ac_units_on":
+	case "ac_units_on", "ac_on": // ac_on: v2 per-unit HVAC run state (0/1)
 		v = math.Round(v)
 	}
 	return math.Min(s.Max, math.Max(s.Min, v))
@@ -91,6 +92,10 @@ func (e *Engine) SetSensor(node, metric string, v float64, source string) (float
 	}
 	if math.IsNaN(v) || math.IsInf(v, 0) {
 		return 0, fmt.Errorf("value must be a number")
+	}
+	s.clamped = source == "api" && (v < s.Min || v > s.Max)
+	if s.clamped {
+		e.feedOf(key(node, metric)).stats.Clamped++
 	}
 	s.Value = math.Min(s.Max, math.Max(s.Min, v))
 	s.Source, s.SetAt = source, nowTime().Unix()

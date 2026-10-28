@@ -1,0 +1,47 @@
+/* Deck viewer: drop zone, stage, full-screen slideshow, thumbnails. */
+.drop {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center;
+  min-height: 190px; padding: 26px 18px; border: 1px dashed var(--line-strong); border-radius: var(--radius);
+  background: rgba(28,29,33,.5); transition: border-color var(--fade), background var(--fade);
+}
+.drop.is-over { border-color: var(--accent); background: var(--accent-soft); }
+.drop__title { font-size: 1.15rem; font-weight: 500; }
+.drop__actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 6px; }
+.drop__msg { min-height: 1.4em; font-size: var(--fs-small); color: var(--muted); }
+.drop__msg.is-error { color: #ff8f88; }
+
+.deckbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.deckbar__name { font-family: var(--font-mono); font-size: 0.78rem; color: var(--silver); overflow-wrap: anywhere; }
+.deckbar__actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* slideshow (inline stage and full-screen share this) */
+.show { position: relative; background: #000; border-radius: var(--radius); overflow: hidden; user-select: none; -webkit-user-select: none; touch-action: pan-y; }
+.show__stage { position: relative; width: 100%; aspect-ratio: var(--aspect, 1.7778); max-height: 78vh; display: grid; place-items: center; overflow: hidden; cursor: pointer; }
+.show__stage canvas, .show__stage .pptx-slide-host { display: block; max-width: 100%; max-height: 100%; }
+.show__stage canvas { width: auto; height: auto; }
+.show__counter {
+  position: absolute; right: 12px; bottom: 10px; z-index: 3; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.1em;
+  color: #e9e9ea; background: rgba(0,0,0,.55); padding: 4px 9px; border-radius: var(--radius-pill);
+}
+.show__nav { position: absolute; top: 50%; transform: translateY(-50%); z-index: 3; width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgba(0,0,0,.45); color: #fff; font-size: 1.2rem; opacity: 0; transition: opacity var(--fade); }
+.show:hover .show__nav, .show__nav:focus-visible { opacity: 1; }
+.show__nav--prev { left: 10px; } .show__nav--next { right: 10px; }
+
+.show.is-full { position: fixed; inset: 0; z-index: 90; border-radius: 0; display: flex; flex-direction: column; }
+.show.is-full .show__stage { flex: 1; aspect-ratio: auto; height: auto; max-height: none; }
+.show.is-full .show__counter { bottom: 14px; right: 16px; }
+
+.thumbs { display: flex; gap: 8px; overflow-x: auto; padding: 10px; background: #0b0b0d; scrollbar-width: thin; }
+.thumbs[hidden] { display: none; }
+.thumbs button { flex: none; padding: 0; border: 2px solid transparent; border-radius: 6px; background: #000; width: 128px; aspect-ratio: 16/9; overflow: hidden; position: relative; }
+.thumbs button[aria-current="true"] { border-color: var(--accent); }
+.thumbs button canvas, .thumbs button img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.thumbs button span { position: absolute; left: 4px; bottom: 3px; font-family: var(--font-mono); font-size: 0.6rem; color: #fff; background: rgba(0,0,0,.6); padding: 1px 5px; border-radius: 4px; }
+
+/* pptx-preview output: we scale a fixed 960x540 slide into the stage */
+.pptx-slide-host { position: relative; overflow: hidden; background: #fff; }
+.pptx-slide-host > .pptx-slide-inner { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.pptx-offscreen { position: fixed; left: -100000px; top: 0; width: 960px; visibility: hidden; pointer-events: none; }
+.show:focus-visible { outline: 1px solid var(--line-strong); outline-offset: 2px; }
+.show.is-full .show__counter { font-size: 0.9rem; }
+.deck-lead { margin: 10px 0 26px; color: var(--silver); max-width: 52ch; }

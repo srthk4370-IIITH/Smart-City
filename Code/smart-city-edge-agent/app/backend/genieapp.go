@@ -314,7 +314,7 @@ func (g *GenieRunner) Prefetch(ctx context.Context, b ModelBundle, prompts []str
 			continue // not answered: leave it to Run
 		}
 		res := GenieResult{Text: text, Model: b.Name, FineTuned: b.FineTuned, Backend: "qidk_htp",
-			LatencyMs: per, GenTokens: counts[k], Prefetched: true}
+			LatencyMs: per, GenTokens: counts[k], Prefetched: true, Streamed: sink != nil}
 		g.cachePut(sha256.Sum256([]byte(b.Dir+"|"+b.Config+"|"+todo[k])), res)
 		g.calls.Add(1)
 		n++

@@ -1,0 +1,29 @@
+## class_fills_up: INC-0254 title='CO2 gradual increase: KH building, level 03, indoor air sensor 03' 6129ms
+  S1: gradual_increase/warning cause=ventilation_insufficient | ['CO2 climbing at +190.4 ppm/h, now 1188 ppm [E4,E1]', '1188 ppm exceeds the warning limit of 1000 ppm [E1]']
+  S2: gradual_increase/warning cause=gradual_load_growth | ['Power climbing at +0.67 kW/h, now 5.61 kW [E4,E1]']
+  REPORT occupancy_driven_load root=gradual_increase in CO2 and power, driven by occupancy action=monitor
+  Room becoming occupied at 13:25, still occupied [S3.E4,S3.E1]
+## slow_tank_leak: INC-0257 title='Tank level gradual decrease judged normal: KH building, level 98, water tank level sensor 00' 4249ms
+  S1: gradual_decrease/normal cause=tank_draining | ['Tank level keeps falling, -11.3 level/h with r2 0.87 [E4]', 'Level 301.5 level is past the high mark of 186.5; overflow risk [E2]']
+  REPORT water_leak_or_overuse root=Tank level gradual decrease on KH building, level 98, water tank level sensor 00 (tank draining) action=monitor
+  Tank level keeps falling, -11.3 level/h with r2 0.87 [E4] Level 301.5 level is past the high mark of 186.5; overflow risk [E2] (from domain agent finding). Related domains checked and steady: Flow stable (S2), Occupancy vacant (S3), Temperature stable (S4), so the cause is local to this domain.
+## dust_storm_ingress: INC-0260 title='Wind speed gradual increase: VN building, level 04, rooftop weather station' 7064ms
+  S1: gradual_increase/warning cause=weather_front | ['Wind speed keeps rising, +2.56 m/s/h with r2 0.95 [E4]', 'Crossed the warning limit of 10 m/s: 12.91 m/s [E1]']
+  S2: gradual_increase/critical cause=outdoor_pollution_ingress | ['PM2.5 climbing at +33.2 ug/m3/h, now 148.6 ug/m3 [E4,E1]', '148.6 ug/m3 exceeds the critical limit of 120 ug/m3 [E1]']
+  S3: gradual_increase/critical cause=outdoor_pollution_ingress | ['PM10 climbing at +73.5 ug/m3/h, now 322.0 ug/m3 [E4,E1]', 'critical level: 322.0 ug/m3 against a limit of 250 ug/m3 [E1]']
+  REPORT air_pollution_event root=outdoor_pollution_ingress action=monitor
+  Outdoor pollution moving at +2.56 m/s/h with r2 0.95 [S1.E4]
+## acidic_water: INC-0262 title='pH gradual decrease: KH building, level 98, water quality sensor 00' 3266ms
+  S1: gradual_decrease/warning cause=water_quality_issue | ['Gradual decline of -0.30 pH/h; last 6.08 pH [E4,E1]', 'Normal daily range for this sensor [E4]']
+  REPORT water_quality_issue root=pH gradual decrease on KH building, level 98, water quality sensor 00 (water quality issue) action=request_facility_review
+  Gradual decline of -0.30 pH/h; last 6.08 pH [E4,E1] Normal daily range for this sensor [E4] (from domain agent finding). Related domains checked and steady: Flow stable (S2), TDS stable (S3), so the cause is local to this domain.
+## ac_fails_hot_day: INC-0265 title='Room temperature stuck on: KH building, level 02, AC indoor unit 24' 3903ms
+  S1: stuck_on/warning cause=schedule_or_control_fault | ['Unit kept running at night/weekend though room is at setpoint 26.0 C [E5,E8]', '48 of 48 samples on, wasting energy [E5]']
+  REPORT hvac_or_thermal_issue root=Room temperature stuck on on KH building, level 02, AC indoor unit 24 (schedule or control fault) action=review_schedule
+  Unit kept running at night/weekend though room is at setpoint 26.0 C [E5,E8] 48 of 48 samples on, wasting energy [E5] (from domain agent finding).
+## co2_sensor_glitch: INC-0267 title='CO2 step decrease: KH building, level 03, indoor air sensor 03' 2821ms
+  S1: step_decrease/sensor_fault cause=sensor_fault | ['Level down from 450 to 928 ppm, step at 13:45 [E7,E5]', 'The new level appeared instantly at 13:45 [E5,E8]']
+  REPORT sensor_fault root=CO2 step decrease on KH building, level 03, indoor air sensor 03 (sensor fault) action=check_sensor
+  Level down from 450 to 928 ppm, step at 13:45 [E7,E5] The new level appeared instantly at 13:45 [E5,E8] (from domain agent finding). Related domains checked and steady:  stable (S2), Occupancy vacant (S3), Power stable (S4), Temperature stable (S5), so the cause is local to this domain.
+done
+EXIT=0

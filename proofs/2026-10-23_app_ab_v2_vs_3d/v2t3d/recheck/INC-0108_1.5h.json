@@ -1,0 +1,901 @@
+{
+ "id": "INC-0108",
+ "mode": 3,
+ "state": "done",
+ "created_sim": 1791887100,
+ "created_wall": "2026-10-13 22:04:50",
+ "severity": "normal",
+ "severity_final": true,
+ "title": "CO2 spike judged normal: KH building, level 03, indoor air sensor 03",
+ "rule_title": "CO2 exponential increase: KH building, level 03, indoor air sensor 03",
+ "roles": [
+  "air_quality"
+ ],
+ "injected": true,
+ "sensors": [
+  {
+   "ref": "S1",
+   "node": "SR-AQ-KH03-03",
+   "metric": "co2",
+   "role": "air_quality",
+   "location": "KH building, level 03, indoor air sensor 03",
+   "window_end": 1791892500,
+   "injected": true,
+   "window": [
+    458.0035793781834,
+    449.0150014957213,
+    455.2212912778974,
+    452.0053763616178,
+    454.5585251780647,
+    453.2982170439224,
+    447.2184115328256,
+    452.5099332907941,
+    450.8498986820718,
+    453.4776907223313,
+    460.7761610613599,
+    465.89566496788257,
+    468.88264831260705,
+    475.5211087402939,
+    483.4200345113966,
+    492.9808228193037,
+    499.3180818579679,
+    508.9167337341098,
+    520.7708361302824,
+    537.8888679843476,
+    556.0313194653389,
+    574.0647844492162,
+    595.0110104954828,
+    619.238244702297,
+    645.3444639469159,
+    679.683059730057,
+    717.4469395473992,
+    760.9537205121422,
+    813.0940716030666,
+    865.6852717521052,
+    932.6387598804451,
+    1009.1659295888453,
+    459.02278765525233,
+    448.9000896267843,
+    448.42574416927573,
+    452.29611592143266,
+    450.5398047530153,
+    451.79907232644155,
+    445.3964032141189,
+    449.8709785591794,
+    455.52396700083375,
+    452.2593500774521,
+    447.2922592294775,
+    445.8402374571672,
+    450.9334815804843,
+    453.82234013178584,
+    450.22833585263345,
+    448.49757816224604
+   ],
+   "evidence": [
+    {
+     "ID": "E1",
+     "Stat": "last",
+     "Text": "last = 448 ppm"
+    },
+    {
+     "ID": "E2",
+     "Stat": "max",
+     "Text": "max = 1009 ppm at 16:05"
+    },
+    {
+     "ID": "E3",
+     "Stat": "min",
+     "Text": "min = 438 ppm at 13:00"
+    },
+    {
+     "ID": "E4",
+     "Stat": "slope",
+     "Text": "trend = +18.8 ppm/h (r2 0.03)"
+    },
+    {
+     "ID": "E5",
+     "Stat": "max_jump",
+     "Text": "largest 5-min change = -550.1 ppm at 16:10"
+    },
+    {
+     "ID": "E6",
+     "Stat": "sma",
+     "Text": "SMA 1h = 450, EMA 1h = 472, mean 4.5h = 521 ppm"
+    },
+    {
+     "ID": "E7",
+     "Stat": "shape",
+     "Text": "halves 470 -> 571, curvature -361.3/h, oscillation crossings 2"
+    },
+    {
+     "ID": "E8",
+     "Stat": "flat",
+     "Text": "noise 55.63, longest flat run 2 pts, plateau at max 0 pts"
+    },
+    {
+     "ID": "E9",
+     "Stat": "long_view",
+     "Text": "12 h view: no level shift or drift"
+    },
+    {
+     "ID": "E10",
+     "Stat": "episodes",
+     "Text": "recent episodes: 1 excursion beyond 3x normal noise in the last 12 h (largest 16.5x)"
+    }
+   ],
+   "global_evidence_ids": [
+    "ev:SR-AQ-KH03-03:co2:last:1791892500",
+    "ev:SR-AQ-KH03-03:co2:max:1791892500",
+    "ev:SR-AQ-KH03-03:co2:min:1791892500",
+    "ev:SR-AQ-KH03-03:co2:slope:1791892500",
+    "ev:SR-AQ-KH03-03:co2:max_jump:1791892500",
+    "ev:SR-AQ-KH03-03:co2:sma:1791892500",
+    "ev:SR-AQ-KH03-03:co2:shape:1791892500",
+    "ev:SR-AQ-KH03-03:co2:flat:1791892500",
+    "ev:SR-AQ-KH03-03:co2:long_view:1791892500",
+    "ev:SR-AQ-KH03-03:co2:episodes:1791892500"
+   ],
+   "rule_finding": {
+    "pattern": "spike",
+    "status": "warning",
+    "observations": [
+     "CO2 spiked to 1009 ppm at 16:05 and fell back to 448 ppm [E2,E1]",
+     "448 ppm exceeds the warning limit of 1000 ppm [E1]"
+    ],
+    "likely_cause": "occupancy_load",
+    "confidence": 0.7,
+    "action": "monitor"
+   },
+   "context": false,
+   "win_n": 54
+  },
+  {
+   "ref": "S2",
+   "node": "AC-KH03",
+   "metric": "ac_units_on",
+   "role": "hvac",
+   "location": "KH building, level 03, AC units",
+   "window_end": 1791892500,
+   "injected": false,
+   "window": [
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2
+   ],
+   "evidence": [
+    {
+     "ID": "E1",
+     "Stat": "last",
+     "Text": "last = 2 units"
+    },
+    {
+     "ID": "E2",
+     "Stat": "max",
+     "Text": "max = 2 units at 13:30"
+    },
+    {
+     "ID": "E3",
+     "Stat": "min",
+     "Text": "min = 2 units at 13:30"
+    },
+    {
+     "ID": "E4",
+     "Stat": "slope",
+     "Text": "trend = +0.0 units/h (r2 0.00)"
+    },
+    {
+     "ID": "E5",
+     "Stat": "max_jump",
+     "Text": "largest 5-min change = +0.0 units at 13:35"
+    },
+    {
+     "ID": "E6",
+     "Stat": "sma",
+     "Text": "SMA 1h = 2, EMA 1h = 2, mean 4h = 2 units"
+    },
+    {
+     "ID": "E7",
+     "Stat": "shape",
+     "Text": "halves 2 -> 2, curvature +0.0/h, oscillation crossings 0"
+    },
+    {
+     "ID": "E8",
+     "Stat": "flat",
+     "Text": "noise 0.00, longest flat run 48 pts, plateau at max 48 pts"
+    }
+   ],
+   "global_evidence_ids": [
+    "ev:AC-KH03:ac_units_on:last:1791892500",
+    "ev:AC-KH03:ac_units_on:max:1791892500",
+    "ev:AC-KH03:ac_units_on:min:1791892500",
+    "ev:AC-KH03:ac_units_on:slope:1791892500",
+    "ev:AC-KH03:ac_units_on:max_jump:1791892500",
+    "ev:AC-KH03:ac_units_on:sma:1791892500",
+    "ev:AC-KH03:ac_units_on:shape:1791892500",
+    "ev:AC-KH03:ac_units_on:flat:1791892500"
+   ],
+   "rule_finding": {
+    "pattern": "stable",
+    "status": "normal",
+    "observations": [
+     "AC units running: now 2, 1h average 2.0, max 2 [E1,E6,E2]"
+    ],
+    "likely_cause": "hvac_context",
+    "confidence": 0.8,
+    "action": "none"
+   },
+   "context": true,
+   "why": "AC/ventilation state"
+  },
+  {
+   "ref": "S3",
+   "node": "SR-OC-GW-KH95-01",
+   "metric": "occ",
+   "role": "occupancy",
+   "location": "KH building, room occupancy sensor 01 (gateway KH95)",
+   "window_end": 1791892500,
+   "injected": false,
+   "window": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "evidence": [
+    {
+     "ID": "E1",
+     "Stat": "last",
+     "Text": "current state = 0"
+    },
+    {
+     "ID": "E2",
+     "Stat": "occupied_frac",
+     "Text": "occupied fraction = 0.00"
+    },
+    {
+     "ID": "E3",
+     "Stat": "toggles",
+     "Text": "state changes = 0"
+    },
+    {
+     "ID": "E4",
+     "Stat": "first_on",
+     "Text": "first occupied at never"
+    },
+    {
+     "ID": "E5",
+     "Stat": "last_on",
+     "Text": "last occupied at never"
+    },
+    {
+     "ID": "E6",
+     "Stat": "time",
+     "Text": "window end 17:25"
+    }
+   ],
+   "global_evidence_ids": [
+    "ev:SR-OC-GW-KH95-01:occ:last:1791892500",
+    "ev:SR-OC-GW-KH95-01:occ:occupied_frac:1791892500",
+    "ev:SR-OC-GW-KH95-01:occ:toggles:1791892500",
+    "ev:SR-OC-GW-KH95-01:occ:first_on:1791892500",
+    "ev:SR-OC-GW-KH95-01:occ:last_on:1791892500",
+    "ev:SR-OC-GW-KH95-01:occ:time:1791892500"
+   ],
+   "rule_finding": {
+    "pattern": "vacant",
+    "status": "normal",
+    "observations": [
+     "Room unoccupied for the whole 4-hour window [E2,E1]"
+    ],
+    "likely_cause": "vacant",
+    "confidence": 0.95,
+    "action": "none"
+   },
+   "context": true,
+   "why": "people in the room raise CO2"
+  },
+  {
+   "ref": "S4",
+   "node": "SR-EM-KH04-01",
+   "metric": "power_kw",
+   "role": "power",
+   "location": "KH building, level 04, room energy meter 01",
+   "window_end": 1791892500,
+   "injected": false,
+   "window": [
+    3.0121100262309652,
+    3.0039437114981213,
+    2.9837929665125666,
+    3.018974393851785,
+    3.0134302318913537,
+    3.049053566694793,
+    2.989682946043714,
+    3.0180177886412802,
+    3.001797868640638,
+    3.0087302589740355,
+    3.0075111376832444,
+    3.009101459508751,
+    3.013062493658378,
+    2.982149923915779,
+    3.0108926137711642,
+    2.9857544445587187,
+    3.0116898208975007,
+    2.9950698869223804,
+    2.967926408455887,
+    3.0130751893128385,
+    3.0031921779105333,
+    2.9800777695609018,
+    2.965132678105175,
+    2.9718206424541966,
+    2.980058471063907,
+    2.991615420000219,
+    2.967764724492829,
+    2.9866624735772227,
+    3.0060886723132256,
+    2.9835109924298435,
+    2.978784934612278,
+    3.0048508830686864,
+    2.956793530648008,
+    3.029026602237918,
+    2.973643040568543,
+    3.0071949326854934,
+    2.9887191459870284,
+    3.0032259215168886,
+    2.987459139797309,
+    3.0017147846838457,
+    2.9950782560451734,
+    3.009093032576755,
+    2.9887980180913076,
+    2.975731893893495,
+    3.0006561251394754,
+    2.9951567425308574,
+    3.005612251717325,
+    3.0077465490990205
+   ],
+   "evidence": [
+    {
+     "ID": "E1",
+     "Stat": "last",
+     "Text": "last = 3.01 kW"
+    },
+    {
+     "ID": "E2",
+     "Stat": "max",
+     "Text": "max = 3.05 kW at 13:55"
+    },
+    {
+     "ID": "E3",
+     "Stat": "min",
+     "Text": "min = 2.96 kW at 16:10"
+    },
+    {
+     "ID": "E4",
+     "Stat": "slope",
+     "Text": "trend = -0.00 kW/h (r2 0.07)"
+    },
+    {
+     "ID": "E5",
+     "Stat": "max_jump",
+     "Text": "largest 5-min change = +0.07 kW at 16:15"
+    },
+    {
+     "ID": "E6",
+     "Stat": "sma",
+     "Text": "SMA 1h = 3.00, EMA 1h = 3.00, mean 4h = 3.00 kW"
+    },
+    {
+     "ID": "E7",
+     "Stat": "shape",
+     "Text": "halves 3.00 -> 2.99, curvature +0.06/h, oscillation crossings 20"
+    },
+    {
+     "ID": "E8",
+     "Stat": "flat",
+     "Text": "noise 0.018, longest flat run 4 pts, plateau at max 0 pts"
+    }
+   ],
+   "global_evidence_ids": [
+    "ev:SR-EM-KH04-01:power_kw:last:1791892500",
+    "ev:SR-EM-KH04-01:power_kw:max:1791892500",
+    "ev:SR-EM-KH04-01:power_kw:min:1791892500",
+    "ev:SR-EM-KH04-01:power_kw:slope:1791892500",
+    "ev:SR-EM-KH04-01:power_kw:max_jump:1791892500",
+    "ev:SR-EM-KH04-01:power_kw:sma:1791892500",
+    "ev:SR-EM-KH04-01:power_kw:shape:1791892500",
+    "ev:SR-EM-KH04-01:power_kw:flat:1791892500"
+   ],
+   "rule_finding": {
+    "pattern": "stable",
+    "status": "normal",
+    "observations": [
+     "Power steady around 3.00 kW, ranging only 2.96-3.05 [E6,E2,E3]"
+    ],
+    "likely_cause": "normal_load",
+    "confidence": 0.8,
+    "action": "none"
+   },
+   "context": true,
+   "why": "room load follows occupancy and HVAC"
+  },
+  {
+   "ref": "S5",
+   "node": "WE-VN04-00",
+   "metric": "temp",
+   "role": "weather",
+   "location": "VN building, level 04, rooftop weather station",
+   "window_end": 1791892500,
+   "injected": false,
+   "window": [
+    29.660268069108604,
+    29.826132400454842,
+    30.22804833312242,
+    29.998676556735667,
+    29.916873674148512,
+    30.080502848798776,
+    30.329680646661693,
+    30.269215011955733,
+    30.67417307302577,
+    30.04537860775402,
+    29.738786239182073,
+    29.758376142765233,
+    30.152234332357512,
+    29.992329595030764,
+    29.99042163838422,
+    29.940007488530004,
+    29.81150160876125,
+    29.926744353212353,
+    29.909918525551603,
+    30.03928456620624,
+    30.02692902692471,
+    29.71206633236943,
+    29.78699809890454,
+    30.157901326674633,
+    30.041584276100455,
+    30.299008952254816,
+    29.967361710199622,
+    29.91826000010559,
+    29.840169415920126,
+    29.733464470332255,
+    29.353314463516096,
+    29.981304634289412,
+    30.191051664420236,
+    30.091734716695456,
+    30.23625916058463,
+    29.969856399160747,
+    30.205383266329427,
+    30.313225768746207,
+    30.00121867497731,
+    29.92017133311454,
+    29.92708246370472,
+    30.171813752831238,
+    30.264680659946276,
+    30.128797271018808,
+    29.675197756880237,
+    29.650892664131028,
+    30.084019069159655,
+    29.945099177933546
+   ],
+   "evidence": [
+    {
+     "ID": "E1",
+     "Stat": "last",
+     "Text": "last = 29.9 C"
+    },
+    {
+     "ID": "E2",
+     "Stat": "max",
+     "Text": "max = 30.7 C at 14:10"
+    },
+    {
+     "ID": "E3",
+     "Stat": "min",
+     "Text": "min = 29.4 C at 16:00"
+    },
+    {
+     "ID": "E4",
+     "Stat": "slope",
+     "Text": "trend = -0.0 C/h (r2 0.00)"
+    },
+    {
+     "ID": "E5",
+     "Stat": "max_jump",
+     "Text": "largest 5-min change = -0.6 C at 14:15"
+    },
+    {
+     "ID": "E6",
+     "Stat": "sma",
+     "Text": "SMA 1h = 30.0, EMA 1h = 30.0, mean 4h = 30.0 C"
+    },
+    {
+     "ID": "E7",
+     "Stat": "shape",
+     "Text": "halves 30.0 -> 30.0, curvature -0.4/h, oscillation crossings 11"
+    },
+    {
+     "ID": "E8",
+     "Stat": "flat",
+     "Text": "noise 0.18, longest flat run 2 pts, plateau at max 0 pts"
+    }
+   ],
+   "global_evidence_ids": [
+    "ev:WE-VN04-00:temp:last:1791892500",
+    "ev:WE-VN04-00:temp:max:1791892500",
+    "ev:WE-VN04-00:temp:min:1791892500",
+    "ev:WE-VN04-00:temp:slope:1791892500",
+    "ev:WE-VN04-00:temp:max_jump:1791892500",
+    "ev:WE-VN04-00:temp:sma:1791892500",
+    "ev:WE-VN04-00:temp:shape:1791892500",
+    "ev:WE-VN04-00:temp:flat:1791892500"
+   ],
+   "rule_finding": {
+    "pattern": "stable",
+    "status": "normal",
+    "observations": [
+     "Temperature steady around 30.0 C, ranging only 29.4-30.7 [E6,E2,E3]"
+    ],
+    "likely_cause": "normal_weather",
+    "confidence": 0.8,
+    "action": "none"
+   },
+   "context": true,
+   "why": "outdoor conditions drive ventilation and cooling"
+  }
+ ],
+ "mode1_report": {
+  "root_cause": "Rule engine: SR-AQ-KH03-03 co2 spike (warning); AC-KH03 ac_units_on stable (normal); SR-OC-GW-KH95-01 occ vacant (normal); SR-EM-KH04-01 power_kw stable (normal); WE-VN04-00 temp stable (normal)",
+  "label": "occupancy_driven_load",
+  "affected_domains": [
+   "air_quality",
+   "hvac",
+   "occupancy",
+   "power",
+   "weather"
+  ],
+  "evidence": [
+   "S1.E1",
+   "S2.E1",
+   "S3.E1",
+   "S4.E1",
+   "S5.E1"
+  ],
+  "confidence": 0.7,
+  "action": "monitor",
+  "explanation": "CO2 spiked to 1009 ppm at 16:05 and fell back to 448 ppm [E2,E1] 448 ppm exceeds the warning limit of 1000 ppm [E1]",
+  "requires_human_approval": true,
+  "severity": "warning"
+ },
+ "agents": [
+  {
+   "ttft_ms": 350.6,
+   "gen_tokens": 92,
+   "tokens_per_s": 41.66477967483357,
+   "early_stopped": true,
+   "ref": "S1",
+   "role": "air_quality",
+   "model": "Llama 3.2 3B smart-city agent (fine-tuned, w4a16)",
+   "fine_tuned": true,
+   "latency_ms": 2564.263,
+   "raw": "{\"pattern\": \"spike\", \"status\": \"warning\", \"observations\": [\"CO2 spiked at 16:05 to 1009 ppm, well above 521 ppm [E2,E6]\", \"1009 ppm exceeds the warning limit of 1000 ppm [E2]\"], \"likely_cause\": \"occupancy_load\", \"confidence\": 0.95, \"event_active\": false, \"onset\": \"16:05\"}",
+   "parsed": {
+    "pattern": "spike",
+    "status": "normal",
+    "observations": [
+     "CO2 spiked at 16:05 to 1009 ppm, well above 521 ppm [E2,E6]",
+     "1009 ppm exceeds the warning limit of 1000 ppm [E2]"
+    ],
+    "likely_cause": "occupancy_load",
+    "confidence": 0.84,
+    "action": "monitor",
+    "event_active": false,
+    "onset": "16:05"
+   },
+   "valid": true,
+   "errors": null,
+   "repairs": [
+    "disagreement with the rule surfaced in the report: CO2 (S1): the AI judged this spike/normal, but the deterministic rule that raised this incident found spike/warning - review before deciding."
+   ],
+   "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are the Air Quality agent of a smart-campus edge monitor (IIIT Hyderabad). You receive a 4.5-hour window of one sensor metric (5-minute samples) with precomputed statistics. Identify the pattern, judge severity, explain what you notice using only the given numbers, and cite evidence ids (E1..E10) that support each observation. Never invent values. Never order physical actuation; recommend at most an inspection action. Reply with one JSON object only. JSON keys: pattern (stable|spike|dip|gradual_increase|gradual_decrease|step_increase|step_decrease|exponential_increase|oscillation|throttling|flatline|erratic), status (normal|warning|critical|sensor_fault), observations (1-2 short strings, each ending with cited ids like [E1,E4]), likely_cause (normal_conditions|occupancy_load|ventilation_insufficient|outdoor_pollution_ingress|indoor_emission_source|hvac_cooling_issue|humidity_control_issue|sensor_fault), confidence (0-1), event_active (true|false), onset (HH:MM), fault_kind (stuck|bias|drift|noise|dropout|saturation|quantised, only if sensor_fault), action (none|monitor|inspect_ventilation|inspect_hvac|check_sensor|inspect_water_system|inspect_electrical|review_schedule|request_facility_review).<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nNODE: SR-AQ-KH03-03 (KH building, level 03, indoor air sensor 03)\nMETRIC: co2 [ppm]\nLIMITS: warning above 1000, critical above 1500\nWINDOW: Tue 13 Oct 13:00 -> 17:25 IST, 54 x 5 min\nSERIES (10-min means): 442 456 452 454 454 454 450 452 463 472 488 504 529 565 607 663 739 839 971 454 450 451 448 454 447 452 449\nEVIDENCE:\nE1 last = 448 ppm\nE2 max = 1009 ppm at 16:05\nE3 min = 438 ppm at 13:00\nE4 trend = +18.8 ppm/h (r2 0.03)\nE5 largest 5-min change = -550.1 ppm at 16:10\nE6 SMA 1h = 450, EMA 1h = 472, mean 4.5h = 521 ppm\nE7 halves 470 -> 571, curvature -361.3/h, oscillation crossings 2\nE8 noise 55.63, longest flat run 2 pts, plateau at max 0 pts\nE9 12 h view: no level shift or drift\nE10 recent episodes: 1 excursion beyond 3x normal noise in the last 12 h (largest 16.5x)<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n{\"pattern\": \""
+  },
+  {
+   "ttft_ms": 0,
+   "gen_tokens": 0,
+   "tokens_per_s": 0,
+   "early_stopped": false,
+   "ref": "S2",
+   "role": "hvac",
+   "model": "context agent (rules, CPU)",
+   "fine_tuned": false,
+   "latency_ms": 0,
+   "raw": "",
+   "parsed": {
+    "pattern": "stable",
+    "status": "normal",
+    "observations": [
+     "AC units running: now 2, 1h average 2.0, max 2 [E1,E6,E2]"
+    ],
+    "likely_cause": "hvac_context",
+    "confidence": 0.8,
+    "action": "none"
+   },
+   "valid": true,
+   "errors": null,
+   "prompt": ""
+  },
+  {
+   "ttft_ms": 0,
+   "gen_tokens": 0,
+   "tokens_per_s": 0,
+   "early_stopped": false,
+   "ref": "S3",
+   "role": "occupancy",
+   "model": "context agent (rules, CPU)",
+   "fine_tuned": false,
+   "latency_ms": 0,
+   "raw": "",
+   "parsed": {
+    "pattern": "vacant",
+    "status": "normal",
+    "observations": [
+     "Room unoccupied for the whole 4-hour window [E2,E1]"
+    ],
+    "likely_cause": "vacant",
+    "confidence": 0.95,
+    "action": "none"
+   },
+   "valid": true,
+   "errors": null,
+   "prompt": ""
+  },
+  {
+   "ttft_ms": 0,
+   "gen_tokens": 0,
+   "tokens_per_s": 0,
+   "early_stopped": false,
+   "ref": "S4",
+   "role": "power",
+   "model": "context agent (rules, CPU)",
+   "fine_tuned": false,
+   "latency_ms": 0,
+   "raw": "",
+   "parsed": {
+    "pattern": "stable",
+    "status": "normal",
+    "observations": [
+     "Power steady around 3.00 kW, ranging only 2.96-3.05 [E6,E2,E3]"
+    ],
+    "likely_cause": "normal_load",
+    "confidence": 0.8,
+    "action": "none"
+   },
+   "valid": true,
+   "errors": null,
+   "prompt": ""
+  },
+  {
+   "ttft_ms": 0,
+   "gen_tokens": 0,
+   "tokens_per_s": 0,
+   "early_stopped": false,
+   "ref": "S5",
+   "role": "weather",
+   "model": "context agent (rules, CPU)",
+   "fine_tuned": false,
+   "latency_ms": 0,
+   "raw": "",
+   "parsed": {
+    "pattern": "stable",
+    "status": "normal",
+    "observations": [
+     "Temperature steady around 30.0 C, ranging only 29.4-30.7 [E6,E2,E3]"
+    ],
+    "likely_cause": "normal_weather",
+    "confidence": 0.8,
+    "action": "none"
+   },
+   "valid": true,
+   "errors": null,
+   "prompt": ""
+  }
+ ],
+ "final": {
+  "ttft_ms": 0,
+  "gen_tokens": 0,
+  "tokens_per_s": 0,
+  "early_stopped": false,
+  "model": "deterministic (related domains verified steady)",
+  "latency_ms": 0,
+  "raw": "",
+  "parsed": {
+   "root_cause": "CO2 spike on KH building, level 03, indoor air sensor 03 (occupancy load)",
+   "label": "occupancy_driven_load",
+   "affected_domains": [
+    "air_quality"
+   ],
+   "evidence": [
+    "S1.E2",
+    "S1.E6",
+    "S2.E1",
+    "S3.E1",
+    "S4.E1",
+    "S5.E1"
+   ],
+   "confidence": 0.84,
+   "action": "monitor",
+   "explanation": "CO2 spiked at 16:05 to 1009 ppm, well above 521 ppm [E2,E6] 1009 ppm exceeds the warning limit of 1000 ppm [E2] (from domain agent finding). Related domains checked and steady:  stable (S2), Occupancy vacant (S3), Power stable (S4), Temperature stable (S5), so the cause is local to this domain. AI and rules disagree: CO2 (S1): the AI judged this spike/normal, but the deterministic rule that raised this incident found spike/warning - review before deciding.",
+   "requires_human_approval": true,
+   "severity": "normal"
+  },
+  "valid": true,
+  "repairs": [
+   "1 AI/rule disagreement(s) surfaced for review"
+  ],
+  "errors": null,
+  "prompt": ""
+ },
+ "total_ms": 1649,
+ "npu_calls": 1,
+ "timeline": [
+  {
+   "t": "18:28:13",
+   "msg": "Event gated: 5 sensor(s) flagged, mode 3"
+  },
+  {
+   "t": "18:28:13",
+   "msg": "Orchestrator: 1 sensor(s) to NPU agents, 4 related sensor(s) checked by context agents in parallel"
+  },
+  {
+   "t": "18:28:13",
+   "msg": "Air Quality agent analysing SR-AQ-KH03-03 co2 on NPU (fine-tuned)"
+  },
+  {
+   "t": "18:28:15",
+   "msg": "Air Quality agent done in 1.6s (first token 0.3s, 83 tokens): exponential_increase / warning (policy PASSED)"
+  },
+  {
+   "t": "18:28:15",
+   "msg": "Related domains checked and steady (4 context agents): isolated event, no synthesizer call needed"
+  },
+  {
+   "t": "18:28:15",
+   "msg": "Finished in 1.6s, 1 NPU call(s)"
+  },
+  {
+   "t": "18:28:34",
+   "msg": "Refined at 1.5 h (windows to 17:25 sensor time, 1 NPU call(s), 2.6s): severity warning -> normal; CO2: resolved: warning -> normal, spike back to baseline since 16:10 (AI: event no longer active)"
+  }
+ ],
+ "approval": "pending",
+ "approval_note": "",
+ "refine_stage": "1.5h",
+ "next_refine_sim": 1791897900,
+ "sim_epoch": 1695234423520498703,
+ "revisions": [
+  {
+   "stage": "early",
+   "sim_end": 1791887100,
+   "wall": "2026-10-13 22:04:51",
+   "severity": "warning",
+   "title": "CO2 exponential increase: KH building, level 03, indoor air sensor 03",
+   "label": "ventilation_issue",
+   "npu_calls": 1,
+   "ms": 1649,
+   "sensors": [
+    {
+     "ref": "S1",
+     "metric": "co2",
+     "pattern": "exponential_increase",
+     "status": "warning"
+    }
+   ]
+  },
+  {
+   "stage": "1.5h",
+   "sim_end": 1791892500,
+   "wall": "2026-10-13 22:05:10",
+   "severity": "normal",
+   "title": "CO2 spike judged normal: KH building, level 03, indoor air sensor 03",
+   "label": "occupancy_driven_load",
+   "npu_calls": 1,
+   "ms": 2567,
+   "sensors": [
+    {
+     "ref": "S1",
+     "metric": "co2",
+     "pattern": "spike",
+     "status": "normal",
+     "curbed": true,
+     "note": "resolved: warning -> normal, spike back to baseline since 16:10 (AI: event no longer active)"
+    }
+   ]
+  }
+ ]
+}

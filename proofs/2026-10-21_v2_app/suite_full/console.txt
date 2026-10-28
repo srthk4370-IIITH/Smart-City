@@ -1,0 +1,51 @@
+
+######## app_suite_v2 2026-10-21T08:22:54+05:30 phases=['scenarios', 'chain', 'multi', 'chaos', 'faults', 'soak', 'stream', 'robust'] base=http://127.0.0.1:8000
+backend: QIDK Pineapple for arm64 (SM8650), Android, standalone on device agent=Llama 3.2 3B smart-city agent (fine-tuned, w4a16) daemon=not running (per-call CLI path) temps=(34.4, False)
+
+== a) scenarios one by one (reset before each), followed early -> 1.5 h -> 3 h ==
+
+ -- ventilation_failure: injected (HTTP 200)
+  [PASS] ventilation_failure: injectable
+  [PASS] ventilation_failure: incident raised
+       0.0s INC-0702 early done sev=warning agents=1 ms=5725 | co2:exponential_increase/warning n=48 | 'CO2 exponential increase: KH building, level 03, indoor air sensor 03'
+      14.2s INC-0702 1.5h done sev=critical agents=1 ms=3787 | co2:throttling/critical n=54 | 'CO2 throttling: KH building, level 03, indoor air sensor 03'
+      32.4s INC-0702 3h   done sev=critical agents=1 ms=2123 | co2:throttling/critical n=60 | 'CO2 throttling: KH building, level 03, indoor air sensor 03'
+  [PASS] ventilation_failure INC-0702: no timeout following the incident
+  [PASS] ventilation_failure INC-0702: final state done/done_with_errors
+  [PASS] ventilation_failure INC-0702: final state is 'done' (no errors)
+  [PASS] ventilation_failure INC-0702: refined through 3h
+  [PASS] ventilation_failure INC-0702 early: severity decided by reasoner
+  [PASS] ventilation_failure INC-0702 early: title present
+  [PASS] ventilation_failure INC-0702 early: every NPU agent passed policy
+  [PASS] ventilation_failure INC-0702 1.5h: severity decided by reasoner
+  [PASS] ventilation_failure INC-0702 1.5h: title present
+  [PASS] ventilation_failure INC-0702 1.5h: every NPU agent passed policy
+  [PASS] ventilation_failure INC-0702 3h: severity decided by reasoner
+  [PASS] ventilation_failure INC-0702 3h: title present
+  [PASS] ventilation_failure INC-0702 3h: every NPU agent passed policy
+  [PASS] ventilation_failure INC-0702: 3 sensor-stage windows trained, >= family floor, cover onset + 1 h
+  [PASS] ventilation_failure INC-0702: window equals recomputed WindowN
+  [PASS] ventilation_failure: NPU idle afterwards
+
+ -- pm_spike: injected (HTTP 200)
+  [PASS] pm_spike: injectable
+  [PASS] pm_spike: incident raised
+       0.0s INC-0703 early done sev=critical agents=1 ms=3189 | pm25:spike/critical n=48 | 'PM2.5 spike: KN building, outdoor air station'
+      12.2s INC-0703 1.5h done sev=critical agents=1 ms=2076 | pm25:spike/critical n=96 | 'PM2.5 spike: KN building, outdoor air station'
+      30.3s INC-0703 3h   done sev=critical agents=1 ms=1730 | pm25:spike/critical n=96 | 'PM2.5 spike: KN building, outdoor air station'
+  [PASS] pm_spike INC-0703: no timeout following the incident
+  [PASS] pm_spike INC-0703: final state done/done_with_errors
+  [PASS] pm_spike INC-0703: final state is 'done' (no errors)
+  [PASS] pm_spike INC-0703: refined through 3h
+  [PASS] pm_spike INC-0703 early: severity decided by reasoner
+  [PASS] pm_spike INC-0703 early: title present
+  [PASS] pm_spike INC-0703 early: every NPU agent passed policy
+  [PASS] pm_spike INC-0703 1.5h: severity decided by reasoner
+  [PASS] pm_spike INC-0703 1.5h: title present
+  [PASS] pm_spike INC-0703 1.5h: every NPU agent passed policy
+  [PASS] pm_spike INC-0703 3h: severity decided by reasoner
+  [PASS] pm_spike INC-0703 3h: title present
+  [PASS] pm_spike INC-0703 3h: every NPU agent passed policy
+  [PASS] pm_spike INC-0703: 3 sensor-stage windows trained, >= family floor, cover onset + 1 h
+  [PASS] pm_spike INC-0703: window equals recomputed WindowN
+  [PASS] pm_spike: NPU idle afterwards

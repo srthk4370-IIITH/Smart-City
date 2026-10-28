@@ -1,0 +1,10 @@
+{
+  "date": "2026-10-21",
+  "what": "Operator UX pass: health panel redesign (L1 tiles + L2 domain sheet), plain-language incident sheet, Engineering view, desktop tab fix",
+  "git_head": "d403c8d66e2604610ca918a3293adc78e29470be",
+  "files_changed": ["Code/smart-city-edge-agent/app/device/web/app.js", "Code/smart-city-edge-agent/app/device/web/index.html", "Code/smart-city-edge-agent/app/device/web/styles.css", "Code/smart-city-edge-agent/app/device/web/sw.js", "proofs/2026-10-21_v2_research/domain_health/ui_health_check.js"],
+  "checks": {"node --check app.js": "OK", "ui_health_check_v2.js": "OK (7 scenarios)", "ui_stream_check.js": "OK", "go vet + go test (WSL)": "OK, see go_test.log"},
+  "before": "before/ (board backend 127.0.0.1:8000, read-only, 412x915 + 1440x900; board_now.png via adb)",
+  "after": "after/ (host --mock backend 127.0.0.1:18000 serving the edited web dir, scenarios tank_leak, power_throttling, stuck_sensor, ventilation_failure, load_surge; 412x915, 360x780, 1440x900; eng_* = Engineering view)",
+  "not_verified_on_board": "the new UI is not installed on the QIDK (no APK rebuild by this task)"
+}

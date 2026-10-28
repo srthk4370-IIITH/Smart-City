@@ -1,0 +1,79 @@
+{
+ "ft_v2_f16.gguf": {
+  "bytes": 7221692608,
+  "sha256": "ea67d7068fb6ee59ba3c52aa9071d1e5ad21e27ef9cb5012c90969402d11f68f",
+  "types": {
+   "F32": 58,
+   "F16": 198
+  },
+  "non_block": {
+   "rope_freqs.weight": "F32",
+   "token_embd.weight": "F16",
+   "output.weight": "F16",
+   "output_norm.weight": "F32"
+  }
+ },
+ "ft_v2_q4_0.gguf": {
+  "bytes": 2800617920,
+  "sha256": "9d10c173b51207e2d230689dcb34fa9b104d697022cc8fe8efa6cbad427b22cd",
+  "types": {
+   "Q8_0": 1,
+   "F32": 58,
+   "F16": 1,
+   "Q4_0": 196
+  },
+  "non_block": {
+   "output.weight": "Q8_0",
+   "output_norm.weight": "F32",
+   "rope_freqs.weight": "F32",
+   "token_embd.weight": "F16"
+  },
+  "imatrix_chunks": 64,
+  "note": "requantized with --tensor-type ffn_down=q4_0 (the default Q4_0 ftype put 3 ffn_down tensors in Q4_1, which the Hexagon backend does not run)"
+ },
+ "ft_v2_q4_0_noimx.gguf": {
+  "bytes": 2800617664,
+  "sha256": "eb39f462418e80f327dec2e0137c6e6dcd93f6d07254eb2beb365491112dc4a9",
+  "types": {
+   "Q8_0": 1,
+   "F32": 58,
+   "F16": 1,
+   "Q4_0": 196
+  },
+  "non_block": {
+   "output.weight": "Q8_0",
+   "output_norm.weight": "F32",
+   "rope_freqs.weight": "F32",
+   "token_embd.weight": "F16"
+  }
+ },
+ "ft_v2_q4_k_m.gguf": {
+  "bytes": 2241003968,
+  "sha256": "1b34f32c9ef59afa955825a59b53c164cee391d35d28e79d013ad9092fcd07a7",
+  "types": {
+   "Q6_K": 29,
+   "F32": 58,
+   "Q4_K": 169
+  },
+  "non_block": {
+   "output.weight": "Q6_K",
+   "output_norm.weight": "F32",
+   "rope_freqs.weight": "F32",
+   "token_embd.weight": "Q4_K"
+  }
+ },
+ "ft_v2_q8_0.gguf": {
+  "bytes": 3840526528,
+  "sha256": "6880daa8203b0e8d07ec8fea5c3271d36ac89c972e64d9511bd9ab8acada1426",
+  "types": {
+   "Q8_0": 198,
+   "F32": 58
+  },
+  "non_block": {
+   "output.weight": "Q8_0",
+   "output_norm.weight": "F32",
+   "rope_freqs.weight": "F32",
+   "token_embd.weight": "Q8_0"
+  }
+ }
+}

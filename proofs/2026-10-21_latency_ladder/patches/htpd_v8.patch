@@ -1,0 +1,138 @@
+diff --git a/Code/smart-city-edge-agent/app/htpd/htpd.cpp b/Code/smart-city-edge-agent/app/htpd/htpd.cpp
+index f627097..02bc8e7 100644
+--- a/Code/smart-city-edge-agent/app/htpd/htpd.cpp
++++ b/Code/smart-city-edge-agent/app/htpd/htpd.cpp
+@@ -298,6 +298,13 @@ static std::vector<Out> run_batch(llama_context * ctx, const std::vector<std::st
+     static const bool synth_pc = getenv("HTPD_SYNTH_PREFIX_CACHE") != nullptr;
+     if ((trim_action || synth_pc) && getenv("HTPD_PREFIX_CACHE") != nullptr) {
+         static std::vector<std::pair<std::vector<llama_token>, std::vector<uint8_t>>> cache;
++        // v8: HTPD_PREFIX_CACHE_MAX bounds the cache (least recently used out). The v2 system turn names the window
++        // ("a 4.5-hour window"), so the dynamic window (48..144 readings in steps of 6) gives up to 17 entries per
++        // role, ~P x 112 KB (~34 MB) each: unbounded that is ~3.5 GB of host memory over a long run. 0 = unbounded (v7).
++        static std::vector<uint64_t> cache_used;  // parallel to cache: last use tick
++        static uint64_t cache_tick = 0;
++        static const size_t cache_max = [] { const char * v = getenv("HTPD_PREFIX_CACHE_MAX"); return v && atoi(v) > 0 ? (size_t) atoi(v) : (size_t) 0; }();
++        auto touch = [&](size_t idx) { if (idx < cache_used.size()) cache_used[idx] = ++cache_tick; };
+         auto tpc = clk::now();
+         int n_hit = 0, n_saved = 0, n_cp = 0, n_skip = 0;
+         // the turn delimiter as it appears in OUR prompts (vocab EOT metadata may name another id)
+@@ -317,6 +324,7 @@ static std::vector<Out> run_batch(llama_context * ctx, const std::vector<std::st
+                 // through host memory: Hexagon has no device-to-device copy)
+                 std::vector<llama_token> mkey(toks[i].begin(), toks[i].begin() + P);
+                 auto mh = std::find_if(cache.begin(), cache.end(), [&](auto & e) { return e.first == mkey; });
++                if (mh != cache.end()) touch((size_t) (mh - cache.begin()));
+                 if (mh == cache.end() || llama_state_seq_set_data(ctx, mh->second.data(), mh->second.size(), i) == 0)
+                     llama_memory_seq_cp(mem, lead, i, -1, -1);
+                 leader_of[i] = lead; start[i] = P; n_cp++;
+@@ -325,6 +333,7 @@ static std::vector<Out> run_batch(llama_context * ctx, const std::vector<std::st
+             std::vector<llama_token> key(toks[i].begin(), toks[i].begin() + P);
+             auto hit = std::find_if(cache.begin(), cache.end(), [&](auto & e) { return e.first == key; });
+             if (hit != cache.end()) {
++                touch((size_t) (hit - cache.begin()));
+                 if (llama_state_seq_set_data(ctx, hit->second.data(), hit->second.size(), i) == 0) { n_skip++; continue; }
+                 n_hit++;
+             } else {
+@@ -340,7 +349,18 @@ static std::vector<Out> run_batch(llama_context * ctx, const std::vector<std::st
+                 }
+                 std::vector<uint8_t> st(llama_state_seq_get_size(ctx, i));
+                 st.resize(llama_state_seq_get_data(ctx, st.data(), st.size(), i));
+-                if (!st.empty()) { cache.emplace_back(std::move(key), std::move(st)); n_saved++; }
++                if (!st.empty()) {
++                    if (cache_max > 0 && cache.size() >= cache_max) {
++                        // evict the least recently used entry. A later member of THIS batch that looked for it
++                        // falls back to seq_cp from its leader (same KV, slower), as for any miss
++                        size_t old = (size_t) (std::min_element(cache_used.begin(), cache_used.end()) - cache_used.begin());
++                        cache.erase(cache.begin() + (long) old);
++                        cache_used.erase(cache_used.begin() + (long) old);
++                    }
++                    cache.emplace_back(std::move(key), std::move(st));
++                    cache_used.push_back(++cache_tick);
++                    n_saved++;
++                }
+             }
+             leader_of[i] = i; start[i] = P;
+         }
+@@ -557,14 +577,22 @@ static std::vector<Out> run_batch(llama_context * ctx, const std::vector<std::st
+             return d;
+         };
+         static const int kmax = getenv("HTPD_DRAFT_K") ? atoi(getenv("HTPD_DRAFT_K")) : 4;
+-        int steps = 0, accepted = 0, proposed = 0;
++        // v8 (proofs/2026-10-21_latency_ladder, all off by default = v7 rows exactly):
++        //   HTPD_DRAFT_ROWS  rows per step shared by all streams (default 32 = one HMX tile). At 10 streams the
++        //                    32-row cap leaves k = 2 drafts per stream, at 13-14 streams k = 1; 64 gives 5 / 3.
++        //   HTPD_DRAFT_DYN=1 pad every stream to the LONGEST draft proposed this step instead of to k, so a step
++        //                    where nothing (or little) was proposed runs 1 (or few) rows per stream. Drafts are
++        //                    still verified, so this only changes the row count of the step.
++        static const int rows_cap = [] { const char * v = getenv("HTPD_DRAFT_ROWS"); return v && atoi(v) > 0 ? atoi(v) : 32; }();
++        static const bool dyn_rows = [] { const char * v = getenv("HTPD_DRAFT_DYN"); return v && atoi(v) != 0; }();
++        int steps = 0, accepted = 0, proposed = 0, rows_total = 0;
+         while (active > 0) {
+             batch.n_tokens = 0;
+             int lo = n, hi = -1, n_act = 0;
+             for (int s = 0; s < n; ++s) if (!done[s]) { lo = std::min(lo, s); hi = std::max(hi, s); n_act++; }
+             // rows are free up to the 32-row HMX tile: k drafts per stream with (k+1) * streams <= 32
+             const int n_run = hi - lo + 1;  // parked streams in the run take rows too
+-            const int k = std::max(1, std::min(kmax, 32 / std::max(1, n_run) - 1));
++            const int k = std::max(1, std::min(kmax, rows_cap / std::max(1, n_run) - 1));
+             std::vector<std::vector<int>> ri(n);
+             std::vector<std::vector<llama_token>> drs(n);
+             auto add = [&](llama_token t, int p, int s, bool lg) {
+@@ -573,24 +601,34 @@ static std::vector<Out> run_batch(llama_context * ctx, const std::vector<std::st
+                 batch.logits[idx] = lg;
+                 return idx;
+             };
++            // propose first (proposals read hist only, which changes after the decode), so the step's row
++            // count can follow the drafts; identical to proposing inside the row loop below
++            for (int s = 0; s < n; ++s) if (!done[s]) { drs[s] = propose_chain(s, k); proposed += (int) drs[s].size(); }
++            int kk = k;
++            if (dyn_rows) {
++                kk = 0;
++                for (int s = 0; s < n; ++s) if (!done[s]) kk = std::max(kk, (int) drs[s].size());
++            }
++            // never write draft KV past a stream's slice (a long answer near the end of a 1024-cell layout)
++            for (int s = 0; s < n; ++s) if (!done[s]) kk = std::max(0, std::min(kk, per_seq - pos[s] - 2));
++            for (int s = 0; s < n; ++s) if (!done[s] && (int) drs[s].size() > kk) drs[s].resize(kk);
+             for (int s = 0; s < n; ++s) {
+                 if (done[s]) {
+                     if (s > lo && s < hi) {
+                         llama_memory_seq_rm(mem, s, -1, -1);
+-                        for (int j = 0; j <= k; ++j) add(pending[s], j, s, false);
++                        for (int j = 0; j <= kk; ++j) add(pending[s], j, s, false);
+                     }
+                     continue;
+                 }
+-                drs[s] = propose_chain(s, k);
+-                proposed += (int) drs[s].size();
+                 ri[s].push_back(add(pending[s], pos[s], s, true));
+                 // pad with the pending token: a draft that is simply rejected. Row j (input j) is read only
+                 // for j <= drafts (the loop below stops at the first non-draft), so with HTPD_LOGITS_READ
+                 // the pad rows past that request no logits.
+-                for (int j = 0; j < k; ++j)
++                for (int j = 0; j < kk; ++j)
+                     ri[s].push_back(add(j < (int) drs[s].size() ? drs[s][j] : pending[s], pos[s] + 1 + j, s,
+                                         !g_logits_read || j < (int) drs[s].size()));
+             }
++            rows_total += batch.n_tokens;
+             if (llama_decode(ctx, batch) != 0) { fprintf(stderr, "htpd: draft decode failed\n"); break; }
+             steps++;
+             for (int s = 0; s < n; ++s) {
+@@ -598,7 +636,7 @@ static std::vector<Out> run_batch(llama_context * ctx, const std::vector<std::st
+                 // row j's argmax is the token after input j; accept drafts while they match it
+                 int used = 0;  // number of inputs whose outputs are valid (pending + accepted drafts)
+                 llama_token t = 0;
+-                for (int j = 0; j <= k; ++j) {
++                for (int j = 0; j <= kk; ++j) {
+                     t = pick(llama_get_logits_ith(ctx, ri[s][j]), n_vocab, scan[s], opt(s), &out[s].forced);
+                     used = j + 1;
+                     hist[s].push_back(t);
+@@ -618,7 +656,9 @@ static std::vector<Out> run_batch(llama_context * ctx, const std::vector<std::st
+             g_recent.emplace_back(hist[s].begin() + gen0[s], hist[s].end());
+             if (g_recent.size() > 64) g_recent.erase(g_recent.begin());
+         }
+-        fprintf(stderr, "htpd: draft steps %d proposed %d accepted %d\n", steps, proposed, accepted);
++        // "rows" is new in v8 (parse_htpd_log.py ignores the extra field): rows per step = rows / steps
++        fprintf(stderr, "htpd: draft steps %d proposed %d accepted %d rows %d decode_ms %.0f\n", steps, proposed, accepted,
++                rows_total, ms_since(t0) - prefill_ms);
+     }
+     while (!draft_on && active > 0) {
+         batch.n_tokens = 0;

@@ -1,0 +1,421 @@
+{
+ "base": "http://127.0.0.1:8080/",
+ "when": "2026-10-19T06:53:14.248Z",
+ "checks": [
+  {
+   "name": "data/catalog.json.enc is ciphertext (no JSON/HTML, printable ratio 0.38)",
+   "ok": true
+  },
+  {
+   "name": "data/status.json.enc is ciphertext (no JSON/HTML, printable ratio 0.36)",
+   "ok": true
+  },
+  {
+   "name": "pages/deck.html.enc is ciphertext (no JSON/HTML, printable ratio 0.36)",
+   "ok": true
+  },
+  {
+   "name": "auth.json has bcrypt cost 12 + PBKDF2 600000",
+   "ok": true,
+   "detail": {
+    "iterations": 600000
+   }
+  },
+  {
+   "name": "[360x780] gate: no horizontal scroll",
+   "ok": true
+  },
+  {
+   "name": "[360x780] unlock with the right password (547 ms, target < 3000)",
+   "ok": true,
+   "detail": {
+    "ms": 547
+   }
+  },
+  {
+   "name": "[360x780] home: no horizontal scroll",
+   "ok": true
+  },
+  {
+   "name": "[360x780] home: Start here path Route -> Decisions -> Q&A",
+   "ok": true,
+   "detail": [
+    "Route",
+    "Decisions",
+    "Q&A"
+   ]
+  },
+  {
+   "name": "[360x780] key in sessionStorage only",
+   "ok": true,
+   "detail": {
+    "key": [
+     "site.key.v1"
+    ],
+    "lkeys": []
+   }
+  },
+  {
+   "name": "[360x780] reload stays unlocked (sessionStorage)",
+   "ok": true
+  },
+  {
+   "name": "[360x780] PDF deck: counter + keys (→ → End Home space)",
+   "ok": true,
+   "detail": [
+    "1 / 6",
+    "3 / 6",
+    "6 / 6",
+    "2 / 6"
+   ]
+  },
+  {
+   "name": "[360x780] PDF deck: click right = next, left = back",
+   "ok": true,
+   "detail": [
+    "3 / 6",
+    "2 / 6"
+   ]
+  },
+  {
+   "name": "[360x780] PDF deck: swipe left = next",
+   "ok": true,
+   "detail": "3 / 6"
+  },
+  {
+   "name": "[360x780] PDF deck: thumbnails strip",
+   "ok": true,
+   "detail": 6
+  },
+  {
+   "name": "[360x780] PDF deck: F full screen, Esc exits",
+   "ok": true
+  },
+  {
+   "name": "[360x780] deck view: no horizontal scroll",
+   "ok": true
+  },
+  {
+   "name": "[360x780] deck kept in memory across pages",
+   "ok": true
+  },
+  {
+   "name": "[360x780] PPTX deck renders + navigates",
+   "ok": true,
+   "detail": [
+    "1 / 4",
+    "2 / 4",
+    "PPTX test slide 2\n\nSynthetic content for the in-browser renderer test.\n\n "
+   ]
+  },
+  {
+   "name": "[360x780] reload forgets the deck",
+   "ok": true
+  },
+  {
+   "name": "[360x780] kit: every chart type drawn",
+   "ok": true,
+   "detail": [
+    "bar",
+    "stackedBar",
+    "waterfall",
+    "line",
+    "scatter",
+    "boxplot",
+    "heatmap",
+    "ciDot",
+    "sankey",
+    "funnel",
+    "timeline"
+   ]
+  },
+  {
+   "name": "[360x780] kit: no horizontal scroll",
+   "ok": true
+  },
+  {
+   "name": "[1440x900] gate: no horizontal scroll",
+   "ok": true
+  },
+  {
+   "name": "wrong password rejected with a friendly message",
+   "ok": true,
+   "detail": {
+    "msg": "That password is not right.",
+    "ms": 624
+   }
+  },
+  {
+   "name": "rate limit: after 3 wrong tries even the right password waits",
+   "ok": true,
+   "detail": {
+    "msg2": "Too many tries. Wait 1 s."
+   }
+  },
+  {
+   "name": "[1440x900] unlock with the right password (410 ms, target < 3000)",
+   "ok": true,
+   "detail": {
+    "ms": 410
+   }
+  },
+  {
+   "name": "[1440x900] home: no horizontal scroll",
+   "ok": true
+  },
+  {
+   "name": "[1440x900] home: Start here path Route -> Decisions -> Q&A",
+   "ok": true,
+   "detail": [
+    "Route",
+    "Decisions",
+    "Q&A"
+   ]
+  },
+  {
+   "name": "[1440x900] key in sessionStorage only",
+   "ok": true,
+   "detail": {
+    "key": [
+     "site.key.v1"
+    ],
+    "lkeys": []
+   }
+  },
+  {
+   "name": "[1440x900] reload stays unlocked (sessionStorage)",
+   "ok": true
+  },
+  {
+   "name": "[1440x900] PDF deck: counter + keys (→ → End Home space)",
+   "ok": true,
+   "detail": [
+    "1 / 6",
+    "3 / 6",
+    "6 / 6",
+    "2 / 6"
+   ]
+  },
+  {
+   "name": "[1440x900] PDF deck: click right = next, left = back",
+   "ok": true,
+   "detail": [
+    "3 / 6",
+    "2 / 6"
+   ]
+  },
+  {
+   "name": "[1440x900] PDF deck: swipe left = next",
+   "ok": true,
+   "detail": "3 / 6"
+  },
+  {
+   "name": "[1440x900] PDF deck: thumbnails strip",
+   "ok": true,
+   "detail": 6
+  },
+  {
+   "name": "[1440x900] PDF deck: F full screen, Esc exits",
+   "ok": true
+  },
+  {
+   "name": "[1440x900] deck view: no horizontal scroll",
+   "ok": true
+  },
+  {
+   "name": "[1440x900] deck kept in memory across pages",
+   "ok": true
+  },
+  {
+   "name": "[1440x900] PPTX deck renders + navigates",
+   "ok": true,
+   "detail": [
+    "1 / 4",
+    "2 / 4",
+    "PPTX test slide 2\n\nSynthetic content for the in-browser renderer test.\n\n "
+   ]
+  },
+  {
+   "name": "[1440x900] reload forgets the deck",
+   "ok": true
+  },
+  {
+   "name": "[1440x900] kit: every chart type drawn",
+   "ok": true,
+   "detail": [
+    "bar",
+    "stackedBar",
+    "waterfall",
+    "line",
+    "scatter",
+    "boxplot",
+    "heatmap",
+    "ciDot",
+    "sankey",
+    "funnel",
+    "timeline"
+   ]
+  },
+  {
+   "name": "[1440x900] kit: no horizontal scroll",
+   "ok": true
+  },
+  {
+   "name": "tooltip shows value, 95% CI, n and source",
+   "ok": true,
+   "detail": "Fine-tuned (ours) VALUE 89 % 95% CI 85 – 92 % N 240 source · bar.json · kit.js"
+  },
+  {
+   "name": "glossary tooltip on hover",
+   "ok": true
+  },
+  {
+   "name": "rejected chip opens the alternative chart",
+   "ok": true,
+   "detail": [
+    true,
+    true
+   ]
+  },
+  {
+   "name": "keyboard focus reaches the nav",
+   "ok": true,
+   "detail": "nav__item Deck"
+  },
+  {
+   "name": "lock button clears the key and shows the gate",
+   "ok": true,
+   "detail": []
+  },
+  {
+   "name": "[1920x1080] gate: no horizontal scroll",
+   "ok": true
+  },
+  {
+   "name": "[1920x1080] unlock with the right password (303 ms, target < 3000)",
+   "ok": true,
+   "detail": {
+    "ms": 303
+   }
+  },
+  {
+   "name": "[1920x1080] home: no horizontal scroll",
+   "ok": true
+  },
+  {
+   "name": "[1920x1080] home: Start here path Route -> Decisions -> Q&A",
+   "ok": true,
+   "detail": [
+    "Route",
+    "Decisions",
+    "Q&A"
+   ]
+  },
+  {
+   "name": "[1920x1080] key in sessionStorage only",
+   "ok": true,
+   "detail": {
+    "key": [
+     "site.key.v1"
+    ],
+    "lkeys": []
+   }
+  },
+  {
+   "name": "[1920x1080] reload stays unlocked (sessionStorage)",
+   "ok": true
+  },
+  {
+   "name": "[1920x1080] PDF deck: counter + keys (→ → End Home space)",
+   "ok": true,
+   "detail": [
+    "1 / 6",
+    "3 / 6",
+    "6 / 6",
+    "2 / 6"
+   ]
+  },
+  {
+   "name": "[1920x1080] PDF deck: click right = next, left = back",
+   "ok": true,
+   "detail": [
+    "3 / 6",
+    "2 / 6"
+   ]
+  },
+  {
+   "name": "[1920x1080] PDF deck: swipe left = next",
+   "ok": true,
+   "detail": "3 / 6"
+  },
+  {
+   "name": "[1920x1080] PDF deck: thumbnails strip",
+   "ok": true,
+   "detail": 6
+  },
+  {
+   "name": "[1920x1080] PDF deck: F full screen, Esc exits",
+   "ok": true
+  },
+  {
+   "name": "[1920x1080] deck view: no horizontal scroll",
+   "ok": true
+  },
+  {
+   "name": "[1920x1080] deck kept in memory across pages",
+   "ok": true
+  },
+  {
+   "name": "[1920x1080] PPTX deck renders + navigates",
+   "ok": true,
+   "detail": [
+    "1 / 4",
+    "2 / 4",
+    "PPTX test slide 2\n\nSynthetic content for the in-browser renderer test.\n\n "
+   ]
+  },
+  {
+   "name": "[1920x1080] reload forgets the deck",
+   "ok": true
+  },
+  {
+   "name": "[1920x1080] kit: every chart type drawn",
+   "ok": true,
+   "detail": [
+    "bar",
+    "stackedBar",
+    "waterfall",
+    "line",
+    "scatter",
+    "boxplot",
+    "heatmap",
+    "ciDot",
+    "sankey",
+    "funnel",
+    "timeline"
+   ]
+  },
+  {
+   "name": "[1920x1080] kit: no horizontal scroll",
+   "ok": true
+  },
+  {
+   "name": "prefers-reduced-motion: no fades",
+   "ok": true,
+   "detail": {
+    "fade": "0ms linear",
+    "anim": "0s"
+   }
+  },
+  {
+   "name": "no console errors",
+   "ok": true,
+   "detail": []
+  }
+ ],
+ "console": [],
+ "summary": {
+  "total": 64,
+  "failed": 0
+ }
+}

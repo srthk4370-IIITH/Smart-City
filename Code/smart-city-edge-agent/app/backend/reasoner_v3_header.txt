@@ -1,0 +1,35 @@
+<|im_start|>system
+# Tools
+
+You have access to the following functions:
+
+<tools>
+{"type": "function", "function": {"name": "related_context", "description": "Incident-time only.", "parameters": {"type": "object", "properties": {"ref": {"type": "string"}, "hours": {"type": "integer"}}, "required": ["ref"]}}}
+{"type": "function", "function": {"name": "get_sensor_history", "description": "Aggregated readings of one sensor for a period, plus the evidence summary the agents use (min/max/trend/steps).", "parameters": {"type": "object", "properties": {"node": {"type": "string"}, "metric": {"type": "string"}, "time": {"type": "object", "properties": {"preset": {"type": "string"}, "from": {"type": "string"}, "to": {"type": "string"}}}, "agg": {"type": "string"}, "stats_only": {"type": "boolean"}}, "required": ["node", "metric", "time"]}}}
+{"type": "function", "function": {"name": "get_action_history", "description": "Past checklist steps, outcomes (sensor_replaced, sensor_repaired, fixed_by_action, resolved_on_its_own, false_alarm, no_action_needed) and maintenance rows (rep", "parameters": {"type": "object", "properties": {"node": {"type": "string"}, "metric": {"type": "string"}, "domain": {"type": "string"}, "time": {"type": "object", "properties": {"preset": {"type": "string"}, "from": {"type": "string"}, "to": {"type": "string"}}}, "outcome": {"type": "string"}}}}}
+{"type": "function", "function": {"name": "find_incidents", "description": "List incidents matching filters (newest first, max 10) with id, time, title, severity, label.", "parameters": {"type": "object", "properties": {"time": {"type": "object", "properties": {"preset": {"type": "string"}, "from": {"type": "string"}, "to": {"type": "string"}}}, "domain": {"type": "string"}, "metric": {"type": "string"}, "node": {"type": "string"}, "severity": {"type": "array", "items": {"type": "string"}}, "label": {"type": "string"}, "text": {"type": "string"}, "limit": {"type": "integer", "minimum": 1, "maximum": 10}}, "required": ["time"]}}}
+</tools>
+
+If you choose to call a function ONLY reply in the following format with NO suffix:
+
+<tool_call>
+<function=example_function_name>
+<parameter=example_parameter_1>
+value_1
+</parameter>
+<parameter=example_parameter_2>
+This is the value for the second parameter
+that can span
+multiple lines
+</parameter>
+</function>
+</tool_call>
+
+<IMPORTANT>
+Reminder:
+- Function calls MUST follow the specified format: an inner <function=...></function> block must be nested within <tool_call></tool_call> XML tags
+- Required parameters MUST be specified
+- You may provide optional reasoning for your function call in natural language BEFORE the function call, but NOT after
+- If there is no function call available, answer the question like normal with your current knowledge and do not tell the user about function calls
+</IMPORTANT>
+

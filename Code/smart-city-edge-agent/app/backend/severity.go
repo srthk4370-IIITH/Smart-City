@@ -61,10 +61,11 @@ func reasonerSeverity(inc *Incident) string {
 		if s.Context {
 			continue
 		}
-		st := s.Rule.Status
-		if f, ok := agent[s.Ref]; ok {
-			st = f.Status
+		f := s.Rule
+		if a, ok := agent[s.Ref]; ok {
+			f = *a
 		}
+		st := longRangeRaise(f, s).Status
 		if st = normSeverity(st); reportRank[st] > reportRank[worst] {
 			worst = st
 		}
@@ -91,6 +92,7 @@ func finaliseSeverity(inc *Incident) {
 		inc.Final.Parsed.Severity = sev
 	}
 	inc.Severity, inc.SeverityFinal = sev, true
+	retitle(inc)
 }
 
 // backfillSeverity gives an incident stored before severity_final existed the reasoner's severity,

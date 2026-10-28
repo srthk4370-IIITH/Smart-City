@@ -32,7 +32,7 @@ cp $APP/device/web/icon-192.png $W/res/mipmap/ic_launcher.png
 echo '<resources><string name="app_name">Smart City Edge</string></resources>' > $W/res/values/strings.xml
 mkdir -p $W/res/xml && cp $HERE/res/xml/*.xml $W/res/xml/
 cp -r $APP/device/web $W/assets/app/web
-mkdir -p $W/assets/app/data && cp $APP/device/data/sensors.json $W/assets/app/data/
+mkdir -p $W/assets/app/data && cp $APP/device/data/*.json $W/assets/app/data/  # sensors.json + v2 tables (agent_version=v2)
 $BT/aapt2 compile --dir $W/res -o $W/res.zip
 $BT/aapt2 link -I $JAR --manifest $HERE/AndroidManifest.xml -A $W/assets --java $W/gen \
   --min-sdk-version 29 --target-sdk-version 34 -o $W/base.apk $W/res.zip

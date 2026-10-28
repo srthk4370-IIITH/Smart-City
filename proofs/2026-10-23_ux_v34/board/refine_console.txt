@@ -1,0 +1,83 @@
+building 45 readings of history ...
+
+== ventilation_failure: injected (200)
+    27.5s INC-0157 stage=early sev=warning title='CO2 exponential increase: KH building, level 03, indoor air sensor 03'
+         S1 co2: agent exponential_increase/warning (rule None) 12h=['12 h view: level shifted +157 ppm about 0.6 h ago and stayed (7.9x normal variation)']
+    45.6s INC-0157 stage=1.5h sev=critical title='CO2 throttling: KH building, level 03, indoor air sensor 03'
+         S1 co2: agent throttling/critical (rule None) 12h=['12 h view: level shifted +1.3e+03 ppm about 0.9 h ago and stayed (65.1x normal variation)']
+    60.8s INC-0157 stage=3h sev=critical title='CO2 throttling: KH building, level 03, indoor air sensor 03'
+         S1 co2: agent throttling/critical (rule None) 12h=['12 h view: level shifted +1.3e+03 ppm about 2.4 h ago and stayed (65.1x normal variation)']
+
+== pm_spike: injected (200)
+    16.3s INC-0158 stage=early sev=critical title='PM2.5 spike: KN building, outdoor air station'
+         S1 pm25: agent spike/critical (rule None) 12h=[]
+    34.5s INC-0158 stage=1.5h sev=normal title='PM2.5 spike judged normal: KN building, outdoor air station'
+         S1 pm25: agent spike/normal (rule None) 12h=[]
+    52.6s INC-0158 stage=3h sev=normal title='PM2.5 spike judged normal: KN building, outdoor air station'
+         S1 pm25: agent spike/normal (rule None) 12h=[]
+
+== power_throttling: injected (200)
+    15.3s INC-0159 stage=early sev=warning title='Power gradual increase: KH building, level 04, room energy meter 01'
+         S1 power_kw: agent gradual_increase/warning (rule None) 12h=['12 h view: level shifted +7.22 kW about 0.3 h ago and stayed (160.7x normal variation)']
+    30.4s INC-0159 stage=1.5h sev=critical title='Power throttling: KH building, level 04, room energy meter 01'
+         S1 power_kw: agent throttling/critical (rule None) 12h=['12 h view: level shifted +17.9 kW about 1.7 h ago and stayed (398.4x normal variation)']
+    48.5s INC-0159 stage=3h sev=critical title='Power throttling: KH building, level 04, room energy meter 01'
+         S1 power_kw: agent throttling/critical (rule None) 12h=['12 h view: level shifted +18 kW about 3.2 h ago and stayed (397.5x normal variation)']
+
+== load_surge: injected (200)
+    18.3s INC-0160 stage=early sev=critical title='Power spike: KH building, level 04, room energy meter 01'
+         S1 power_kw: agent spike/critical (rule None) 12h=['12 h view: level shifted +17.9 kW about 4.6 h ago and stayed (395.5x normal variation)']
+    36.5s INC-0160 stage=1.5h sev=critical title='Power step increase: KH building, level 04, room energy meter 01'
+         S1 power_kw: agent step_increase/critical (rule None) 12h=['12 h view: level shifted +17.9 kW about 6.1 h ago and stayed (59.1x normal variation)']
+    54.6s INC-0160 stage=3h sev=critical title='Power step increase: KH building, level 04, room energy meter 01'
+         S1 power_kw: agent step_increase/critical (rule None) 12h=['12 h view: level shifted +17.9 kW about 7.6 h ago and stayed (57.2x normal variation)']
+
+== tank_leak: injected (200)
+    66.2s INC-0161 stage=early sev=critical title='Tank level gradual decrease: KH building, level 98, water tank level sensor 00'
+         S1 level: agent gradual_decrease/critical (rule None) 12h=[]
+    84.3s INC-0161 stage=1.5h sev=critical title='Tank level gradual decrease: KH building, level 98, water tank level sensor 00'
+         S1 level: agent gradual_decrease/critical (rule None) 12h=['12 h view: slow drift -63.9 level over 12 h (r2 0.84, 31.9x normal variation)']
+   102.4s INC-0161 stage=3h sev=critical title='Tank level gradual decrease: KH building, level 98, water tank level sensor 00'
+         S1 level: agent gradual_decrease/critical (rule None) 12h=['12 h view: slow drift -64.7 level over 12 h (r2 0.85, 32.3x normal variation)']
+
+== pump_cycling: injected (200)
+    39.8s INC-0162 stage=early sev=critical title='Tank level critical: KH building, level 98, water tank level sensor 00'
+         S1 level: agent stable/critical (rule None) 12h=[]
+    57.9s INC-0162 stage=1.5h sev=warning title='Tank level flatline: KH building, level 98, water tank level sensor 00'
+         S1 level: agent flatline/warning (rule None) 12h=[]
+    76.0s INC-0162 stage=3h sev=normal title='Tank level judged normal: KH building, level 98, water tank level sensor 00'
+         S1 level: agent stable/normal (rule None) 12h=[]
+
+== stuck_sensor: injected (200)
+    29.6s INC-0163 stage=early sev=sensor_fault title='Temperature flatline: KH building, level 03, indoor air sensor 03'
+         S1 temp: agent flatline/sensor_fault (rule None) 12h=[]
+    44.7s INC-0163 stage=1.5h sev=sensor_fault title='Temperature flatline: KH building, level 03, indoor air sensor 03'
+         S1 temp: agent flatline/sensor_fault (rule None) 12h=[]
+    62.8s INC-0163 stage=3h sev=sensor_fault title='Temperature flatline: KH building, level 03, indoor air sensor 03'
+         S1 temp: agent flatline/sensor_fault (rule None) 12h=[]
+
+== heat_buildup: injected (200)
+    23.5s INC-0164 stage=early sev=warning title='Temperature level shift (12 h view): VN building, level 04, rooftop weather station'
+         S1 temp: agent gradual_increase/normal (rule None) 12h=['12 h view: level shifted +2.73 C about 0.7 h ago and stayed (6.8x normal variation)']
+    38.5s INC-0164 stage=1.5h sev=warning title='Temperature gradual increase: VN building, level 04, rooftop weather station'
+         S1 temp: agent gradual_increase/warning (rule None) 12h=[]
+    56.6s INC-0164 stage=3h sev=warning title='Temperature throttling: VN building, level 04, rooftop weather station'
+         S1 temp: agent throttling/warning (rule None) 12h=[]
+
+== off_hours_presence: injected (200)
+   181.3s INC-0166 stage=early sev=warning title='Occupancy off hours presence: KH building, room occupancy sensor 01 (gateway KH95)'
+         S1 occ: agent off_hours_presence/warning (rule None) 12h=[]
+   196.4s INC-0166 stage=1.5h sev=warning title='Occupancy off hours presence: KH building, room occupancy sensor 01 (gateway KH95)'
+         S1 occ: agent off_hours_presence/warning (rule None) 12h=[]
+   214.5s INC-0166 stage=3h sev=warning title='Occupancy off hours presence: KH building, room occupancy sensor 01 (gateway KH95)'
+         S1 occ: agent off_hours_presence/warning (rule None) 12h=[]
+
+== crowded_room: injected (200)
+    17.3s INC-0167 stage=early sev=warning title='Power level shift (12 h view): KH building, level 04, room energy meter 01'
+         S1 power_kw: agent step_increase/normal (rule None) 12h=['12 h view: level shifted +5.99 kW about 0.5 h ago and stayed (19.1x normal variation)']
+    35.4s INC-0167 stage=1.5h sev=warning title='Power step increase: KH building, level 04, room energy meter 01'
+         S1 power_kw: agent step_increase/warning (rule None) 12h=['12 h view: level shifted +6 kW about 2.0 h ago and stayed (19.1x normal variation)']
+    50.5s INC-0167 stage=3h sev=warning title='Power step increase: KH building, level 04, room energy meter 01'
+         S1 power_kw: agent step_increase/warning (rule None) 12h=['12 h view: level shifted +6 kW about 3.5 h ago and stayed (19.1x normal variation)']
+
+==== 10/10 incidents reached the 3 h refinement ====

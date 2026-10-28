@@ -1,0 +1,150 @@
+{
+ "rows": 9922,
+ "replay_share": 0.504,
+ "sources": {
+  "v21_rw5": {
+   "available": 510,
+   "taken": 510,
+   "roles": {
+    "air_quality": 213,
+    "power": 104,
+    "weather": 49,
+    "water": 109,
+    "hvac": 35
+   },
+   "status": {
+    "warning": 134,
+    "normal": 210,
+    "critical": 65,
+    "sensor_fault": 101
+   }
+  },
+  "rw5_train": {
+   "available": 512,
+   "taken": 512,
+   "roles": {
+    "air_quality": 214,
+    "water": 108,
+    "power": 112,
+    "weather": 49,
+    "hvac": 29
+   },
+   "status": {
+    "normal": 232,
+    "warning": 124,
+    "critical": 67,
+    "sensor_fault": 89
+   }
+  },
+  "v21_aug": {
+   "available": 1519,
+   "taken": 800,
+   "roles": {
+    "power": 302,
+    "hvac": 22,
+    "water": 286,
+    "air_quality": 140,
+    "weather": 28,
+    "occupancy": 22
+   },
+   "status": {
+    "warning": 205,
+    "sensor_fault": 102,
+    "critical": 149,
+    "normal": 344
+   }
+  },
+  "v21_weak": {
+   "available": 1870,
+   "taken": 1300,
+   "roles": {
+    "power": 484,
+    "water": 504,
+    "air_quality": 252,
+    "weather": 60
+   },
+   "status": {
+    "critical": 328,
+    "normal": 430,
+    "sensor_fault": 203,
+    "warning": 339
+   }
+  },
+  "pool3e": {
+   "available": 7281,
+   "taken": 1500,
+   "roles": {
+    "water": 620,
+    "power": 813,
+    "air_quality": 67
+   },
+   "status": {
+    "warning": 423,
+    "sensor_fault": 251,
+    "critical": 508,
+    "normal": 318
+   }
+  },
+  "rw3e": {
+   "available": 1066,
+   "taken": 300,
+   "roles": {
+    "water": 75,
+    "power": 72,
+    "weather": 34,
+    "air_quality": 91,
+    "hvac": 16,
+    "occupancy": 12
+   },
+   "status": {
+    "warning": 35,
+    "normal": 123,
+    "sensor_fault": 124,
+    "critical": 18
+   }
+  },
+  "v2_replay": {
+   "available": 34535,
+   "taken": 5000,
+   "roles": {
+    "air_quality": 908,
+    "hvac": 924,
+    "occupancy": 728,
+    "power": 886,
+    "water": 904,
+    "weather": 650
+   },
+   "status": {
+    "warning": 1040,
+    "normal": 2754,
+    "sensor_fault": 761,
+    "critical": 445
+   }
+  }
+ },
+ "drops": {
+  "pool3e:C3_flat_gradual": 7,
+  "pool3e:C4_3e_unlearnable": 762,
+  "rw3e:C4_3e_unlearnable": 32,
+  "rw5_train:C1_invisible_event": 5,
+  "v21_aug:C4_3e_unlearnable": 147,
+  "v21_rw5:C1_invisible_event": 6,
+  "v21_weak:C3_flat_gradual": 1,
+  "v21_weak:C4_3e_unlearnable": 213,
+  "v2_replay:C1_invisible_event": 1403,
+  "v2_replay:C3_flat_gradual": 8
+ },
+ "args": {
+  "out": "/home/hp_srthk4370/smartcity_runs/agents_v21/data/train_v21.jsonl",
+  "replay": 5000,
+  "pool": 1500,
+  "rw3e": 300,
+  "weak": 1300,
+  "aug": 800,
+  "rw5": 1100,
+  "seed": "v21",
+  "dry": false
+ },
+ "rules": "(continuous roles power / water / air_quality / weather, rows with a stored history; DD = diag_data):\n  C1 invisible_event : event pattern (not stable / flatline / erratic / oscillation) with an onset d, but the post-onset\n                       amplitude < 3 noise units (DD.visibility amp) -> the window looks stable (event/stable confusion).\n  C2 short_flatline  : pattern flatline (not a sensor_fault stuck row with a flat run) whose longest flat run after the\n                       onset is < 6 readings -> not a flatline (gradual/flatline confusion).\n  C3 flat_gradual    : pattern gradual_increase / gradual_decrease whose post-onset part is one flat run >= 80 % of d\n                       -> reads as flatline (gradual/flatline confusion).\n  C4 3e learnable    : rows the 3e generator flagged learnable=false (same visibility rule) are dropped.",
+ "sha256_16": "865936ed7b28497e"
+}

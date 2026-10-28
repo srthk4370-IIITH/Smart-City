@@ -1,0 +1,136 @@
+{
+ "source": "proofs/2026-10-16_placement_study (summary.json + raw samples), v1 agent on the QIDK NPU",
+ "pattern_by_readings_since_onset": {
+  "gradual_increase": {
+   "4": 0.0,
+   "8": 0.0,
+   "12": 0.0,
+   "18": 0.048,
+   "24": 0.429,
+   "36": 0.857
+  },
+  "gradual_decrease": {
+   "4": 0.0,
+   "8": 0.286,
+   "12": 0.714,
+   "18": 1.0,
+   "24": 1.0,
+   "36": 1.0
+  },
+  "exponential_increase": {
+   "4": 0.143,
+   "8": 0.524,
+   "12": 0.81,
+   "18": 0.905,
+   "24": 0.952,
+   "36": 0.952
+  },
+  "oscillation": {
+   "4": 0.0,
+   "8": 0.0,
+   "12": 0.048,
+   "18": 0.0,
+   "24": 0.238,
+   "36": 1.0
+  },
+  "flatline": {
+   "4": 0.0,
+   "8": 0.0,
+   "12": 0.333,
+   "18": 1.0,
+   "24": 1.0,
+   "36": 1.0
+  },
+  "erratic": {
+   "4": 0.048,
+   "8": 0.048,
+   "12": 0.143,
+   "18": 0.19,
+   "24": 0.238,
+   "36": 0.667
+  },
+  "spike": {
+   "4": 0.667,
+   "8": 0.81,
+   "12": 0.762,
+   "18": 0.619,
+   "24": 0.762,
+   "36": 0.429
+  },
+  "dip": {
+   "4": 1.0,
+   "8": 1.0,
+   "12": 1.0,
+   "18": 1.0,
+   "24": 1.0,
+   "36": 0.952
+  },
+  "step_increase": {
+   "4": 0.238,
+   "8": 0.81,
+   "12": 0.952,
+   "18": 0.952,
+   "24": 1.0,
+   "36": 1.0
+  },
+  "step_decrease": {
+   "4": 0.263,
+   "8": 0.789,
+   "12": 1.0,
+   "18": 1.0,
+   "24": 1.0,
+   "36": 1.0
+  }
+ },
+ "size_multiplier": {
+  "4-6": {
+   "acc": 0.628,
+   "n": 258,
+   "mult": 0.893
+  },
+  "6-8": {
+   "acc": 0.684,
+   "n": 294,
+   "mult": 0.972
+  },
+  "8-10": {
+   "acc": 0.746,
+   "n": 240,
+   "mult": 1.06
+  },
+  "10-12": {
+   "acc": 0.897,
+   "n": 78,
+   "mult": 1.276
+  },
+  "3-4": {
+   "acc": null,
+   "n": 0,
+   "mult": 0.814,
+   "note": "linear extrapolation of the 4-6 and 6-8 bins"
+  }
+ },
+ "priors": {
+  "stable": 0.75,
+  "boundary": 0.6,
+  "old_shift": 0.75,
+  "long_drift": 0.8,
+  "recurring": 0.35,
+  "routine": 0.7,
+  "real_routine": 0.7,
+  "zero_idle": 0.9,
+  "calib_drift": 0.6,
+  "saturation": 0.8,
+  "dropout": 0.75,
+  "compound": 0.9
+ },
+ "proxy": {
+  "throttling": "exponential_increase",
+  "stuck": "flatline",
+  "quantised": "flatline",
+  "noise": "erratic",
+  "bias": "step_increase",
+  "noise_increase": "erratic"
+ },
+ "rule": "conf = clip(acc[pattern](d) * size_mult(size), 0.30, 0.95), linear in d between 4..36 readings (clamped), rounded to 0.05; priors where unmeasured"
+}

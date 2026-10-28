@@ -17,6 +17,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 )
 
 var ReportLabels = []string{"ventilation_issue", "hvac_or_thermal_issue", "occupancy_driven_load", "air_pollution_event",
@@ -35,6 +36,21 @@ type Report struct {
 	// critical | warning | normal (shown as "fine") | sensor_fault, decided by the cross-domain
 	// reasoner (severity.go), not by the rule that opened the incident
 	Severity string `json:"severity"`
+	// optional headline written by the reasoner; title.go builds one from the findings otherwise
+	Title string `json:"title,omitempty"`
+	// reasoner v3 (reasoner_v3.go, SPEC §3); absent on synthesizer / rule reports
+	CausalChain    string            `json:"causal_chain,omitempty"`
+	Observations   []V3Observation   `json:"observations,omitempty"`
+	AgentChecks    []V3AgentCheck    `json:"agent_checks,omitempty"`
+	Checklist      []V3ChecklistItem `json:"checklist,omitempty"`
+	SuspectSensors []string          `json:"suspect_sensors,omitempty"`
+	MonitorNext    string            `json:"monitor_next,omitempty"`
+	NeedsMoreData  bool              `json:"needs_more_data,omitempty"`
+	NeedsDeeper    bool              `json:"needs_deeper,omitempty"`
+	// source badge: who wrote this report, e.g. "device:qwen3.5-4b (htpd)" or "device:rules (reasoner output rejected)"
+	Source        string         `json:"source,omitempty"`
+	Escalation    *V3Escalation  `json:"escalation,omitempty"`     // deterministic offer only; nothing is sent
+	SeverityBasis *SeverityBasis `json:"severity_basis,omitempty"` // reasoner v3: rule anchor vs reasoner (severityGuard)
 }
 
 type SensorRef struct {
@@ -51,6 +67,12 @@ type SensorRef struct {
 	Rule     Finding    `json:"rule_finding"`
 	Context  bool       `json:"context"` // pulled in by the cross-domain orchestrator (not flagged itself)
 	Why      string     `json:"why,omitempty"`
+	// 12 h checks for what the 4 h agent misses (longrange.go): flagged sensors only, cited as E9/E10
+	LongRange []LongRange `json:"long_range,omitempty"`
+	// v2 agent only (agentversion.go): the agent's window length (0 = the 4 h alert window; the
+	// refinement ladder sets 48/96/144) and the 12 h history its prompt is built from (not stored)
+	WinN int       `json:"win_n,omitempty"`
+	Hist []float64 `json:"-"`
 }
 
 type CallMetrics struct {
@@ -77,6 +99,9 @@ type AgentCall struct {
 	Errors    []string `json:"errors"`
 	Repairs   []string `json:"repairs,omitempty"`
 	Prompt    string   `json:"prompt"`
+	// claim verifier (claimcheck.go): observation claims that contradict the window's own facts. Flags only - the
+	// observation text is never changed; the reasoner owns operator-facing wording.
+	ClaimFlags []ClaimFlag `json:"claim_flags,omitempty"`
 }
 
 type ReportCall struct {
@@ -89,6 +114,9 @@ type ReportCall struct {
 	Repairs   []string `json:"repairs,omitempty"`
 	Errors    []string `json:"errors"`
 	Prompt    string   `json:"prompt"`
+	// two-stage report (owner, 2026-10-27): the instant deterministic report shown while the reasoner writes;
+	// replaced by the reasoner's report (or its fallback) when the analysis completes
+	Preliminary bool `json:"preliminary,omitempty"`
 }
 
 type TimelineItem struct {
@@ -105,8 +133,10 @@ type Incident struct {
 	Severity      string         `json:"severity"`       // rule severity (provisional) until SeverityFinal
 	SeverityFinal bool           `json:"severity_final"` // set once the reasoner has decided (severity.go)
 	Title         string         `json:"title"`
+	RuleTitle     string         `json:"rule_title,omitempty"` // what the rules said when the incident opened (title.go)
 	Roles         []string       `json:"roles"`
 	Injected      bool           `json:"injected"`
+	FastPath      bool           `json:"fast_path,omitempty"` // opened by the critical fast path (fastpath.go)
 	Sensors       []SensorRef    `json:"sensors"`
 	Mode1         Report         `json:"mode1_report"`
 	Agents        []AgentCall    `json:"agents"`
@@ -116,6 +146,18 @@ type Incident struct {
 	Timeline      []TimelineItem `json:"timeline"`
 	Approval      string         `json:"approval"` // pending | approved | dismissed
 	ApprovalNote  string         `json:"approval_note"`
+	// Early alert + refined re-analysis (refine.go). Absent on incidents stored before it existed.
+	RefineStage   string     `json:"refine_stage,omitempty"`    // early | 1.5h | 3h: the analysis shown now
+	NextRefineSim int64      `json:"next_refine_sim,omitempty"` // sensor time the next refinement is due (0 = none)
+	RefineNote    string     `json:"refine_note,omitempty"`     // why a refinement was skipped, if one was
+	SimEpoch      int64      `json:"sim_epoch,omitempty"`       // engine history epoch the windows came from
+	SimShift      int64      `json:"sim_shift,omitempty"`       // engine clock shift NextRefineSim is expressed in
+	Revisions     []Revision `json:"revisions,omitempty"`       // every analysis of this incident, oldest first
+	// Approval lifecycle, checklist and append-only event log (workflow.go), serialised inline
+	WorkflowState
+
+	quiet   bool        // a refinement's working copy: no SSE, no token stream (refine.go)
+	preempt func() bool // checked between NPU calls; true = stop, more urgent work is waiting
 }
 
 type Reasoner struct {
@@ -129,14 +171,21 @@ type Reasoner struct {
 	seq        int
 	active     bool
 	pending    []Candidate
-	coolWait   bool  // a runWhenCool watcher is waiting for the thermal guard to clear
-	jobs       []job // explicitly requested analyses (Analyze, Rerun), run in order after pending alerts
+	coolWait   bool            // a runWhenCool watcher is waiting for the thermal guard to clear
+	jobs       []job           // explicitly requested analyses (Analyze, Rerun), run in order after pending alerts
+	refines    []string        // incident IDs whose refinement is due, run after everything else (refine.go)
+	refineQ    map[string]bool // IDs in refines
 	lastNPU    time.Time
 	storeLines int // lines in the store file, guarded by storeMu (store.go)
+	// critical fast path (fastpath.go): sensor key -> the incident opened early with the rules-only preliminary
+	// report; the AI analysis at persistReadings updates that incident instead of opening a new one
+	fastInc map[string]*Incident
+	early   []earlyJob // provisional early AI runs (earlyai.go), after alerts and jobs, before refinements
 }
 
 func NewReasoner(g *GenieRunner, e *Engine, dir string, notify func(string, any)) *Reasoner {
-	r := &Reasoner{genie: g, eng: e, Mode: 3, store: filepath.Join(dir, "state", "incidents.jsonl"), notify: notify}
+	r := &Reasoner{genie: g, eng: e, Mode: 3, store: filepath.Join(dir, "state", "incidents.jsonl"), notify: notify,
+		refineQ: map[string]bool{}}
 	os.MkdirAll(filepath.Dir(r.store), 0o755)
 	r.load()
 	return r
@@ -175,6 +224,13 @@ func (r *Reasoner) SetApproval(id, state, note string) bool {
 		return false
 	}
 	inc.Approval, inc.ApprovalNote = state, note
+	switch { // the lifecycle follows (workflow.go): approved = acknowledged, dismissed = closed
+	case state == "approved" && wfOf(inc) == wfNeeds:
+		ackLocked(inc, "operator", "approve")
+	case state == "dismissed" && wfOf(inc) != wfClosed:
+		inc.Workflow, inc.Outcome, inc.OutcomeNote, inc.ClosedAt, inc.ClosedBy = wfClosed, "no_action_needed", note, wfNow().Unix(), "operator"
+		inc.event("operator", "dismissed", "", "no_action_needed", note, "")
+	}
 	r.mu.Unlock()
 	r.persist(inc)
 	r.notify("incident", map[string]any{"id": id, "state": inc.State, "approval": state})
@@ -197,6 +253,9 @@ func (r *Reasoner) Busy() bool {
 // so the NPU never builds a backlog and the user's most recent sensor change is always analysed.
 // The thermal guard defers LLM analysis while the device is hot (rules keep running).
 func (r *Reasoner) HandleCandidates(cands []Candidate) {
+	if cands = r.splitFast(cands); len(cands) == 0 {
+		return
+	}
 	r.mu.Lock()
 	if r.active {
 		// NPU busy: MERGE into the pending batch (newest reading per sensor wins), never drop an alert
@@ -224,7 +283,7 @@ func (r *Reasoner) HandleCandidates(cands []Candidate) {
 	r.active = true
 	mode := r.Mode
 	r.mu.Unlock()
-	go r.loop(cands, mode)
+	go r.loop(work{cands: cands, mode: mode})
 }
 
 // mergePending folds candidates into the pending batch, newest reading per sensor winning.
@@ -277,24 +336,44 @@ func (r *Reasoner) Submit(cands []Candidate, mode int) bool {
 	r.active = true
 	r.lastNPU = time.Now()
 	r.mu.Unlock()
-	go r.loop(cands, mode)
+	go r.loop(work{cands: cands, mode: mode})
 	return true
 }
 
-// next takes the next unit of work: a pending event-gate alert first, then requested jobs in order.
+// work is one unit for the NPU queue: an analysis of candidates, or the refinement of an incident.
+type work struct {
+	cands  []Candidate
+	mode   int
+	refine string    // incident ID (refine.go); cands and mode unused
+	early  *earlyJob // provisional early AI run (earlyai.go)
+}
+
+// next takes the next unit of work: a pending event-gate alert first, then requested jobs in order,
+// then due refinements (low priority: they improve a report the operator already has).
 // Caller holds r.mu. ok=false means the queue is empty.
-func (r *Reasoner) next() (cands []Candidate, mode int, ok bool) {
+func (r *Reasoner) next() (w work, ok bool) {
 	if r.pending != nil {
-		cands, mode = r.pending, r.Mode
+		w = work{cands: r.pending, mode: r.Mode}
 		r.pending = nil
-		return cands, mode, true
+		return w, true
 	}
 	if len(r.jobs) > 0 {
 		j := r.jobs[0]
 		r.jobs = r.jobs[1:]
-		return j.cands, j.mode, true
+		return work{cands: j.cands, mode: j.mode}, true
 	}
-	return nil, 0, false
+	if len(r.early) > 0 {
+		j := r.early[0]
+		r.early = r.early[1:]
+		return work{early: &j}, true
+	}
+	if len(r.refines) > 0 {
+		id := r.refines[0]
+		r.refines = r.refines[1:]
+		delete(r.refineQ, id)
+		return work{refine: id}, true
+	}
+	return work{}, false
 }
 
 // runWhenCool starts the queued analysis as soon as the thermal guard clears.
@@ -311,7 +390,7 @@ func (r *Reasoner) runWhenCool() {
 			r.mu.Unlock()
 			return
 		}
-		cands, mode, ok := r.next()
+		w, ok := r.next()
 		if !ok {
 			r.mu.Unlock()
 			return
@@ -320,17 +399,30 @@ func (r *Reasoner) runWhenCool() {
 		r.lastNPU = time.Now()
 		r.mu.Unlock()
 		r.notify("log", map[string]any{"msg": "Board cooled - running the queued analysis"})
-		r.loop(cands, mode)
+		r.loop(w)
 		return
 	}
 }
 
-func (r *Reasoner) loop(cands []Candidate, mode int) {
+func (r *Reasoner) loop(w work) {
 	for {
-		r.Process(cands, mode)
+		if w.early != nil {
+			r.runEarly(*w.early)
+		} else if w.refine != "" {
+			r.runRefine(w.refine)
+		} else {
+			r.Process(w.cands, w.mode)
+		}
 		r.mu.Lock()
 		var ok bool
-		if cands, mode, ok = r.next(); !ok {
+		if w, ok = r.next(); !ok {
+			r.active = false
+			r.mu.Unlock()
+			return
+		}
+		if w.refine != "" && r.refineHeld() {
+			// hot board or rules-only mode: low-priority work waits; nothing else is queued
+			r.requeueRefine(w.refine)
 			r.active = false
 			r.mu.Unlock()
 			return
@@ -346,11 +438,51 @@ func (r *Reasoner) sensorRef(ref string, c Candidate, ctxWhy string) SensorRef {
 	for _, e := range ev {
 		gl = append(gl, fmt.Sprintf("ev:%s:%s:%s:%d", c.Node, c.Metric, e.Stat, c.End))
 	}
-	return SensorRef{Ref: ref, Node: c.Node, Metric: c.Metric, Role: c.Role, Location: info.Location, End: c.End,
+	sr := SensorRef{Ref: ref, Node: c.Node, Metric: c.Metric, Role: c.Role, Location: info.Location, End: c.End,
 		Injected: c.Injected, Xs: c.Xs, Evidence: ev, GlobalEv: gl, Rule: c.Finding, Context: ctxWhy != "", Why: ctxWhy}
+	if hvacAgentSensor(c.Role, c.Node, c.Metric) && !sr.Context && r.eng != nil {
+		r.applyV2Evidence(&sr) // v2 HVAC unit: the HVAC agent's own evidence (E1..E10)
+		return sr
+	}
+	if !sr.Context && r.eng != nil {
+		if xs := r.eng.HistoryAt(c.Node, c.Metric, c.End, lrPoints); xs != nil {
+			if agentV2() {
+				sr.Hist = xs
+			}
+			sr.LongRange = longRange(c.Role, c.Metric, xs)
+			for i := range sr.LongRange {
+				sr.LongRange[i].ID = fmt.Sprintf("E%d", 9+i)
+			}
+		}
+		r.applyV2Evidence(&sr)
+	}
+	return sr
+}
+
+// longRangeLines: the 12 h findings as citable evidence lines for the reasoner prompts.
+func longRangeLines(b *strings.Builder, s SensorRef, indent string) {
+	for _, e := range s.Evidence {
+		if e.ID == "E9" { // v2 evidence: its E9 line is the same 12 h view (features_v2.go)
+			return
+		}
+	}
+	for _, l := range s.LongRange {
+		fmt.Fprintf(b, "%s%s.%s %s\n", indent, s.Ref, l.ID, l.Text)
+	}
 }
 
 func (r *Reasoner) newIncident(cands []Candidate, mode int) *Incident {
+	inc := r.buildIncident(cands, mode)
+	r.mu.Lock()
+	r.seq++
+	inc.ID = fmt.Sprintf("INC-%04d", r.seq)
+	r.incidents = append(r.incidents, inc)
+	r.mu.Unlock()
+	return inc
+}
+
+// buildIncident: a new incident for the gated candidates (flagged + cross-domain context), not yet registered.
+func (r *Reasoner) buildIncident(cands []Candidate, mode int) *Incident {
 	// flagged sensors: every alarming sensor in the batch (already sorted by severity), one incident
 	// Every alarming sensor stays in the incident and gets its own NPU agent - no cap (owner's
 	// decision, 2026-10-15). This loop used to stop at 8: with more alarms than that the rest were
@@ -369,8 +501,7 @@ func (r *Reasoner) newIncident(cands []Candidate, mode int) *Incident {
 	// cross-domain context (parallel deterministic context agents, CPU, microseconds)
 	ctxPicks := r.eng.ContextFor(flagged, 4)
 	r.mu.Lock()
-	r.seq++
-	inc := &Incident{ID: fmt.Sprintf("INC-%04d", r.seq), Mode: mode, State: "running", CreatedSim: cands[0].End,
+	inc := &Incident{Mode: mode, State: "running", CreatedSim: cands[0].End,
 		CreatedWall: nowTime().In(IST).Format("2006-01-02 15:04:05"), Approval: "pending"}
 	for _, c := range flagged {
 		inc.Sensors = append(inc.Sensors, r.sensorRef(fmt.Sprintf("S%d", len(inc.Sensors)+1), c, ""))
@@ -401,7 +532,7 @@ func (r *Reasoner) newIncident(cands []Candidate, mode int) *Incident {
 		inc.Title = fmt.Sprintf("%d sensors alarming: %s", len(flagged), strings.Join(parts, ", "))
 	}
 	inc.Mode1 = mode1Report(inc.Sensors)
-	r.incidents = append(r.incidents, inc)
+	wfCreated(inc) // workflow.go: analysing
 	r.mu.Unlock()
 	return inc
 }
@@ -415,26 +546,101 @@ func appendUnique(a []string, s string) []string {
 	return append(a, s)
 }
 
+// tokenSink streams one NPU call's answer to the dashboard. One sink = one call: its first chunk
+// carries reset, so a re-run of the same agent (NPU retry, solo re-run) replaces the earlier live
+// text instead of being appended to it.
 func (r *Reasoner) tokenSink(inc *Incident, ref string) func(string) {
-	return func(t string) { r.notify("token", map[string]any{"incident": inc.ID, "ref": ref, "text": t}) }
+	// A refinement works on a copy of a finished incident: its tokens go out as "rtoken", which
+	// the dashboard shows in a separate "refining" panel - as "token" they would repaint that
+	// incident's report page as if it were running again (and older dashboards ignore rtoken).
+	kind := "token"
+	if inc.quiet {
+		kind = "rtoken"
+	}
+	first := true
+	pend := ""
+	return func(t string) {
+		// never publish half a UTF-8 character: byte-level tokens and the answerScanner holdback
+		// both cut inside multi-byte characters ("°C", "µg/m³"), and JSON-encoding the half turns
+		// it into U+FFFD on the dashboard. The rest of the character comes with the next chunk.
+		t, pend = pend+t, ""
+		if i := utf8CompletePrefix(t); i < len(t) {
+			t, pend = t[:i], t[i:]
+		}
+		if t == "" {
+			return
+		}
+		m := map[string]any{"incident": inc.ID, "ref": ref, "text": t}
+		if first {
+			m["reset"], first = true, false
+		}
+		r.notify(kind, m)
+	}
+}
+
+// utf8CompletePrefix is the length of s without a trailing incomplete UTF-8 sequence.
+func utf8CompletePrefix(s string) int {
+	for i := len(s) - 1; i >= 0 && i >= len(s)-utf8.UTFMax; i-- {
+		if utf8.RuneStart(s[i]) {
+			if utf8.FullRuneInString(s[i:]) {
+				return len(s)
+			}
+			return i
+		}
+	}
+	return len(s)
 }
 
 func (r *Reasoner) log(inc *Incident, msg string) {
 	r.mu.Lock()
 	inc.Timeline = append(inc.Timeline, TimelineItem{time.Now().Format("15:04:05"), msg})
 	r.mu.Unlock()
-	r.notify("incident", map[string]any{"id": inc.ID, "state": inc.State, "msg": msg})
+	if !inc.quiet {
+		r.notify("incident", map[string]any{"id": inc.ID, "state": inc.State, "msg": msg})
+	}
 }
 
 // Process runs the selected mode for one incident.
 func (r *Reasoner) Process(cands []Candidate, mode int) *Incident {
-	inc := r.newIncident(cands, mode)
+	inc := r.adoptFast(cands, mode)
+	if inc == nil {
+		inc = r.newIncident(cands, mode)
+	}
 	// persisted as "running" straight away: if the process dies mid-analysis the alert is not lost -
 	// it reloads as "failed" and the operator can rerun it (found by killing the backend mid-run)
 	r.persist(inc)
 	t0 := time.Now()
 	r.log(inc, fmt.Sprintf("Event gated: %d sensor(s) flagged, mode %d", len(inc.Sensors), mode))
-	ctx := context.Background()
+	var epoch, shift int64
+	if r.eng != nil {
+		epoch, shift, _ = r.eng.SimBase() // the history the refinements will re-read (refine.go)
+	}
+	r.analyse(context.Background(), inc, mode, t0, nil)
+	r.mu.Lock()
+	inc.TotalMs = float64(time.Since(t0).Milliseconds())
+	inc.State = "done"
+	surfaceDisagreements(inc)
+	finaliseSeverity(inc) // from here the displayed severity is the reasoner's, not the rules'
+	if mode != 1 && (inc.Final == nil || !inc.Final.Valid) {
+		inc.State = "done_with_errors"
+	}
+	r.scheduleRefine(inc, epoch, shift) // early alert done; its sensors are re-read at 1.5 h and 3 h (refine.go)
+	r.wfAnalysedLocked(inc, epoch)      // workflow.go: needs a decision; the checklist is built
+	r.mu.Unlock()
+	trace("phase %s done +%dms", inc.ID, time.Since(t0).Milliseconds())
+	r.log(inc, fmt.Sprintf("Finished in %.1fs, %d NPU call(s)", inc.TotalMs/1000, inc.NPUCalls))
+	r.persist(inc)
+	return inc
+}
+
+// preempted: a refinement's working copy stops between NPU calls when more urgent work is waiting.
+func (inc *Incident) preempted() bool { return inc.preempt != nil && inc.preempt() }
+
+// analyse runs the mode's pipeline over inc.Sensors and fills inc.Agents and inc.Final. Shared by the
+// first analysis (Process) and its refinements (refine.go), so both take the same NPU path, the same
+// policy gate and the same fallbacks. hold, when set, may swap agent findings after the agents have
+// answered and before the synthesizer reads them. false = preempted (refinements only).
+func (r *Reasoner) analyse(ctx context.Context, inc *Incident, mode int, t0 time.Time, hold func([]AgentCall)) bool {
 	switch mode {
 	case 1:
 		r.log(inc, "Mode 1: rule findings + rule summary (no LLM)")
@@ -489,13 +695,26 @@ func (r *Reasoner) Process(cands []Candidate, mode int) *Incident {
 		r.log(inc, fmt.Sprintf("Orchestrator: %d sensor(s) to NPU agents, %d related sensor(s) checked by context agents in parallel", len(llm), nctx))
 		// An agent whose NPU session could not be created (hardware, no model output) is run once more at
 		// the end of the batch, when the HTP has had time to recover; its slot in inc.Agents is replaced.
-		var npuDown []int
+		var npuDown, badOut []int
 		slot := map[int]int{}
+		solo := map[int]bool{} // agents re-run alone after an invalid batched answer
 		runAgent := func(i int, again bool) {
 			s := inc.Sensors[i]
-			ai := BuildAgentPrompt(s.Role, s.Node, s.Location, s.Metric, s.Xs, s.End)
+			ai, okPrompt := r.agentPrompt(s) // v1, or v2 at s.WinN readings (agentversion.go)
+			if !okPrompt {
+				f := s.Rule
+				findings[i] = AgentCall{Ref: s.Ref, Role: s.Role, Model: "rules (no complete window for the agent)", Parsed: &f, Valid: true}
+				r.mu.Lock()
+				inc.Agents = append(inc.Agents, findings[i])
+				r.mu.Unlock()
+				r.log(inc, fmt.Sprintf("%s agent: no complete window for %s %s - rule finding kept", title(s.Role), s.Node, s.Metric))
+				return
+			}
 			verb := "analysing"
-			if again {
+			if solo[i] {
+				verb = "re-running alone (its batched answer was invalid)"
+				r.genie.Forget(am, ai.Prompt+AgentPrefill)
+			} else if again {
 				verb = "re-running (NPU was unavailable)"
 			}
 			r.log(inc, fmt.Sprintf("%s agent %s %s %s on NPU (%s)", title(s.Role), verb, s.Node, s.Metric, shortModel(am)))
@@ -504,8 +723,24 @@ func (r *Reasoner) Process(cands []Candidate, mode int) *Incident {
 			if !res.Cached {
 				inc.NPUCalls++
 			}
-			call := checkAgent(s, res, ai.Prompt+AgentPrefill)
+			call := checkAgentWin(s, res, ai.Prompt+AgentPrefill, ai.Xs, ai.HVRule) // ai.Xs: post-rules (htpd_profile post_rules=)
 			call.CallMetrics = metricsOf(res)
+			applyConfidenceRecal(&call, s.End, ai.Prompt) // D4: the confidence shown is the calibrated one (v2 only)
+			if solo[i] && !call.Valid {
+				r.log(inc, fmt.Sprintf("%s agent: solo re-run also invalid - first answer kept", title(s.Role)))
+				return
+			}
+			// solo_rerun=runaway (htpd_profile, USER DECISION, proofs/2026-10-21_latency_ladder): re-run alone only
+			// answers that did not end cleanly (cap, context, JSON abort) or did not parse. A complete answer the gate
+			// rejected for an off-label value (5 of 9 v2 chaos incidents: water "acidic_condition") came back invalid
+			// again when re-run alone, costing ~2.5-3.5 s each time. Default (key absent) = every invalid answer.
+			rerunnable := htpdProfile()["solo_rerun"] != "runaway" || !res.EarlyStopped || call.Parsed == nil
+			if !solo[i] && !again && !call.Valid && res.Error == "" && !res.Cached && rerunnable {
+				// a batched answer that failed the policy gate (runaway, off-label pattern, broken JSON):
+				// 0.8% of batched v2 answers on the device eval, in runs of neighbouring streams, so a
+				// batch artefact rather than the model; one solo re-run at the end of the batch
+				badOut = append(badOut, i)
+			}
 			findings[i] = call
 			r.mu.Lock()
 			if k, ok := slot[i]; ok {
@@ -546,23 +781,50 @@ func (r *Reasoner) Process(cands []Candidate, mode int) *Incident {
 		// Batching and genied are alternatives, never both: genie-app loads its own copy of the
 		// model, and two resident contexts is what hits the DSP SMMU limit. When the daemon is up,
 		// every agent call already skips model init, which was batching's whole benefit.
+		if inc.preempted() {
+			return false
+		}
 		if batchEnabled() && len(llm) > 1 && !daemonUp() {
 			prompts := make([]string, len(llm))
 			for k, i := range llm {
 				s := inc.Sensors[i]
-				prompts[k] = BuildAgentPrompt(s.Role, s.Node, s.Location, s.Metric, s.Xs, s.End).Prompt + AgentPrefill
+				ai, _ := r.agentPrompt(s)
+				prompts[k] = ai.Prompt + AgentPrefill
 			}
 			r.log(inc, fmt.Sprintf("Orchestrator: running all %d NPU agents in one model load (batched)", len(llm)))
-			r.genie.Prefetch(ctx, am, prompts, AgentPrefill, func(k int, chunk string) {
-				r.tokenSink(inc, inc.Sensors[llm[k]].Ref)(chunk)
-			})
+			// one sink per agent for the whole batch (a sink per chunk would reset on every chunk)
+			sinks := make([]func(string), len(llm))
+			refs := make([]string, len(llm))
+			for k, i := range llm {
+				refs[k] = inc.Sensors[i].Ref
+				sinks[k] = r.tokenSink(inc, refs[k])
+			}
+			// the dashboard marks these agents "reading the prompt" until their first token arrives
+			r.notify("batch", map[string]any{"incident": inc.ID, "refs": refs, "refine": inc.quiet})
+			r.genie.Prefetch(ctx, am, prompts, AgentPrefill, func(k int, chunk string) { sinks[k](chunk) })
 		}
 		trace("phase %s agents-start +%dms (%d agents)", inc.ID, time.Since(t0).Milliseconds(), len(llm))
 		for _, i := range llm {
+			if inc.preempted() {
+				return false
+			}
 			runAgent(i, false)
 		}
 		for _, i := range npuDown {
+			if inc.preempted() {
+				return false
+			}
 			runAgent(i, true)
+		}
+		for k, i := range badOut {
+			if inc.preempted() {
+				return false
+			}
+			if k >= 3 { // bound the extra NPU time per incident
+				break
+			}
+			solo[i] = true
+			runAgent(i, false)
 		}
 		trace("phase %s agents-done +%dms", inc.ID, time.Since(t0).Milliseconds())
 		r.mu.Lock()
@@ -571,7 +833,13 @@ func (r *Reasoner) Process(cands []Candidate, mode int) *Incident {
 				inc.Agents = append(inc.Agents, findings[i])
 			}
 		}
+		if hold != nil {
+			hold(findings)
+		}
 		r.mu.Unlock()
+		if inc.preempted() {
+			return false
+		}
 		// synthesize whenever two or more domains carry information (flagged, or related with a
 		// non-steady pattern/status); otherwise the related domains were verified steady -> isolated event.
 		doms := map[string]bool{}
@@ -584,12 +852,34 @@ func (r *Reasoner) Process(cands []Candidate, mode int) *Incident {
 				doms[s.Role] = true
 			}
 		}
+		if len(doms) < 2 && reasonerV3Enabled() {
+			// reasoner v3 owns the wording of every report (owner, 2026-10-27): the single-domain incident goes
+			// through it too; the deterministic isolated report is only the fallback (engine error or gate reject)
+			r.log(inc, fmt.Sprintf("Related domains checked and steady (%d context agents): reasoner v3 writes the report", nctx))
+			trace("phase %s reasoner-start +%dms (isolated)", inc.ID, time.Since(t0).Milliseconds())
+			r.preliminary(inc, isolatedReport(inc.Sensors, findings))
+			rc := r.reasonV3Fallback(ctx, inc, findings, func() *ReportCall { return isolatedReport(inc.Sensors, findings) })
+			r.mu.Lock()
+			inc.Final = rc
+			r.mu.Unlock()
+			break
+		}
 		if len(doms) < 2 {
 			rc := isolatedReport(inc.Sensors, findings)
 			r.mu.Lock()
 			inc.Final = rc
 			r.mu.Unlock()
 			r.log(inc, fmt.Sprintf("Related domains checked and steady (%d context agents): isolated event, no synthesizer call needed", nctx))
+			break
+		}
+		if reasonerV3Enabled() { // htpd_profile reasoner=v3 (reasoner_v3.go); default off
+			r.log(inc, fmt.Sprintf("Reasoner v3 combining %d domains", len(doms)))
+			trace("phase %s reasoner-start +%dms", inc.ID, time.Since(t0).Milliseconds())
+			r.preliminary(inc, fallbackReport(inc.Sensors, findings, nil))
+			rc := r.reasonV3(ctx, inc, findings)
+			r.mu.Lock()
+			inc.Final = rc
+			r.mu.Unlock()
 			break
 		}
 		prompt := synthPrompt(inc.Sensors, findings)
@@ -619,19 +909,7 @@ func (r *Reasoner) Process(cands []Candidate, mode int) *Incident {
 		}
 		r.log(inc, fmt.Sprintf("Cross-domain report in %.1fs, policy %s", res.LatencyMs/1000, okStr(rc.Valid)))
 	}
-	r.mu.Lock()
-	inc.TotalMs = float64(time.Since(t0).Milliseconds())
-	inc.State = "done"
-	surfaceDisagreements(inc)
-	finaliseSeverity(inc) // from here the displayed severity is the reasoner's, not the rules'
-	if mode != 1 && (inc.Final == nil || !inc.Final.Valid) {
-		inc.State = "done_with_errors"
-	}
-	r.mu.Unlock()
-	trace("phase %s done +%dms", inc.ID, time.Since(t0).Milliseconds())
-	r.log(inc, fmt.Sprintf("Finished in %.1fs, %d NPU call(s)", inc.TotalMs/1000, inc.NPUCalls))
-	r.persist(inc)
-	return inc
+	return true
 }
 
 func okStr(b bool) string {
@@ -642,7 +920,7 @@ func okStr(b bool) string {
 }
 
 func title(role string) string {
-	return map[string]string{"air_quality": "Air Quality", "water": "Water", "power": "Power", "occupancy": "Occupancy", "weather": "Weather"}[role]
+	return map[string]string{"air_quality": "Air Quality", "water": "Water", "power": "Power", "occupancy": "Occupancy", "weather": "Weather", "hvac": "HVAC"}[role]
 }
 
 func shortModel(b ModelBundle) string {
@@ -770,6 +1048,7 @@ func sensorBlock(s SensorRef) string {
 	for _, e := range s.Evidence[:min(evidenceBudget(s), len(s.Evidence))] {
 		fmt.Fprintf(&b, "%s.%s %s\n", s.Ref, e.ID, e.Text)
 	}
+	longRangeLines(&b, s, "")
 	return b.String()
 }
 
@@ -812,6 +1091,7 @@ func synthPrompt(sensors []SensorRef, calls []AgentCall) string {
 		for _, e := range s.Evidence[:min(n, len(s.Evidence))] {
 			fmt.Fprintf(&b, "  %s.%s %s\n", s.Ref, e.ID, e.Text)
 		}
+		longRangeLines(&b, s, "  ")
 	}
 	b.WriteString("Combine these findings into one cross-domain root cause.")
 	return Llama3Prompt(fmt.Sprintf(reasonerSystem, strings.Join(ReportLabels, "|")), b.String())
@@ -885,4 +1165,18 @@ func (r *Reasoner) QueueAhead() int {
 		n++
 	}
 	return n
+}
+
+// preliminary: stage 1 of the two-stage report. The deterministic report (rules + validated agent findings) is shown
+// at once, marked preliminary, while the reasoner writes the real one (stage 2 replaces inc.Final).
+func (r *Reasoner) preliminary(inc *Incident, rc *ReportCall) {
+	if rc == nil || rc.Parsed == nil {
+		return
+	}
+	rc.Preliminary = true
+	rc.Model = "preliminary (rules + agent findings)"
+	r.mu.Lock()
+	inc.Final = rc
+	r.mu.Unlock()
+	r.log(inc, "Preliminary report shown (rules + agent findings); the reasoner is writing the full report")
 }

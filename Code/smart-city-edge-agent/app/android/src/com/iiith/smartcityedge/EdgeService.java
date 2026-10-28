@@ -164,7 +164,10 @@ public class EdgeService extends Service {
 
     private String healScript(File ext) {
         return "K=" + new File(ext.getParentFile(), "backup").getAbsolutePath() + "; T=/data/local/tmp; "
-                + "for d in genie_bundle genie_bundle_ft genie_bundle_ft_4096; do [ -d $K/$d ] || continue; bad=0; "
+                // genie_bundle_ft_4096 is no longer used (v2 runs on htpd): restoring it meant a 2.5 GB copy
+                // out of FUSE /sdcard right after boot, and multi-GB FUSE copies stall system_server until the
+                // watchdog reboots the board (2026-10-22: two reboots after large copies)
+                + "for d in genie_bundle genie_bundle_ft; do [ -d $K/$d ] || continue; bad=0; "
                 + "for f in llama_v3_2_3b_instruct_part_1_of_3.bin llama_v3_2_3b_instruct_part_2_of_3.bin "
                 + "llama_v3_2_3b_instruct_part_3_of_3.bin smartcity_agent.json tokenizer.json; do "
                 + "[ \"$(stat -c %s $T/$d/$f 2>/dev/null)\" = \"$(stat -c %s $K/$d/$f 2>/dev/null)\" ] || bad=1; done; "
@@ -175,20 +178,30 @@ public class EdgeService extends Service {
         return "D=/data/local/tmp/smart_city_edge; L=" + lib + "; X=" + ext.getAbsolutePath() + "; "
                 + "mkdir -p $D/state $D/data $D/web; "
                 + "cmp -s $L/libedgeagent.so $D/edge-agent || { cp $L/libedgeagent.so $D/edge-agent.new && mv $D/edge-agent.new $D/edge-agent; }; "
-                + "chmod 755 $D/edge-agent; cp -r $X/web/. $D/web/; cp $X/data/sensors.json $D/data/sensors.json; "
+                + "chmod 755 $D/edge-agent; cp -r $X/web/. $D/web/; cp $X/data/*.json $D/data/; "
                 // genied (persistent Genie dialog) ships in the APK too; edge-agent launches and
                 // supervises it. Kill the old one so a new APK's daemon replaces it cleanly.
                 + "if [ -f $L/libgenied.so ]; then cmp -s $L/libgenied.so $D/genied || { cp $L/libgenied.so $D/genied.new && mv $D/genied.new $D/genied; }; chmod 755 $D/genied; fi; "
                 + "pkill -x genied; pkill -x edge-agent; sleep 1; "
-                + "cd $D && (setsid nohup ./edge-agent --dir $D --genie /data/local/tmp/genie_bundle --mode 3 "
-                + "--clock-unix " + now + " > state/agent.log 2>&1 < /dev/null &); "
+                // append (rotated at 4 MB): the log from before a board reset used to be overwritten here
+                + "cd $D && { [ \"$(stat -c %s state/agent.log 2>/dev/null || echo 0)\" -gt 4194304 ] && mv -f state/agent.log state/agent.log.1; true; } && "
+                + "(setsid nohup ./edge-agent --dir $D --genie /data/local/tmp/genie_bundle --mode 3 "
+                + "--clock-unix " + now + " >> state/agent.log 2>&1 < /dev/null &); "
                 + "sleep 2; pgrep -x edge-agent >/dev/null && echo STARTED || echo FAILED";
     }
 
+    // UX v34: one notification per incident, updated in place (tag = incident id), only while the
+    // dashboard is not in front: a new Critical incident once its analysis has finished, a re-check
+    // that made it worse, and the one reminder for a critical incident nobody took within 15 min.
+    // Tapping opens that incident. Taken (in progress) or closed incidents lose their notification.
     private final java.util.Set<String> seenIncidents = new java.util.HashSet<>();
+    private final java.util.Set<String> critNotified = new java.util.HashSet<>();
+    private final java.util.Set<String> remindNotified = new java.util.HashSet<>();
+    private final java.util.Map<String, Long> worseNotified = new java.util.HashMap<>();
+    private final java.util.Set<String> posted = new java.util.HashSet<>();
     private boolean incidentsPrimed = false;
+    static final int NOTIF_ID = 2001;
 
-    /** Posts an Android notification for every new incident (the monitor runs with the screen off too). */
     private void notifyNewIncidents() {
         try {
             java.net.HttpURLConnection c = (java.net.HttpURLConnection)
@@ -203,23 +216,60 @@ public class EdgeService extends Service {
             }
             org.json.JSONArray arr = new org.json.JSONArray(body);
             NotificationManager nm = getSystemService(NotificationManager.class);
+            if (nm.getNotificationChannel("alerts") == null) {
+                nm.createNotificationChannel(new NotificationChannel("alerts", "Sensor alerts",
+                        NotificationManager.IMPORTANCE_HIGH));
+            }
+            boolean background = !MainActivity.foreground;
             for (int i = 0; i < arr.length(); i++) {
                 org.json.JSONObject o = arr.getJSONObject(i);
                 String id = o.optString("id");
-                if (!seenIncidents.add(id) || !incidentsPrimed) continue;
-                if (nm.getNotificationChannel("alerts") == null) {
-                    nm.createNotificationChannel(new NotificationChannel("alerts", "Sensor alerts",
-                            NotificationManager.IMPORTANCE_HIGH));
+                if (id.isEmpty()) continue;
+                String wf = o.optString("workflow", "");
+                String sev = o.optString("severity", "");
+                boolean done = !"running".equals(o.optString("state"));
+                boolean critical = done && "critical".equals(sev) && o.optBoolean("severity_final", true);
+                long worse = o.optLong("worse_at", 0);
+                boolean reminded = o.optBoolean("reminded", false);
+                boolean first = seenIncidents.add(id);
+                if (!incidentsPrimed) { // incidents present at start are not re-announced
+                    if (critical) critNotified.add(id);
+                    if (reminded) remindNotified.add(id);
+                    worseNotified.put(id, worse);
+                    continue;
                 }
-                PendingIntent open = PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class),
-                        PendingIntent.FLAG_IMMUTABLE);
-                nm.notify(1000 + (id.hashCode() & 0xffff), new Notification.Builder(this, "alerts")
-                        .setContentTitle(o.optString("severity", "alert").toUpperCase() + " - " + id)
+                if ("in_progress".equals(wf) || "closed".equals(wf)) { // someone took it, or it is over
+                    if (posted.remove(id)) nm.cancel(id, NOTIF_ID);
+                    if (critical) critNotified.add(id);
+                    worseNotified.put(id, worse);
+                    continue;
+                }
+                String text = null;
+                Long seenWorse = worseNotified.get(id);
+                if (worse > 0 && (seenWorse == null || worse > seenWorse)) {
+                    worseNotified.put(id, worse);
+                    text = "Got worse: now " + sev.replace('_', ' ') + (o.optString("owner").isEmpty() ? "" : " - please acknowledge again");
+                } else if (seenWorse == null) {
+                    worseNotified.put(id, worse);
+                }
+                if (text == null && reminded && remindNotified.add(id)) text = "Still needs a decision (critical for 15 min)";
+                if (text == null && critical && critNotified.add(id)) text = "New critical incident";
+                if (text == null || !background) continue; // in front: the dashboard alerts by itself
+                Intent open = new Intent(this, MainActivity.class)
+                        .putExtra(MainActivity.EXTRA_INCIDENT, id)
+                        .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                PendingIntent pi = PendingIntent.getActivity(this, id.hashCode(), open,
+                        PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+                nm.notify(id, NOTIF_ID, new Notification.Builder(this, "alerts")
+                        .setContentTitle(text + " - " + id)
                         .setContentText(o.optString("title"))
+                        .setStyle(new Notification.BigTextStyle().bigText(o.optString("title")))
                         .setSmallIcon(android.R.drawable.stat_notify_error)
-                        .setContentIntent(open).setAutoCancel(true).build());
+                        .setOnlyAlertOnce(false)
+                        .setContentIntent(pi).setAutoCancel(true).build());
+                posted.add(id);
             }
-            incidentsPrimed = true; // existing incidents at start are not re-announced
+            incidentsPrimed = true;
         } catch (Exception ignored) {
         }
     }

@@ -1,0 +1,751 @@
+{
+ "id": "INC-0099",
+ "mode": 3,
+ "state": "done",
+ "created_sim": 1791962700,
+ "created_wall": "2026-10-13 21:52:02",
+ "severity": "critical",
+ "severity_final": true,
+ "title": "Tank level gradual decrease: KH building, level 98, water tank level sensor 00",
+ "rule_title": "Tank level spike: KH building, level 98, water tank level sensor 00",
+ "roles": [
+  "water"
+ ],
+ "injected": true,
+ "sensors": [
+  {
+   "ref": "S1",
+   "node": "WM-WL-KH98-00",
+   "metric": "level",
+   "role": "water",
+   "location": "KH building, level 98, water tank level sensor 00",
+   "window_end": 1791968100,
+   "injected": true,
+   "window": [
+    259.5535380376572,
+    258.42537556015924,
+    256.78084363027585,
+    255.62118330314377,
+    254.32410213173978,
+    254.24077326205074,
+    254.4955472752157,
+    254.25920054891438,
+    254.45017574627184,
+    254.56426182046937,
+    253.8391980657327,
+    254.29312882943864,
+    254.2116991274233,
+    254.34697317485148,
+    254.507377902195,
+    254.67360374266144,
+    253.92696215872135,
+    253.72193117636024,
+    254.40094105755279,
+    254.72111483300904,
+    254.02820053158706,
+    254.1736363536486,
+    254.34252867243566,
+    253.938998690853,
+    253.93501997950284,
+    253.95053245114326,
+    254.68694388429537,
+    254.18332756015343,
+    254.36212263271548,
+    254.18800151759476,
+    254.0374579655677,
+    254.40383154843124,
+    254.39207453500165,
+    254.18861076879736,
+    254.4248219066538,
+    254.50787348129631,
+    254.18771448884405,
+    254.00699156660363,
+    253.8766294129219,
+    254.00470901978196,
+    254.39933832708726,
+    254.16446018664746,
+    254.1806115914629,
+    254.3020702339761,
+    254.1945400170536,
+    254.02590030805604,
+    254.33842698332677,
+    253.66285839807585
+   ],
+   "evidence": [
+    {
+     "ID": "E1",
+     "Stat": "last",
+     "Text": "last = 253.7 level"
+    },
+    {
+     "ID": "E2",
+     "Stat": "max",
+     "Text": "max = 297.9 level at 08:00"
+    },
+    {
+     "ID": "E3",
+     "Stat": "min",
+     "Text": "min = 253.7 level at 14:25"
+    },
+    {
+     "ID": "E4",
+     "Stat": "slope",
+     "Text": "trend = -6.4 level/h (r2 0.74)"
+    },
+    {
+     "ID": "E5",
+     "Stat": "max_jump",
+     "Text": "largest 5-min change = -1.9 level at 09:50"
+    },
+    {
+     "ID": "E6",
+     "Stat": "sma",
+     "Text": "SMA 1h = 254.1, EMA 1h = 254.1, mean 6.5h = 264.0 level"
+    },
+    {
+     "ID": "E7",
+     "Stat": "shape",
+     "Text": "halves 273.9 -> 254.2, curvature +15.0/h, oscillation crossings 2"
+    },
+    {
+     "ID": "E8",
+     "Stat": "flat",
+     "Text": "noise 0.50, longest flat run 3 pts, plateau at max 0 pts"
+    },
+    {
+     "ID": "E9",
+     "Stat": "long_view",
+     "Text": "12 h view: slow drift -65.2 level since 02:30 (r2 0.85, 32.6x normal variation)"
+    },
+    {
+     "ID": "E10",
+     "Stat": "episodes",
+     "Text": "recent episodes: no excursions beyond 3x normal noise in the last 12 h"
+    }
+   ],
+   "global_evidence_ids": [
+    "ev:WM-WL-KH98-00:level:last:1791968100",
+    "ev:WM-WL-KH98-00:level:max:1791968100",
+    "ev:WM-WL-KH98-00:level:min:1791968100",
+    "ev:WM-WL-KH98-00:level:slope:1791968100",
+    "ev:WM-WL-KH98-00:level:max_jump:1791968100",
+    "ev:WM-WL-KH98-00:level:sma:1791968100",
+    "ev:WM-WL-KH98-00:level:shape:1791968100",
+    "ev:WM-WL-KH98-00:level:flat:1791968100",
+    "ev:WM-WL-KH98-00:level:long_view:1791968100",
+    "ev:WM-WL-KH98-00:level:episodes:1791968100"
+   ],
+   "rule_finding": {
+    "pattern": "stable",
+    "status": "normal",
+    "observations": [
+     "Tank level steady around 254.5 level, ranging only 253.7-259.6 [E6,E2,E3]"
+    ],
+    "likely_cause": "normal_usage",
+    "confidence": 0.8,
+    "action": "none"
+   },
+   "context": false,
+   "long_range": [
+    {
+     "id": "E9",
+     "kind": "slow_drift",
+     "delta": -65.1653195359599,
+     "hours": 12,
+     "r2": 0.8458924884482475,
+     "sigma": 32.58265976797995,
+     "text": "12 h view: slow drift -65.2 level over 12 h (r2 0.85, 32.6x normal variation)"
+    }
+   ],
+   "win_n": 78
+  },
+  {
+   "ref": "S2",
+   "node": "WM-WF-KH98-40",
+   "metric": "flow",
+   "role": "water",
+   "location": "KH building, level 98, water flow meter 40",
+   "window_end": 1791968100,
+   "injected": false,
+   "window": [
+    5.068277528903148,
+    4.868740888855598,
+    4.998330929136356,
+    5.0151682441484216,
+    4.995678404524001,
+    4.979532069187518,
+    4.872109808063828,
+    4.986190448788101,
+    4.916349646895615,
+    5.1032835709013975,
+    5.156425537292751,
+    5.021020456876681,
+    4.961302542464719,
+    5.047638971469078,
+    5.004410888281552,
+    5.0293300452309575,
+    4.854497231844231,
+    5.077307243670924,
+    4.9190943433068846,
+    5.022375718376962,
+    5.1540585193896,
+    4.879318852697263,
+    5.023573553704796,
+    4.950452086386373,
+    4.79700981267059,
+    5.001484142968482,
+    4.894702125646186,
+    4.919169403483807,
+    5.034735769412994,
+    4.86204066572897,
+    4.966341212051746,
+    4.996922607371015,
+    5.099476727496424,
+    4.933264336708896,
+    4.951764379217893,
+    5.003145170056906,
+    5.024281823758417,
+    4.975682728055798,
+    5.123794589343779,
+    4.893773042209109,
+    4.995878231040113,
+    4.990314348831056,
+    4.898161499414951,
+    4.935503822103962,
+    4.996814224202204,
+    4.988395346520795,
+    4.995546793174578,
+    4.932618051180124
+   ],
+   "evidence": [
+    {
+     "ID": "E1",
+     "Stat": "last",
+     "Text": "last = 4.93 m3/h"
+    },
+    {
+     "ID": "E2",
+     "Stat": "max",
+     "Text": "max = 5.16 m3/h at 11:20"
+    },
+    {
+     "ID": "E3",
+     "Stat": "min",
+     "Text": "min = 4.80 m3/h at 12:30"
+    },
+    {
+     "ID": "E4",
+     "Stat": "slope",
+     "Text": "trend = -0.01 m3/h/h (r2 0.01)"
+    },
+    {
+     "ID": "E5",
+     "Stat": "max_jump",
+     "Text": "largest 5-min change = -0.27 m3/h at 12:15"
+    },
+    {
+     "ID": "E6",
+     "Stat": "sma",
+     "Text": "SMA 1h = 4.98, EMA 1h = 4.97, mean 4h = 4.98 m3/h"
+    },
+    {
+     "ID": "E7",
+     "Stat": "shape",
+     "Text": "halves 5.00 -> 4.97, curvature -0.10/h, oscillation crossings 21"
+    },
+    {
+     "ID": "E8",
+     "Stat": "flat",
+     "Text": "noise 0.084, longest flat run 1 pts, plateau at max 0 pts"
+    }
+   ],
+   "global_evidence_ids": [
+    "ev:WM-WF-KH98-40:flow:last:1791968100",
+    "ev:WM-WF-KH98-40:flow:max:1791968100",
+    "ev:WM-WF-KH98-40:flow:min:1791968100",
+    "ev:WM-WF-KH98-40:flow:slope:1791968100",
+    "ev:WM-WF-KH98-40:flow:max_jump:1791968100",
+    "ev:WM-WF-KH98-40:flow:sma:1791968100",
+    "ev:WM-WF-KH98-40:flow:shape:1791968100",
+    "ev:WM-WF-KH98-40:flow:flat:1791968100"
+   ],
+   "rule_finding": {
+    "pattern": "stable",
+    "status": "normal",
+    "observations": [
+     "Flow steady around 4.98 m3/h, ranging only 4.80-5.16 [E6,E2,E3]"
+    ],
+    "likely_cause": "normal_usage",
+    "confidence": 0.8,
+    "action": "none"
+   },
+   "context": true,
+   "why": "inflow/outflow explains level changes"
+  },
+  {
+   "ref": "S3",
+   "node": "SR-OC-GW-KH95-01",
+   "metric": "occ",
+   "role": "occupancy",
+   "location": "KH building, room occupancy sensor 01 (gateway KH95)",
+   "window_end": 1791968100,
+   "injected": false,
+   "window": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "evidence": [
+    {
+     "ID": "E1",
+     "Stat": "last",
+     "Text": "current state = 0"
+    },
+    {
+     "ID": "E2",
+     "Stat": "occupied_frac",
+     "Text": "occupied fraction = 0.00"
+    },
+    {
+     "ID": "E3",
+     "Stat": "toggles",
+     "Text": "state changes = 0"
+    },
+    {
+     "ID": "E4",
+     "Stat": "first_on",
+     "Text": "first occupied at never"
+    },
+    {
+     "ID": "E5",
+     "Stat": "last_on",
+     "Text": "last occupied at never"
+    },
+    {
+     "ID": "E6",
+     "Stat": "time",
+     "Text": "window end 14:25"
+    }
+   ],
+   "global_evidence_ids": [
+    "ev:SR-OC-GW-KH95-01:occ:last:1791968100",
+    "ev:SR-OC-GW-KH95-01:occ:occupied_frac:1791968100",
+    "ev:SR-OC-GW-KH95-01:occ:toggles:1791968100",
+    "ev:SR-OC-GW-KH95-01:occ:first_on:1791968100",
+    "ev:SR-OC-GW-KH95-01:occ:last_on:1791968100",
+    "ev:SR-OC-GW-KH95-01:occ:time:1791968100"
+   ],
+   "rule_finding": {
+    "pattern": "vacant",
+    "status": "normal",
+    "observations": [
+     "Room unoccupied for the whole 4-hour window [E2,E1]"
+    ],
+    "likely_cause": "vacant",
+    "confidence": 0.95,
+    "action": "none"
+   },
+   "context": true,
+   "why": "usage follows occupancy"
+  },
+  {
+   "ref": "S4",
+   "node": "WE-VN04-00",
+   "metric": "temp",
+   "role": "weather",
+   "location": "VN building, level 04, rooftop weather station",
+   "window_end": 1791968100,
+   "injected": false,
+   "window": [
+    30.017471553438916,
+    30.318380381131313,
+    29.900364464444934,
+    30.29930582354854,
+    29.773267207601965,
+    29.71291134627598,
+    29.93344845464933,
+    29.735287184082864,
+    30.049674883790864,
+    30.284804698154634,
+    30.073509975987864,
+    30.125668137174568,
+    29.989846925257904,
+    30.16845305310269,
+    29.98641247507902,
+    30.154338683790918,
+    30.243875085328757,
+    29.74801462878056,
+    29.845581529344457,
+    30.106892137477626,
+    29.548276759001602,
+    30.234107018335436,
+    30.103243441153772,
+    29.99564842251223,
+    29.756167026240576,
+    30.05986274270959,
+    30.252680502784862,
+    29.660359766952418,
+    29.66421780445503,
+    30.19695196607095,
+    29.851826263823234,
+    30.030738801063826,
+    29.855636078550273,
+    29.725968323884143,
+    30.14812161274723,
+    30.110010039691062,
+    29.97559648176978,
+    30.30600253838018,
+    29.94951886746577,
+    30.08613140516812,
+    29.78616406009585,
+    30.185892934481785,
+    30.20265866536513,
+    30.018953719169385,
+    30.20949537413142,
+    30.137533051562375,
+    30.036461896570643,
+    29.745547455364367
+   ],
+   "evidence": [
+    {
+     "ID": "E1",
+     "Stat": "last",
+     "Text": "last = 29.7 C"
+    },
+    {
+     "ID": "E2",
+     "Stat": "max",
+     "Text": "max = 30.3 C at 10:35"
+    },
+    {
+     "ID": "E3",
+     "Stat": "min",
+     "Text": "min = 29.5 C at 12:10"
+    },
+    {
+     "ID": "E4",
+     "Stat": "slope",
+     "Text": "trend = +0.0 C/h (r2 0.00)"
+    },
+    {
+     "ID": "E5",
+     "Stat": "max_jump",
+     "Text": "largest 5-min change = +0.7 C at 12:15"
+    },
+    {
+     "ID": "E6",
+     "Stat": "sma",
+     "Text": "SMA 1h = 30.1, EMA 1h = 30.0, mean 4h = 30.0 C"
+    },
+    {
+     "ID": "E7",
+     "Stat": "shape",
+     "Text": "halves 30.0 -> 30.0, curvature -0.2/h, oscillation crossings 19"
+    },
+    {
+     "ID": "E8",
+     "Stat": "flat",
+     "Text": "noise 0.21, longest flat run 2 pts, plateau at max 0 pts"
+    }
+   ],
+   "global_evidence_ids": [
+    "ev:WE-VN04-00:temp:last:1791968100",
+    "ev:WE-VN04-00:temp:max:1791968100",
+    "ev:WE-VN04-00:temp:min:1791968100",
+    "ev:WE-VN04-00:temp:slope:1791968100",
+    "ev:WE-VN04-00:temp:max_jump:1791968100",
+    "ev:WE-VN04-00:temp:sma:1791968100",
+    "ev:WE-VN04-00:temp:shape:1791968100",
+    "ev:WE-VN04-00:temp:flat:1791968100"
+   ],
+   "rule_finding": {
+    "pattern": "stable",
+    "status": "normal",
+    "observations": [
+     "Temperature steady around 30.0 C, ranging only 29.5-30.3 [E6,E2,E3]"
+    ],
+    "likely_cause": "normal_weather",
+    "confidence": 0.8,
+    "action": "none"
+   },
+   "context": true,
+   "why": "heat raises consumption"
+  }
+ ],
+ "mode1_report": {
+  "root_cause": "Rule engine: WM-WL-KH98-00 level stable (normal); WM-WF-KH98-40 flow stable (normal); SR-OC-GW-KH95-01 occ vacant (normal); WE-VN04-00 temp stable (normal)",
+  "label": "normal_operation",
+  "affected_domains": [
+   "water",
+   "occupancy",
+   "weather"
+  ],
+  "evidence": [
+   "S1.E1",
+   "S2.E1",
+   "S3.E1",
+   "S4.E1"
+  ],
+  "confidence": 0.8,
+  "action": "none",
+  "explanation": "Tank level steady around 254.5 level, ranging only 253.7-259.6 [E6,E2,E3]",
+  "requires_human_approval": true,
+  "severity": "normal"
+ },
+ "agents": [
+  {
+   "ttft_ms": 792.7,
+   "gen_tokens": 93,
+   "tokens_per_s": 40.23535519598513,
+   "early_stopped": true,
+   "ref": "S1",
+   "role": "water",
+   "model": "Llama 3.2 3B smart-city agent (fine-tuned, w4a16)",
+   "fine_tuned": true,
+   "latency_ms": 3110.22,
+   "raw": "{\"pattern\": \"gradual_decrease\", \"status\": \"critical\", \"observations\": [\"Tank level has drifted down -65.2 level since 02:30 [E9]\", \"Tank near capacity: 297.9 level vs high level 186.5 [E2]\"], \"likely_cause\": \"tank_overflow_risk\", \"confidence\": 0.7, \"event_active\": true, \"onset\": \"06:00\"}",
+   "parsed": {
+    "pattern": "gradual_decrease",
+    "status": "critical",
+    "observations": [
+     "Tank level has drifted down -65.2 level since 02:30 [E9]",
+     "Tank near capacity: 297.9 level vs high level 186.5 [E2]"
+    ],
+    "likely_cause": "tank_overflow_risk",
+    "confidence": 0.9,
+    "action": "inspect_water_system",
+    "event_active": true,
+    "onset": "06:00"
+   },
+   "valid": true,
+   "errors": null,
+   "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are the Water agent of a smart-campus edge monitor (IIIT Hyderabad). You receive a 6.5-hour window of one sensor metric (5-minute samples) with precomputed statistics. Identify the pattern, judge severity, explain what you notice using only the given numbers, and cite evidence ids (E1..E10) that support each observation. Never invent values. Never order physical actuation; recommend at most an inspection action. Reply with one JSON object only. JSON keys: pattern (stable|spike|dip|gradual_increase|gradual_decrease|step_increase|step_decrease|exponential_increase|oscillation|throttling|flatline|erratic), status (normal|warning|critical|sensor_fault), observations (1-2 short strings, each ending with cited ids like [E1,E4]), likely_cause (normal_usage|high_demand|possible_leak|tank_filling|tank_draining|supply_interruption|pump_cycling|water_quality_issue|sensor_fault|tank_overflow_risk|fill_valve_stuck), confidence (0-1), event_active (true|false), onset (HH:MM), fault_kind (stuck|bias|drift|noise|dropout|saturation|quantised, only if sensor_fault), action (none|monitor|inspect_ventilation|inspect_hvac|check_sensor|inspect_water_system|inspect_electrical|review_schedule|request_facility_review).<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nNODE: WM-WL-KH98-00 (KH building, level 98, water tank level sensor 00)\nMETRIC: level [level]\nTANK: high level above 186.5, overflow risk above 235.0; usual fill up to 125 min\nWINDOW: Wed 14 Oct 08:00 -> 14:25 IST, 78 x 5 min\nSERIES (10-min means): 297.2 294.5 292.2 289.8 287.1 284.4 281.7 279.2 276.9 274.2 271.5 268.8 266.5 263.8 261.4 259.0 256.2 254.3 254.4 254.5 254.1 254.3 254.6 253.8 254.6 254.1 254.1 253.9 254.4 254.3 254.2 254.3 254.5 254.1 253.9 254.3 254.2 254.1 254.0\nEVIDENCE:\nE1 last = 253.7 level\nE2 max = 297.9 level at 08:00\nE3 min = 253.7 level at 14:25\nE4 trend = -6.4 level/h (r2 0.74)\nE5 largest 5-min change = -1.9 level at 09:50\nE6 SMA 1h = 254.1, EMA 1h = 254.1, mean 6.5h = 264.0 level\nE7 halves 273.9 -> 254.2, curvature +15.0/h, oscillation crossings 2\nE8 noise 0.50, longest flat run 3 pts, plateau at max 0 pts\nE9 12 h view: slow drift -65.2 level since 02:30 (r2 0.85, 32.6x normal variation)\nE10 recent episodes: no excursions beyond 3x normal noise in the last 12 h<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n{\"pattern\": \""
+  },
+  {
+   "ttft_ms": 0,
+   "gen_tokens": 0,
+   "tokens_per_s": 0,
+   "early_stopped": false,
+   "ref": "S2",
+   "role": "water",
+   "model": "context agent (rules, CPU)",
+   "fine_tuned": false,
+   "latency_ms": 0,
+   "raw": "",
+   "parsed": {
+    "pattern": "stable",
+    "status": "normal",
+    "observations": [
+     "Flow steady around 4.98 m3/h, ranging only 4.80-5.16 [E6,E2,E3]"
+    ],
+    "likely_cause": "normal_usage",
+    "confidence": 0.8,
+    "action": "none"
+   },
+   "valid": true,
+   "errors": null,
+   "prompt": ""
+  },
+  {
+   "ttft_ms": 0,
+   "gen_tokens": 0,
+   "tokens_per_s": 0,
+   "early_stopped": false,
+   "ref": "S3",
+   "role": "occupancy",
+   "model": "context agent (rules, CPU)",
+   "fine_tuned": false,
+   "latency_ms": 0,
+   "raw": "",
+   "parsed": {
+    "pattern": "vacant",
+    "status": "normal",
+    "observations": [
+     "Room unoccupied for the whole 4-hour window [E2,E1]"
+    ],
+    "likely_cause": "vacant",
+    "confidence": 0.95,
+    "action": "none"
+   },
+   "valid": true,
+   "errors": null,
+   "prompt": ""
+  },
+  {
+   "ttft_ms": 0,
+   "gen_tokens": 0,
+   "tokens_per_s": 0,
+   "early_stopped": false,
+   "ref": "S4",
+   "role": "weather",
+   "model": "context agent (rules, CPU)",
+   "fine_tuned": false,
+   "latency_ms": 0,
+   "raw": "",
+   "parsed": {
+    "pattern": "stable",
+    "status": "normal",
+    "observations": [
+     "Temperature steady around 30.0 C, ranging only 29.5-30.3 [E6,E2,E3]"
+    ],
+    "likely_cause": "normal_weather",
+    "confidence": 0.8,
+    "action": "none"
+   },
+   "valid": true,
+   "errors": null,
+   "prompt": ""
+  }
+ ],
+ "final": {
+  "ttft_ms": 0,
+  "gen_tokens": 0,
+  "tokens_per_s": 0,
+  "early_stopped": false,
+  "model": "deterministic (related domains verified steady)",
+  "latency_ms": 0,
+  "raw": "",
+  "parsed": {
+   "root_cause": "Tank level gradual decrease on KH building, level 98, water tank level sensor 00 (tank overflow risk)",
+   "label": "water_supply_issue",
+   "affected_domains": [
+    "water"
+   ],
+   "evidence": [
+    "S1.E9",
+    "S1.E2",
+    "S2.E1",
+    "S3.E1",
+    "S4.E1"
+   ],
+   "confidence": 0.9,
+   "action": "inspect_water_system",
+   "explanation": "Tank level has drifted down -65.2 level since 02:30 [E9] Tank near capacity: 297.9 level vs high level 186.5 [E2] (from domain agent finding). Related domains checked and steady: Flow stable (S2), Occupancy vacant (S3), Temperature stable (S4), so the cause is local to this domain.",
+   "requires_human_approval": true,
+   "severity": "critical"
+  },
+  "valid": true,
+  "errors": null,
+  "prompt": ""
+ },
+ "total_ms": 3462,
+ "npu_calls": 1,
+ "timeline": [
+  {
+   "t": "18:15:25",
+   "msg": "Event gated: 4 sensor(s) flagged, mode 3"
+  },
+  {
+   "t": "18:15:25",
+   "msg": "Orchestrator: 1 sensor(s) to NPU agents, 3 related sensor(s) checked by context agents in parallel"
+  },
+  {
+   "t": "18:15:25",
+   "msg": "Water agent analysing WM-WL-KH98-00 level on NPU (fine-tuned)"
+  },
+  {
+   "t": "18:15:29",
+   "msg": "Water agent done in 3.5s (first token 0.7s, 87 tokens): gradual_decrease / critical (policy PASSED)"
+  },
+  {
+   "t": "18:15:29",
+   "msg": "Related domains checked and steady (3 context agents): isolated event, no synthesizer call needed"
+  },
+  {
+   "t": "18:15:29",
+   "msg": "Finished in 3.5s, 1 NPU call(s)"
+  },
+  {
+   "t": "18:15:46",
+   "msg": "Refined at 1.5 h (windows to 14:25 sensor time, 1 NPU call(s), 3.1s): no change"
+  }
+ ],
+ "approval": "pending",
+ "approval_note": "",
+ "refine_stage": "1.5h",
+ "next_refine_sim": 1791973500,
+ "sim_epoch": 1695233401554652635,
+ "revisions": [
+  {
+   "stage": "early",
+   "sim_end": 1791962700,
+   "wall": "2026-10-13 21:52:05",
+   "severity": "critical",
+   "title": "Tank level gradual decrease: KH building, level 98, water tank level sensor 00",
+   "label": "water_supply_issue",
+   "npu_calls": 1,
+   "ms": 3462,
+   "sensors": [
+    {
+     "ref": "S1",
+     "metric": "level",
+     "pattern": "gradual_decrease",
+     "status": "critical"
+    }
+   ]
+  },
+  {
+   "stage": "1.5h",
+   "sim_end": 1791968100,
+   "wall": "2026-10-13 21:52:23",
+   "severity": "critical",
+   "title": "Tank level gradual decrease: KH building, level 98, water tank level sensor 00",
+   "label": "water_supply_issue",
+   "npu_calls": 1,
+   "ms": 3113,
+   "sensors": [
+    {
+     "ref": "S1",
+     "metric": "level",
+     "pattern": "gradual_decrease",
+     "status": "critical"
+    }
+   ]
+  }
+ ]
+}

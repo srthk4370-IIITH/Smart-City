@@ -1,0 +1,778 @@
+{
+ "what": "REALWORLD.md section 5 cases missing from 3e (5.1, 5.2, 5.6, 5.7, 5.9, 5.11, 5.12)",
+ "created": "2026-10-23T12:28:16",
+ "args": {
+  "out": "/home/hp_srthk4370/smartcity_runs/agents_v2_topup3f/rw5",
+  "train_scale": 1.0,
+  "eval_scale": 1.5,
+  "only": "train,test,dev"
+ },
+ "files": {
+  "rw5_test.jsonl": {
+   "split": "test",
+   "seed": 4495,
+   "n": 306,
+   "sha256_16": "aa3d221abce98250",
+   "cases": {
+    "rw5_gap_calm": 36,
+    "rw5_gap_event": 44,
+    "rw5_gap_recovery": 33,
+    "rw5_glitch": 32,
+    "rw5_co2_floor": 30,
+    "rw5_holiday": 30,
+    "rw5_chatter": 52,
+    "rw5_daily_cycle": 30,
+    "rw5_hvac_stuck_on": 10,
+    "rw5_hvac_weekend_off": 9
+   },
+   "roles": {
+    "power": 79,
+    "water": 33,
+    "air_quality": 145,
+    "weather": 30,
+    "hvac": 19
+   },
+   "case_status": {
+    "rw5_gap_calm:stable/normal": 35,
+    "rw5_gap_event:stable/normal": 5,
+    "rw5_gap_event:erratic/normal": 1,
+    "rw5_gap_event:dip/critical": 2,
+    "rw5_gap_event:stable/warning": 1,
+    "rw5_gap_event:exponential_increase/critical": 2,
+    "rw5_gap_event:spike/warning": 1,
+    "rw5_gap_event:spike/critical": 1,
+    "rw5_gap_event:throttling/warning": 3,
+    "rw5_gap_event:throttling/critical": 1,
+    "rw5_gap_event:step_decrease/warning": 1,
+    "rw5_gap_event:erratic/critical": 1,
+    "rw5_gap_recovery:step_increase/critical": 11,
+    "rw5_gap_recovery:step_decrease/warning": 2,
+    "rw5_gap_recovery:step_increase/warning": 7,
+    "rw5_gap_recovery:step_increase/normal": 9,
+    "rw5_gap_event:gradual_decrease/warning": 1,
+    "rw5_gap_event:gradual_increase/warning": 4,
+    "rw5_gap_event:step_increase/critical": 1,
+    "rw5_gap_recovery:step_decrease/critical": 1,
+    "rw5_gap_calm:stable/warning": 1,
+    "rw5_gap_event:step_increase/normal": 2,
+    "rw5_gap_event:throttling/normal": 2,
+    "rw5_gap_event:spike/normal": 3,
+    "rw5_gap_event:gradual_decrease/normal": 3,
+    "rw5_gap_event:dip/warning": 1,
+    "rw5_gap_event:exponential_increase/warning": 2,
+    "rw5_gap_event:dip/normal": 3,
+    "rw5_gap_recovery:step_decrease/normal": 3,
+    "rw5_gap_event:step_decrease/normal": 1,
+    "rw5_gap_event:stable/critical": 1,
+    "rw5_gap_event:gradual_increase/normal": 1,
+    "rw5_glitch:spike/normal": 15,
+    "rw5_glitch:dip/sensor_fault": 9,
+    "rw5_glitch:spike/sensor_fault": 8,
+    "rw5_co2_floor:flatline/sensor_fault": 6,
+    "rw5_co2_floor:stable/sensor_fault": 16,
+    "rw5_co2_floor:step_decrease/sensor_fault": 8,
+    "rw5_holiday:stable/normal": 30,
+    "rw5_chatter:stable/warning": 52,
+    "rw5_daily_cycle:gradual_increase/warning": 3,
+    "rw5_daily_cycle:gradual_increase/critical": 1,
+    "rw5_daily_cycle:gradual_increase/normal": 26,
+    "rw5_hvac_stuck_on:stuck_on/warning": 10,
+    "rw5_hvac_weekend_off:setback_drift/normal": 9
+   },
+   "seen": {
+    "unseen": 107,
+    "seen": 185,
+    "unseen_sepoct": 14
+   },
+   "buckets": {
+    "rw5_gap_calm_power": {
+     "role": "power",
+     "quota": 9,
+     "made": 9,
+     "tries": 17,
+     "rejected": {},
+     "seconds": 0.0
+    },
+    "rw5_gap_event_power": {
+     "role": "power",
+     "quota": 12,
+     "made": 12,
+     "tries": 64,
+     "rejected": {},
+     "seconds": 0.0
+    },
+    "rw5_gap_recovery_power": {
+     "role": "power",
+     "quota": 9,
+     "made": 9,
+     "tries": 60,
+     "rejected": {},
+     "seconds": 0.0
+    },
+    "rw5_gap_calm_water": {
+     "role": "water",
+     "quota": 9,
+     "made": 9,
+     "tries": 3167,
+     "rejected": {},
+     "seconds": 0.3
+    },
+    "rw5_gap_event_water": {
+     "role": "water",
+     "quota": 12,
+     "made": 8,
+     "tries": 7200,
+     "rejected": {},
+     "seconds": 0.6
+    },
+    "rw5_gap_recovery_water": {
+     "role": "water",
+     "quota": 9,
+     "made": 6,
+     "tries": 5400,
+     "rejected": {},
+     "seconds": 0.4
+    },
+    "rw5_gap_calm_air_quality": {
+     "role": "air_quality",
+     "quota": 9,
+     "made": 9,
+     "tries": 33,
+     "rejected": {},
+     "seconds": 0.0
+    },
+    "rw5_gap_event_air_quality": {
+     "role": "air_quality",
+     "quota": 12,
+     "made": 12,
+     "tries": 46,
+     "rejected": {},
+     "seconds": 0.0
+    },
+    "rw5_gap_recovery_air_quality": {
+     "role": "air_quality",
+     "quota": 9,
+     "made": 9,
+     "tries": 60,
+     "rejected": {},
+     "seconds": 0.0
+    },
+    "rw5_gap_calm_weather": {
+     "role": "weather",
+     "quota": 9,
+     "made": 9,
+     "tries": 91,
+     "rejected": {
+      "dup": 1
+     },
+     "seconds": 0.0
+    },
+    "rw5_gap_event_weather": {
+     "role": "weather",
+     "quota": 12,
+     "made": 12,
+     "tries": 299,
+     "rejected": {},
+     "seconds": 0.0
+    },
+    "rw5_gap_recovery_weather": {
+     "role": "weather",
+     "quota": 9,
+     "made": 9,
+     "tries": 3009,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "rw5_glitch_air_quality": {
+     "role": "air_quality",
+     "quota": 22,
+     "made": 22,
+     "tries": 133,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "rw5_glitch_water": {
+     "role": "water",
+     "quota": 18,
+     "made": 10,
+     "tries": 10800,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "rw5_co2_floor_air_quality": {
+     "role": "air_quality",
+     "quota": 30,
+     "made": 30,
+     "tries": 73,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "rw5_holiday_power": {
+     "role": "power",
+     "quota": 18,
+     "made": 18,
+     "tries": 235,
+     "rejected": {},
+     "seconds": 0.2
+    },
+    "rw5_holiday_air_quality": {
+     "role": "air_quality",
+     "quota": 12,
+     "made": 12,
+     "tries": 330,
+     "rejected": {},
+     "seconds": 0.2
+    },
+    "rw5_chatter_air_quality": {
+     "role": "air_quality",
+     "quota": 18,
+     "made": 18,
+     "tries": 71,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "rw5_chatter_power": {
+     "role": "power",
+     "quota": 8,
+     "made": 8,
+     "tries": 31,
+     "rejected": {},
+     "seconds": 0.0
+    },
+    "rw5_daily_cycle_air_quality": {
+     "role": "air_quality",
+     "quota": 15,
+     "made": 15,
+     "tries": 1757,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "rw5_daily_cycle_power": {
+     "role": "power",
+     "quota": 15,
+     "made": 15,
+     "tries": 1222,
+     "rejected": {},
+     "seconds": 0.2
+    },
+    "rw5_hvac_stuck_on": {
+     "quota": 12,
+     "made": 10
+    },
+    "rw5_hvac_weekend_off": {
+     "quota": 9,
+     "made": 9
+    }
+   },
+   "seconds": 346.5
+  },
+  "rw5_dev.jsonl": {
+   "split": "test",
+   "seed": 4496,
+   "n": 301,
+   "sha256_16": "7298a142d6d786ba",
+   "cases": {
+    "rw5_gap_calm": 36,
+    "rw5_gap_event": 39,
+    "rw5_gap_recovery": 33,
+    "rw5_glitch": 30,
+    "rw5_co2_floor": 30,
+    "rw5_holiday": 30,
+    "rw5_chatter": 52,
+    "rw5_daily_cycle": 30,
+    "rw5_hvac_stuck_on": 12,
+    "rw5_hvac_weekend_off": 9
+   },
+   "roles": {
+    "power": 79,
+    "water": 26,
+    "air_quality": 145,
+    "weather": 30,
+    "hvac": 21
+   },
+   "case_status": {
+    "rw5_gap_calm:stable/normal": 36,
+    "rw5_gap_event:exponential_increase/warning": 8,
+    "rw5_gap_event:gradual_increase/warning": 2,
+    "rw5_gap_event:throttling/critical": 2,
+    "rw5_gap_event:throttling/warning": 4,
+    "rw5_gap_event:erratic/warning": 1,
+    "rw5_gap_event:spike/critical": 1,
+    "rw5_gap_event:oscillation/normal": 3,
+    "rw5_gap_event:step_increase/critical": 2,
+    "rw5_gap_recovery:step_increase/critical": 9,
+    "rw5_gap_recovery:step_decrease/warning": 4,
+    "rw5_gap_recovery:step_increase/warning": 6,
+    "rw5_gap_event:stable/normal": 5,
+    "rw5_gap_recovery:step_increase/normal": 11,
+    "rw5_gap_event:gradual_decrease/normal": 4,
+    "rw5_gap_event:step_decrease/normal": 2,
+    "rw5_gap_event:gradual_increase/normal": 1,
+    "rw5_gap_recovery:step_decrease/normal": 3,
+    "rw5_gap_event:step_increase/normal": 1,
+    "rw5_gap_event:spike/normal": 1,
+    "rw5_gap_event:dip/normal": 1,
+    "rw5_gap_event:throttling/normal": 1,
+    "rw5_glitch:spike/normal": 10,
+    "rw5_glitch:dip/sensor_fault": 11,
+    "rw5_glitch:spike/sensor_fault": 8,
+    "rw5_glitch:dip/normal": 1,
+    "rw5_co2_floor:stable/sensor_fault": 18,
+    "rw5_co2_floor:flatline/sensor_fault": 6,
+    "rw5_co2_floor:step_decrease/sensor_fault": 6,
+    "rw5_holiday:stable/normal": 30,
+    "rw5_chatter:stable/warning": 52,
+    "rw5_daily_cycle:gradual_increase/normal": 26,
+    "rw5_daily_cycle:gradual_increase/warning": 3,
+    "rw5_daily_cycle:gradual_increase/critical": 1,
+    "rw5_hvac_stuck_on:stuck_on/warning": 12,
+    "rw5_hvac_weekend_off:setback_drift/normal": 9
+   },
+   "seen": {
+    "seen": 172,
+    "unseen": 119,
+    "unseen_sepoct": 10
+   },
+   "buckets": {
+    "rw5_gap_calm_power": {
+     "role": "power",
+     "quota": 9,
+     "made": 9,
+     "tries": 31,
+     "rejected": {},
+     "seconds": 0.0
+    },
+    "rw5_gap_event_power": {
+     "role": "power",
+     "quota": 12,
+     "made": 12,
+     "tries": 46,
+     "rejected": {},
+     "seconds": 0.0
+    },
+    "rw5_gap_recovery_power": {
+     "role": "power",
+     "quota": 9,
+     "made": 9,
+     "tries": 62,
+     "rejected": {},
+     "seconds": 0.0
+    },
+    "rw5_gap_calm_water": {
+     "role": "water",
+     "quota": 9,
+     "made": 9,
+     "tries": 4023,
+     "rejected": {
+      "dup": 2
+     },
+     "seconds": 0.4
+    },
+    "rw5_gap_event_water": {
+     "role": "water",
+     "quota": 12,
+     "made": 3,
+     "tries": 7200,
+     "rejected": {},
+     "seconds": 0.7
+    },
+    "rw5_gap_recovery_water": {
+     "role": "water",
+     "quota": 9,
+     "made": 6,
+     "tries": 5400,
+     "rejected": {},
+     "seconds": 0.4
+    },
+    "rw5_gap_calm_air_quality": {
+     "role": "air_quality",
+     "quota": 9,
+     "made": 9,
+     "tries": 28,
+     "rejected": {},
+     "seconds": 0.0
+    },
+    "rw5_gap_event_air_quality": {
+     "role": "air_quality",
+     "quota": 12,
+     "made": 12,
+     "tries": 19,
+     "rejected": {},
+     "seconds": 0.0
+    },
+    "rw5_gap_recovery_air_quality": {
+     "role": "air_quality",
+     "quota": 9,
+     "made": 9,
+     "tries": 57,
+     "rejected": {},
+     "seconds": 0.0
+    },
+    "rw5_gap_calm_weather": {
+     "role": "weather",
+     "quota": 9,
+     "made": 9,
+     "tries": 57,
+     "rejected": {},
+     "seconds": 0.0
+    },
+    "rw5_gap_event_weather": {
+     "role": "weather",
+     "quota": 12,
+     "made": 12,
+     "tries": 305,
+     "rejected": {},
+     "seconds": 0.0
+    },
+    "rw5_gap_recovery_weather": {
+     "role": "weather",
+     "quota": 9,
+     "made": 9,
+     "tries": 4653,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "rw5_glitch_air_quality": {
+     "role": "air_quality",
+     "quota": 22,
+     "made": 22,
+     "tries": 163,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "rw5_glitch_water": {
+     "role": "water",
+     "quota": 18,
+     "made": 8,
+     "tries": 10800,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "rw5_co2_floor_air_quality": {
+     "role": "air_quality",
+     "quota": 30,
+     "made": 30,
+     "tries": 71,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "rw5_holiday_power": {
+     "role": "power",
+     "quota": 18,
+     "made": 18,
+     "tries": 185,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "rw5_holiday_air_quality": {
+     "role": "air_quality",
+     "quota": 12,
+     "made": 12,
+     "tries": 211,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "rw5_chatter_air_quality": {
+     "role": "air_quality",
+     "quota": 18,
+     "made": 18,
+     "tries": 86,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "rw5_chatter_power": {
+     "role": "power",
+     "quota": 8,
+     "made": 8,
+     "tries": 29,
+     "rejected": {},
+     "seconds": 0.0
+    },
+    "rw5_daily_cycle_air_quality": {
+     "role": "air_quality",
+     "quota": 15,
+     "made": 15,
+     "tries": 1792,
+     "rejected": {},
+     "seconds": 0.2
+    },
+    "rw5_daily_cycle_power": {
+     "role": "power",
+     "quota": 15,
+     "made": 15,
+     "tries": 1988,
+     "rejected": {},
+     "seconds": 0.3
+    },
+    "rw5_hvac_stuck_on": {
+     "quota": 12,
+     "made": 12
+    },
+    "rw5_hvac_weekend_off": {
+     "quota": 9,
+     "made": 9
+    }
+   },
+   "seconds": 20.5
+  },
+  "rw5_train.jsonl": {
+   "split": "train",
+   "seed": 4495,
+   "n": 487,
+   "sha256_16": "4225fbf4b0ad7b65",
+   "cases": {
+    "rw5_gap_calm": 60,
+    "rw5_gap_event": 80,
+    "rw5_gap_recovery": 60,
+    "rw5_glitch": 70,
+    "rw5_co2_floor": 50,
+    "rw5_holiday": 50,
+    "rw5_chatter": 42,
+    "rw5_daily_cycle": 46,
+    "rw5_hvac_stuck_on": 14,
+    "rw5_hvac_weekend_off": 15
+   },
+   "roles": {
+    "power": 113,
+    "water": 80,
+    "air_quality": 215,
+    "weather": 50,
+    "hvac": 29
+   },
+   "case_status": {
+    "rw5_gap_calm:stable/normal": 58,
+    "rw5_gap_calm:stable/critical": 1,
+    "rw5_gap_event:throttling/critical": 2,
+    "rw5_gap_event:stable/normal": 16,
+    "rw5_gap_event:stable/warning": 2,
+    "rw5_gap_event:erratic/warning": 1,
+    "rw5_gap_event:throttling/warning": 3,
+    "rw5_gap_event:gradual_increase/normal": 6,
+    "rw5_gap_event:erratic/critical": 2,
+    "rw5_gap_event:step_increase/critical": 3,
+    "rw5_gap_event:gradual_decrease/critical": 3,
+    "rw5_gap_event:dip/critical": 2,
+    "rw5_gap_event:exponential_increase/normal": 1,
+    "rw5_gap_event:oscillation/normal": 3,
+    "rw5_gap_recovery:step_increase/critical": 15,
+    "rw5_gap_recovery:step_increase/warning": 24,
+    "rw5_gap_recovery:step_decrease/warning": 5,
+    "rw5_gap_recovery:step_decrease/critical": 2,
+    "rw5_gap_event:spike/warning": 5,
+    "rw5_gap_event:gradual_decrease/normal": 3,
+    "rw5_gap_event:spike/critical": 2,
+    "rw5_gap_event:exponential_increase/critical": 1,
+    "rw5_gap_event:dip/warning": 3,
+    "rw5_gap_event:step_increase/normal": 5,
+    "rw5_gap_event:step_decrease/warning": 2,
+    "rw5_gap_event:stable/critical": 1,
+    "rw5_gap_event:throttling/normal": 2,
+    "rw5_gap_event:gradual_increase/critical": 1,
+    "rw5_gap_recovery:step_increase/normal": 13,
+    "rw5_gap_calm:stable/warning": 1,
+    "rw5_gap_event:gradual_increase/warning": 1,
+    "rw5_gap_event:dip/normal": 3,
+    "rw5_gap_event:spike/normal": 3,
+    "rw5_gap_recovery:step_decrease/normal": 1,
+    "rw5_gap_event:exponential_increase/warning": 2,
+    "rw5_gap_event:step_decrease/normal": 2,
+    "rw5_glitch:dip/sensor_fault": 17,
+    "rw5_glitch:spike/sensor_fault": 22,
+    "rw5_glitch:spike/normal": 24,
+    "rw5_glitch:dip/normal": 7,
+    "rw5_co2_floor:stable/sensor_fault": 26,
+    "rw5_co2_floor:flatline/sensor_fault": 8,
+    "rw5_co2_floor:step_decrease/sensor_fault": 16,
+    "rw5_holiday:stable/normal": 50,
+    "rw5_chatter:stable/warning": 42,
+    "rw5_daily_cycle:gradual_increase/warning": 14,
+    "rw5_daily_cycle:gradual_increase/critical": 9,
+    "rw5_daily_cycle:gradual_increase/normal": 23,
+    "rw5_hvac_stuck_on:stuck_on/warning": 14,
+    "rw5_hvac_weekend_off:setback_drift/normal": 15
+   },
+   "seen": {
+    "seen": 487
+   },
+   "buckets": {
+    "rw5_gap_calm_power": {
+     "role": "power",
+     "quota": 15,
+     "made": 15,
+     "tries": 55,
+     "rejected": {},
+     "seconds": 0.0
+    },
+    "rw5_gap_event_power": {
+     "role": "power",
+     "quota": 20,
+     "made": 20,
+     "tries": 218,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "rw5_gap_recovery_power": {
+     "role": "power",
+     "quota": 15,
+     "made": 15,
+     "tries": 767,
+     "rejected": {},
+     "seconds": 0.2
+    },
+    "rw5_gap_calm_water": {
+     "role": "water",
+     "quota": 15,
+     "made": 15,
+     "tries": 199,
+     "rejected": {},
+     "seconds": 0.0
+    },
+    "rw5_gap_event_water": {
+     "role": "water",
+     "quota": 20,
+     "made": 20,
+     "tries": 411,
+     "rejected": {},
+     "seconds": 0.5
+    },
+    "rw5_gap_recovery_water": {
+     "role": "water",
+     "quota": 15,
+     "made": 15,
+     "tries": 354,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "rw5_gap_calm_air_quality": {
+     "role": "air_quality",
+     "quota": 15,
+     "made": 15,
+     "tries": 35,
+     "rejected": {},
+     "seconds": 0.0
+    },
+    "rw5_gap_event_air_quality": {
+     "role": "air_quality",
+     "quota": 20,
+     "made": 20,
+     "tries": 55,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "rw5_gap_recovery_air_quality": {
+     "role": "air_quality",
+     "quota": 15,
+     "made": 15,
+     "tries": 79,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "rw5_gap_calm_weather": {
+     "role": "weather",
+     "quota": 15,
+     "made": 15,
+     "tries": 67,
+     "rejected": {},
+     "seconds": 0.0
+    },
+    "rw5_gap_event_weather": {
+     "role": "weather",
+     "quota": 20,
+     "made": 20,
+     "tries": 163,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "rw5_gap_recovery_weather": {
+     "role": "weather",
+     "quota": 15,
+     "made": 15,
+     "tries": 249,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "rw5_glitch_air_quality": {
+     "role": "air_quality",
+     "quota": 40,
+     "made": 40,
+     "tries": 184,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "rw5_glitch_water": {
+     "role": "water",
+     "quota": 30,
+     "made": 30,
+     "tries": 338,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "rw5_co2_floor_air_quality": {
+     "role": "air_quality",
+     "quota": 50,
+     "made": 50,
+     "tries": 78,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "rw5_holiday_power": {
+     "role": "power",
+     "quota": 30,
+     "made": 30,
+     "tries": 377,
+     "rejected": {},
+     "seconds": 0.2
+    },
+    "rw5_holiday_air_quality": {
+     "role": "air_quality",
+     "quota": 20,
+     "made": 20,
+     "tries": 3692,
+     "rejected": {},
+     "seconds": 0.6
+    },
+    "rw5_chatter_air_quality": {
+     "role": "air_quality",
+     "quota": 30,
+     "made": 30,
+     "tries": 82,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "rw5_chatter_power": {
+     "role": "power",
+     "quota": 12,
+     "made": 12,
+     "tries": 17,
+     "rejected": {},
+     "seconds": 0.0
+    },
+    "rw5_daily_cycle_air_quality": {
+     "role": "air_quality",
+     "quota": 25,
+     "made": 25,
+     "tries": 2840,
+     "rejected": {},
+     "seconds": 0.2
+    },
+    "rw5_daily_cycle_power": {
+     "role": "power",
+     "quota": 25,
+     "made": 21,
+     "tries": 15000,
+     "rejected": {},
+     "seconds": 1.0
+    },
+    "rw5_hvac_stuck_on": {
+     "quota": 20,
+     "made": 14
+    },
+    "rw5_hvac_weekend_off": {
+     "quota": 15,
+     "made": 15
+    }
+   },
+   "seconds": 17.1
+  }
+ }
+}

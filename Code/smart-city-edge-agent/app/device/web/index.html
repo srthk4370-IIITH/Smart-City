@@ -29,6 +29,8 @@
     <div class="brand"><img src="icon.svg" alt="" width="30" height="30"><b>Smart City Edge</b></div>
     <div class="bar-r">
       <span class="clk" id="c-time" title="Sensor time (IST)">-</span>
+      <button class="ibtn opbtn" id="op" type="button" aria-label="Choose who is using this device"></button>
+      <button class="ibtn" id="eng" type="button" aria-pressed="false" aria-label="Engineering view: show modes, models and evidence" title="Engineering view"></button>
       <button class="ibtn" id="theme" type="button" aria-label="Switch between light and dark mode"></button>
     </div>
   </div>
@@ -42,7 +44,7 @@
   <a href="#about" data-view="about"></a>
 </nav>
 
-<div class="modebar">
+<div class="modebar eng-only">
   <div class="wrap">
     <div class="mb-row">
       <div class="seg seg-mode" id="m-seg" role="group" aria-label="Reasoning mode" style="--n:3">
@@ -55,19 +57,32 @@
 </div>
 
 <main class="wrap" id="main">
+  <div id="shift" class="shift" role="status" aria-live="polite" hidden></div>
   <section id="view-sensors" class="view">
     <div class="ltitle"><h1>Sensors</h1><p>Move a slider and watch the agents react. You are the sensor.</p></div>
+    <nav id="dh-strip" class="dh-strip" aria-label="Domain health at a glance"></nav>
     <div id="sens"><div class="empty">Loading sensors ...</div></div>
   </section>
   <section id="view-live" class="view">
     <div class="ltitle"><h1>Campus Live</h1><p id="l-sub">Connecting to the edge device ...</p></div>
     <div id="hero"></div>
+    <section id="dh" class="dh" aria-labelledby="dh-t">
+      <div class="dh-hd"><h2 id="dh-t">Campus health</h2><span id="dh-conn" class="dh-conn off">○ Connecting</span></div>
+      <div class="dh-hd2"><p id="dh-sub" class="dh-sum0">Checking the six areas ...</p><a id="dh-dec" class="dh-dec" href="#incidents" hidden></a></div>
+      <div id="dh-grid" class="dh-grid"><div class="empty">Checking the six areas ...</div></div>
+      <p id="dh-live" class="sr-only" aria-live="polite"></p>
+    </section>
     <div class="chips" id="dom-chips" role="group" aria-label="Filter by domain"></div>
     <div id="live-grid" class="dgrid"></div>
   </section>
   <section id="view-incidents" class="view">
-    <div class="ltitle"><h1>Incidents</h1><p>AI-analysed events. Every recommendation waits for your decision.</p></div>
-    <div class="chips" id="inc-chips" role="group" aria-label="Filter incidents"></div>
+    <div class="ltitle"><h1>Incidents</h1><p>Problems the AI has checked. Nothing is switched until you decide.</p></div>
+    <div class="inc-tools" id="inc-tools">
+      <input id="inc-q" class="note-in" type="search" placeholder="Search incidents, sensors, people" aria-label="Search incidents" autocomplete="off">
+      <select id="inc-dom" class="sel" aria-label="Filter by domain"><option value="all">All domains</option></select>
+      <select id="inc-date" class="sel" aria-label="Filter by date"><option value="any">Any time</option><option value="today">Today</option><option value="24h">Last 24 h</option><option value="7d">Last 7 days</option></select>
+    </div>
+    <div class="chips" id="inc-chips" role="group" aria-label="Filter incidents by state"></div>
     <div id="inc-list" class="inc-list"></div>
   </section>
   <section id="view-map" class="view">
@@ -88,10 +103,20 @@
   <div class="sheet-ft" id="sheet-ft"></div>
 </section>
 
+<section id="dsheet" class="sheet" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="dsheet-t">
+  <div class="sheet-hd"><i class="grab"></i><div class="sheet-row"><div class="sheet-t" id="dsheet-t">Area</div><button type="button" class="btn plain" data-close="dsheet">Done</button></div></div>
+  <div class="sheet-bd" id="dsheet-bd"></div>
+</section>
+
 <section id="isheet" class="sheet" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Incident detail">
   <div class="sheet-hd"><i class="grab"></i><div class="sheet-row"><div class="sheet-t" id="isheet-t">Incident</div><button type="button" class="btn plain" data-close="isheet">Done</button></div></div>
   <div class="sheet-bd" id="inc-detail"></div>
   <div class="sheet-ft" id="inc-foot"></div>
+</section>
+
+<section id="opsheet" class="sheet" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="opsheet-t">
+  <div class="sheet-hd"><i class="grab"></i><div class="sheet-row"><div class="sheet-t" id="opsheet-t">Who is using this device?</div><button type="button" class="btn plain" data-close="opsheet">Done</button></div></div>
+  <div class="sheet-bd" id="opsheet-bd"></div>
 </section>
 
 <!-- floating sheet over the incident: one flagged sensor's window chart + its agent's output -->

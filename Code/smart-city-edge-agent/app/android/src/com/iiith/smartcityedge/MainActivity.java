@@ -1,6 +1,7 @@
 package com.iiith.smartcityedge;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
@@ -20,6 +21,10 @@ import java.net.URL;
 /** Full-screen native shell for the on-device dashboard served by EdgeService on 127.0.0.1:8000. */
 public class MainActivity extends Activity {
     static final String URL_HOME = "http://127.0.0.1:8000/";
+    static final String EXTRA_INCIDENT = "incident";
+    /** true while the dashboard is in front: EdgeService then leaves alerting to the page (UX v34). */
+    static volatile boolean foreground = false;
+    private volatile String pendingIncident; // opened from a notification before the page loaded
     private WebView web;
     private final Handler ui = new Handler(Looper.getMainLooper());
 
@@ -27,6 +32,7 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle b) {
         super.onCreate(b);
         EdgeService.start(this);
+        pendingIncident = incidentOf(getIntent());
         if (checkSelfPermission("android.permission.POST_NOTIFICATIONS") != 0) {
             requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 1);
         }
@@ -86,7 +92,11 @@ public class MainActivity extends Activity {
                     c.setConnectTimeout(1000);
                     c.setReadTimeout(3000);
                     if (c.getResponseCode() == 200) {
-                        ui.post(() -> web.loadUrl(URL_HOME));
+                        ui.post(() -> {
+                            String id = pendingIncident;
+                            pendingIncident = null;
+                            web.loadUrl(URL_HOME + (id != null ? "#incident/" + id : ""));
+                        });
                         return;
                     }
                 } catch (Exception ignored) {
@@ -100,6 +110,35 @@ public class MainActivity extends Activity {
         }).start();
     }
 
+    /** The incident id a notification asked to open (validated: it ends up in the page URL). */
+    private static String incidentOf(Intent i) {
+        String id = i == null ? null : i.getStringExtra(EXTRA_INCIDENT);
+        return id != null && id.matches("INC-\\d{1,8}") ? id : null;
+    }
+
+    @Override
+    protected void onNewIntent(Intent i) {
+        super.onNewIntent(i);
+        setIntent(i);
+        String id = incidentOf(i);
+        if (id == null) return;
+        String cur = web.getUrl();
+        if (cur != null && cur.startsWith(URL_HOME)) web.evaluateJavascript("location.hash='incident/" + id + "'", null);
+        else pendingIncident = id;
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        foreground = true;
+    }
+
+    @Override
+    protected void onPause() {
+        foreground = false;
+        super.onPause();
+    }
+
     private void hideBars() {
         WindowInsetsController c = getWindow().getInsetsController();
         if (c != null) {
@@ -110,7 +149,13 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        if (web.canGoBack()) web.goBack();
+        // Go back only within the dashboard (closes an open sensor sheet, which pushes a history entry).
+        // The entry before the dashboard is the black "Starting..." placeholder page (loadData): going
+        // back to it left a blank screen with no way out on the kiosk board (found 2026-10-21).
+        android.webkit.WebBackForwardList h = web.copyBackForwardList();
+        int i = h.getCurrentIndex();
+        String prev = i > 0 ? h.getItemAtIndex(i - 1).getUrl() : null;
+        if (prev != null && prev.startsWith(URL_HOME)) web.goBack();
         else moveTaskToBack(true); // keep the service running
     }
 

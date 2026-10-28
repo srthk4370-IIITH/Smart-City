@@ -1626,6 +1626,601 @@ Everything (cases, exact prompts, raw outputs, CIs, paired tests, plots) is in
 - Screenshots: `proofs/2026-10-16_ux_report_page/`. App stress test on this build: 133/135, only the 2
   thermal checks failed.
 
+## 2.39 Where the 4 h window sits; refined re-analysis; 12 h checks; AI titles (2026-10-16)
+
+### The agent reads events better later
+- **The problem.** The AI runs once a sensor has been abnormal for 8 readings, so the event sits in the
+  window's last ~40 minutes. Training put events earlier in the window.
+- **The test.** The same 208 events were placed 20 min to 3 h before the window end: 1248 NPU calls,
+  `proofs/2026-10-16_placement_study`.
+- **The result.** Pattern accuracy is 42% at 40 min, 57% at 1 h, 67% at 1.5 h, 76% at 2 h and 88% at
+  3 h (p < 0.0001 at each point).
+  - Steps are reliable from 1 h.
+  - Flatlines, slow decreases and exponential rises from 1.5 h.
+  - Slow rises, oscillation and erratic only at 3 h.
+  - Spikes and dips are best early.
+
+### Early alert + refined re-analysis (`refine.go`)
+- **Early alert:** unchanged (8 readings).
+- **Refinements:** every Mode-3 incident is re-analysed automatically when its windows end 18 readings
+  (1.5 h) and 36 readings (3 h) after the original window.
+  - All its sensors are re-read, whether or not they are still abnormal.
+  - Agents, synthesizer, policy gate, severity and title run through the same pipeline
+    (`Reasoner.analyse`).
+- **What is shown.** The refined finding replaces the early one, and `revisions[]` keeps the history.
+  - The page shows an EARLY / REFINED 1.5 h / REFINED 3 h badge and a History fold.
+  - Exception: an early spike or dip is kept when the refined answer is only "stable", because the event
+    is over, not wrong.
+- **Priority.** Refinements queue behind every new alert and operator job, and yield between NPU calls.
+  They never change approval or the event gate.
+- **Thermal.** They wait when the board is hot and while the operator is in Mode 1.
+- **Not refined:** Mode 2 (one call reads every sensor) and Mode 1 (no AI).
+- **After a backend restart,** sensor history is gone, so pending refinements are dropped with a note.
+- **Demo timing:** at 2 s polls the refinements land about 36 s and 72 s after the alert.
+- **Cost:** up to 3× the NPU work per incident, spread over 3 h of sensor time. A heatsink matters
+  more now.
+
+### 12 h checks for what the 4 h agent misses (`longrange.go`)
+- **Ships:** level shift and slow drift, computed on the CPU for each flagged sensor over its last 12 h.
+  - They give the reasoner evidence lines `S#.E9` / `S#.E10`, which the policy gate accepts.
+  - The sensor sheet shows them as "Longer view (last 12 h)".
+- **Results** (tuned on dev months, tested once on test months, `proofs/2026-10-16_longrange`):
+  - Old steps caught 73% → 93% (p = 0.0005); drifts 83% → 95% (p = 0.016).
+  - No new false alarms on calm windows; the agent's accuracy is unchanged.
+- **Tried and dropped:** a recurring small-excursion check, and a "same hours yesterday" baseline. Real
+  sensors do both all the time.
+- **Still unsolved:** recurring sub-threshold spikes.
+- The Go code mirrors `training/window_study/longrange.py`; `longrange_test.go` checks the two against
+  24 fixtures.
+- **They need ≥ 8 h of history,** so after an app restart they stay silent for the first ~8 min of the
+  demo (5 h is pre-filled).
+
+### Titles follow the AI (`title.go`)
+- When an analysis or refinement completes, the title is rebuilt from what the agents confirmed and the
+  reasoner's root-cause label, e.g. "Weather driven: PM2.5 critical, Power warning" or
+  "All clear: 3 sensors checked".
+- A title written by the reasoner itself wins (capped at 120 characters).
+- The rules' title stays as `rule_title`, shown as "Raised by the rules as: …".
+
+## 2.40 Domain-agent retrain v2 (2026-10-16 → in progress)
+
+This is the final training of the domain agents; the cross-domain reasoner comes next.
+- **Plan:** 24 decisions plus 12 data decisions, in `training/RETRAIN_V2_SPEC.md`.
+- **Run log, interruptions and evidence:** `proofs/2026-10-17_retrain_v2/RESULTS.md`.
+
+### Why
+- The placement study (2.39) showed the agent is misread when asked 40 min after an event starts: 42% vs 88% at 3 h.
+- It knew only 4 h windows.
+- It missed old steps, slow drifts and recurring small spikes.
+- It called ~31% of normal routines alarms.
+- v2 fixes the training data instead of patching around it.
+
+### Data (`training/v2/`, generated locally, nothing leaves the laptop)
+- **Size:** 35,946 train / 1,947 dev / 2,965 test rows for **six roles**: air quality, water, power, occupancy, weather and a new **HVAC** agent (per indoor unit, from `SR-AC.csv`).
+- **Time and history:**
+  - window lengths 2–12 h, with event ages from 15 min up to the whole window;
+  - event sizes 1.5–12× noise (small ones labelled normal);
+  - two new history lines in the prompt: E9 "12 h view" (level shift / drift) and E10 "recent episodes".
+- **What it is taught to recognise:**
+  - all 12 v1 patterns plus recurring small spikes, old level shifts and long drifts;
+  - seven sensor-fault kinds;
+  - compound shapes;
+  - abnormal tank fills;
+  - routines that look like alarms but are normal (refills, load switching, daily cycles, HVAC cycling, schedules);
+  - HVAC: too hot/cold, slow recovery, no cooling effect, short-cycling, stuck on/off, and an AC running in an empty room → `switch_off_ac`, a recommendation the operator must approve.
+- **Labels and output:**
+  - frozen output schema with `event_active`, `onset` and `fault_kind`;
+  - at most 2 short observations; confidence calibrated from measured accuracy.
+- **Holdouts:** test months (Nov–Dec) plus about 15% of sensors held out completely.
+- **QA:** every hard check passes; a 60-sample review page is in `data/sft_v2/review.html`.
+
+### Training
+- **Model and setup:** QLoRA on Llama-3.2-3B-Instruct, r=32, 2 epochs = 4,494 steps, ~40 s/step on the laptop GPU (capped at ~50 W). About 50 h of GPU time.
+- **How it runs:** in sessions under `training/v2/run_v2.ps1`, launched via WMI so it does not depend on any terminal:
+  - full mode (WSL 11 GB / 4 cores) or `-Background` (WSL 6 GB / 2 cores, so the laptop stays usable);
+  - checkpoints every ~10 min, auto-resume after a reboot;
+  - a clean stop with `%LOCALAPPDATA%\sce_train\STOP_TRAINING`, which also restores the user's own `.wslconfig` and power settings.
+- **Rules learned the hard way:**
+  - keep the lid **open**: a closed lid enters Modern Standby and freezes WSL;
+  - keep it on AC;
+  - WSL networking is off during training: a `vfpext.sys` blue screen came from the Hyper-V virtual switch;
+  - the GPU pauses at 76 °C: at 81 °C the laptop went into thermal sleep.
+- **Progress:** stopped cleanly 2026-10-20 14:15 at **step 4,137 / 4,494 (92%)**, checkpoint-4137; 357 steps (~4 h) left. Best dev loss **0.0547** (step 3900). Dev loss 0.131 → 0.0985 → 0.0923 → 0.0809 → 0.0772 → 0.0685 → 0.0682 → 0.0660 → 0.0610 → 0.0604 → 0.0584 → 0.0556 → **0.0547** (steps 300 … 3900, every 300). Train loss per token ≈ dev loss, so no overfitting so far.
+
+### After training (planned)
+1. Merge, convert to GGUF Q4_0 (imatrix from our own prompts), then run on htpd on the QIDK.
+2. Mirror `features_v2` (E9/E10, any window length, HVAC evidence) and the severity × stage window ladder in the Go backend.
+3. Acceptance on the NPU, test months only:
+   - pattern ≥ 65% at 40 min and ≥ 88% at 3 h;
+   - no regression on the 54/900-window sets;
+   - fewer false alarms (status ≠ normal on calm or routine windows);
+   - then a latency optimisation pass back to ≤ today's numbers (accuracy first; HANDBOOK 2.37 levers).
+4. Recalibrate confidence in the backend from v2's own placement-study results.
+
+## 2.41 v2 backend support (2026-10-20)
+
+The Go backend can now run the v2 domain agents. **Default stays v1**: nothing changes until the switch is set.
+
+**Switch.** `/data/local/tmp/smart_city_edge/agent_version` containing `v2` (or `SCE_AGENT_VERSION=v2`), read once at
+backend start (`agentversion.go`). With v2:
+- **Prompts** (`features_v2.go`, `hvac_v2.go`): line-by-line port of `training/v2/features_v2.py` (any N 24..144,
+  E9 12 h view, E10 recent episodes, TANK line from `data/node_limits_v2.json`, v2 schema hint and rules) and the
+  HVAC path of `hvac_adapter.make_examples`. **Parity: 275/275 Python prompts byte-identical** (all 6 roles, 21 window
+  lengths, 51 history lengths incl. < 8 h, 37 TANK lines, 65 E9 findings), plus the HVAC teacher rule 75/75
+  (`testdata/v2_prompt_fixtures.json`, written by `training/v2/make_go_fixtures.py`). v1 parity still 400/400.
+- **Policy gate:** v2 whitelists per role (water + `tank_overflow_risk`, `fill_valve_stuck`; HVAC patterns/causes;
+  `switch_off_ac` = recommendation only; fault kinds incl. `quantised`). Action derived by `ActionOfRole` (v2 teacher
+  tables; identical to v1 for every v1 cause). Valid evidence ids = the ids the prompt showed (E1..E10).
+- **Window ladder:** early alert 4 h for every sensor; 1.5 h / 3 h refinements: normal 4 h, warning 8 h,
+  critical or sensor fault 12 h (worse of incident severity and the sensor's finding). The engine keeps 13 h of
+  readings so 12 h windows exist from the start. Flagged sensors' evidence is the agent's own E1..E10.
+- **HVAC per unit (D1):** `data/sensors_hvac_v2.json` (3 real units: KH03-15 and KH02-24 office, KH95-02 continuous;
+  room_temp / setpoint / ac_on + TRAIN-month schedule, `training/v2/make_app_hvac_units.py`). The HVAC teacher rule
+  gates their events; the HVAC agent gets "occupancy n/a" (no room feed). The floor aggregate AC-KH03 stays context.
+- **htpd:** model `/data/local/tmp/gpu/ft_v2_q4_0.gguf` (or `SCE_HTPD_MODEL`), `--agents 10 --agent-ctx 1280`
+  (12 h prompts ~1.1k tokens + ~120 out; 10 x 1280 = 12.8k KV vs v1 13 x 768 = 10k; a 13-agent incident runs 10 + 3).
+  An htpd left running with other args is restarted (`state/htpd_args`).
+- **Confidence (D4):** model output kept; `ConfidenceRecalV2` table is the placeholder to fill from the v2 device
+  placement study.
+
+Tests: `features_v2_test.go`, `v2_backend_test.go` (switch, HVAC unit end to end, water causes, ladder 48 -> 96 -> 144
+through the real refinement pipeline). Full suite green; `bld.sh` and `build_apk.sh` build (APK now ships every
+`device/data/*.json`).
+
+## 2.42 v2 deployed in the app; dynamic window by shape and onset; overnight fixes (2026-10-21)
+
+**Deployed.** The user decided (AskUserQuestion, 2026-10-21) to ship v2 despite the 3 h miss: 40 min 73.8% vs v1 42%,
+false alarms 18% vs 31%, 3 h 82.5% vs 88%. APK built and installed, `agent_version` = `v2`, htpd runs
+`ft_v2_q4_0.gguf` with 10 x 1280 (log shows `n_ctx 12800`, `n_ctx_seq 1280`). Rollback: `app/android/out/rollback_v1/`
+plus `rm agent_version` (the v1 GGUF stays on the board). `state/htpd.log` was root-owned from an old run, so htpd
+logged to /dev/null; it was renamed `htpd.log.root_old`.
+
+**Is the 88% a fair baseline?** (`proofs/2026-10-21_v2_research/accuracy/`)
+- Same generator and seed as v1, but only 7 of 154 base windows are shared, the pattern mix differs and the prompts
+  differ. 82.5 vs 88.5% is p ≈ 0.09.
+- Scored the way the app actually reports, with the keep-early-spike rule plus the window ladder, v2 gets 85.8% at 3 h.
+- Q4_0 versus host bf16 on 112 paired rows: 110 of 112 agree.
+
+**Dynamic window = shape × stage, grown to cover the onset** (`features_v2.go WindowN`, `eventAge`; `refine.go`).
+The severity ladder was replaced: the study showed severity alone does not help (critical 76/79/82%, not
+significant).
+- The early alert reads 4 h.
+- Refinements choose by the early call's shape:
+
+  | early shape | 1.5 h refine | 3 h refine |
+  |---|---|---|
+  | trend | 4 h | 4 h |
+  | spike / dip | 8 h | 8 h |
+  | step | 4 h | 8 h |
+  | noisy | 4 h | 12 h |
+  | flatline, or a sensor fault on a flat or noisy signal | 12 h | 12 h |
+  | other sensor fault | 8 h | 8 h |
+  | unrecognised, or "stable" yet warning/critical | 8 h | 8 h |
+  | occupancy / HVAC | 4 h | 4 h |
+
+- The window then grows (up to 12 h) to hold the onset plus 1 h of baseline, because training never showed an
+  onset older than the window.
+- The onset comes from the latest finding, searched over the 12 h history: the model may date it from E9/E10.
+  Without an onset, the alert time plus 1 h is used.
+- On the device data, run through the app's reporting chain, 3 h pattern accuracy rises from 85.8% to 91.8%
+  (p = 0.003) and 1.5 h from 79.2% to 85.2%. The policy was partly tuned on the same events, so the
+  cross-validated estimate is about 87–90%.
+- **Confirmed on a fresh seed (24)**, 182 new events of which 23 share a base window with seed 23, device run
+  (`proofs/2026-10-21_v2_confirm/`, `sim_chain_s24.py`):
+
+  | policy | 1.5 h | 3 h | mean 3 h window (readings) |
+  |---|---|---|---|
+  | old severity ladder | 76.9% | 80.8% | 104 |
+  | fixed 4 h | 81.9% | 85.2% | 48 |
+  | **WindowN** | **83.0%** | **86.3%** | 86 |
+
+  New vs old ladder, paired at 3 h: 13 wins against 3, McNemar p = 0.021. Still short of 88%; the misses are
+  erratic (14/21) and exponential (15/21).
+- Plain 4 h placement on seed 24: 40 min 78%, 3 h 83%, clean false alarms 17%.
+- Through the app, all 10 scenarios back to back (`proofs/2026-10-21_v2_app/refine_combined/`): 10 of 10 reached
+  3 h, and `check_windows.py` found 30 of 30 windows trained-length and covering onset + 1 h.
+
+**Invalid batched answers re-run alone** (`reason.go`, `genie.go Forget`).
+- 0.8% of batched answers are runaways or off-label, in runs of neighbouring streams. That points to the batch,
+  not the model.
+- An answer that fails the policy gate is now re-run once, alone and past the prompt cache, at most 3 per incident.
+- A second invalid answer keeps the first. Test: `TestInvalidAgentSoloRerun`.
+
+**`load_surge` re-arm** (`engine.go`; `loadsurge_test.go`).
+- A sensor already reported in an incident could not raise a new event until its status cleared, so a spike on a
+  meter that was still throttling was swallowed.
+- Fix: a new narrow spike or dip (3 readings or fewer above half its height) that starts inside the window and
+  after the last report re-arms the sensor.
+- The calm-board and held-event tests show no new alerts. v1 had not actually failed this scenario:
+  `stress_app.py` prints evidence text even on passing checks.
+
+**Latency:** `HTPD_DRAFT_K=8` (verified drafts, so outputs are unchanged under greedy decoding) is set in `htpdclient.go`;
+`SCE_HTPD_DRAFT_K` overrides it. A/B on host400 against the 2026-10-20 K=4 run (`proofs/2026-10-21_v2_confirm/host400_k8`, batches of 8):
+- median batch 11.39 → 10.75 s (−5.6%), p95 15.15 → 14.22 s;
+- 395 of 400 texts identical, within the HTP run-to-run floor;
+- pattern 87.3 → 87.7%, JSON 99.3 → 100%.
+Research ranking is in `proofs/2026-10-21_v2_research/latency/NOTES.md`:
+- fixed per-role draft text;
+- runaway cap / JSON abort;
+- 13 x 976 for 4 h batches;
+- profile one decode step.
+
+**Confidence recalibration (D4)** (`features_v2.go ConfidenceRecalV2`, `applyConfidenceRecal` in `reason.go`;
+`proofs/2026-10-21_v2_research/calibration/`).
+- The model's own confidence carries almost no signal (AUC 0.585), so it is replaced by a table of predicted
+  pattern × onset-age bucket.
+- Each cell is shrunk toward its pattern's rate and then the global rate (A=5, chosen by CV). Calm windows are
+  weighted ×2.
+- Fitted on the 2026-10-20 device data (4,590 answers).
+- Held-out results, seed 24 (3,538 answers): ECE 0.152 → 0.051, Brier 0.234 → 0.150, AUC 0.585 → 0.792.
+  On calm windows Brier is 0.214 → 0.196.
+- The dashboard, the reports and the synthesizer prompt show the calibrated value; the raw value is kept in
+  `call.Raw`.
+- Nothing gates alerting on confidence.
+
+**Token streaming** (backend + UI; `proofs/2026-10-21_v2_research/streaming/`).
+- Fixed:
+  - batched answers were sent twice;
+  - retries were appended to the old text;
+  - split UTF-8 characters showed as "�";
+  - the hub could silently drop tokens; chunks now carry a `seq`, with catch-up through `/api/streams`;
+  - refinements did not stream; they now send `rtoken`;
+  - the UI repainted per token; it now repaints per animation frame, with per-agent
+    "reading / generating · first token" cards.
+- Against a fake streaming htpd, the first token shows at 0.56 s instead of at batch end.
+- On the device, htpd still sends each answer only at batch end. Per-step `toks` lines are being added to htpd
+  (protocol in `htpd_stream_protocol.md`); the client already accepts them.
+
+**Through the app** (`proofs/2026-10-21_v2_app/`):
+- `refine_stream`: 10/10 scenarios reach 3 h; 30/30 windows correct; the SSE capture shows no duplicate
+  chunks.
+- `stress` (quick chaos, faults, scenarios): 133/139 checks pass.
+  - The failures are the board at 81–91 °C during back-to-back chaos (thermal guard tripped once), and twice a
+    water agent inventing a cause, `acidic_condition` (correctly rejected; the rule finding was used).
+  - **Chaos incidents with 13–14 agents plus the synthesizer take 26–33 s** (v1: 14.7 s). That is two htpd
+    batches (10 + 3) and longer prompts. One batch for 13–14 agents is the next latency target.
+- Pump cycling (tank level oscillation) is read as stable / throttling / flatline at every window length; in one
+  run, 12 h said oscillation. This is a model weakness, not the window. "Stable" yet warning/critical gets 8 h.
+
+## 2.43 Recheck curb/elevate, domain health, operator UI, top-up phases, latency ladder, board shutdowns (2026-10-21/22)
+
+**Corrections to 2.42:**
+- The "DRAFT_K=8 −5.6%" gain cannot come from K. At 8 streams k = 3 for both K=4 and K=8; K only matters at 5 or
+  fewer streams.
+- The first v7 A/B was confounded: the "cooling" read a thermal zone that always returns 0, and the arms were not
+  interleaved. The fair ABAB (`proofs/2026-10-21_htpd_v7_ab/run_abab.log`, `run_one_batch.log`) is the one to use:
+  - lean v7 runs at v6 speed, with 35–36/36 texts identical;
+  - one batch for 13 agents (14×1024) is no faster: 15.7 vs 15.3 s.
+- The "14.7 s v1 incident" was agents only, timed on the harness. The v1 full chaos incident through the app took
+  20.7 s (10–12 agents, no HVAC).
+- A single v2 agent already beats v1: median 3.35 s against 3.8 s. The exception is the first incident after
+  htpd starts, which the warm-up targets.
+
+**Rechecks at 1.5 h / 3 h can now elevate and curb** (`refine.go`; through the app in
+`proofs/2026-10-21_v2_app/recheck*`, 5/5 cases correct):
+- **Elevate:** only when the problem is visible now (`visibleNow`): the rule on the fresh window is abnormal, or
+  the last 30 min of readings are beyond a limit. A longer window still holds the old event, and the AI grades
+  it again otherwise.
+- **Curb:** only when the refined AI view and the fresh rule both read lower (`curbTo`), and only to the worse of
+  the two.
+- **Resolved:** the AI says `event_active=false` and the readings are back at the pre-onset baseline (within limits
+  and within 3 sd or 10%) for the last 30 min, checked over the 12 h history. The incident then shows "resolved,
+  back to baseline since HH:MM" and is never re-raised from history.
+- The SSE `incident` event carries `change: elevated|curbed`; the UI shows a toast and re-alerts.
+
+**Domain health monitor** (`domainhealth.go`, `GET /api/health` and SSE `health`; design in
+`proofs/2026-10-21_v2_research/domain_health/DESIGN.md`, per ISA-18.2/EEMUA 191/ISA-101):
+- Status is the worst of the domain's own sensors; context sensors never raise it. Sensor faults and stale data
+  are kept separate from the process status.
+- Trend shows ↑/↓ for 30 min; open incidents count back 12 h, plus older ones awaiting a decision.
+- The AI can raise a domain's status but never lower or invent one.
+- Next steps (up to 3) come from the AI's whitelisted actions, or a per-domain playbook when the AI only says
+  "monitor".
+
+**Operator UI** (`proofs/2026-10-21_ux/UX_RESEARCH.md`, before/after screenshots):
+- Plain-language incident sheet: headline, what is happening, why it matters, what to do, how sure the AI is, and
+  what changed at the re-checks.
+- Jargon (mode, NPU calls, evidence ids, model names, the rules' title) sits behind "Technical details", and a
+  `</>` Engineering view, **off by default**, brings back the mode bar for evaluators.
+- Health tiles are worst first and grey when normal.
+- `sw.js` is at v31.
+- Android Back on the first page sent the WebView back to a black "Starting…" page; `MainActivity.onBackPressed`
+  is fixed.
+
+**Confidence (D4)** is refit with clean windows ×2 (`proofs/2026-10-21_v2_research/calibration/`): held-out ECE
+0.152 → 0.051.
+
+**Streaming end to end** (backend, UI, htpd v7 `stream:true`):
+- The first progress line arrives at the end of prefill: about 5.9 s for 13 agents, instead of about 16 s at batch
+  end.
+- Profile `bin=htpd_v7`, `HTPD_AGENT_MAX_NEW=160`, `HTPD_JSON_ABORT=2`, `HTPD_SYNTH_PREFIX_CACHE=1`; the synthesizer
+  takes 3.2–7.4 s against 9–9.9 s before.
+
+**Latency ladder plan** (`proofs/2026-10-21_latency_ladder/PLAN.md`):
+- Applied in the backend: htpd warm-up after start (`htpd_warmup.jsonl`), no 250 ms gap in htpd mode, and
+  `htpdKill` also kills `htpd_v7`.
+- `solo_rerun=runaway` (user decision): only runaway or garbled answers are re-run alone.
+- Not yet measured on the board, because the board went down.
+
+**Top-up training** (`proofs/2026-10-21_v2_topup/`):
+- **Phase 1** (topup2, from v2 4494): original dev −0.5%, targeted −15.5%. **Rejected on the device**: host400
+  pattern .877 → .855, status .868 → .850, HVAC JSON .94.
+- **Phase 2** (topup3): the forgetting guard fired at step 150 with no gain.
+  - Diagnosis (`phase2_diagnosis/`): the weights drifted too far at LR 2.5e-5.
+  - 15% of early rows (d 3–9) are not learnable yet.
+- **Phase 3d**, from the deployed v2 adapter:
+  - Settings: decision tokens ×4, L2 anchor 0.005, unlearnable rows dropped, LR 1e-5, 90% replay.
+  - **Step 50 passed**: early pattern .714 → .740, 1.5 h .740 → .781, 3 h and original unchanged.
+  - Later steps drifted.
+  - The GGUF `ft_v2t3d_q4_0.gguf` (md5 e9088e…) matches v2 tensor for tensor and answers correctly on a CPU smoke
+    test.
+  - Its device test has not been completed, because of the shutdowns.
+- **Lesson:** HF/teacher-forced gains do not reliably carry over to the Q4_0 model on the NPU. Judge candidates on
+  the device, or with the host GGUF proxy (`proofs/2026-10-22_host_gguf_eval/`).
+- `htpd_profile` `model=` (new) swaps the GGUF the app's own `htpd_v7` loads. No separate test daemon is needed.
+
+**Board shutdowns** (`proofs/2026-10-22_board_crash/`):
+- The board switched off or dropped USB about 5 times on 2026-10-22.
+- The boot reason was always `reboot`; pstore was empty; there was no tombstone from those moments.
+- Each drop came while a 2.8 GB GGUF was being handled (copy from /sdcard, on-board md5sum, a second test daemon
+  loading a model, or the app loading the 3d model) shortly after or around another NPU session.
+- Fixes so far:
+  - big pushes go to `/data/local/tmp/...part`, then md5 and `mv`, with no /sdcard staging and the app stopped;
+  - an md5 sidecar replaces on-board `md5sum`;
+  - the app's self-heal no longer restores `genie_bundle_ft_4096`;
+  - v1's GGUF and old Genie bundles are removed: the board has 19 GB free, and a v1 rollback needs a re-push;
+  - no second test daemon while the app runs.
+- Root-cause research, with SSR and FastRPC session handling and the evidence to collect, is in `ROOT_CAUSE.md`.
+- `on_reconnect.sh` stops the app first, reverts `model=` to v2, collects logs and relaunches on v2.
+
+**Chaos on stable v2** (2026-10-22, `proofs/2026-10-22_v2_app/chaos_quick`):
+- 3 incidents of 14 agents each took 25.4–31.8 s; the backend and NPU stayed up.
+- The board peaks at 93–94 °C and the thermal guard trips.
+- The only policy fail is the water agent's invented `acidic_condition`, which falls back to the rule finding.
+
+
+## 2.44 Cross-domain reasoner, storage and approval: design decisions (2026-10-23)
+
+Decisions agreed with the owner are logged in `proofs/2026-10-23_reasoner_research/DECISIONS.md`, the source of
+truth. The research behind them is in `REASONER_DESIGN.md`, `FOG_OPTIONS.md` and `APPROVAL_AND_MEMORY.md`.
+In short:
+- **The design:** an on-device reasoner that also serves chat. It is agentic: read-only tools, exact counts via
+  SQL. The QIDK orchestrates every tool.
+- **Storage:** last 1,000 incidents on the device plus an all-time index. Supabase free tier (Mumbai) holds the
+  derived data, with the board as the only writer. Raw readings stay on the board. No cost now.
+- **Priorities:** 1) the local model; 2) fog = Supabase storage plus computation by our local model; 3) a cloud
+  model later, with escalation by deterministic rules plus opt-in buttons.
+- **Approval:** acknowledge, then a per-step checklist, then close with an outcome. Operators pick their name.
+  An incident auto-closes 24 h after readings return to normal, and needs re-acknowledging if it gets worse.
+- **Action memory:** memory lines in the reasoner prompt, plus the rule that a fault returning within 30 days of
+  a repair suggests replacing the sensor.
+- **Model choice:** after the P0 benchmark (v2 3B + reasoner LoRA vs a separate Qwen; accuracy first).
+
+
+## 2.45 3d vs v2 settled; the host is a faithful proxy; garbage under heat (2026-10-23)
+
+Evidence: `proofs/2026-10-23_app_ab_v2_vs_3d/` and `proofs/2026-10-23_3d_quant_fix/RESULTS.md`.
+- **Through the app (host400, on the app's own htpd):** v2 pattern .875 vs 3d .853. Recheck 5/5 for both.
+  Chaos took 23–27 s with v2 and 25–32 s with 3d.
+- **Quantization is not the gap.** The merge is bit-exact on 255/255 tensors. Q4_0 equals Q8_0 for both models.
+  Host Q4_0 (llama.cpp 620d222) matches the board on 207/208 rows for v2.
+- **3d is simply no better than v2** (2 wins, 3 losses, p = 1.0). **v2 stays deployed.**
+- **3d's apparent drop on the board** was 8 garbage answers in neighbouring stream slots of three batches.
+  - All 8 came from batches that ran **without thermal pacing**: from batch 23 on, adb's temperature read
+    returned −1, and the eval script treated that as cool.
+  - Fixed: `eval_htpd_v2.pace()` treats an unreadable temperature as hot.
+  - The app itself reads the thermal zones directly and is not affected. In production its re-run handles any
+    garbage.
+- **New rule:** screen every model candidate on the host GGUF first, and spend board time only on winners.
+
+
+## 2.46 Real-world data layer, UI overflow, toast fix; deployed and regression-tested (2026-10-23)
+
+**Real-world data layer** (`dataquality.go`; `proofs/2026-10-23_realworld/REALWORLD.md`):
+- `/api/ingest` used to keep inventing readings after a sensor went silent. Replaying 5 real CO2 outages, it made
+  up 91 readings; it now makes up 0.
+- Timestamped feeds are bucketed per 5 min. Duplicates and late or out-of-order readings are handled, and a sensor
+  with too many gaps is reported as "insufficient data" with a reason.
+- On the event gate only, a single glitch no longer opens an incident, and a value chattering at a limit is
+  suppressed. The AI still sees the raw window.
+- New `POST /api/maintenance` marks sensors out of service or replaced.
+
+**UI:**
+- The automated overflow audit went from 228 findings to 0 (`proofs/2026-10-23_ui_overflow/`).
+- On the board, several "got worse" toasts stacked over the incident sheet, and the overflow pass made "Open" wrap
+  one letter per line. Elevate alerts now coalesce into one toast, at most 2 toasts show, and the button never
+  wraps. sw v33.
+
+**Through the app on the board** (`proofs/2026-10-23_deploy_rw_ui/`): 10/10 scenarios reached 3 h, recheck 5/5,
+chaos 24.2–26.1 s, and the board stayed up throughout.
+
+**Open for the owner:**
+- Hourly sensors such as TDS are always "insufficient data" live: keep them rules-only, or train on sparse windows.
+- Unit or firmware changes need metadata, or "replaced" events, in the feed.
+
+## 2.47 Latency ladder on the board (2026-10-23)
+
+`proofs/2026-10-21_latency_ladder/`: `ladder_envA.log` and `ladder_ksweep.log`. Each arm ran twice (ABAB), with
+cooling between runs. The baseline is L7, the live profile.
+
+| Workload | L7 (s) | Role drafts (s) |
+|---|---|---|
+| COLD13 (first incident after start) | 20.84 | **17.36** |
+| N1 | 3.59 | **3.12** |
+| N4 | 5.76 | **5.34** |
+| N13 / B13 / C13 / NM10 | 15.9 / 15.6 / 15.6 / 14.6 | 16.2 / 15.8 / 15.4 / 14.7 (flat) |
+| S2 (synthesizer) | 2.26 | 2.29 |
+
+Both repeats agree within 0.2 s.
+
+- **Role drafts (RD):** 65/68 texts are identical to L7. That is inside the run-to-run floor of the HTP itself
+  (84–96%), so no change in output was detected. RD saves 3.4 s on a cold start and about 0.45 s on small batches.
+  **Rejected after the host400 gate on the board** (`acc_RD/` vs the control `acc_L7/`; both batch 10, paced, same
+  hour):
+  - JSON valid: L7 99.3%, RD 97.3%.
+  - Pattern: L7 87.3%, RD 85.5%.
+  - Fault kind: L7 89.7%, RD 83.8%.
+
+  RD had 11 garbage answers (in 2 batches at 76–77 °C); L7 had 3 (in 1 batch at 76 °C). 383 of 400 texts were
+  identical.
+- **Batch-10 garbage at about 76 °C:** this happens even with the live profile, at roughly 1 batch in 40. The app
+  covers it through `HTPD_JSON_ABORT` and the `solo_rerun=runaway` re-run. The eval pacing threshold (80 °C) is
+  above where garbage starts, so new board gates should use `--hot 74`.
+- **Rejected:**
+  - O14 (14×1024 layouts): htpd crashed with "connection closed".
+  - US (synthesizer ubatch 1024): 2.24 vs 2.26 s, no gain.
+  - K16: 98.6 ms per step vs 83 ms for K8, so K8 stays.
+- **App-level LIVE timing:** this run only re-parsed old incidents, so it has to be rerun with fresh chaos incidents.
+- The board stayed up for the whole ladder.
+
+
+## 2.48 Model 3e (DPO+NLL top-up from v2): closed, v2 stays (2026-10-23)
+
+Details: `proofs/2026-10-23_v2t3e/RESULTS.md`. The method follows TOPUP_WHY: DPO on v2's own errors, plus an NLL term
+and gold replay. Each candidate is merged to Q4_0 like v2 and scored on 1,148 test-month rows: host400, 540 weakness
+rows and 185 real-world rows.
+
+- **run1** (c20, c40, c60, c70): overall pattern accuracy stays the same, but compound drops 13–17 points (p < 0.01).
+  Rejected.
+- **run2c49** (cleaner pairs): ties v2.
+  - Pattern 84.0% vs 83.6% (p 0.6); compound 90.7% vs 90.7%; real-world 88.1% vs 86.5%.
+  - Status on routine windows drops 12 points, and early and 1.5 h status each drop about 1.3 points. It fails the
+    gate.
+- **Lesson:** top-ups on v2 have reached the noise floor. The next accuracy gains need cleaner teacher labels on the
+  confused pairs (event vs stable, gradual decrease vs flatline), or augmentation for unseen sensors.
+
+## 2.49 UX v34 live on the board: approval workflow and operator features (2026-10-23)
+
+Details: `proofs/2026-10-23_ux_v34/` (`CHANGES.md`, `screens/`, `board/`).
+
+**What is new:**
+- **Approval workflow:**
+  - Needs decision → In progress ("I'm on it", with a name picker) → Resolved → Closed with an outcome.
+  - A per-step checklist, an append-only event log, and re-acknowledge when an incident gets worse.
+  - A 15-min critical reminder and a 24 h auto-close, both on the wall clock.
+  - A 30-day repair rule, and "History of this sensor".
+- **Sensor data and maintenance:** a data-quality chip; Out of service and Sensor replaced buttons.
+- **Live-view features:** a re-check countdown, a shift summary, grouping of repeat incidents, incident filters and
+  search, and an Android notification for Critical or worse incidents.
+- sw v34. Old records are migrated on load.
+
+**Results on the host and on the board:**
+- **Host:** `go test` 92/92, the UI check 83/83, and the overflow audit 0.
+- **Board** (`deploy_and_test.sh`, backend md5 236e3bf8):
+  - 10/10 scenarios reached 3 h. Recheck 5/5: 3 curbed, 2 elevated.
+  - Chaos 23.3–26.1 s.
+  - 26/34 checks passed. The 6 thermal failures (90–92 °C during back-to-back chaos runs) also failed before v34.
+    The 2 policy failures are the known v2 off-label water cause "acidic_condition", now a 3f training target.
+
+**Open:**
+- A resolved incident still shows its original "past the high mark; overflow risk" observation under "What is
+  happening", which reads as a contradiction.
+- Not built: memory lines in prompts, a warning reminder, a PIN, cloud sync.
+
+## 2.50 Track B post-rules live on the board; mixA50 in A/B (2026-10-24)
+
+`proofs/2026-10-24_trackB/RESULTS.md`: deterministic rules applied after the model, in `postrules.go` (`htpd_profile`
+`post_rules=all`). They cover:
+- status from limits and from relative power or level;
+- glitch;
+- chatter;
+- the CO2 floor (250 ppm);
+- causes outside the allowed set;
+- fault kind;
+- erratic.
+
+They were chosen on dev and confirmed on test.
+
+| Set | Status, v2 → v2 + rules | Paired wins/losses |
+|---|---|---|
+| test (1,148 rows) | 81.5 → 86.4% | 57/1 (no slice down > 1 point) |
+| REALWORLD §5 test (318 rows) | 60.4 → 85.2% | 79/0 |
+
+- Several rules re-apply the teacher's own label functions to the predicted pattern (documented).
+- Not fixable by rules: erratic, unseen Sep–Oct sensors, water-cause pattern and holidays. These are the targets of
+  v2.1 training.
+- **Grammar:** no accuracy gain on the host. The htpd v9 patch is designed but not built.
+
+**Board** (`board/`, backend md5 ab54423d):
+- 10/10 scenarios reached 3 h; recheck 5/5.
+- Chaos 24.1–26.6 s, 30/34 checks. Only the thermal checks failed (89–93 °C).
+- The off-label "acidic_condition" failures are gone: post-rules map it to `water_quality_issue`.
+
+**mixA50** (v2 + 0.5·(c49 − v2)) plus rules passes the host gate against v2 plus rules (`proofs/2026-10-24_v2t3g/`).
+The app A/B on the board is running from `board_ab/`.
+
+## 2.51 mixA50 is the live domain-agent model (2026-10-25)
+
+- Board A/B (both + post_rules=all, through the app; proofs/2026-10-24_v2t3g/board_ab): refine 10/10 both; chaos v2 29/34, mixA50 31/34 (all fails thermal);
+  host400 raw tie (status 86.8 vs 86.5, pattern 87.5 vs 87.7, JSON 100%); seed-24 placement 4 h window mixA50 +1..+3 pts on every onset bucket, clean-window false alarms 22% -> 18%.
+- mixA50 hold re-checks gave "no incident" once (app/port glitch suspected: the same run lost port 8091); owner chose to deploy without more A/B.
+- Profile: model=/data/local/tmp/gpu/ft_mixA50_q4_0.gguf (md5 8397bb0e8a58005cf339999fa6634ad3). Rollback = delete the model= line + clean app restart.
+- Next: real-world sensor stories through the app (proofs/2026-10-25_mixA50_realworld); v2.1 training continues on the laptop.
+
+- 2026-10-25 v2.1 (continued SFT, ckpt 621) board test: worse than mixA50 -> rejected. host400 raw pattern 87.7->85.3, status 86.5->84.3, water status 72.7->63.6;
+  sim stories: leak still normal, AC failure now 'normal'. mixA50 stays live. Domain work paused; research in proofs/2026-10-25_domain_research. Reasoner (Qwen3.5-4B QLoRA r32) training ~21 h.
+
+## 2.52 P1 domain-agent rules live (2026-10-25, proofs/2026-10-25_domain_plan)
+
+- Backend edge-agent md5 cf0da165 (was ab54423d; old APK/binary in proofs/2026-10-25_domain_plan/raw/). Model unchanged (mixA50), post_rules=all now also runs:
+  (a) water level: a 3 h steady drain with no refill is warning / possible_leak by day too (label-definition change, mirrored in teacher_v2.routine_rule),
+  and a model possible_leak is not downgraded while E9 shows a falling drift; (b) hvac_rule: the deterministic HVAC rule (= teacher) replaces a
+  model "normal" or "sensor_fault" answer when it finds an event at warning+ on the same window; (c) claim verifier: AgentCall.claim_flags
+  (time-of-day vs off-hours, direction word vs from->to, "inside band" vs E1) - flags only, observation text untouched (reasoner owns wording).
+- Gates: E2 vs mixA50 + rules PASS on dev/rw5dev/test/rw5test (flat drift 0, dev status +7 net, test +3); Go parity 6,446 rows 0 mismatches; go test ok.
+  Board deploy_and_test: refine 10/10, recheck as before, chaos 30/34 (all 4 fails thermal).
+- Board stories (proofs/2026-10-25_domain_plan/board_p1/sim_results.json, prompts saved): 6/6 incidents, all answers valid. The leak and AC
+  stories still do not exercise P1 on the board: the leak level (160) sits far from the replayed tank level, so the agent sees a step; the AC
+  story's incident is the injected rooftop temperature, and no AC agent runs. These are story-design limits; P1 is proven on host E1 + Go tests. P1 stays.
+- Board proof with fixed stories (scripts/sim_p1.py, 1 step = one 5-min bucket; board_p1/sim_p1_*.json with prompts):
+  tank drained -1.5/bucket for 4 h by day from a settled level -> model gradual_decrease/normal/tank_draining, post-rule -> warning/possible_leak (INC-0336);
+  AC on, room +1.4 C/h above band -> model stable/normal, hvac_rule -> no_cooling_effect/critical (INC-0334).
+- Rollback: install raw/SmartCityEdge.ab5442.apk with deploy_and_test.sh steps (or set post_rules to the old list without hvac_rule; (a) needs the old binary).
+
+## 2.53 Reasoner on the board: latency study, integration fixes, light severity guard (2026-10-27, proofs/2026-10-27_reasoner_fast)
+
+- **Live (2026-10-28):** APK fast4 (edge-agent 8e1ae828), `bin=htpd_v8x2` (md5 22ec1278), `reasoner_split=3`, rsn_v1 Q4_0. The htpd_profile `env=` adds `GGML_HEXAGON_OPPOLL=1 HTPD_REASON_IDLE_MS=3000`.
+- **Two-stage report (fast3):** the deterministic report, marked preliminary, appears 1-7 s after the event; the reasoner's report replaces it.
+- **Split decoding (fast4):** head once, then 3 parallel field groups. Reasoner 25.7 → 23.7 s (30 RWH), gate 100%, severity/label decided before the fork.
+- **App end to end now:** 28-39 s from event to report (was 30-43 s).
+- **Hexagon SDK route (2026-10-28, RESULTS §8):**
+  - Upstream 338fce65: reasoner +3%, agents −4-5%, so the net is about zero.
+  - A new Q4_0 32x4 HVX kernel: no gain.
+  - Nothing deployed; htpd_v8x2 + the 620d222 libs stay live.
+- **Rollback:** `scripts/deploy_fast.sh rollback` puts back the 2026-10-27 reasoner APK c42dac4f and the saved profile.
+- **Latency.** Decode is at the HTP memory-bandwidth roof: 60 ms/token, about 52 GB/s over 2.6 GB of weights (RESEARCH.md).
+  - Adopted: `OPPOLL=1`, 27.8 → 25.8 s per reasoner report (−7%). Agents' outputs are identical. Reasoner diffs are within HTP run-to-run noise.
+  - Adopted: early release, 20 → 3 s idle. The next incident's agents no longer wait 2.5 s for the agents' model to reload.
+  - Measured and rejected: MTP speculation (base head, 72-78% acceptance, still slower), n-gram speculation (htpd_v8s `HTPD_REASON_SPEC`, slower and doubles prefill), and a Q4_0 lm_head (−4%, but moved an RWH label).
+  - Not adopted: the vocabulary-pruned lm_head (htpd_v8p + libllama_p.so + rsn_v1_q4_0_keep.gguf, 32,864 tokens). It was built and ran one request, then the board **rebooted** mid-run at 90-94 °C, cause unknown. It stays off until the owner says go.
+- **Fixes.**
+  - Single-domain incidents now go through the reasoner; the deterministic report is the fallback only.
+  - The gate trims over-long lists instead of rejecting the report. Two 3 h refinements had been lost to 7 evidence ids.
+  - Severity streams with the title.
+  - A held re-inject supersedes the old injection.
+  - chaos2.py clears and resets between scenarios. The 566 s "incident 1" was a test-script mismatch, not a stall.
+- **Light severity guard.** When the rules put a flagged sensor at warning or critical, the reasoner may not report normal; the report is kept at warning. A sensor_fault diagnosis is not a downgrade. The report carries `severity_basis` (rules vs reasoner), shown under the explanation. Every disagreement is logged as `severity-disagreement` in agent.log.
+- **Safety:** board pacing now starts each reasoner request at ≤ 60 °C (coordinator rule after the 02:11 reboot).
+
+## 2.55 Critical fast path built, staged, not deployed (2026-10-28, proofs/2026-10-28_master/fastpath_build)
+
+- Why: one reading per 5-min bucket, so the AI gate (persistReadings 8) plus the batch window (3) meant 40-55 min of sensor time from a real event to its incident.
+- What (Go: engine.go detect + valueCritical, fastpath.go, reason.go buildIncident/adoptFast): a sensor whose FRESH readings are beyond its CRITICAL
+  limit for 2 readings in a row (pH < 6.0 or >= 9.0, "high" >= Crit, "low" < Crit) opens the incident at once with the rules-only preliminary report
+  (severity critical, Incident.fast_path, no NPU). The agents + reasoner still run at 8 readings and update THAT incident (same ID); no second incident.
+  Unchanged: deadband/off-delay, maintenance and data-quality gates (the fast path sits after them), batching for the AI, one fast incident per episode
+  (12-reading cooldown), workflow and refinements. Power, tank level and flow have no limits, so no fast path.
+- Tests: fastpath_test.go (critical step: incident at reading 2, AI at 8, one incident; warning drift: no fast path, AI at 8; chatter at the critical
+  limit: none for alternating readings, one per episode for repeated pairs); go test ./... ok.
+- Build: edge-agent 45ef44e3, APK 2f6a66bb (staged in the proofs dir; the deployed slot still holds cf0da165). Board offline: NOT deployed.
+- Same day, provisional early AI (earlyai.go, default OFF; htpd_profile ai_early_k=4, ai_early_shapes=<gate-study shapes>): at k abnormal
+  readings with a cleared shape the agents + reasoner run on the young window as refine stage "provisional" (UI badge), on the fast-path incident
+  or a new one; the 8-reading run updates the same incident (revisions: provisional, early, 1.5 h, 3 h). NPU order: alerts > jobs > provisional >
+  refinements; a provisional run stops between NPU calls when an alert waits. Tests earlyai_test.go; go test ./... ok.
+  Build with both: edge-agent c97afdeb, APK 0deb016e (proofs/2026-10-28_master/fastpath_build). NOT deployed.
+- Young-window top-up (proofs/2026-10-28_master/young_window, detached yw_queue): 690 new k=3..7 rows (train months) + B50-correct replay,
+  trained from the exact B50 adapter; accepted only if gate2 vs B50 passes AND gate-study young-window accuracy improves (YW_DONE.json).
+
 ## 3. If something goes wrong
 
 **Golden rule: just run the same `train.ps1` command again.** It continues where it stopped: training resumes
@@ -1912,3 +2507,28 @@ headers. It's a post-mid-eval item, as is Qwen for reasoning.
 - **AI Hub export**: Qualcomm's free cloud service that compiles the model for the NPU.
 - **Policy gate**: the automatic safety/format check on every AI answer.
 - **Evidence ids (E1–E8)**: numbered facts given to the AI. Every claim must cite them.
+
+## 2.54 Night 2026-10-28: B50 confirmed in the app, Hexagon SDK route closed, split-6 queued
+- **B50 through the app**: chaos2, 6 scenarios, 6/6 done and valid, swap-back every time (`proofs/2026-10-28_master/CHAIN_STATUS.json`). B50 stays the agents' model.
+- **Hexagon SDK route**: upstream 338fce65 and a 32x4 HVX kernel, both rejected (RESULTS §8.1).
+  - Reasoner: 21.0 → 21.7 s (upstream) and 22.2 s (kernel).
+  - Agents: −4-5%. One htpd serves both models, so the net change is about zero.
+  - The earlier "agents identical" A/B checks compared empty responses, because the board has no htpd_warmup.jsonl. Real prompts are now in `bench/agents*.json`.
+- **Reasoner time budget** (chaos logs):
+  - swap 3.3-4.0 s;
+  - prefill 1.6-2.8 s (the 1,317-token static prefix comes from the disk cache);
+  - head 63-119 tokens, single stream;
+  - 3 split streams: the longest one gates the total.
+  - Mean field sizes (31 RWH outputs): group 3 (checklist…explanation) ≈ 450 chars; observations ≈ 260 chars, the largest single field.
+- **Next lever: split-6** (Go `reasoner_split=6`/`4`; default stays 3). llama-bench step cost (`raw/bench_server/llama_bench.md`):
+
+  | rows per step | 1 | 2 | 3 | 4 | 6 | 8 | 16 |
+  |---|---|---|---|---|---|---|---|
+  | ms | 66 | 82 | 113 | 133 | 106 | 109 | 120 |
+
+  - With 6 rows (the HMX path), a step costs no more than with 3. The longest group then drops to observations.
+  - Estimated reasoner time: about 21 → 15-16 s.
+  - Risk: fields that are now generated in parallel no longer see each other (for example, the explanation no longer sees the checklist).
+  - The board A/B is queued and runs standalone when the board connects: `proofs/2026-10-28_master/split6_ab.sh`. It compares sp3, sp6 and sp4 on 30 RWH prompts and writes `raw/split6/acc.md`.
+  - Deploy only if severity and label vs gold are no worse than sp3.
+- **Pruned lm_head** (estimated −12%): still on hold after the 02:11 board reboot; it needs the owner's explicit OK.

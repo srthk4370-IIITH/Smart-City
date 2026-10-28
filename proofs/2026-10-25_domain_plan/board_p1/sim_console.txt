@@ -1,0 +1,28 @@
+## class_fills_up: INC-0319 title='CO2 gradual increase: KH building, level 03, indoor air sensor 03' 7262ms
+  S1: gradual_increase/warning cause=ventilation_insufficient | ['CO2 climbing at +195.2 ppm/h, now 1173 ppm [E4,E1]', '1173 ppm exceeds the warning limit of 1000 ppm [E1]']
+  S2: gradual_increase/warning cause=gradual_load_growth | ['Power climbing at +0.69 kW/h, now 5.61 kW [E4,E1]']
+  REPORT occupancy_driven_load root=gradual_increase in CO2 and power, driven by occupancy action=monitor
+  Room becoming occupied at 13:20, still occupied [S3.E4,S3.E1]
+## slow_tank_leak: INC-0322 title='Tank level step decrease: KH building, level 98, water tank level sensor 00' 2399ms
+  S1: step_decrease/warning cause=tank_draining | ['Tank level moved down -140.8 level at 13:25, SMA 1h 148.5 [E5,E6]', '12 h history: step of -151.4 level at 13:40 [E9]']
+  REPORT water_leak_or_overuse root=Tank level step decrease on KH building, level 98, water tank level sensor 00 (tank draining) action=monitor
+  Tank level moved down -140.8 level at 13:25, SMA 1h 148.5 [E5,E6] 12 h history: step of -151.4 level at 13:40 [E9] (from domain agent finding). Related domains checked and steady: Flow stable (S2), Occupancy vacant (S3), Temperature stable (S4), so the cause is local to this domain.
+## dust_storm_ingress: INC-0325 title='Wind speed gradual increase: VN building, level 04, rooftop weather station' 6961ms
+  S1: gradual_increase/warning cause=weather_front | ['Wind speed keeps rising, +2.32 m/s/h with r2 0.94 [E4]', '10.82 m/s exceeds the warning limit of 10 m/s [E1]']
+  S2: gradual_increase/critical cause=outdoor_pollution_ingress | ['PM2.5 climbing at +26.0 ug/m3/h, now 127.9 ug/m3 [E4,E1]', '127.9 ug/m3 exceeds the critical limit of 120 ug/m3 [E1]']
+  S3: gradual_increase/critical cause=outdoor_pollution_ingress | ['PM10 climbing at +60.8 ug/m3/h, now 269.7 ug/m3 [E4,E1]', '269.7 ug/m3 exceeds the critical limit of 250 ug/m3 [E1]']
+  REPORT air_pollution_event root=outdoor_pollution_ingress action=monitor
+  Outdoor pollution moving with the time of day [S1.E4,S2.E4]
+## acidic_water: INC-0327 title='pH gradual decrease: KH building, level 98, water quality sensor 00' 3232ms
+  S1: gradual_decrease/warning cause=water_quality_issue | ['Gradual decline of -0.31 pH/h; last 6.03 pH [E4,E1]', 'Normal daily range for this sensor [E4]']
+  REPORT water_quality_issue root=pH gradual decrease on KH building, level 98, water quality sensor 00 (water quality issue) action=request_facility_review
+  Gradual decline of -0.31 pH/h; last 6.03 pH [E4,E1] Normal daily range for this sensor [E4] (from domain agent finding). Related domains checked and steady: Flow stable (S2), TDS stable (S3), so the cause is local to this domain.
+## ac_fails_hot_day: INC-0329 title='Temperature step increase: VN building, level 04, rooftop weather station' 2009ms
+  S1: step_increase/sensor_fault cause=sensor_fault | ['Temperature jumped +4.2 C at 13:25 and did not return [E5,E1]', 'The new level appeared instantly; sensor bias likely [E5,E1]']
+  REPORT sensor_fault root=Temperature step increase on VN building, level 04, rooftop weather station (sensor fault) action=check_sensor
+  Temperature jumped +4.2 C at 13:25 and did not return [E5,E1] The new level appeared instantly; sensor bias likely [E5,E1] (from domain agent finding). Related domains checked and steady: Power stable (S2), Temperature stable (S3),  stable (S4), so the cause is local to this domain.
+## co2_sensor_glitch: INC-0330 title='CO2 step increase: KH building, level 03, indoor air sensor 03' 1880ms
+  S1: step_increase/sensor_fault cause=sensor_fault | ['CO2 jumped +2653.6 ppm at 14:05 and did not return [E5,E1]', 'The new level appeared instantly; sensor bias likely [E5,E1]']
+  REPORT sensor_fault root=CO2 step increase on KH building, level 03, indoor air sensor 03 (sensor fault) action=check_sensor
+  CO2 jumped +2653.6 ppm at 14:05 and did not return [E5,E1] The new level appeared instantly; sensor bias likely [E5,E1] (from domain agent finding). Related domains checked and steady:  stable (S2), Occupancy vacant (S3), Power stable (S4), Temperature stable (S5), so the cause is local to this doma
+done

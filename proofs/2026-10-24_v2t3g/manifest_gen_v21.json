@@ -1,0 +1,810 @@
+{
+ "args": {
+  "out": "/home/hp_srthk4370/smartcity_runs/agents_v21/data",
+  "weak_scale": 1.5,
+  "aug_scale": 1.2,
+  "rw_scale": 1.0,
+  "only": "weak,aug"
+ },
+ "files": {
+  "v21_weak.jsonl": {
+   "n": 2084,
+   "sha256_16": "caa6a612826e0bf8",
+   "roles": {
+    "power": 817,
+    "water": 741,
+    "air_quality": 360,
+    "weather": 66,
+    "hvac": 60,
+    "occupancy": 40
+   },
+   "status": {
+    "sensor_fault": 290,
+    "normal": 929,
+    "warning": 447,
+    "critical": 418
+   },
+   "slices": {
+    "stage_early": 353,
+    "status_power_water": 787,
+    "stage_1.5h": 327,
+    "stage_3h": 302,
+    "exp_vs_gradual": 189,
+    "spike_e10": 75,
+    "calm": 300,
+    "erratic": 89,
+    "water_cause": 142,
+    "pump_cycling": 67,
+    "power_drop": 45,
+    "compound": 157,
+    "routine": 98,
+    "sensor_fault": 66,
+    "hvac": 60,
+    "occupancy": 40
+   },
+   "buckets": {
+    "stage_early_power": {
+     "role": "power",
+     "quota": 90,
+     "made": 90,
+     "tries": 549,
+     "rejected": {},
+     "seconds": 0.3
+    },
+    "stage_early_water": {
+     "role": "water",
+     "quota": 75,
+     "made": 75,
+     "tries": 839,
+     "rejected": {},
+     "seconds": 0.3
+    },
+    "stage_early_air_quality": {
+     "role": "air_quality",
+     "quota": 68,
+     "made": 68,
+     "tries": 144,
+     "rejected": {},
+     "seconds": 0.2
+    },
+    "stage_early_weather": {
+     "role": "weather",
+     "quota": 22,
+     "made": 22,
+     "tries": 126,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "stage_1.5h_power": {
+     "role": "power",
+     "quota": 90,
+     "made": 90,
+     "tries": 643,
+     "rejected": {},
+     "seconds": 0.5
+    },
+    "stage_1.5h_water": {
+     "role": "water",
+     "quota": 75,
+     "made": 75,
+     "tries": 1069,
+     "rejected": {},
+     "seconds": 0.4
+    },
+    "stage_1.5h_air_quality": {
+     "role": "air_quality",
+     "quota": 68,
+     "made": 68,
+     "tries": 143,
+     "rejected": {},
+     "seconds": 0.2
+    },
+    "stage_1.5h_weather": {
+     "role": "weather",
+     "quota": 22,
+     "made": 22,
+     "tries": 138,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "stage_3h_power": {
+     "role": "power",
+     "quota": 90,
+     "made": 90,
+     "tries": 977,
+     "rejected": {},
+     "seconds": 0.6
+    },
+    "stage_3h_water": {
+     "role": "water",
+     "quota": 75,
+     "made": 75,
+     "tries": 1182,
+     "rejected": {},
+     "seconds": 0.5
+    },
+    "stage_3h_air_quality": {
+     "role": "air_quality",
+     "quota": 68,
+     "made": 68,
+     "tries": 172,
+     "rejected": {},
+     "seconds": 0.2
+    },
+    "stage_3h_weather": {
+     "role": "weather",
+     "quota": 22,
+     "made": 22,
+     "tries": 132,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "exp_power": {
+     "role": "power",
+     "quota": 45,
+     "made": 45,
+     "tries": 397,
+     "rejected": {},
+     "seconds": 0.2
+    },
+    "exp_water": {
+     "role": "water",
+     "quota": 38,
+     "made": 38,
+     "tries": 338,
+     "rejected": {},
+     "seconds": 0.2
+    },
+    "spike_e10_power": {
+     "role": "power",
+     "quota": 75,
+     "made": 75,
+     "tries": 553,
+     "rejected": {},
+     "seconds": 0.4
+    },
+    "stable_e10_power": {
+     "role": "power",
+     "quota": 45,
+     "made": 45,
+     "tries": 385,
+     "rejected": {
+      "dup": 2
+     },
+     "seconds": 0.2
+    },
+    "erratic_power": {
+     "role": "power",
+     "quota": 45,
+     "made": 45,
+     "tries": 339,
+     "rejected": {},
+     "seconds": 0.2
+    },
+    "erratic_aq": {
+     "role": "air_quality",
+     "quota": 22,
+     "made": 22,
+     "tries": 44,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "erratic_water": {
+     "role": "water",
+     "quota": 22,
+     "made": 22,
+     "tries": 561,
+     "rejected": {},
+     "seconds": 0.2
+    },
+    "zero_stop_water": {
+     "role": "water",
+     "quota": 45,
+     "made": 45,
+     "tries": 2008,
+     "rejected": {},
+     "seconds": 0.3
+    },
+    "stuck_flow_water": {
+     "role": "water",
+     "quota": 30,
+     "made": 30,
+     "tries": 71,
+     "rejected": {},
+     "seconds": 0.0
+    },
+    "pump_cycle_level": {
+     "role": "water",
+     "quota": 45,
+     "made": 45,
+     "tries": 1596,
+     "rejected": {},
+     "seconds": 0.8
+    },
+    "short_cycle_water": {
+     "role": "water",
+     "quota": 22,
+     "made": 22,
+     "tries": 403,
+     "rejected": {},
+     "seconds": 0.2
+    },
+    "status_power": {
+     "role": "power",
+     "quota": 52,
+     "made": 52,
+     "tries": 750,
+     "rejected": {},
+     "seconds": 0.3
+    },
+    "status_water": {
+     "role": "water",
+     "quota": 45,
+     "made": 45,
+     "tries": 1072,
+     "rejected": {},
+     "seconds": 0.3
+    },
+    "water_offhours": {
+     "role": "water",
+     "quota": 45,
+     "made": 45,
+     "tries": 1974,
+     "rejected": {},
+     "seconds": 0.6
+    },
+    "water_dayhours": {
+     "role": "water",
+     "quota": 22,
+     "made": 22,
+     "tries": 873,
+     "rejected": {},
+     "seconds": 0.3
+    },
+    "power_drop": {
+     "role": "power",
+     "quota": 45,
+     "made": 45,
+     "tries": 1550,
+     "rejected": {},
+     "seconds": 0.7
+    },
+    "clean_power": {
+     "role": "power",
+     "quota": 75,
+     "made": 75,
+     "tries": 308,
+     "rejected": {},
+     "seconds": 0.2
+    },
+    "clean_power_pf": {
+     "role": "power",
+     "quota": 30,
+     "made": 30,
+     "tries": 45,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "clean_water": {
+     "role": "water",
+     "quota": 75,
+     "made": 75,
+     "tries": 1048,
+     "rejected": {},
+     "seconds": 0.3
+    },
+    "clean_aq": {
+     "role": "air_quality",
+     "quota": 45,
+     "made": 45,
+     "tries": 81,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "zero_idle": {
+     "role": "water",
+     "quota": 15,
+     "made": 15,
+     "tries": 64,
+     "rejected": {},
+     "seconds": 0.0
+    },
+    "zero_idle_power": {
+     "role": "power",
+     "quota": 15,
+     "made": 15,
+     "tries": 501,
+     "rejected": {},
+     "seconds": 0.0
+    },
+    "compound_power": {
+     "role": "power",
+     "quota": 60,
+     "made": 60,
+     "tries": 834,
+     "rejected": {},
+     "seconds": 0.4
+    },
+    "compound_water": {
+     "role": "water",
+     "quota": 52,
+     "made": 52,
+     "tries": 1424,
+     "rejected": {},
+     "seconds": 0.4
+    },
+    "compound_aq": {
+     "role": "air_quality",
+     "quota": 45,
+     "made": 45,
+     "tries": 231,
+     "rejected": {},
+     "seconds": 0.2
+    },
+    "routine_power": {
+     "role": "power",
+     "quota": 38,
+     "made": 38,
+     "tries": 840,
+     "rejected": {},
+     "seconds": 0.4
+    },
+    "routine_water": {
+     "role": "water",
+     "quota": 38,
+     "made": 38,
+     "tries": 977,
+     "rejected": {},
+     "seconds": 0.6
+    },
+    "routine_aq": {
+     "role": "air_quality",
+     "quota": 22,
+     "made": 22,
+     "tries": 93,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "fault_power": {
+     "role": "power",
+     "quota": 22,
+     "made": 22,
+     "tries": 94,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "fault_water": {
+     "role": "water",
+     "quota": 22,
+     "made": 22,
+     "tries": 264,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "fault_aq": {
+     "role": "air_quality",
+     "quota": 22,
+     "made": 22,
+     "tries": 45,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "hvac_stages": {
+     "role": "hvac",
+     "quota": 60,
+     "made": 60,
+     "seconds": 111.0
+    },
+    "occupancy48": {
+     "role": "occupancy",
+     "quota": 40,
+     "made": 40,
+     "seconds": 0.0
+    }
+   },
+   "seconds": 131.5
+  },
+  "v21_aug.jsonl": {
+   "n": 1666,
+   "sha256_16": "0b2d9bbe9bc80bf3",
+   "roles": {
+    "power": 630,
+    "water": 594,
+    "air_quality": 288,
+    "weather": 54,
+    "hvac": 60,
+    "occupancy": 40
+   },
+   "status": {
+    "warning": 417,
+    "critical": 316,
+    "sensor_fault": 218,
+    "normal": 715
+   },
+   "slices": {
+    "stage_early": 289,
+    "status_power_water": 630,
+    "aug_unseen": 1666,
+    "stage_1.5h": 258,
+    "stage_3h": 239,
+    "exp_vs_gradual": 184,
+    "spike_e10": 60,
+    "calm": 216,
+    "erratic": 72,
+    "water_cause": 114,
+    "pump_cycling": 54,
+    "power_drop": 36,
+    "compound": 126,
+    "routine": 78,
+    "sensor_fault": 54,
+    "hvac": 60,
+    "occupancy": 40
+   },
+   "buckets": {
+    "stage_early_power": {
+     "role": "power",
+     "quota": 72,
+     "made": 72,
+     "tries": 857,
+     "rejected": {},
+     "seconds": 0.3
+    },
+    "stage_early_water": {
+     "role": "water",
+     "quota": 60,
+     "made": 60,
+     "tries": 496,
+     "rejected": {},
+     "seconds": 0.3
+    },
+    "stage_early_air_quality": {
+     "role": "air_quality",
+     "quota": 54,
+     "made": 54,
+     "tries": 147,
+     "rejected": {},
+     "seconds": 0.2
+    },
+    "stage_early_weather": {
+     "role": "weather",
+     "quota": 18,
+     "made": 18,
+     "tries": 110,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "stage_1.5h_power": {
+     "role": "power",
+     "quota": 72,
+     "made": 72,
+     "tries": 839,
+     "rejected": {},
+     "seconds": 0.3
+    },
+    "stage_1.5h_water": {
+     "role": "water",
+     "quota": 60,
+     "made": 60,
+     "tries": 871,
+     "rejected": {},
+     "seconds": 0.3
+    },
+    "stage_1.5h_air_quality": {
+     "role": "air_quality",
+     "quota": 54,
+     "made": 54,
+     "tries": 146,
+     "rejected": {},
+     "seconds": 0.2
+    },
+    "stage_1.5h_weather": {
+     "role": "weather",
+     "quota": 18,
+     "made": 18,
+     "tries": 227,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "stage_3h_power": {
+     "role": "power",
+     "quota": 72,
+     "made": 72,
+     "tries": 1249,
+     "rejected": {},
+     "seconds": 0.4
+    },
+    "stage_3h_water": {
+     "role": "water",
+     "quota": 60,
+     "made": 60,
+     "tries": 1185,
+     "rejected": {},
+     "seconds": 0.4
+    },
+    "stage_3h_air_quality": {
+     "role": "air_quality",
+     "quota": 54,
+     "made": 54,
+     "tries": 172,
+     "rejected": {},
+     "seconds": 0.2
+    },
+    "stage_3h_weather": {
+     "role": "weather",
+     "quota": 18,
+     "made": 18,
+     "tries": 196,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "exp_power": {
+     "role": "power",
+     "quota": 36,
+     "made": 36,
+     "tries": 395,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "exp_water": {
+     "role": "water",
+     "quota": 30,
+     "made": 30,
+     "tries": 365,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "spike_e10_power": {
+     "role": "power",
+     "quota": 60,
+     "made": 60,
+     "tries": 2558,
+     "rejected": {},
+     "seconds": 1.1
+    },
+    "stable_e10_power": {
+     "role": "power",
+     "quota": 36,
+     "made": 36,
+     "tries": 1650,
+     "rejected": {},
+     "seconds": 0.7
+    },
+    "erratic_power": {
+     "role": "power",
+     "quota": 36,
+     "made": 36,
+     "tries": 769,
+     "rejected": {},
+     "seconds": 0.2
+    },
+    "erratic_aq": {
+     "role": "air_quality",
+     "quota": 18,
+     "made": 18,
+     "tries": 56,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "erratic_water": {
+     "role": "water",
+     "quota": 18,
+     "made": 18,
+     "tries": 432,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "zero_stop_water": {
+     "role": "water",
+     "quota": 36,
+     "made": 36,
+     "tries": 1607,
+     "rejected": {},
+     "seconds": 0.2
+    },
+    "stuck_flow_water": {
+     "role": "water",
+     "quota": 24,
+     "made": 24,
+     "tries": 66,
+     "rejected": {},
+     "seconds": 0.0
+    },
+    "pump_cycle_level": {
+     "role": "water",
+     "quota": 36,
+     "made": 36,
+     "tries": 1171,
+     "rejected": {},
+     "seconds": 0.4
+    },
+    "short_cycle_water": {
+     "role": "water",
+     "quota": 18,
+     "made": 18,
+     "tries": 256,
+     "rejected": {},
+     "seconds": 0.3
+    },
+    "status_power": {
+     "role": "power",
+     "quota": 42,
+     "made": 42,
+     "tries": 769,
+     "rejected": {},
+     "seconds": 0.2
+    },
+    "status_water": {
+     "role": "water",
+     "quota": 36,
+     "made": 36,
+     "tries": 631,
+     "rejected": {},
+     "seconds": 0.2
+    },
+    "water_offhours": {
+     "role": "water",
+     "quota": 36,
+     "made": 36,
+     "tries": 1867,
+     "rejected": {},
+     "seconds": 0.7
+    },
+    "water_dayhours": {
+     "role": "water",
+     "quota": 18,
+     "made": 18,
+     "tries": 574,
+     "rejected": {},
+     "seconds": 0.2
+    },
+    "power_drop": {
+     "role": "power",
+     "quota": 36,
+     "made": 36,
+     "tries": 1963,
+     "rejected": {},
+     "seconds": 0.5
+    },
+    "clean_power": {
+     "role": "power",
+     "quota": 60,
+     "made": 60,
+     "tries": 763,
+     "rejected": {},
+     "seconds": 0.2
+    },
+    "clean_power_pf": {
+     "role": "power",
+     "quota": 24,
+     "made": 0,
+     "tries": 14400,
+     "rejected": {},
+     "seconds": 0.5
+    },
+    "clean_water": {
+     "role": "water",
+     "quota": 60,
+     "made": 60,
+     "tries": 764,
+     "rejected": {},
+     "seconds": 0.3
+    },
+    "clean_aq": {
+     "role": "air_quality",
+     "quota": 36,
+     "made": 36,
+     "tries": 86,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "zero_idle": {
+     "role": "water",
+     "quota": 12,
+     "made": 12,
+     "tries": 62,
+     "rejected": {},
+     "seconds": 0.0
+    },
+    "zero_idle_power": {
+     "role": "power",
+     "quota": 12,
+     "made": 12,
+     "tries": 373,
+     "rejected": {},
+     "seconds": 0.0
+    },
+    "compound_power": {
+     "role": "power",
+     "quota": 48,
+     "made": 48,
+     "tries": 1412,
+     "rejected": {},
+     "seconds": 0.4
+    },
+    "compound_water": {
+     "role": "water",
+     "quota": 42,
+     "made": 42,
+     "tries": 1467,
+     "rejected": {},
+     "seconds": 0.4
+    },
+    "compound_aq": {
+     "role": "air_quality",
+     "quota": 36,
+     "made": 36,
+     "tries": 199,
+     "rejected": {},
+     "seconds": 0.2
+    },
+    "routine_power": {
+     "role": "power",
+     "quota": 30,
+     "made": 30,
+     "tries": 934,
+     "rejected": {},
+     "seconds": 0.5
+    },
+    "routine_water": {
+     "role": "water",
+     "quota": 30,
+     "made": 30,
+     "tries": 444,
+     "rejected": {},
+     "seconds": 0.3
+    },
+    "routine_aq": {
+     "role": "air_quality",
+     "quota": 18,
+     "made": 18,
+     "tries": 97,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "fault_power": {
+     "role": "power",
+     "quota": 18,
+     "made": 18,
+     "tries": 459,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "fault_water": {
+     "role": "water",
+     "quota": 18,
+     "made": 18,
+     "tries": 167,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "fault_aq": {
+     "role": "air_quality",
+     "quota": 18,
+     "made": 18,
+     "tries": 61,
+     "rejected": {},
+     "seconds": 0.1
+    },
+    "hvac_stages": {
+     "role": "hvac",
+     "quota": 60,
+     "made": 60,
+     "seconds": 9.6
+    },
+    "occupancy48": {
+     "role": "occupancy",
+     "quota": 40,
+     "made": 40,
+     "seconds": 0.0
+    }
+   },
+   "seconds": 29.2
+  }
+ },
+ "n_seen_hashes": 52788,
+ "aug_counts": {
+  "skip_metric": 15791,
+  "ok": 19558,
+  "out_of_range": 15
+ }
+}

@@ -1,0 +1,82 @@
+{
+ "model": "ft_v2_q4_0.gguf (final adapter step 4494, dev loss 0.05431 vs best 0.05434; imatrix 64 x 1024 chunks; 196 Q4_0, output Q8_0, embd F16)",
+ "device": "QIDK NPU, htpd 8 streams x 1408 ctx, app stopped during eval, relaunched after",
+ "a_pattern_40min_4h": {
+  "rate": 0.738,
+  "n": 183,
+  "ci95": [
+   0.67,
+   0.796
+  ]
+ },
+ "a_pattern_3h_4h": {
+  "rate": 0.825,
+  "n": 183,
+  "ci95": [
+   0.764,
+   0.873
+  ]
+ },
+ "a_pass_40min": true,
+ "a_pass_3h": false,
+ "b_json_host400": {
+  "rate": 0.993,
+  "k": 397,
+  "n": 400,
+  "ci95": [
+   0.978,
+   0.997
+  ]
+ },
+ "b_policy_host400": {
+  "rate": 0.993,
+  "k": 397,
+  "n": 400,
+  "ci95": [
+   0.978,
+   0.997
+  ]
+ },
+ "d_false_alarm_clean_4h": {
+  "rate": 0.18,
+  "n": 100,
+  "ci95": [
+   0.117,
+   0.267
+  ]
+ },
+ "d_false_alarm_negatives_host400": {
+  "rate": 0.129,
+  "k": 12,
+  "n": 93,
+  "ci95": [
+   0.075,
+   0.212
+  ]
+ },
+ "latency": {
+  "n=48": {
+   "batches": 121,
+   "batch_size": 8,
+   "median_batch_s": 9.74,
+   "per_agent_s": 1.22,
+   "mean_out_tokens": 84.4
+  },
+  "n=96": {
+   "batches": 129,
+   "batch_size": 8,
+   "median_batch_s": 11.36,
+   "per_agent_s": 1.42,
+   "mean_out_tokens": 85.9
+  },
+  "n=144": {
+   "batches": 132,
+   "batch_size": 8,
+   "median_batch_s": 12.75,
+   "per_agent_s": 1.59,
+   "mean_out_tokens": 86.9
+  }
+ },
+ "verdict": "NOT fully accepted: (a) 40 min passes (74% vs 65%; v1 42%), 3 h misses (82.5% vs 88%; v1 88%); (b) JSON/policy 99.3% pass; (d) false alarms 18% vs 31% pass",
+ "not_done": "laptop host eval (HF bf16 / GGUF) stopped by user order -> quantisation loss not measured; 54/900-window v1 regression sets not rerun (v1 prompts); full test split stopped at 744/2965 (raw samples kept)"
+}

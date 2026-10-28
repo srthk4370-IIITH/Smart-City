@@ -1,0 +1,124 @@
+diff --git a/Code/smart-city-edge-agent/app/backend/genie.go b/Code/smart-city-edge-agent/app/backend/genie.go
+index 20281ff..61dded2 100644
+--- a/Code/smart-city-edge-agent/app/backend/genie.go
++++ b/Code/smart-city-edge-agent/app/backend/genie.go
+@@ -240,10 +240,12 @@ func (g *GenieRunner) Run(ctx context.Context, b ModelBundle, prompt, prefill st
+ 	gap := 250 * time.Millisecond
+ 	if g.lastDir != "" && g.lastDir != b.Dir {
+ 		gap = 2500 * time.Millisecond
+-	} else if daemonUp() {
++	} else if htpdEnabled() || daemonUp() {
+ 		// The gap guards against one PROCESS's HTP teardown overlapping the next process's start.
+ 		// genied is one persistent process holding one dialog: there is no teardown between calls,
+-		// so there is nothing to wait out.
++		// so there is nothing to wait out. The same holds for htpd (one resident process; the CLI is
++		// never spawned in htpd mode), where the 250 ms used to land between the agent batch and the
++		// synthesizer of every multi-domain incident (proofs/2026-10-21_latency_ladder).
+ 		gap = 0
+ 	}
+ 	if wait := gap - time.Since(g.lastEnd); !g.lastEnd.IsZero() && wait > 0 && !g.mock {
+diff --git a/Code/smart-city-edge-agent/app/backend/htpdclient.go b/Code/smart-city-edge-agent/app/backend/htpdclient.go
+index c0d97df..94325bf 100644
+--- a/Code/smart-city-edge-agent/app/backend/htpdclient.go
++++ b/Code/smart-city-edge-agent/app/backend/htpdclient.go
+@@ -338,8 +338,12 @@ func superviseHtpd(g *GenieRunner, workDir string) {
+ 		// never two models on the NPU: genied must be gone before htpd loads
+ 		killDaemon("htpd mode selected")
+ 		time.Sleep(time.Second)
++		ubSynth := "512"
++		if v := prof["ubatch_synth"]; v != "" { // A/B knob (proofs/2026-10-21_latency_ladder): single-sequence prefill chunk
++			ubSynth = v
++		}
+ 		args := []string{"-m", model, "--agents", fmt.Sprint(htpdMaxBatch()), "--agent-ctx", fmt.Sprint(htpdAgentCtx()),
+-			"--synth-ctx", "4096", "--ubatch", "512", "--ubatch-synth", "512", "--port", strings.Split(htpdAddr(), ":")[1]}
++			"--synth-ctx", "4096", "--ubatch", "512", "--ubatch-synth", ubSynth, "--port", strings.Split(htpdAddr(), ":")[1]}
+ 		if l := prof["layouts"]; l != "" {
+ 			args = append(args, "--agent-layouts", l) // htpd v7: one batch on the first layout that fits
+ 		}
+@@ -374,7 +378,11 @@ func superviseHtpd(g *GenieRunner, workDir string) {
+ 		for i := 0; i < 60 && !htpdUp(); i++ {
+ 			time.Sleep(250 * time.Millisecond)
+ 		}
+-		log.Printf("htpd: started (pid %d), up=%v", cmd.Process.Pid, htpdUp())
++		up := htpdUp()
++		log.Printf("htpd: started (pid %d), up=%v", cmd.Process.Pid, up)
++		if up {
++			go htpdWarmup(g, workDir)
++		}
+ 	}
+ 	start()
+ 	go func() {
+@@ -386,6 +394,44 @@ func superviseHtpd(g *GenieRunner, workDir string) {
+ 	}()
+ }
+ 
++// htpdWarmup primes a freshly started htpd from <workDir>/htpd_warmup.jsonl (one request per line,
++// {"kind":"agents","prompts":[...]} or {"kind":"synth","prompts":["..."]}; made by
++// proofs/2026-10-21_latency_ladder/make_warmup.py). A cold htpd has no per-role system-prompt KV and no recent
++// answers to draft from, so the first incident after a (re)start paid both (chaos round 1: 30.8-34.4 s vs
++// 25.5-29.7 s later). Outputs are discarded and never enter the answer cache; the KV restored later is the
++// same bytes a cold prefill computes, and drafts are verified. No file = no warm-up (today's behaviour).
++// Holds the runner lock like a call, so a real request that arrives meanwhile waits for it (a few seconds).
++func htpdWarmup(g *GenieRunner, workDir string) {
++	b, err := os.ReadFile(filepath.Join(workDir, "htpd_warmup.jsonl"))
++	if err != nil {
++		return
++	}
++	g.mu.Lock()
++	g.busy.Store(true)
++	defer func() { g.lastEnd = time.Now(); g.busy.Store(false); g.mu.Unlock() }()
++	t0, n := time.Now(), 0
++	for _, line := range strings.Split(string(b), "\n") {
++		var w struct {
++			Kind    string   `json:"kind"`
++			Prompts []string `json:"prompts"`
++		}
++		if json.Unmarshal([]byte(strings.TrimSpace(line)), &w) != nil || len(w.Prompts) == 0 {
++			continue
++		}
++		if w.Kind != "agents" {
++			w.Kind, w.Prompts = "synth", w.Prompts[:1]
++		} else if len(w.Prompts) > htpdMaxBatch() {
++			w.Prompts = w.Prompts[:htpdMaxBatch()]
++		}
++		if _, err := htpdCall(context.Background(), w.Kind, w.Prompts, 120*time.Second); err != nil {
++			log.Printf("htpd: warm-up stopped after %d requests: %v", n, err)
++			return
++		}
++		n++
++	}
++	log.Printf("htpd: warm-up %d requests in %v", n, time.Since(t0).Round(time.Millisecond))
++}
++
+ func sha256Key(b ModelBundle, prompt string) [32]byte {
+ 	return sha256.Sum256([]byte(b.Dir + "|" + b.Config + "|" + prompt))
+ }
+@@ -395,7 +441,9 @@ func htpdKill(why string) {
+ 	ents, _ := os.ReadDir("/proc")
+ 	for _, e := range ents {
+ 		b, err := os.ReadFile("/proc/" + e.Name() + "/comm")
+-		if err != nil || strings.TrimSpace(string(b)) != "htpd" {
++		// the profile can run another build (bin=.../htpd_v7): its comm is "htpd_v7", which the old exact
++		// match never killed, so a stalled v7 daemon was never restarted
++		if comm := strings.TrimSpace(string(b)); err != nil || (comm != "htpd" && !strings.HasPrefix(comm, "htpd_")) {
+ 			continue
+ 		}
+ 		var pid int
+diff --git a/Code/smart-city-edge-agent/app/backend/reason.go b/Code/smart-city-edge-agent/app/backend/reason.go
+index ef7e530..759e39c 100644
+--- a/Code/smart-city-edge-agent/app/backend/reason.go
++++ b/Code/smart-city-edge-agent/app/backend/reason.go
+@@ -672,7 +672,12 @@ func (r *Reasoner) analyse(ctx context.Context, inc *Incident, mode int, t0 time
+ 				r.log(inc, fmt.Sprintf("%s agent: solo re-run also invalid - first answer kept", title(s.Role)))
+ 				return
+ 			}
+-			if !solo[i] && !again && !call.Valid && res.Error == "" && !res.Cached {
++			// solo_rerun=runaway (htpd_profile, USER DECISION, proofs/2026-10-21_latency_ladder): re-run alone only
++			// answers that did not end cleanly (cap, context, JSON abort) or did not parse. A complete answer the gate
++			// rejected for an off-label value (5 of 9 v2 chaos incidents: water "acidic_condition") came back invalid
++			// again when re-run alone, costing ~2.5-3.5 s each time. Default (key absent) = every invalid answer.
++			rerunnable := htpdProfile()["solo_rerun"] != "runaway" || !res.EarlyStopped || call.Parsed == nil
++			if !solo[i] && !again && !call.Valid && res.Error == "" && !res.Cached && rerunnable {
+ 				// a batched answer that failed the policy gate (runaway, off-label pattern, broken JSON):
+ 				// 0.8% of batched v2 answers on the device eval, in runs of neighbouring streams, so a
+ 				// batch artefact rather than the model; one solo re-run at the end of the batch

@@ -1,0 +1,20 @@
+improve:power_throttling INC-0048 early sev=warning      change=None power_kw gradual_increase/warning 
+improve:power_throttling INC-0048 1.5h  sev=warning      change=same power_kw step_increase/warning KEPT warning kept from early: the rule on the fresh window still reads critical (refined view: 
+improve:power_throttling INC-0048 3h    sev=normal       change=curbed power_kw spike/normal CURBED resolved: warning -> normal, spike back to baseline since 15:10 (AI: event no longer activ
+== improve:power_throttling: warning -> warning -> normal (curbed)
+improve:pm_spike INC-0049 early sev=critical     change=None pm25 spike/critical 
+improve:pm_spike INC-0049 1.5h  sev=normal       change=curbed pm25 spike/normal CURBED resolved: critical -> normal, spike back to baseline since 14:30 (AI: event no longer acti
+improve:pm_spike INC-0049 3h    sev=normal       change=same pm25 spike/normal still resolved: back to baseline since 14:30 (AI: event no longer active)
+== improve:pm_spike: critical -> normal -> normal (curbed)
+improve:ventilation_failure INC-0050 early sev=warning      change=None co2 exponential_increase/warning 
+improve:ventilation_failure INC-0050 1.5h  sev=normal       change=curbed co2 spike/normal CURBED resolved: warning -> normal, spike back to baseline since 16:05 (AI: event no longer activ
+improve:ventilation_failure INC-0050 3h    sev=normal       change=same co2 spike/normal still resolved: back to baseline since 16:05 (AI: event no longer active)
+== improve:ventilation_failure: warning -> normal -> normal (curbed)
+hold:ventilation_failure INC-0051 early sev=warning      change=None co2 exponential_increase/warning 
+hold:ventilation_failure INC-0051 1.5h  sev=critical     change=elevated co2 throttling/critical 
+hold:ventilation_failure INC-0051 3h    sev=critical     change=same co2 throttling/critical 
+== hold:ventilation_failure: warning -> critical -> critical (elevated)
+hold:power_throttling INC-0052 early sev=warning      change=None power_kw gradual_increase/warning 
+hold:power_throttling INC-0052 1.5h  sev=critical     change=elevated power_kw throttling/critical 
+hold:power_throttling INC-0052 3h    sev=critical     change=same power_kw throttling/critical 
+== hold:power_throttling: warning -> critical -> critical (elevated)

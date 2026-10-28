@@ -69,36 +69,55 @@ type SensorState struct {
 	Finding     *Finding `json:"finding,omitempty"`
 	AbnormalFor int      `json:"abnormal_for"` // consecutive abnormal readings (AI is called at persistReadings)
 	Reported    bool     `json:"reported"`     // already in an incident during this abnormal episode
-	prev        string   // pattern at the previous poll
-	same        int      // consecutive polls with an abnormal status
-	alerted     bool     // already reported during this abnormal episode
-	clearedAt   int64    // sensor time the reported episode returned to normal (0 = still abnormal)
-	reportedSev int      // severity rank that was reported
+	// data quality (dataquality.go): good | uncertain | bad | stale | maintenance, why, real-reading
+	// coverage of the 4 h window, held (slider / sample-and-hold) or measured (device feed), ingest counters
+	Quality     string       `json:"quality"`
+	QualityWhy  string       `json:"quality_reason,omitempty"`
+	MaintUntil  int64        `json:"maint_until,omitempty"` // sensor time an out-of-service window ends
+	Coverage    float64      `json:"coverage_4h"`
+	Feed        string       `json:"feed"`
+	Ingest      *IngestStats `json:"ingest,omitempty"`
+	normalRun   int          // consecutive normal readings (off-delay)
+	prev        string       // pattern at the previous poll
+	same        int          // consecutive polls with an abnormal status
+	alerted     bool         // already reported during this abnormal episode
+	clearedAt   int64        // sensor time the reported episode returned to normal (0 = still abnormal)
+	alertedAt   int64        // sensor time the episode was reported
+	reportedSev int          // severity rank that was reported
+	critRun     int          // consecutive FRESH readings beyond the critical limit (fast path)
+	fastAt      int64        // sensor time a fast-path incident was opened for this episode (0 = none)
+	earlyAt     int64        // sensor time a provisional early AI run was requested for this episode (0 = none)
 }
 
 type Engine struct {
-	mu           sync.RWMutex
-	dir          string
-	Meta         ReplayMeta
-	bank         map[string]*SimSensor // node|metric -> live sensor
-	bankOrder    []string
-	NoiseScale   float64 // multiplier on each sensor's measurement jitter (0 = exact values)
-	ClockMin     int     // sensor time-of-day (minutes after midnight IST) at (re)start; default 09:00
-	batchUntil   int64   // sensor time when the open incident batch closes (0 = none)
-	batchOpen    int64   // sensor time the open batch started
+	mu            sync.RWMutex
+	dir           string
+	Meta          ReplayMeta
+	bank          map[string]*SimSensor // node|metric -> live sensor
+	bankOrder     []string
+	NoiseScale    float64   // multiplier on each sensor's measurement jitter (0 = exact values)
+	ClockMin      int       // sensor time-of-day (minutes after midnight IST) at (re)start; default 09:00
+	batchUntil    int64     // sensor time when the open incident batch closes (0 = none)
+	batchOpen     int64     // sensor time the open batch started
 	batchOpenWall time.Time // wall clock the open batch started (latency tracing only)
-	rng          *rand.Rand
-	series       map[string]map[int64]float64 // node|metric -> bucket -> value
-	sim          int64
-	Speed        int // buckets per poll
-	PollMs       int
-	Playing      bool
-	injects      []*Injection
-	states       map[string]*SensorState
-	cooldown     map[string]int64
-	lastIncident int64
-	onEvent      func([]Candidate)
-	onTick       func(int64)
+	rng           *rand.Rand
+	series        map[string]map[int64]float64 // node|metric -> bucket -> value
+	sim           int64
+	Speed         int // buckets per poll
+	PollMs        int
+	Playing       bool
+	injects       []*Injection
+	states        map[string]*SensorState
+	cooldown      map[string]int64
+	lastIncident  int64
+	onEvent       func([]Candidate)
+	onTick        func(int64)
+	// epoch names this run of the sensor history: reset() discards every reading and nothing survives
+	// a backend restart, so a stored incident's windows can only be re-read in the epoch it was created
+	// in (refine.go). shift is how far SetClock has moved sensor time within the epoch.
+	epoch int64
+	shift int64
+	dq    map[string]*feedState // node|metric -> data-quality state (dataquality.go)
 }
 
 type Candidate struct {
@@ -107,6 +126,13 @@ type Candidate struct {
 	Xs                 []float64
 	End                int64
 	Injected           bool
+	// Fast: critical fast path (2026-10-28) - the sensor is beyond its CRITICAL limit for fastReadings fresh
+	// readings; the incident opens at once with the rules-only preliminary report, the AI follows at persistReadings
+	Fast bool
+	// Early: provisional early AI (earlyai.go, profile ai_early_k / ai_early_shapes, default off) - the sensor has been
+	// abnormal for ai_early_k readings with a shape the gate-length study cleared; the AI runs on that young window
+	// as refine stage "provisional", and the persistReadings run updates the same incident
+	Early bool
 }
 
 func key(n, m string) string { return n + "|" + m }
@@ -118,6 +144,13 @@ func NewEngine(dir string) (*Engine, error) {
 	sensors, err := loadSensors(dir)
 	if err != nil {
 		return nil, err
+	}
+	if agentV2() { // per-unit HVAC agents (D1): agentversion.go
+		units, err := loadHVACUnitsV2(dir)
+		if err != nil {
+			return nil, err
+		}
+		sensors = append(sensors, units...)
 	}
 	e.Meta.Nodes = map[string]NodeInfo{}
 	for _, sn := range sensors {
@@ -139,6 +172,9 @@ func NewEngine(dir string) (*Engine, error) {
 			Pattern: "-", Status: "no_data"}
 	}
 	e.Meta.History = Window + 12
+	if agentV2() {
+		e.Meta.History = v2Hist + 12 // a 12 h window (refinement ladder, E9/E10) exists from the start
+	}
 	e.reset()
 	return e, nil
 }
@@ -160,8 +196,13 @@ func (e *Engine) reset() {
 	e.lastIncident = 0
 	e.batchUntil, e.batchOpen = 0, 0
 	e.cooldown = map[string]int64{}
+	e.epoch, e.shift = time.Now().UnixNano(), 0
 	for _, st := range e.states {
-		st.prev, st.same, st.alerted = "", 0, false
+		st.prev, st.same, st.alerted, st.normalRun = "", 0, false, 0
+	}
+	for _, fs := range e.dq { // a restart discards every reading; device feeds stay measured
+		fs.pending, fs.cnt = map[int64]*bucketAcc{}, map[int64]int{}
+		fs.maintFrom, fs.maintUntil, fs.replacedAt, fs.glitchAt, fs.uncertainAt = 0, 0, 0, 0, 0
 	}
 }
 
@@ -187,6 +228,7 @@ func (e *Engine) SetClock(minutes int) {
 		e.series[k] = ns
 	}
 	e.sim += delta
+	e.shift += delta
 	for k, v := range e.cooldown {
 		e.cooldown[k] = v + delta
 	}
@@ -200,6 +242,26 @@ func (e *Engine) SetClock(minutes int) {
 	for _, in := range e.injects {
 		in.Start += delta
 	}
+	for _, st := range e.states {
+		if st.alertedAt != 0 {
+			st.alertedAt += delta
+		}
+	}
+	for _, fs := range e.dq {
+		np, nc := map[int64]*bucketAcc{}, map[int64]int{}
+		for b, a := range fs.pending {
+			np[b+delta] = a
+		}
+		for b, c := range fs.cnt {
+			nc[b+delta] = c
+		}
+		fs.pending, fs.cnt = np, nc
+		for _, p := range []*int64{&fs.maintFrom, &fs.maintUntil, &fs.replacedAt, &fs.glitchAt, &fs.uncertainAt} {
+			if *p != 0 {
+				*p += delta
+			}
+		}
+	}
 	e.ClockMin = minutes
 }
 
@@ -207,11 +269,18 @@ func (e *Engine) SetClock(minutes int) {
 func (e *Engine) feed(b int64) {
 	for _, k := range e.bankOrder {
 		sn := e.bank[k]
-		v := e.applyInjections(sn.Node, sn.Metric, b, e.reading(sn))
-		if e.series[k] == nil {
-			e.series[k] = map[int64]float64{}
+		fs := e.dq[k]
+		switch {
+		case fs != nil && fs.measured: // a device feed: the mean of its readings in b, or no reading
+			e.feedMeasured(k, fs, b)
+		case fs.inMaintenance(b), heldStale(sn): // out of service, or a silent device: nothing invented
+		default:
+			v := e.applyInjections(sn.Node, sn.Metric, b, e.reading(sn))
+			if e.series[k] == nil {
+				e.series[k] = map[int64]float64{}
+			}
+			e.series[k][b] = v
 		}
-		e.series[k][b] = v
 		for bb := range e.series[k] { // keep 26 h per sensor
 			if bb < b-26*3600 {
 				delete(e.series[k], bb)
@@ -349,6 +418,33 @@ func (e *Engine) Window(node, metric string, end int64) ([]float64, bool) {
 	return xs, true
 }
 
+// WindowAt is Window for callers outside the engine lock (the reasoner's refinements, refine.go).
+// end must not be ahead of sensor time: Window forward-fills the newest point.
+func (e *Engine) WindowAt(node, metric string, end int64) ([]float64, bool) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	if end > e.sim {
+		return nil, false
+	}
+	return e.Window(node, metric, end)
+}
+
+// HistoryAt returns up to n readings ending at end (oldest first) for the 12 h checks: the longest
+// stretch back from end whose gaps are at most 3 readings (filled with the next older value).
+// nil when end is in the future or the reading at end is missing.
+func (e *Engine) HistoryAt(node, metric string, end int64, n int) []float64 {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.historyLocked(node, metric, end, n) // engine_v2.go
+}
+
+// SimBase is the history epoch, the clock shift within it (see Engine.epoch) and the sensor time.
+func (e *Engine) SimBase() (epoch, shift, now int64) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.epoch, e.shift, e.sim
+}
+
 // Tick takes Speed new readings from every live sensor (one 5-minute bucket each) and runs detection.
 func (e *Engine) Tick() {
 	e.mu.Lock()
@@ -428,6 +524,8 @@ func sevRank(s string) int {
 // detect updates live state for every sensor and returns gated candidates (caller holds lock).
 func (e *Engine) detect() []Candidate {
 	abnormal := map[string]Candidate{}
+	var fast []Candidate
+	ek, eshapes := earlyAIConfig()
 	for k, st := range e.states {
 		s := e.series[k]
 		var lastB int64 = -1
@@ -448,7 +546,25 @@ func (e *Engine) detect() []Candidate {
 			st.Points = n
 		}
 		st.Injected = e.injectedSensor(st.Node, st.Metric)
-		if st.Role == "hvac" {
+		var xs []float64
+		var f Finding
+		if hvacAgentSensor(st.Role, st.Node, st.Metric) {
+			// v2 per-unit HVAC: the HVAC teacher rule on the 4 h window gates events like any other sensor
+			var ok bool
+			xs, f, ok = e.hvacUnitFinding(st.Node, e.sim)
+			st.DataOK = ok
+			if !ok {
+				st.Pattern, st.Status, st.Cause, st.Finding = "-", "insufficient_data", "", nil
+				st.SMA1h, st.EMA1h, st.SlopePerH = nil, nil, nil
+				st.same, st.AbnormalFor, st.normalRun = 0, 0, 0
+				e.setQuality(k, st, false)
+				continue
+			}
+			sm, em := sma(xs, 12), ema(xs, 12)
+			_, b, _ := linfit(xs)
+			sl := b * 12
+			st.SMA1h, st.EMA1h, st.SlopePerH = &sm, &em, &sl
+		} else if st.Role == "hvac" {
 			// context only (no agent): live value + 1 h moving averages over the last 12 buckets
 			var w []float64
 			for i := 11; i >= 0; i-- {
@@ -465,34 +581,87 @@ func (e *Engine) detect() []Candidate {
 			} else {
 				st.Status, st.Pattern, st.DataOK = "insufficient_data", "-", false
 			}
+			e.setQuality(k, st, st.DataOK)
 			continue
+		} else {
+			var ok bool
+			xs, ok = e.Window(st.Node, st.Metric, e.sim)
+			st.DataOK = ok
+			if !ok {
+				// not enough real readings (gap, offline, warming up, replaced): no AI, a reason instead
+				st.Pattern, st.Status, st.Cause, st.Finding = "-", "insufficient_data", "", nil
+				st.SMA1h, st.EMA1h, st.SlopePerH = nil, nil, nil
+				st.same, st.AbnormalFor, st.normalRun = 0, 0, 0
+				e.setQuality(k, st, false)
+				continue
+			}
+			if st.Role != "occupancy" {
+				sm, em := sma(xs, 12), ema(xs, 12)
+				_, b, _ := linfit(xs)
+				sl := b * 12
+				st.SMA1h, st.EMA1h, st.SlopePerH = &sm, &em, &sl
+			}
+			f = RuleFinding(st.Role, st.Metric, st.Node, xs, e.sim)
 		}
-		xs, ok := e.Window(st.Node, st.Metric, e.sim)
-		st.DataOK = ok
-		if !ok {
-			st.Pattern, st.Status, st.Cause, st.Finding = "-", "insufficient_data", "", nil
-			st.SMA1h, st.EMA1h, st.SlopePerH = nil, nil, nil
-			continue
+		if sevRank(f.Status) > 0 && !hvacAgentSensor(st.Role, st.Node, st.Metric) {
+			// one isolated single-reading glitch must not raise an alarm on its own (gate only: a candidate
+			// still carries the raw window, the AI never sees modified data)
+			if ys, at := glitchFree(st.Role, st.Metric, xs); ys != nil {
+				if g := RuleFinding(st.Role, st.Metric, st.Node, ys, e.sim); sevRank(g.Status) == 0 {
+					f = g
+					e.feedOf(k).glitchAt = e.sim - int64(len(xs)-1-at)*bucketSec
+				}
+			}
 		}
-		if st.Role != "occupancy" {
-			sm, em := sma(xs, 12), ema(xs, 12)
-			_, b, _ := linfit(xs)
-			sl := b * 12
-			st.SMA1h, st.EMA1h, st.SlopePerH = &sm, &em, &sl
-		}
-		f := RuleFinding(st.Role, st.Metric, st.Node, xs, e.sim)
 		st.prev = f.Pattern
 		st.Pattern, st.Status, st.Cause, st.Finding = f.Pattern, f.Status, f.LikelyCause, &f
+		e.setQuality(k, st, true)
+		if e.dq[k].inMaintenance(e.sim) { // out of service: shown, never alarmed
+			st.same, st.AbnormalFor, st.normalRun = 0, 0, 0
+			continue
+		}
 		// Only an abnormal STATUS (warning, critical, faulty/stuck sensor) may call the AI. A shape change at
 		// normal levels - including a value returning to normal - is shown on the dashboard but never costs
 		// an NPU call, so a board at rest makes no LLM calls at all.
 		if sevRank(f.Status) == 0 {
+			st.critRun = 0
+			st.normalRun++
+			// ISA-18.2 deadband + off-delay: a reading back to normal but still within the deadband of the
+			// limit neither restarts the on-delay count nor ends a reported episode until it has repeated
+			// offDelayReadings times (a value hovering at the limit is one episode, not a flood of incidents,
+			// and a chattering one still alerts).
+			near := nearLimit(st.Role, st.Metric, xs[len(xs)-1]) && st.normalRun < offDelayReadings
+			if near && (st.same > 0 || (st.alerted && st.clearedAt == 0)) {
+				continue
+			}
 			st.same = 0
 			st.AbnormalFor = 0
+			if st.fastAt != 0 && e.sim-st.fastAt >= fastCooldown*bucketSec {
+				st.fastAt = 0 // episode over and cooled down: a new critical episode may open a fast incident again
+			}
+			if st.earlyAt != 0 && e.sim-st.earlyAt >= fastCooldown*bucketSec {
+				st.earlyAt = 0
+			}
 			if st.alerted && st.clearedAt == 0 {
 				st.clearedAt = e.sim // episode over; its readings stay in the 4 h window for a while
 			}
 			continue
+		}
+		st.normalRun = 0
+		if _, fresh := s[e.sim]; !fresh {
+			// no new reading this bucket (live edge forward-filled): the window did not change, so it is
+			// not another abnormal reading for the on-delay
+			if st.same > 0 && !st.alerted {
+				abnormal[k] = Candidate{st.Node, st.Metric, st.Role, f, xs, e.sim, st.Injected, false, false}
+			}
+			continue
+		}
+		if st.alerted && !hvacAgentSensor(st.Role, st.Node, st.Metric) && newTransient(f.Pattern, xs, e.sim, st.alertedAt) {
+			// A short spike/dip that began AFTER this sensor was reported is a new event, even while the
+			// reported episode is still abnormal or has only just cleared. Without this a load surge on a meter
+			// whose throttling episode was reported (and is still in the 4 h window) was absorbed into the old
+			// episode and never alerted; power has no thresholds, so valueAbnormal cannot re-arm it either.
+			st.alerted, st.Reported, st.clearedAt, st.same = false, false, 0, 0
 		}
 		if st.alerted && st.clearedAt != 0 {
 			// Same sensor abnormal again after a reported episode. The 4-hour window still contains the old
@@ -507,9 +676,42 @@ func (e *Engine) detect() []Candidate {
 		}
 		st.same++
 		st.AbnormalFor, st.Reported = st.same, st.alerted
-		abnormal[k] = Candidate{st.Node, st.Metric, st.Role, f, xs, e.sim, st.Injected}
+		abnormal[k] = Candidate{st.Node, st.Metric, st.Role, f, xs, e.sim, st.Injected, false, false}
+		if valueCritical(st.Role, st.Metric, xs[len(xs)-1]) {
+			st.critRun++
+		} else {
+			st.critRun = 0
+		}
+		if !st.alerted && st.fastAt == 0 && st.critRun >= fastReadings && st.same < persistReadings {
+			st.fastAt = e.sim
+			fast = append(fast, Candidate{st.Node, st.Metric, st.Role, f, xs, e.sim, st.Injected, true, false})
+		}
+		if ek > 0 && !st.alerted && st.earlyAt == 0 && st.same >= ek && st.same < persistReadings && earlyShapeOK(f, eshapes) {
+			st.earlyAt = e.sim
+			fast = append(fast, Candidate{st.Node, st.Metric, st.Role, f, xs, e.sim, st.Injected, false, true})
+		}
 	}
-	return e.batchEvents(abnormal)
+	return append(e.batchEvents(abnormal), fast...)
+}
+
+// valueCritical: is the latest reading beyond the metric's CRITICAL limit (StatusOf's limit branch: pH below 6.0
+// or at/above 9.0, "low" metrics below Crit, "high" at/above Crit)? Metrics without limits (power_kw, level, flow)
+// never qualify, so they have no fast path.
+func valueCritical(role, metric string, last float64) bool {
+	m, ok := Metrics[role+"/"+metric]
+	if !ok || !m.HasLimits {
+		return false
+	}
+	if metric == "ph" {
+		return last < 6.0 || last >= m.Crit
+	}
+	switch m.Dir {
+	case "high", "both":
+		return last >= m.Crit
+	case "low":
+		return last < m.Crit
+	}
+	return false
 }
 
 const (
@@ -521,6 +723,11 @@ const (
 	batchReadings = 3
 	// ...but never hold an alert longer than this many readings after the batch opened
 	batchMaxReadings = 10
+	// critical fast path: this many consecutive fresh readings beyond the CRITICAL limit open the incident at once
+	// (rules-only preliminary report); the AI still runs at persistReadings and updates that same incident
+	fastReadings = 2
+	// a sensor opens at most one fast incident per episode, and a new one only this long after the last
+	fastCooldown = 12
 )
 
 // valueAbnormal: is the latest reading itself beyond the metric's warning threshold?
@@ -536,6 +743,33 @@ func valueAbnormal(role, metric string, last float64) bool {
 		return last <= m.Warn
 	}
 	return false
+}
+
+// transientMax: a spike/dip at most this many readings wide (beyond half its height) is a transient.
+const transientMax = 3
+
+// newTransient: the rules call the window a spike (dip) and that excursion is short - at most transientMax
+// readings above (below) half its height - and began inside the window after sensor time since. A hold that is released
+// (e.g. CO2 back down after a ventilation failure) is wider than that, so it does not count.
+func newTransient(pattern string, xs []float64, end, since int64) bool {
+	if (pattern != "spike" && pattern != "dip") || len(xs) == 0 {
+		return false
+	}
+	srt := append([]float64(nil), xs...)
+	sortFloats(srt)
+	med, lo, hi := srt[len(srt)/2], srt[0], srt[len(srt)-1]
+	first, n := -1, 0
+	for i, v := range xs {
+		if (pattern == "spike" && v > med+(hi-med)/2) || (pattern == "dip" && v < med-(med-lo)/2) {
+			if first < 0 {
+				first = i
+			}
+			n++
+		}
+	}
+	// first > 0: the excursion has baseline readings before it. An old event sliding out of the window
+	// leaves its tail at index 0, which the rules can read as a narrow dip/spike - that is not a new event.
+	return first > 0 && n <= transientMax && end-int64(len(xs)-1-first)*bucketSec > since
 }
 
 // batchEvents turns the currently abnormal sensors into at most one incident batch (caller holds lock).
@@ -581,7 +815,7 @@ func (e *Engine) batchEvents(abnormal map[string]Candidate) []Candidate {
 	var out []Candidate
 	for k, c := range abnormal {
 		if st := e.states[k]; !st.alerted {
-			st.alerted, st.Reported, st.clearedAt = true, true, 0
+			st.alerted, st.Reported, st.clearedAt, st.alertedAt = true, true, 0, e.sim
 			st.reportedSev = sevRank(c.Finding.Status)
 			out = append(out, c)
 		}
@@ -603,6 +837,19 @@ func (e *Engine) Inject(sc Scenario) []*Injection {
 		base := 0.0
 		if st := e.states[key(t.Node, t.Metric)]; st != nil && st.Last != nil {
 			base = *st.Last
+		}
+		// a new held scenario on a sensor supersedes an older injection there: stacked held injections masked
+		// the new pattern (chaos run 2026-10-27: ventilation_failure on the CO2 node still held by crowded_room
+		// read as a flatline, and no ventilation incident opened). It starts from the current value. Transient
+		// patterns (spikes) still stack, e.g. a load surge on a held throttle (TestLoadSurgeOnReportedThrottle).
+		if t.Hold {
+			kept := make([]*Injection, 0, len(e.injects)+1)
+			for _, old := range e.injects {
+				if old.Node != t.Node || old.Metric != t.Metric {
+					kept = append(kept, old)
+				}
+			}
+			e.injects = kept
 		}
 		in := &Injection{ID: fmt.Sprintf("%s-%d-%d", sc.ID, time.Now().Unix(), i), Scenario: sc.ID, Node: t.Node, Metric: t.Metric,
 			Kind: t.Kind, Start: e.sim + bucketSec, Dur: t.Dur, Amp: t.Amp, base: base, Hold: t.Hold}
@@ -711,9 +958,20 @@ func (e *Engine) Series(node, metric string, hours int) SeriesOut {
 			out.Lower = append(out.Lower, [2]float64{float64(b), m - 2*sd})
 		}
 	}
-	if info.Role != "hvac" {
+	if hvacAgentSensor(info.Role, node, metric) {
+		if xs, c, hist, ok := e.hvacWindowLocked(node, e.sim, Window); ok {
+			ai := BuildHVACPromptV2(node, info.Location, xs, c, hist)
+			f := HVACRuleFinding(xs, c)
+			out.Window = &AgentPreview{Pattern: f.Pattern, Finding: f, Evidence: ai.Evidence, Prompt: ai.Prompt}
+		}
+	} else if info.Role != "hvac" {
 		if xs, ok := e.Window(node, metric, e.sim); ok {
 			ai := BuildAgentPrompt(info.Role, node, info.Location, metric, xs, e.sim)
+			if agentV2() { // the prompt the v2 agent would get for the 4 h alert window
+				if hist := e.historyLocked(node, metric, e.sim, v2Hist); len(hist) >= Window {
+					ai = BuildAgentPromptV2(info.Role, node, info.Location, metric, hist[len(hist)-Window:], e.sim, hist).AgentInput
+				}
+			}
 			out.Window = &AgentPreview{Pattern: RulePattern(info.Role, metric, xs, e.sim), Finding: RuleFinding(info.Role, metric, node, xs, e.sim),
 				Evidence: ai.Evidence, Prompt: ai.Prompt}
 		}

@@ -1,0 +1,777 @@
+{
+ "id": "INC-0696",
+ "mode": 3,
+ "state": "done",
+ "created_sim": 1792020600,
+ "created_wall": "2026-10-14 04:45:13",
+ "severity": "warning",
+ "severity_final": true,
+ "title": "Temperature throttling: VN building, level 04, rooftop weather station",
+ "rule_title": "Temperature exponential increase: VN building, level 04, rooftop weather station",
+ "roles": [
+  "weather"
+ ],
+ "injected": true,
+ "sensors": [
+  {
+   "ref": "S1",
+   "node": "WE-VN04-00",
+   "metric": "temp",
+   "role": "weather",
+   "location": "VN building, level 04, rooftop weather station",
+   "window_end": 1792031400,
+   "injected": true,
+   "window": [
+    31.27440477906925,
+    31.49417814687176,
+    31.70387935415334,
+    31.956844508182975,
+    32.18741928738946,
+    32.42694469252809,
+    32.64880628031453,
+    32.87366330586677,
+    33.06039605930323,
+    33.33583208583279,
+    33.5534488325264,
+    33.80167749017319,
+    33.99351424842258,
+    34.224925146588994,
+    34.47905605527688,
+    34.72563418543291,
+    34.94739318155788,
+    35.15199786572974,
+    35.36909223502228,
+    35.606390572867824,
+    35.87257792994476,
+    36.08669214108718,
+    36.320346273807836,
+    36.53881505313618,
+    36.75766589901923,
+    36.97375768545232,
+    37.19769427756117,
+    37.45124331264568,
+    37.679367357572296,
+    37.90486653210664,
+    38.116782779531995,
+    38.13883619387329,
+    38.115828954570105,
+    38.14404672445243,
+    38.10462632542839,
+    38.122254821329555,
+    38.1415872922145,
+    38.140744335652386,
+    38.10912146501433,
+    38.11294392924988,
+    38.176457426053965,
+    38.12179257859915,
+    38.12339125319151,
+    38.14639445397637,
+    38.126097702165865,
+    38.14430832908141,
+    38.110375434823354,
+    38.11131724510166
+   ],
+   "evidence": [
+    {
+     "ID": "E1",
+     "Stat": "last",
+     "Text": "last = 38.1 C"
+    },
+    {
+     "ID": "E2",
+     "Stat": "max",
+     "Text": "max = 38.2 C at 07:25"
+    },
+    {
+     "ID": "E3",
+     "Stat": "min",
+     "Text": "min = 29.5 C at 03:00"
+    },
+    {
+     "ID": "E4",
+     "Stat": "slope",
+     "Text": "trend = +1.4 C/h (r2 0.86)"
+    },
+    {
+     "ID": "E5",
+     "Stat": "max_jump",
+     "Text": "largest 5-min change = +0.6 C at 02:25"
+    },
+    {
+     "ID": "E6",
+     "Stat": "sma",
+     "Text": "SMA 1h = 38.1, EMA 1h = 38.1, mean 8h = 33.0 C"
+    },
+    {
+     "ID": "E7",
+     "Stat": "shape",
+     "Text": "halves 30.0 -> 35.9, curvature +1.2/h, oscillation crossings 2"
+    },
+    {
+     "ID": "E8",
+     "Stat": "flat",
+     "Text": "noise 0.14, longest flat run 10 pts, plateau at max 19 pts"
+    },
+    {
+     "ID": "E9",
+     "Stat": "long_view",
+     "Text": "12 h view: no level shift or drift"
+    },
+    {
+     "ID": "E10",
+     "Stat": "episodes",
+     "Text": "recent episodes: no excursions beyond 3x normal noise in the last 12 h"
+    }
+   ],
+   "global_evidence_ids": [
+    "ev:WE-VN04-00:temp:last:1792031400",
+    "ev:WE-VN04-00:temp:max:1792031400",
+    "ev:WE-VN04-00:temp:min:1792031400",
+    "ev:WE-VN04-00:temp:slope:1792031400",
+    "ev:WE-VN04-00:temp:max_jump:1792031400",
+    "ev:WE-VN04-00:temp:sma:1792031400",
+    "ev:WE-VN04-00:temp:shape:1792031400",
+    "ev:WE-VN04-00:temp:flat:1792031400",
+    "ev:WE-VN04-00:temp:long_view:1792031400",
+    "ev:WE-VN04-00:temp:episodes:1792031400"
+   ],
+   "rule_finding": {
+    "pattern": "dip",
+    "status": "warning",
+    "observations": [
+     "Temperature dropped briefly to 31.3 C at 04:05, then recovered to 38.1 C [E3,E1]",
+     "38.1 C exceeds the warning limit of 38 C [E1]"
+    ],
+    "likely_cause": "weather_front",
+    "confidence": 0.7,
+    "action": "monitor"
+   },
+   "context": false,
+   "win_n": 96
+  },
+  {
+   "ref": "S2",
+   "node": "EM-CR-SB00-00",
+   "metric": "power_kw",
+   "role": "power",
+   "location": "SB00 substation, 11 kV feeder meter",
+   "window_end": 1792031400,
+   "injected": false,
+   "window": [
+    595.640249571775,
+    600.9125174557269,
+    603.8600366545426,
+    596.6438143820831,
+    606.3308354253062,
+    598.4712071313616,
+    595.8717882948689,
+    597.7264553827536,
+    596.8910354996939,
+    600.4135214163597,
+    604.6822113729573,
+    595.3213746575443,
+    597.2959489141792,
+    601.647377047553,
+    598.1378982523465,
+    603.3650102994021,
+    600.5687589580135,
+    593.351639088165,
+    603.0492773816877,
+    593.3602954008745,
+    603.5577742943342,
+    601.4966991392956,
+    598.7652434164659,
+    599.9641040721168,
+    604.3090052194342,
+    600.5174791948018,
+    589.7148316834118,
+    592.1921141691961,
+    602.186777739431,
+    596.5666532547046,
+    592.3920574996281,
+    595.6720093556775,
+    595.4203101976516,
+    597.7170162724717,
+    604.5250638018629,
+    598.7451128621068,
+    594.3393907565481,
+    594.3290402608118,
+    603.1301123528407,
+    602.825317728543,
+    601.7799580839629,
+    609.9115335529441,
+    595.2515309601882,
+    596.8540536159023,
+    600.8546378355907,
+    597.0431003928536,
+    600.7369626956765,
+    601.7940699544265
+   ],
+   "evidence": [
+    {
+     "ID": "E1",
+     "Stat": "last",
+     "Text": "last = 601.79 kW"
+    },
+    {
+     "ID": "E2",
+     "Stat": "max",
+     "Text": "max = 609.91 kW at 07:30"
+    },
+    {
+     "ID": "E3",
+     "Stat": "min",
+     "Text": "min = 589.71 kW at 06:15"
+    },
+    {
+     "ID": "E4",
+     "Stat": "slope",
+     "Text": "trend = -0.00 kW/h (r2 0.00)"
+    },
+    {
+     "ID": "E5",
+     "Stat": "max_jump",
+     "Text": "largest 5-min change = -14.66 kW at 07:35"
+    },
+    {
+     "ID": "E6",
+     "Stat": "sma",
+     "Text": "SMA 1h = 599.90, EMA 1h = 599.88, mean 4h = 599.09 kW"
+    },
+    {
+     "ID": "E7",
+     "Stat": "shape",
+     "Text": "halves 599.47 -> 598.70, curvature -1.08/h, oscillation crossings 21"
+    },
+    {
+     "ID": "E8",
+     "Stat": "flat",
+     "Text": "noise 4.161, longest flat run 1 pts, plateau at max 0 pts"
+    }
+   ],
+   "global_evidence_ids": [
+    "ev:EM-CR-SB00-00:power_kw:last:1792031400",
+    "ev:EM-CR-SB00-00:power_kw:max:1792031400",
+    "ev:EM-CR-SB00-00:power_kw:min:1792031400",
+    "ev:EM-CR-SB00-00:power_kw:slope:1792031400",
+    "ev:EM-CR-SB00-00:power_kw:max_jump:1792031400",
+    "ev:EM-CR-SB00-00:power_kw:sma:1792031400",
+    "ev:EM-CR-SB00-00:power_kw:shape:1792031400",
+    "ev:EM-CR-SB00-00:power_kw:flat:1792031400"
+   ],
+   "rule_finding": {
+    "pattern": "stable",
+    "status": "normal",
+    "observations": [
+     "Power steady around 599.09 kW, ranging only 589.71-609.91 [E6,E2,E3]"
+    ],
+    "likely_cause": "normal_load",
+    "confidence": 0.8,
+    "action": "none"
+   },
+   "context": true,
+   "why": "cooling load"
+  },
+  {
+   "ref": "S3",
+   "node": "SR-AQ-KH03-03",
+   "metric": "temp",
+   "role": "air_quality",
+   "location": "KH building, level 03, indoor air sensor 03",
+   "window_end": 1792031400,
+   "injected": false,
+   "window": [
+    24.899695888283865,
+    24.96436785298937,
+    25.071372204987583,
+    24.84436258870597,
+    24.765380048706746,
+    25.04712611565428,
+    24.69664137812729,
+    24.869051297994808,
+    25.10026546324836,
+    24.89847868063636,
+    24.81817470532263,
+    24.96645786596041,
+    25.059188544668537,
+    25.044532973851393,
+    24.878219646720446,
+    25.060853237127166,
+    25.01948475898286,
+    24.94848532133226,
+    25.03614253445956,
+    24.96005325513012,
+    24.71634194904499,
+    25.09239357688495,
+    24.83320108537814,
+    24.87892747571024,
+    24.85110561904438,
+    24.911032308779305,
+    24.984424143525565,
+    24.96935376372533,
+    24.995683594730096,
+    24.95906905513014,
+    25.09058472475642,
+    24.885029115560307,
+    24.855783757456102,
+    25.266438534779372,
+    24.887149530367775,
+    24.982196011256313,
+    24.940426304344896,
+    24.808338047857788,
+    24.86893615782868,
+    25.180104547292252,
+    24.66056533987169,
+    25.11843526246836,
+    25.20875620033426,
+    25.074386184812695,
+    25.12794255018677,
+    25.08137370700269,
+    25.218755803805355,
+    24.711657739408512
+   ],
+   "evidence": [
+    {
+     "ID": "E1",
+     "Stat": "last",
+     "Text": "last = 24.7 C"
+    },
+    {
+     "ID": "E2",
+     "Stat": "max",
+     "Text": "max = 25.3 C at 06:50"
+    },
+    {
+     "ID": "E3",
+     "Stat": "min",
+     "Text": "min = 24.7 C at 07:25"
+    },
+    {
+     "ID": "E4",
+     "Stat": "slope",
+     "Text": "trend = +0.0 C/h (r2 0.05)"
+    },
+    {
+     "ID": "E5",
+     "Stat": "max_jump",
+     "Text": "largest 5-min change = -0.5 C at 07:25"
+    },
+    {
+     "ID": "E6",
+     "Stat": "sma",
+     "Text": "SMA 1h = 25.0, EMA 1h = 25.0, mean 4h = 25.0 C"
+    },
+    {
+     "ID": "E7",
+     "Stat": "shape",
+     "Text": "halves 24.9 -> 25.0, curvature -0.2/h, oscillation crossings 19"
+    },
+    {
+     "ID": "E8",
+     "Stat": "flat",
+     "Text": "noise 0.15, longest flat run 4 pts, plateau at max 0 pts"
+    }
+   ],
+   "global_evidence_ids": [
+    "ev:SR-AQ-KH03-03:temp:last:1792031400",
+    "ev:SR-AQ-KH03-03:temp:max:1792031400",
+    "ev:SR-AQ-KH03-03:temp:min:1792031400",
+    "ev:SR-AQ-KH03-03:temp:slope:1792031400",
+    "ev:SR-AQ-KH03-03:temp:max_jump:1792031400",
+    "ev:SR-AQ-KH03-03:temp:sma:1792031400",
+    "ev:SR-AQ-KH03-03:temp:shape:1792031400",
+    "ev:SR-AQ-KH03-03:temp:flat:1792031400"
+   ],
+   "rule_finding": {
+    "pattern": "stable",
+    "status": "normal",
+    "observations": [
+     "Temperature steady around 25.0 C, ranging only 24.7-25.3 [E6,E2,E3]"
+    ],
+    "likely_cause": "normal_conditions",
+    "confidence": 0.8,
+    "action": "none"
+   },
+   "context": true,
+   "why": "indoor temperature"
+  },
+  {
+   "ref": "S4",
+   "node": "AC-KH03",
+   "metric": "ac_units_on",
+   "role": "hvac",
+   "location": "KH building, level 03, AC units",
+   "window_end": 1792031400,
+   "injected": false,
+   "window": [
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2
+   ],
+   "evidence": [
+    {
+     "ID": "E1",
+     "Stat": "last",
+     "Text": "last = 2 units"
+    },
+    {
+     "ID": "E2",
+     "Stat": "max",
+     "Text": "max = 2 units at 04:05"
+    },
+    {
+     "ID": "E3",
+     "Stat": "min",
+     "Text": "min = 2 units at 04:05"
+    },
+    {
+     "ID": "E4",
+     "Stat": "slope",
+     "Text": "trend = +0.0 units/h (r2 0.00)"
+    },
+    {
+     "ID": "E5",
+     "Stat": "max_jump",
+     "Text": "largest 5-min change = +0.0 units at 04:10"
+    },
+    {
+     "ID": "E6",
+     "Stat": "sma",
+     "Text": "SMA 1h = 2, EMA 1h = 2, mean 4h = 2 units"
+    },
+    {
+     "ID": "E7",
+     "Stat": "shape",
+     "Text": "halves 2 -> 2, curvature +0.0/h, oscillation crossings 0"
+    },
+    {
+     "ID": "E8",
+     "Stat": "flat",
+     "Text": "noise 0.00, longest flat run 48 pts, plateau at max 48 pts"
+    }
+   ],
+   "global_evidence_ids": [
+    "ev:AC-KH03:ac_units_on:last:1792031400",
+    "ev:AC-KH03:ac_units_on:max:1792031400",
+    "ev:AC-KH03:ac_units_on:min:1792031400",
+    "ev:AC-KH03:ac_units_on:slope:1792031400",
+    "ev:AC-KH03:ac_units_on:max_jump:1792031400",
+    "ev:AC-KH03:ac_units_on:sma:1792031400",
+    "ev:AC-KH03:ac_units_on:shape:1792031400",
+    "ev:AC-KH03:ac_units_on:flat:1792031400"
+   ],
+   "rule_finding": {
+    "pattern": "stable",
+    "status": "normal",
+    "observations": [
+     "AC units running: now 2, 1h average 2.0, max 2 [E1,E6,E2]"
+    ],
+    "likely_cause": "hvac_context",
+    "confidence": 0.8,
+    "action": "none"
+   },
+   "context": true,
+   "why": "AC response"
+  }
+ ],
+ "mode1_report": {
+  "root_cause": "Rule engine: WE-VN04-00 temp dip (warning); EM-CR-SB00-00 power_kw stable (normal); SR-AQ-KH03-03 temp stable (normal); AC-KH03 ac_units_on stable (normal)",
+  "label": "weather_driven",
+  "affected_domains": [
+   "weather",
+   "power",
+   "air_quality",
+   "hvac"
+  ],
+  "evidence": [
+   "S1.E1",
+   "S2.E1",
+   "S3.E1",
+   "S4.E1"
+  ],
+  "confidence": 0.7,
+  "action": "monitor",
+  "explanation": "Temperature dropped briefly to 31.3 C at 04:05, then recovered to 38.1 C [E3,E1] 38.1 C exceeds the warning limit of 38 C [E1]",
+  "requires_human_approval": true,
+  "severity": "warning"
+ },
+ "agents": [
+  {
+   "ttft_ms": 463.8,
+   "gen_tokens": 88,
+   "tokens_per_s": 58.216459380788564,
+   "early_stopped": true,
+   "ref": "S1",
+   "role": "weather",
+   "model": "Llama 3.2 3B smart-city agent (fine-tuned, w4a16)",
+   "fine_tuned": true,
+   "latency_ms": 1984.364,
+   "raw": "{\"pattern\": \"throttling\", \"status\": \"warning\", \"observations\": [\"Temperature climbed then held at a ceiling near 38.2 C [E2,E8]\", \"38.2 C is over the warning limit (38 C) [E2]\"], \"likely_cause\": \"heat_buildup\", \"confidence\": 0.95, \"event_active\": true, \"onset\": \"03:55\"}",
+   "parsed": {
+    "pattern": "throttling",
+    "status": "warning",
+    "observations": [
+     "Temperature climbed then held at a ceiling near 38.2 C [E2,E8]",
+     "38.2 C is over the warning limit (38 C) [E2]"
+    ],
+    "likely_cause": "heat_buildup",
+    "confidence": 0.97,
+    "action": "monitor",
+    "event_active": true,
+    "onset": "03:55"
+   },
+   "valid": true,
+   "errors": null,
+   "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are the Weather agent of a smart-campus edge monitor (IIIT Hyderabad). You receive a 8-hour window of one sensor metric (5-minute samples) with precomputed statistics. Identify the pattern, judge severity, explain what you notice using only the given numbers, and cite evidence ids (E1..E10) that support each observation. Never invent values. Never order physical actuation; recommend at most an inspection action. Reply with one JSON object only. JSON keys: pattern (stable|spike|dip|gradual_increase|gradual_decrease|step_increase|step_decrease|exponential_increase|oscillation|throttling|flatline|erratic), status (normal|warning|critical|sensor_fault), observations (1-2 short strings, each ending with cited ids like [E1,E4]), likely_cause (normal_weather|heat_buildup|cooling_trend|weather_front|gusty_wind|diurnal_cycle|sensor_fault), confidence (0-1), event_active (true|false), onset (HH:MM), fault_kind (stuck|bias|drift|noise|dropout|saturation|quantised, only if sensor_fault), action (none|monitor|inspect_ventilation|inspect_hvac|check_sensor|inspect_water_system|inspect_electrical|review_schedule|request_facility_review).<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nNODE: WE-VN04-00 (VN building, level 04, rooftop weather station)\nMETRIC: temp [C]\nLIMITS: warning above 38, critical above 42\nWINDOW: Thu 15 Oct 00:05 -> 08:00 IST, 96 x 5 min\nSERIES (10-min means): 29.9 30.1 30.0 30.0 30.0 29.9 30.1 30.0 30.0 30.0 29.8 29.9 29.9 29.7 30.0 29.9 30.1 29.7 29.8 30.0 29.9 30.1 30.5 30.9 31.4 31.8 32.3 32.8 33.2 33.7 34.1 34.6 35.0 35.5 36.0 36.4 36.9 37.3 37.8 38.1 38.1 38.1 38.1 38.1 38.1 38.1 38.1 38.1\nEVIDENCE:\nE1 last = 38.1 C\nE2 max = 38.2 C at 07:25\nE3 min = 29.5 C at 03:00\nE4 trend = +1.4 C/h (r2 0.86)\nE5 largest 5-min change = +0.6 C at 02:25\nE6 SMA 1h = 38.1, EMA 1h = 38.1, mean 8h = 33.0 C\nE7 halves 30.0 -> 35.9, curvature +1.2/h, oscillation crossings 2\nE8 noise 0.14, longest flat run 10 pts, plateau at max 19 pts\nE9 12 h view: no level shift or drift\nE10 recent episodes: no excursions beyond 3x normal noise in the last 12 h<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n{\"pattern\": \""
+  },
+  {
+   "ttft_ms": 0,
+   "gen_tokens": 0,
+   "tokens_per_s": 0,
+   "early_stopped": false,
+   "ref": "S2",
+   "role": "power",
+   "model": "context agent (rules, CPU)",
+   "fine_tuned": false,
+   "latency_ms": 0,
+   "raw": "",
+   "parsed": {
+    "pattern": "stable",
+    "status": "normal",
+    "observations": [
+     "Power steady around 599.09 kW, ranging only 589.71-609.91 [E6,E2,E3]"
+    ],
+    "likely_cause": "normal_load",
+    "confidence": 0.8,
+    "action": "none"
+   },
+   "valid": true,
+   "errors": null,
+   "prompt": ""
+  },
+  {
+   "ttft_ms": 0,
+   "gen_tokens": 0,
+   "tokens_per_s": 0,
+   "early_stopped": false,
+   "ref": "S3",
+   "role": "air_quality",
+   "model": "context agent (rules, CPU)",
+   "fine_tuned": false,
+   "latency_ms": 0,
+   "raw": "",
+   "parsed": {
+    "pattern": "stable",
+    "status": "normal",
+    "observations": [
+     "Temperature steady around 25.0 C, ranging only 24.7-25.3 [E6,E2,E3]"
+    ],
+    "likely_cause": "normal_conditions",
+    "confidence": 0.8,
+    "action": "none"
+   },
+   "valid": true,
+   "errors": null,
+   "prompt": ""
+  },
+  {
+   "ttft_ms": 0,
+   "gen_tokens": 0,
+   "tokens_per_s": 0,
+   "early_stopped": false,
+   "ref": "S4",
+   "role": "hvac",
+   "model": "context agent (rules, CPU)",
+   "fine_tuned": false,
+   "latency_ms": 0,
+   "raw": "",
+   "parsed": {
+    "pattern": "stable",
+    "status": "normal",
+    "observations": [
+     "AC units running: now 2, 1h average 2.0, max 2 [E1,E6,E2]"
+    ],
+    "likely_cause": "hvac_context",
+    "confidence": 0.8,
+    "action": "none"
+   },
+   "valid": true,
+   "errors": null,
+   "prompt": ""
+  }
+ ],
+ "final": {
+  "ttft_ms": 0,
+  "gen_tokens": 0,
+  "tokens_per_s": 0,
+  "early_stopped": false,
+  "model": "deterministic (related domains verified steady)",
+  "latency_ms": 0,
+  "raw": "",
+  "parsed": {
+   "root_cause": "Temperature throttling on VN building, level 04, rooftop weather station (heat buildup)",
+   "label": "weather_driven",
+   "affected_domains": [
+    "weather"
+   ],
+   "evidence": [
+    "S1.E2",
+    "S1.E8",
+    "S2.E1",
+    "S3.E1",
+    "S4.E1"
+   ],
+   "confidence": 0.97,
+   "action": "monitor",
+   "explanation": "Temperature climbed then held at a ceiling near 38.2 C [E2,E8] 38.2 C is over the warning limit (38 C) [E2] (from domain agent finding). Related domains checked and steady: Power stable (S2), Temperature stable (S3),  stable (S4), so the cause is local to this domain.",
+   "requires_human_approval": true,
+   "severity": "warning"
+  },
+  "valid": true,
+  "errors": null,
+  "prompt": ""
+ },
+ "total_ms": 3955,
+ "npu_calls": 1,
+ "timeline": [
+  {
+   "t": "01:08:38",
+   "msg": "Event gated: 4 sensor(s) flagged, mode 3"
+  },
+  {
+   "t": "01:08:38",
+   "msg": "Orchestrator: 1 sensor(s) to NPU agents, 3 related sensor(s) checked by context agents in parallel"
+  },
+  {
+   "t": "01:08:38",
+   "msg": "Weather agent analysing WE-VN04-00 temp on NPU (fine-tuned)"
+  },
+  {
+   "t": "01:08:42",
+   "msg": "Weather agent done in 4.0s (first token 0.7s, 87 tokens): gradual_increase / normal (policy PASSED)"
+  },
+  {
+   "t": "01:08:42",
+   "msg": "Related domains checked and steady (3 context agents): isolated event, no synthesizer call needed"
+  },
+  {
+   "t": "01:08:42",
+   "msg": "Finished in 4.0s, 1 NPU call(s)"
+  },
+  {
+   "t": "01:08:59",
+   "msg": "Refined at 1.5 h (windows to 06:30 sensor time, 1 NPU call(s), 2.5s): Temperature: warning kept from early: event ended by 06:30 (refined view: gradual increase normal)"
+  },
+  {
+   "t": "01:09:17",
+   "msg": "Refined at 3 h (windows to 08:00 sensor time, 1 NPU call(s), 2.0s): Temperature: gradual increase/warning -> throttling/warning"
+  }
+ ],
+ "approval": "pending",
+ "approval_note": "",
+ "refine_stage": "3h",
+ "sim_epoch": 1695258275602230855,
+ "revisions": [
+  {
+   "stage": "early",
+   "sim_end": 1792020600,
+   "wall": "2026-10-14 04:45:17",
+   "severity": "warning",
+   "title": "Temperature level shift (12 h view): VN building, level 04, rooftop weather station",
+   "label": "normal_operation",
+   "npu_calls": 1,
+   "ms": 3955,
+   "sensors": [
+    {
+     "ref": "S1",
+     "metric": "temp",
+     "pattern": "level_shift (12 h view)",
+     "status": "warning"
+    }
+   ]
+  },
+  {
+   "stage": "1.5h",
+   "sim_end": 1792026000,
+   "wall": "2026-10-14 04:45:34",
+   "severity": "warning",
+   "title": "Temperature gradual increase: VN building, level 04, rooftop weather station",
+   "label": "normal_operation",
+   "npu_calls": 1,
+   "ms": 2501,
+   "sensors": [
+    {
+     "ref": "S1",
+     "metric": "temp",
+     "pattern": "gradual_increase",
+     "status": "warning",
+     "kept": true,
+     "note": "warning kept from early: event ended by 06:30 (refined view: gradual increase normal)"
+    }
+   ]
+  },
+  {
+   "stage": "3h",
+   "sim_end": 1792031400,
+   "wall": "2026-10-14 04:45:51",
+   "severity": "warning",
+   "title": "Temperature throttling: VN building, level 04, rooftop weather station",
+   "label": "weather_driven",
+   "npu_calls": 1,
+   "ms": 1988,
+   "sensors": [
+    {
+     "ref": "S1",
+     "metric": "temp",
+     "pattern": "throttling",
+     "status": "warning"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,23 @@
+## gofmt -l (pre-existing CRLF files only)
+genie.go
+genieapp.go
+sensors.go
+trimscan.go
+## go vet
+vet ok
+## refine tests (-race -v)
+=== RUN   TestRefineDueAt18And36Readings
+--- PASS: TestRefineDueAt18And36Readings (1.31s)
+=== RUN   TestRefineKeepsEarlySpikeWhenEventOver
+--- PASS: TestRefineKeepsEarlySpikeWhenEventOver (1.27s)
+=== RUN   TestRefineKeepsApprovalAndGate
+--- PASS: TestRefineKeepsApprovalAndGate (0.84s)
+=== RUN   TestRefineNeverPreemptsNewIncident
+--- PASS: TestRefineNeverPreemptsNewIncident (0.84s)
+=== RUN   TestRefinePersistenceAndBackCompat
+2026/10/16 12:44:37 store: compacted to 2 incidents (0 archived)
+--- PASS: TestRefinePersistenceAndBackCompat (0.86s)
+PASS
+ok  	edgeagent	6.131s
+## full suite
+ok  	edgeagent	41.565s

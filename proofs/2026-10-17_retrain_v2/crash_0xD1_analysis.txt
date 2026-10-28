@@ -1,0 +1,41 @@
+C:\Program Files\WindowsApps\Microsoft.WinDbg_1.2610.1001.0_x64__8wekyb3d8bbwe
+True
+
+> DRIVER_IRQL_NOT_LESS_OR_EQUAL (d1)
+  An attempt was made to access a pageable (or completely invalid) address at an
+  interrupt request level (IRQL) that is too high.  This is usually
+> caused by drivers using improper addresses.
+  If kernel debugger is available get stack backtrace.
+  Arguments:
+> PROCESS_NAME:  svchost.exe
+  
+  DEVICE_OBJECT: 0000000000000001
+> STACK_TEXT:  
+  ffffb18b`a4ceedf8 fffff803`b84c58e9     : 00000000`0000000a 00000000`00000000 00000000`00000002 00000000`00000000 : nt!KeBugCheckEx
+  ffffb18b`a4ceee00 fffff803`b84c0ba8     : ffffd48b`09677c90 fffff803`4b950410 ffffd48b`50b57010 ffffd48b`32da9080 : nt!KiBugCheckDispatch+0x69
+> ffffb18b`a4cef580 fffff803`b809b2a6     : ffffd48b`64824c80 ffffd48b`64824c50 ffffd48b`41a5b760 fffff803`b800761e : nt!IofCallDriver+0x84
+> ffffb18b`a4cef5c0 fffff803`b86eb74b     : 00000000`00000157 ffffd48b`41a5b750 00000000`00000000 ffffd48b`600295c0 : nt!IopCallDriverReference+0xe6
+  ffffb18b`a4cef640 fffff803`b86ea473     : 00000000`00000001 00000000`00000000 ffffd48b`600295c0 00000000`00000000 : nt!IopSynchronousServiceTail+0x30b
+  ffffb18b`a4cef6d0 fffff803`b86e9abe     : 00000000`00000000 00000000`00000080 00000000`00000000 00000000`00000000 : nt!IopXxxControlFile+0x9a3
+> SYMBOL_NAME:  vfpext!SxFindContextByName+1a4
+  
+> MODULE_NAME: vfpext
+  
+> IMAGE_NAME:  vfpext.sys
+  
+  IMAGE_VERSION:  10.0.26100.9711
+> FAILURE_BUCKET_ID:  AV_vfpext!SxFindContextByName
+  
+  OSPLATFORM_TYPE:  x64
+> fffff803`43790000 fffff803`43799000   hpomencustomcapdriver hpomencustomcapdriver.sys Thu Oct 26 02:54:00 2017 (59F100F0)
+> fffff803`437a0000 fffff803`437a9000   hpcustomcapdriver hpcustomcapdriver.sys Mon Aug 23 22:13:55 2021 (6123D04B)
+  fffff803`437b0000 fffff803`437be000   acpitime acpitime.sys 812D906C (This is a reproducible build file hash, not a timestamp)
+  fffff803`437d0000 fffff803`437f2000   iaLPSS2_GPIO2_ADL iaLPSS2_GPIO2_ADL.sys Wed Jul 30 10:07:01 2025 (6889A16D)
+> fffff803`71020000 fffff803`71070000   TeeDriverW10x64 TeeDriverW10x64.sys Mon Sep 29 00:46:26 2025 (68D9898A)
+  fffff803`71080000 fffff803`71094000   hidusb   hidusb.sys   B48E391A (This is a reproducible build file hash, not a timestamp)
+  fffff803`710a0000 fffff803`710b5000   btampm   btampm.sys   F7E78AD1 (This is a reproducible build file hash, not a timestamp)
+
+
+
+
+[exited with code 0]

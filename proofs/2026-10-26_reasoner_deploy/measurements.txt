@@ -1,0 +1,8 @@
+# raw results of scripts/ (CPU only, 2026-10-26)
+tokcount.py (400 train_mix incident examples, Qwen3.5 tokenizer, tools_v3 incident, SYSTEM_INCIDENT_SHORT):
+{"n": 400, "static_system_plus_tools": 1317, "system_without_tools": 565, "user_p50": 571, "user_p90": 880, "final_json_p50": 407, "final_json_p90": 537, "total_p50": 2359, "total_p90": 2789, "calls_mean": 0.1175, "zero_call_frac": 0.8825}
+skel.py (300 examples): mean final 432.6 tokens, top-level-key skeleton (1 item per list) 74.7, title 17.7
+ggufmeta.py qwen3.5-4b-q4_0.gguf: arch qwen35, 441 tensors, block_count 33 (24 GDN + 8 attention + 1 MTP nextn), ssm state 128, conv 4, groups 16, dt_rank 32, inner 4096, heads 16/4, head dim 256, token_embd Q6_K (tied), file 2,611,783,552 B; q4_k_m 2,783,446,912 B
+binaries (C:/Users/hp/gpu_work/llama.cpp/build-snapdragon, Oct 16): libllama.so 'qwen35' x9; libggml-htp-v75.so/v79 gdn strings x3; libggml-hexagon.so HVX_GDN_SOLVE present
+gate on gold (TestReasonerV3GateOnGold): dev 299/299, rwh 150/150, train 5597/5597 accepted
+P0 untrained Qwen3.5-4B: prefill 2373 tok/report, decode 806 tok/report, 6.2 calls, est NPU p50 41.5 s (P0/host_bench/results/summary.json)

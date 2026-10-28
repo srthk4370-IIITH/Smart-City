@@ -1,0 +1,31 @@
+{
+ "log": [
+  "inject stuck_sensor 200",
+  "fault incident INC-0001",
+  "inject tank_leak 200",
+  "inject power_throttling 200",
+  "inject ventilation_failure 200",
+  "rerun INC-0003 mode 1 -> 200",
+  "analyze WE-VN04-00 rh 200",
+  "ack A INC-0004 200",
+  "step A 200",
+  "own step A 200",
+  "ack C 200",
+  "close C 200",
+  "dismiss D 200",
+  "fault ack 200",
+  "fault step 404 (404 = the AI judged it fine, no step)",
+  "fault close 200",
+  "fault rerun 200",
+  "maintenance AQ-KN00-00 pm25 200",
+  "poll 10 s 200",
+  "analyze EM-CR-SB00-00 pf (re-checks still ahead) 200"
+ ],
+ "A": "INC-0004",
+ "B": "INC-0003",
+ "C": "INC-0002",
+ "D": "INC-0005",
+ "fault": "INC-0001",
+ "recur": "INC-0006",
+ "oos": "AQ-KN00-00 pm25"
+}
