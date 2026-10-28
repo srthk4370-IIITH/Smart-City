@@ -59,6 +59,18 @@ def md_table(md):
     return rows
 
 
+def result_json(res):
+    """The JSON object a night script appends to its Result line (fast-path check): numbers and flags only, no titles."""
+    m = re.search(r"(\{.*\})", res or "")
+    if not m:
+        return None
+    try:
+        x = json.loads(m.group(1))
+    except Exception:  # noqa: BLE001
+        return None
+    return {k: v for k, v in x.items() if k != "title" and isinstance(v, (int, float, bool, str))}
+
+
 def final_status():
     p = M / "FINAL_STATUS.md"
     s = rd(p)
@@ -69,6 +81,7 @@ def final_status():
     out["result"] = m.group(1).strip() if m else None
     out["passed"] = bool(out["result"] and out["result"].upper().startswith("PASS"))
     out["rolled_back"] = bool(out["result"] and "roll" in out["result"].lower())
+    out["fastcheck"] = result_json(out["result"])
     t = md_table(s)
     if t:
         hdr = [h.lower() for h in t[0]]
@@ -140,9 +153,40 @@ def rag_status():
         o["result"] = m.group(1).strip() if m else None
         r = (o["result"] or "").upper()
         o["live"] = bool(r) and not re.search(r"NOT|FAIL|ROLL", r) and bool(re.search(r"PASS|DEPLOYED|LIVE", r))
+        o["fastcheck"] = result_json(o["result"])
+        col = [r for r in md_table(o["md"])]
+        if col and any("preliminary (s)" in c for c in col[0]):
+            i = next(j for j, c in enumerate(col[0]) if "preliminary (s)" in c)
+            v = [float(r[i]) for r in col[1:] if i < len(r) and re.fullmatch(r"[0-9.]+", r[i])]
+            o["prelim_max_s"] = max(v) if v else None
+            o["n_incidents"] = len(col) - 1
+        m = re.search(r"Retrieval hit rate:\s*(.+)", o["md"])
+        o["hit_rate"] = m.group(1).strip() if m else None
         m = re.search(r"APK ([0-9a-f]{8}) \(edge-agent ([0-9a-f]{8})", o["md"])
         if m:
             o["apk"], o["edge_agent"] = m.group(1), m.group(2)
+    return o
+
+
+def status_md(p):
+    """A status file written by a night job: md + its **Result:** line + live flag (deployed and not failed/rolled back)."""
+    o = md_file(p)
+    if o.get("md"):
+        o["md"] = drop_title_cols(o["md"])
+        m = re.search(r"\*\*Result:\*\*\s*(.+)", o["md"])
+        o["result"] = m.group(1).strip() if m else None
+        r = (o["result"] or "").upper()
+        o["live"] = bool(r) and not re.search(r"NOT |FAIL|ROLL|KEPT|PENDING", r) and bool(re.search(r"PASS|DEPLOYED|LIVE", r))
+        m = re.search(r"htpd_v8x\d+", o["md"])
+        o["bin"] = m.group(0) if m else None
+    return o
+
+
+def overnight():
+    """Only the job table and board line of OVERNIGHT_STATUS.md (the log tails below it quote incident titles)."""
+    o = md_file(M / "OVERNIGHT_STATUS.md")
+    if o.get("md"):
+        o["md"] = o["md"].split("\n## ")[0].strip()
     return o
 
 
@@ -233,23 +277,40 @@ def fastcheck():
     return {"file": rel(fs[-1]), "updated": stamp(fs[-1]), "summary": keep}
 
 
+TITLE_RE = re.compile(r""""title":\s*"(?:[^"\\]|\\.)*",?\s*|title='[^']*'""")
+
+
+def scrub(o):
+    """Drop incident titles quoted inside log lines / result JSON (they can quote live readings)."""
+    if isinstance(o, dict):
+        return {k: scrub(v) for k, v in o.items()}
+    if isinstance(o, list):
+        return [scrub(v) for v in o]
+    if isinstance(o, str):
+        return TITLE_RE.sub("", o)
+    return o
+
+
 def main():
     out = {
         "meta": {"title": "Today: what runs on the board", "generated_at": NOW, "script": rel(S),
                  "source_files": [rel(M / "FINAL_STATUS.md"), rel(M / "final.log"), rel(M / "split_post.log"), rel(M / "RAG_STATUS.md"),
-                                  rel(M / "gate_study" / "table_B50.md"), rel(R2), rel(M / "CHAIN_STATUS.json")],
+                                  rel(M / "gate_study" / "table_B50.md"), rel(R2), rel(M / "CHAIN_STATUS.json"), rel(M / "RSN_V2_RETRY.md"), rel(M / "OVERNIGHT_STATUS.md")],
                  "notes": "Read from the proof files when the site was built; the board itself is not probed by the build."},
         "final": final_status(),
         "final_log": final_log(),
         "decisions": decisions(),
         "split_post": split_post(),
         "rag": rag_status(),
+        "rsn_v2_retry": status_md(M / "RSN_V2_RETRY.md"),
+        "overnight": overnight(),
         "gate_study": md_file(M / "gate_study" / "table_B50.md"),
         "rsn_v2_eval": md_file(R2, 8000),
         "chaos_tonight": chaos([F / "chaos"]),
         "fastcheck": fastcheck(),
         "models_md5": models(),
     }
+    out = scrub(out)
     bad = check_no_raw(out)
     assert not bad, f"today.json has raw-looking content: {bad[:5]}"
     (DATA / "today.json").write_text(json.dumps(out, indent=1, ensure_ascii=False), encoding="utf-8")

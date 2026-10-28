@@ -35,7 +35,9 @@ export default async function mount(ctx) {
   const bs = f.board_state || [];
   const live = newLive ? bs : kg; // the profile that runs now
   const agentsFile = base(prof(live, 'model')) || (newLive ? d.agents : 'ft_B50_q4_0.gguf');
-  const reasonerFile = base(prof(live, 'reasoner_model')) || 'qwen35_reasoner_q4_0.gguf';
+  const retry = t.rsn_v2_retry || {};
+  const reasonerFile = retry.live ? 'rsn_v2_q4_0.gguf' : (base(prof(live, 'reasoner_model')) || 'qwen35_reasoner_q4_0.gguf');
+  const binName = (retry.live && retry.bin) || base(prof(live, 'bin')) || 'htpd_v8x2';
   let split = prof(live, 'reasoner_split') || d.split || '3';
   const spRes = sp.result || d.split_post_result;
   if (newLive && spRes) split = String(spRes).trim().split(/\s+/)[0];
@@ -69,8 +71,8 @@ export default async function mount(ctx) {
   const am = MODEL[agentsFile] || { name: agentsFile, what: '' }, rm = MODEL[reasonerFile] || { name: reasonerFile, what: '' };
   const rows = [
     ['Domain agents', `${am.name}: ${am.what}`, md5Of(agentsFile), d.agents_why ? plainWhy(d.agents_why) : 'Accuracy first: the newer candidate lost head to head.'],
-    ['Reasoner', `${rm.name}: ${rm.what}`, md5Of(reasonerFile), reasonerWhy(d, pending, newLive, rm.name)],
-    ['NPU daemon', 'htpd_v8x2 on llama.cpp 620d222 (our Hexagon patches); polling for NPU completions; reasoner leaves the NPU after 3 s idle', lineMd5('htpd_v8x2') || '22ec1278 (prefix)', 'The Hexagon SDK route gave no net gain.'],
+    ['Reasoner', `${rm.name}: ${rm.what}`, md5Of(reasonerFile), reasonerWhy(d, pending, newLive, rm.name, retry)],
+    ['NPU daemon', `${binName} on llama.cpp 620d222 (our Hexagon patches); polling for NPU completions; reasoner leaves the NPU after 3 s idle`, lineMd5(binName) || (binName === 'htpd_v8x2' ? '22ec1278 (prefix)' : null), binName === 'htpd_v8x2' ? 'The Hexagon SDK route gave no net gain.' : "Fix for the rsn_v2 stall, shipped with the rsn_v2 retry (see Tonight's run)."],
     ['Split decoding', `${split} parallel field groups after the headline`, null, splitWhy(sp, spRes, split)],
     ['App', `${app.label}; APK ${app.apk}`, ea || app.ea, newLive ? 'Deployed tonight and checked through the app.' : pending ? 'Running before the final deploy.' : 'Restored by the automatic rollback.'],
     ['Preliminary report', ragState.live ? 'Rules + agents + retrieval of similar past incidents' : 'Rules + the agents\' findings, then replaced by the reasoner', null, ragState.note],
@@ -94,7 +96,9 @@ export default async function mount(ctx) {
     { value: tonight && ch.summary.done_min ? rng([ch.summary.done_min, ch.summary.done_max]) : '28 to 39 s', label: 'Event to the full report.' },
     newLive ? { before: '40 to 55 min', after: '≈ 5 to 10 min', label: 'Real sensor time from a critical breach to the incident (one reading per 5 min).', ours: true } : { value: '40 to 55 min', label: 'Real sensor time from an event to the AI (8 readings, one per 5 min).', ours: false },
   ];
-  lat.append(h('div.span-12', null, ui.anchors(anchors.map((a) => ({ ...a, meta: tonight ? `tonight, ${ch.summary.n} scenarios through the app` : 'fast4 build, through the app' })).slice(0, 3).concat([{ ...anchors[3], meta: newLive ? 'fast path: second reading past the limit' : 'the event gate in the running build' }]))));
+  if (rag.live && rag.prelim_max_s != null) anchors[0] = { value: `${rag.prelim_max_s} s`, label: 'Event to preliminary report on screen (retrieval build).', meta: `${rag.n_incidents || ''} incidents through the app, retrieval build` };
+  const fcx = (f.fastcheck && f.fastcheck.fast_s != null) ? f.fastcheck : null;
+  lat.append(h('div.span-12', null, ui.anchors(anchors.map((a) => ({ ...a, meta: a.meta || (tonight ? `tonight, ${ch.summary.n} scenarios through the app` : 'fast4 build, through the app') })).slice(0, 3).concat([{ ...anchors[3], meta: newLive ? (fcx ? `fast path: incident ${fcx.fast_s} s after the breach in the app (demo clock), AI update ${fcx.ai_update_s} s` : 'fast path: second reading past the limit') : 'the event gate in the running build' }]))));
   lat.append(ui.card({ span: 6, claim: 'Where the NPU time goes (board)', body: table(h, ['Step', 'Time'], [
     ['Domain agents, 10 in one batch (warm)', '11.0 s'],
     ['Domain agents, 4 in one batch (warm)', '3.3 to 3.7 s'],
@@ -147,12 +151,20 @@ export default async function mount(ctx) {
       ch.rows.map((r) => [String(r.scenario || '').replace(/_/g, ' '), sec(r.prelim_s), sec(r.title_s), sec(r.done_s), sec(r.reasoner_s), r.npu_calls ?? '—', r.severity || r.state || '—', r.valid ? 'yes' : 'no'])),
       why: 'Times count from the moment the event passes the gate on the board.', source: { files: [ch.dir] } }));
   } else tn.append(pendingCard(ui, h, 'Through the app: scenarios after the deploy', 'proofs/2026-10-28_master/final/chaos'));
-  if (t.fastcheck && t.fastcheck.summary) {
+  if (f.fastcheck) {
+    const s = f.fastcheck;
+    tn.append(ui.card({ span: 6, claim: 'Critical breach: fast path, then AI on the same incident', body: table(h, ['Check', 'Result'], [
+      ['Fast-path incident opened', `${s.fast_s} s after the breach reading`], ['AI report on the same incident', `${s.ai_update_s} s`],
+      ['Final report by', String(s.final_model || '—')], ['Severity', String(s.severity || '—')], ['Valid / pass', `${s.valid ? 'yes' : 'no'} / ${s.pass ? 'yes' : 'no'}`]]),
+      why: 'Demo clock: one reading every 2 s. In the field a reading comes every 5 min.', source: { files: ['proofs/2026-10-28_master/FINAL_STATUS.md'] } }));
+  } else if (t.fastcheck && t.fastcheck.summary) {
     const s = t.fastcheck.summary;
     tn.append(ui.card({ span: 6, claim: 'Critical breach: fast path, then AI on the same incident', body: table(h, ['Field', 'Value'], Object.entries(s).map(([k, v]) => [k.replace(/_/g, ' '), String(v)])), source: { files: [t.fastcheck.file] } }));
   } else tn.append(pendingCard(ui, h, 'Critical breach: fast path, then AI on the same incident', 'proofs/2026-10-27_reasoner_fast/raw/fastcheck_*.json', 6));
   tn.append(splitCard(ui, h, sp, spRes));
   tn.append(mdCard(ui, h, 'Retrieval preliminary report', rag, 12));
+  tn.append(mdCard(ui, h, 'Reasoner rsn_v2 retry (htpd fix, board gates)', retry, 12, t.final && t.final.present ? null : null));
+  tn.append(mdCard(ui, h, 'Overnight jobs (last snapshot)', t.overnight || {}, 12));
   tn.append(mdCard(ui, h, 'Gate study: can the agents read younger events?', t.gate_study || {}, 12, t.final && t.final.present ? 'Not run before the evaluation: the laptop GPU went back to the owner, so the gate study waits.' : null));
   tn.append(mdCard(ui, h, 'Reasoner round 2 (rsn_v2), laptop evaluation', t.rsn_v2_eval || {}, 12, t.final && t.final.present ? 'Not run on the laptop; rsn_v2 was judged by the board gate in the final deploy instead.' : null, true));
 }
@@ -189,14 +201,15 @@ function plainWhy(s) {
   if (/T30 fails/.test(s)) return 'The newer candidate (T30) lost head to head against B50; accuracy first.';
   return String(s).replace(/\s*\(.*?\)/g, '').replace(/;.*$/, '').replace(/gate2/g, 'the paired test').replace(/, owner rule accuracy first/, '; accuracy first') + '.';
 }
-function reasonerWhy(d, pending, newLive, name) {
+function reasonerWhy(d, pending, newLive, name, retry) {
+  if (retry && retry.md) return retry.live ? "rsn_v2 passed the retry gates on the board (see Tonight's run)." : 'rsn_v1 kept: ' + short(retry.result || 'rsn_v2 retry did not pass');
   if (name === 'rsn_v2' && d.reasoner_why) return 'rsn_v2 passed the board accuracy gate and the 92% severity-consistency gate.';
   if (d.reasoner_why && /accuracy FAIL/.test(d.reasoner_why)) return 'Kept: the second-round reasoner (rsn_v2) failed tonight\'s board accuracy gate.';
   if (d.reasoner_why) return short(String(d.reasoner_why).replace(/\s*\{.*$/, ''));
   return 'Deployed 27 Oct; a second round (rsn_v2) is gated on the board tonight.';
 }
 function splitWhy(sp, res, split) {
-  if (res) return /fail/i.test(res) ? `Split ${res.match(/split (\d)/)?.[1] || ''} failed the app check; back to 3.` : `Set by the split-4/6 A/B after the deploy (split ${split}).`;
+  if (res) return /fail/i.test(res) ? "Split 3 stays: the split-4/6 A/B after the deploy did not switch (see Tonight's run)." : `Set by the split-4/6 A/B after the deploy (split ${split}).`;
   if (sp.done) return 'The split-4/6 A/B after the deploy kept 3.';
   return 'Split-3 adopted 28 Oct; a split-4/6 A/B runs after the final deploy.';
 }

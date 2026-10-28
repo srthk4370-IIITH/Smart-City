@@ -126,6 +126,7 @@ export default async function mount(ctx) {
     const body = h('div.qa-body');
     const honest = HONEST.test(it.short_answer);
     body.append(h('p.qa-answer', { text: it.short_answer }));
+    if (it.updated) body.append(ui.chip('updated 29 Oct', 'ours'));
     const links = h('div.qa-links');
     if (honest) links.append(ui.chip('Honest limit', 'warn'));
     if (it.situation_id && sitByKey[it.situation_id]) links.append(h('a.chip', { href: `#/qa?sit=${it.situation_id}`, 'data-topic': 'situations',

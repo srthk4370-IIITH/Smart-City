@@ -14,5 +14,10 @@
  "prefix cache": "Re-using the model state for the part of the prompt that never changes, so only the new part is processed.",
  "fine-tune": "Further training of a pretrained model on our own task examples.",
  "policy gate": "Safety check on every AI answer: correct format, only real evidence ids, no shut-down orders.",
- "domain agent": "An AI call that analyses one sensor type (air, water, power...) over its 4-hour window."
+ "domain agent": "An AI call that analyses one sensor type (air, water, power...) over its 4-hour window.",
+ "reasoner": "The cross-domain reasoner: Qwen3.5-4B, fine-tuned, reads all domain agents' findings and writes one incident report (title, severity, root cause, checklist).",
+ "B50": "The domain agents' model on the board: Llama 3.2 3B (mixA50) with half of a further LoRA top-up blended in, Q4_0.",
+ "split decoding": "The reasoner writes the headline once, then several groups of report fields in parallel on the NPU.",
+ "fast path": "2 readings past a critical limit open the incident at once with a rules-only report; the AI updates it later.",
+ "preliminary report": "The report shown within seconds (rules plus the agents' findings) until the reasoner's report replaces it."
 }

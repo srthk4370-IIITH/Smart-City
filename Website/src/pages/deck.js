@@ -23,7 +23,7 @@ export default async function mount(ctx) {
     const item = (label, value) => ctx.h('div.status__item', null, ctx.h('span.label', { text: label }), ctx.h('span.v', { text: value }));
     const deploy = !f.present ? 'in progress' : f.passed ? 'passed' : 'rolled back';
     const live = f.present && f.passed;
-    const reasoner = live && /rsn_v2/.test(d.reasoner || '') ? 'Qwen3.5-4B rsn_v2' : 'Qwen3.5-4B rsn_v1';
+    const reasoner = ((t.rsn_v2_retry || {}).live || (live && /rsn_v2/.test(d.reasoner || ''))) ? 'Qwen3.5-4B rsn_v2' : 'Qwen3.5-4B rsn_v1';
     const ch = t.chaos_tonight && t.chaos_tonight.summary;
     const strip = ctx.h('div.status', { role: 'status' },
       item('Agents', 'B50 · Llama 3.2 3B'), item('Reasoner', reasoner),

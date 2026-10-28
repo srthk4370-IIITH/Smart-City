@@ -97,6 +97,14 @@ function parseHash() {
   return { page, params: parts.slice(1), query: Object.fromEntries(new URLSearchParams(queryPart)) };
 }
 
+// pages whose evidence was collected on 20 Oct (their datasets predate the reasoner and the final build)
+const ASOF = {
+  route: 'The step-by-step route below was collected on 20 Oct.',
+  decisions: 'These decisions were collected on 20 Oct; later ones (reasoner, B50, split decoding, fast path) are on the Journey page.',
+  proofs: 'Datasets here were collected on 20 Oct; later proof folders are named on the Journey page.',
+  rawdata: 'The raw-data explorer reflects the data as of 20 Oct.',
+  qa: 'Answers marked "updated 29 Oct" were rewritten for the final build; the rest date from 20 Oct.',
+};
 // pages outside the nav: their title, and which nav item they live under
 const EXTRA = { kit: { title: 'Chart kit', parent: null } };
 function setNav(page) {
@@ -146,6 +154,7 @@ async function route() {
     ]);
     if (token !== current.token) return; // user navigated away meanwhile
     root.innerHTML = html;
+    if (ASOF[page]) root.prepend(h('p.asof-note', null, ASOF[page] + ' ', h('a', { href: '#/journey', text: 'Journey' }), ' and ', h('a', { href: '#/today', text: 'Today' }), ' cover what came after.'));
     if (css) root.prepend(h('style', { text: css }));
     app.replaceChildren(root);
     window.scrollTo(0, 0);
