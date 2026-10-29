@@ -1,0 +1,14 @@
+# Chat warm-cache fix build (12:01 IST start)
+- I0 build OK: apk 626970b7, edge-agent 8e4ed42c
+- I2 DEPLOYED: edge-agent 8e4ed42c, seed ok=yes; chaos 2 rc=0; fastcheck {"fast_incident": "INC-0468", "fast_s": 5.7, "ai_update_s": 47.7, "final_model": "qwen3.5-4b (htpd)", "valid": true, "severity": "sensor_fault", "title": "KH building, level 03: Suspect CO2 readings", "pass": true}
+- chat check: 4 s | tools ['count_incidents'] | busy False | error False | How many incidents were there today? -> There were 97 incidents today.
+- chat check: 3 s | tools [] | busy False | error False | Please close them all. -> I can't do that: my tools are read-only, so I cannot switch, approve, close or delete anything. An operator can do it from the incident sheet after review.
+- htpd: htpd: reason 1 streams, 8 decode steps, prefill 313 ms, cache turn (2502 tokens, 9 ms)
+- htpd: htpd: reason 1 streams, 36 decode steps, prefill 216 ms, cache mem (2486 tokens, 9 ms)
+- htpd: htpd: reason 1 streams, 0 decode steps, prefill 120 ms, cache mem (2486 tokens, 7 ms)
+- htpd: htpd: reason 1 streams, 0 decode steps, prefill 120 ms, cache mem (2486 tokens, 9 ms)
+- htpd: htpd: reason 1 streams, 0 decode steps, prefill 4689 ms, cache saved (2486 tokens, 4574 ms)
+- htpd: htpd: reason 1 streams, 44 decode steps, prefill 6064 ms, cache saved (2486 tokens, 5845 ms)
+- dashboard serves Ask AI button: 1
+- UI test: screenshots ui_dashboard.png, ui_chat_empty.png, ui_chat_answer.png; chat sessions now: [{"id":"CHAT-0008","title":"many sensor faults were there this week?","updated":1695273787,"messages":1},{"id":"CHAT-0007","title":"How many incidents were there today?","updated":1695273766,"messages":4},{"id":"CHAT-0006","title":"How many incidents were there today?","updated":1695273034,"messages
+- board now: 8e4ed42cf8c02a9669db51ca0a0c3b06  /data/local/tmp/smart_city_edge/edge-agent reasoner_split=3 bin=/data/local/tmp/llama.cpp/bin/htpd_v8x3 reasoner_model=/data/local/tmp/gpu/qwen35_reasoner_q4_0.gguf 

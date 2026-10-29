@@ -903,6 +903,7 @@ static long g_pick_slow64 = 0, g_pick_slow1k = 0, g_pick_full = 0;
 static bool g_pick_bounded = true, g_pick_debug = false;
 // v8x3 heartbeat: decode progress seen by a watcher thread (stall diagnosis: HTP side vs CPU side)
 static std::atomic<long> g_hb_step{0};
+static long g_pad_steps = 0;  // v8x4: decode steps padded to HTPD_PAD_ROWS (per request, logged)
 static std::atomic<int> g_hb_in_decode{0}, g_hb_phase{0};  // phase 0 idle, 1 prefill, 2 decode step, 3 pick/handle
 static void hb_thread() {
     long last = -1; int still = 0;
@@ -1316,6 +1317,21 @@ static std::vector<Out> run_reason(llama_context * ctx, const std::vector<std::s
                 if (j + 1 == inj[s].size()) last[s] = idx;
             }
         }
+        // v8x4 row padding (HTPD_PAD_ROWS=R, HTPD_PAD_MIN=M): a step of M..R-1 rows is padded to R rows on a spare
+        // sequence (htpd started with one more reason stream than the split uses). HVX takes 1-4 rows and HMX 5+, and a
+        // 6-row step costs less than a 4-row one (board pp4 133 ms, pp6 106 ms). The pad sequence is cleared every
+        // step and never read; the real streams' rows, positions and logits are unchanged.
+        static const int pad_rows = getenv("HTPD_PAD_ROWS") ? atoi(getenv("HTPD_PAD_ROWS")) : 0;
+        static const int pad_min = getenv("HTPD_PAD_MIN") ? atoi(getenv("HTPD_PAD_MIN")) : 3;
+        if (pad_rows > 0 && NS < (int) llama_n_seq_max(ctx) && batch.n_tokens >= pad_min && batch.n_tokens < pad_rows) {
+            llama_memory_seq_rm(mem, NS, -1, -1);
+            for (int j = 0; batch.n_tokens < pad_rows; ++j) {
+                const int idx = batch.n_tokens++;
+                batch.token[idx] = pending[0]; batch.pos[idx] = j; batch.n_seq_id[idx] = 1; batch.seq_id[idx][0] = NS;
+                batch.logits[idx] = false;
+            }
+            g_pad_steps++;
+        }
         g_hb_phase = 2; g_hb_in_decode = 1;
         const int rc_dec = llama_decode(ctx, batch);
         g_hb_in_decode = 0; g_hb_phase = 3; g_hb_step++;
@@ -1364,6 +1380,7 @@ static std::vector<Out> run_reason(llama_context * ctx, const std::vector<std::s
     }
     fprintf(stderr, "htpd: reason %d streams, %d decode steps, prefill %.0f ms, cache %s (%d tokens, %.0f ms)\n",
             NS, steps, prefill_ms, rs.cache.c_str(), rs.cached_tokens, rs.cache_ms);
+    if (g_pad_steps) { fprintf(stderr, "htpd: reason padded %ld steps to %s rows\n", g_pad_steps, getenv("HTPD_PAD_ROWS")); g_pad_steps = 0; }
     if (split && forked) {
         // assemble: head + each group's continuation in group order; every group but the last loses its closing '}',
         // and a group that does not start with ',' gets one (the pick that closed the head may carry the comma)

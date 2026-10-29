@@ -44,16 +44,16 @@ when the network does."
 
 | part | what runs | where |
 |---|---|---|
-| backend | Go `edge-agent` **12a10c1d**: statistics, rules, data-quality gates, workflow, API, UI | CPU |
+| backend | Go `edge-agent` **8e4ed42c**: statistics, rules, data-quality gates, workflow, API, UI | CPU |
 | domain agents | **B50**: our fine-tuned Llama-3.2-3B blend, one agent per abnormal sensor, all in one batch | NPU |
 | reasoner | **rsn_v1**: our fine-tuned Qwen3.5-4B, writes the cross-domain report | NPU |
 | NPU daemon | **htpd_v8x3**: our llama.cpp Hexagon server (batching, split decoding, safety guards) | NPU |
 | retrieval | **254** reference reports plus every live AI report, used for the instant first report | CPU |
 | apps | **Smart City Edge** (dashboard, checklist workflow) and **Campus Assistant** (chat), two launcher icons on one backend | phone UI |
 
-- Final app check after the 11:15 deploy: **2 of 2 chaos scenarios done and valid**. In fastcheck the
-  fast path opened the incident in **5.5 s**, and the AI report followed on the same incident at **53.5 s**
-  (`proofs/2026-10-28_master/improve6/STATUS.md`). Across this morning's five deploys it ranged 42-54 s.
+- Final app check after the 12:15 deploy: **2 of 2 chaos scenarios done and valid**. In fastcheck the
+  fast path opened the incident in **5.7 s**, and the AI report followed on the same incident at **47.7 s**
+  (`proofs/2026-10-28_master/improve7/STATUS.md`). Across this morning's deploys it ranged 42-54 s.
 - One model sits on the NPU at a time; htpd swaps agents ↔ reasoner in 4.6 s.
 
 **Say:** "Everything on this slide is what is installed on the board in front of you, checked this morning."
@@ -228,6 +228,7 @@ to guess early."
 | two models resident on the NPU | rebooted the board | one model at a time, 4.6 s swap |
 | speculative decoding (MTP, n-gram) for the reasoner | slower | the recurrent state can't roll back cheaply |
 | split 4 / 6 / 3r | +1% / does not fit / 0% | the longest stream sets the time |
+| padding decode steps to 5-6 rows (htpd v8x4) | +11% / +15% slower, same answers | real decode steps are not the benchmark table |
 | T30 agents (best of a 30-blend search) | severity −13 vs B50 | gate2 FAIL |
 | rsn_v2 reasoner | severity −7 pts on 106 incidents | accuracy first |
 
@@ -260,6 +261,8 @@ ship."
   - one chat runs at a time;
   - alerts come first: a question asked while an incident is being analysed is **queued**. The app shows
     "Queued: the AI is analysing INC-…", and the answer arrives by itself when the NPU is free.
+- **Keep-warm (live):** while the assistant is in use, the reasoner stays loaded, so answers take **about 5 s**
+  (cold: 8-14 s).
 - **Board check:** on the board through the real app, answers took **9-14 s** (reasoner swap + lookup + answer):
   "How many incidents were there today?" → `count_incidents` → "89 incidents were recorded today"; "Please close
   them all" → refused, read-only. Honest limit: "which are still open?" reused the plain count (the tool has no

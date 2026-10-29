@@ -284,7 +284,7 @@ def morning():
     gpu_bench_out/out.md (first llama-bench table). Status lines, md5 prefixes, timings and t/s only."""
     out = {"files": []}
     deploys = []
-    for name in ("improve", "improve2", "improve3", "improve4", "improve5", "improve6"):
+    for name in ("improve", "improve2", "improve3", "improve4", "improve5", "improve6", "improve7"):
         p = M / name / "STATUS.md"
         s = rd(p)
         if not s:

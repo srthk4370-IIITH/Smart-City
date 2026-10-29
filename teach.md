@@ -46,9 +46,9 @@ sensor time the incident is re-checked.
 
 ## 2. What is installed on the board right now
 
-- **App:** `com.iiith.smartcityedge`, APK 508697c4, with the backend **edge-agent 12a10c1d** (the chat-queue
-  build). It was deployed at 11:15 and passed 2/2 chaos scenarios and the fastcheck (fast path 5.5 s, AI
-  report 53.5 s; 42-54 s across the morning's deploys; `proofs/2026-10-28_master/improve6/STATUS.md`). It has two launcher icons: **Smart City Edge** (the
+- **App:** `com.iiith.smartcityedge`, APK 626970b7, with the backend **edge-agent 8e4ed42c** (chat queue +
+  keep-warm). It was deployed at 12:15 and passed 2/2 chaos scenarios and the fastcheck (fast path 5.7 s, AI
+  report 47.7 s; 42-54 s across the morning's deploys; `proofs/2026-10-28_master/improve7/STATUS.md`). It has two launcher icons: **Smart City Edge** (the
   dashboard) and **Campus Assistant** (chat, §9).
 - **Profile** `/data/local/tmp/smart_city_edge/htpd_profile`:
   `bin=/data/local/tmp/llama.cpp/bin/htpd_v8x3`, `model=/data/local/tmp/gpu/ft_B50_q4_0.gguf`,
@@ -225,6 +225,8 @@ report stays), and a heartbeat that names the stalled side. The overnight watchd
   - split 6: does not fit the HTP session;
   - split 3r (fork after the label): 22.2 vs 22.2 s, because its first group became the longest stream.
 - **Speculative decoding** (MTP, n-gram) for the reasoner: slower.
+- **Row padding** (htpd v8x4, decode steps padded to 5-6 rows): +11% / +15% slower on the board, with the same answers
+  (HANDBOOK 2.61).
 
 **Next lever:** let htpd write fully determined text (such as the sensor id after "S1 (") as forced tokens.
 
@@ -258,6 +260,9 @@ incident shows a first report at once.
 - **Tools (all read-only):** `count_incidents`, `find_incidents`, `get_incident`, `sensor_faults`,
   `get_sensor_history` (7 days of 5-min readings), `list_sensors`, `domain_health`, `get_action_history`, and
   `search_knowledge` (says "offline, no documents").
+- **Keep-warm:** while the assistant is in use (page open, typing, or an answer in the last 60 s), the backend
+  keeps the reasoner loaded with a tiny call every 2 s, so answers take **about 5 s** instead of 8-14 s. It stops
+  during an incident analysis; an alert within 60 s of chat use pays about 2.6 s to reload the agents.
 - **Safety:**
   - it can't switch, open or close anything, and it refuses and points to the operator controls;
   - numbers come only from tool results;

@@ -135,12 +135,14 @@ type ChatSession struct {
 }
 
 type chatStore struct {
-	mu   sync.Mutex
-	run  sync.Mutex // one chat on the NPU at a time
-	path string
-	S    map[string]*ChatSession
-	seq  int
-	wait string // what the running question waits for ("" = answering)
+	mu      sync.Mutex
+	run     sync.Mutex // one chat on the NPU at a time
+	path    string
+	S       map[string]*ChatSession
+	seq     int
+	wait    string    // what the running question waits for ("" = answering)
+	active  time.Time // keep the reasoner warm until then (chat page open / recent question)
+	warming bool
 }
 
 func newChatStore(dir string) *chatStore {
@@ -181,6 +183,51 @@ func (c *chatStore) listLocked() []*ChatSession {
 }
 
 func (c *chatStore) setWait(w string) { c.mu.Lock(); c.wait = w; c.mu.Unlock() }
+
+// chatWarmFor: how long the reasoner is kept loaded after chat activity (page open, typing, an answer).
+const chatWarmFor = 60 * time.Second
+
+// Warm keeps the reasoner (and this hour's chat prefix cache) loaded on the NPU while someone is chatting, so a
+// question skips the ~4 s model swap and the first-of-the-hour prefix prefill. htpd releases a held reasoner after
+// HTPD_REASON_IDLE_MS (3 s), so a 1-token call every 2 s holds it. Never while an incident is analysed or a question
+// runs; an alert's agents request still takes the NPU back at once (htpd swaps on demand, ~2.6 s).
+func (c *chatStore) Warm(r *Reasoner) {
+	c.mu.Lock()
+	c.active = time.Now().Add(chatWarmFor)
+	if c.warming {
+		c.mu.Unlock()
+		return
+	}
+	c.warming = true
+	c.mu.Unlock()
+	go func() {
+		defer func() { c.mu.Lock(); c.warming = false; c.mu.Unlock() }()
+		for {
+			c.mu.Lock()
+			until := c.active
+			c.mu.Unlock()
+			if time.Now().After(until) {
+				return
+			}
+			if r.analysingIncident() == "" && c.run.TryLock() {
+				now := time.Now()
+				if r.eng != nil {
+					if sim, _, _ := r.eng.Snapshot(); sim > 0 {
+						now = time.Unix(sim, 0)
+					}
+				}
+				p := chatStaticPrefix(now)
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				// one token after the prefix: htpd restores the prefix state from its cache (~10 ms) instead of
+				// re-prefilling it (a prompt equal to the prefix bypasses the cache: board 4.9 s per ping)
+				chatLLM(p).Complete(ctx, p+"Hi", 1, nil)
+				cancel()
+				c.run.Unlock()
+			}
+			time.Sleep(2 * time.Second)
+		}
+	}()
+}
 
 // ---------------------------------------------------------------- one question
 
@@ -290,6 +337,7 @@ func (c *chatStore) answer(ctx context.Context, r *Reasoner, history []ChatMsg, 
 		msg.Text = "I could not find an answer to that on the device."
 	}
 	msg.Ms = time.Since(t0).Milliseconds()
+	c.Warm(r) // a follow-up usually comes within a minute
 	return msg
 }
 
@@ -902,6 +950,14 @@ func (t chatTools) run(name string, args map[string]any) (map[string]any, error)
 
 func (s *Server) chatRoutes(mux *http.ServeMux) {
 	cs := newChatStore(s.dir)
+	mux.HandleFunc("/api/chat/warm", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "POST", 405)
+			return
+		}
+		cs.Warm(s.rsn)
+		writeJSON(w, map[string]any{"warm_for_s": int(chatWarmFor / time.Second)})
+	})
 	mux.HandleFunc("/api/chat/status", func(w http.ResponseWriter, r *http.Request) {
 		cs.mu.Lock()
 		w8 := cs.wait

@@ -1,0 +1,13 @@
+# Speed build (11:31 IST start)
+- S0 APK fe6621ea, edge-agent f39c782d; htpd_v8x4 b745d6da
+- S1 A/B: base v8x3: n=6 parse=6 mean 25.0 s sppa pad 6: n=6 parse=6 same sev+label=6 mean 28.8 s (+15.0%) ok=0 sppb pad 5: n=6 parse=6 same sev+label=6 mean 27.8 s (+11.1%) ok=0 
+- S2 DEPLOYED: edge-agent f39c782d, pad rows 0 (0 = off); chaos 2 rc=0; fastcheck {"fast_incident": "INC-0463", "fast_s": 5.6, "ai_update_s": 52.3, "final_model": "qwen3.5-4b (htpd)", "valid": true, "severity": "sensor_fault", "title": "KH building, level 03: Suspect CO2 readings", "pass": true}
+- chat check (warm): 5 s | tools ['count_incidents'] | busy False | error False | How many incidents were there today? -> There were 95 incidents today.
+- chat check (warm): 5 s | tools ['count_incidents'] | busy False | error False | Which domains have open incidents right now? -> 95 incidents are open right now.
+- htpd: htpd: reason 1 streams, 0 decode steps, prefill 4871 ms, cache none (0 tokens, 0 ms)
+- htpd: htpd: reason 1 streams, 0 decode steps, prefill 4982 ms, cache none (0 tokens, 0 ms)
+- htpd: htpd: reason 1 streams, 30 decode steps, prefill 380 ms, cache disk (2486 tokens, 206 ms)
+- htpd: htpd: reason 1 streams, 8 decode steps, prefill 346 ms, cache turn (2502 tokens, 9 ms)
+- htpd: htpd: reason 1 streams, 42 decode steps, prefill 233 ms, cache mem (2486 tokens, 9 ms)
+- htpd: htpd: reason 1 streams, 8 decode steps, prefill 372 ms, cache turn (2532 tokens, 9 ms)
+- board now: f39c782d327dbd3fd0042569987c36e0  /data/local/tmp/smart_city_edge/edge-agent env=HTPD_AGENT_MAX_NEW=160 HTPD_JSON_ABORT=2 HTPD_SYNTH_PREFIX_CACHE=1 GGML_HEXAGON_OPPOLL=1 HTPD_REASON_IDLE_MS=3000 reasoner_split=3 bin=/data/local/tmp/llama.cpp/bin/htpd_v8x3 

@@ -15,9 +15,8 @@ func (fakeChatLLM) Complete(context.Context, string, int, func(string)) (string,
 
 // A question asked while an incident is being analysed waits (alerts first) and is answered once the analysis ends.
 func TestChatQueuesBehindIncident(t *testing.T) {
-	old := chatLLM
+	// not restored: Ask starts the keep-warm loop (Warm), which keeps calling chatLLM for a minute after the test
 	chatLLM = func(string) v3LLM { return fakeChatLLM{} }
-	defer func() { chatLLM = old }()
 	r := &Reasoner{}
 	inc := &Incident{ID: "INC-0901", State: "running"}
 	r.incidents = []*Incident{inc}

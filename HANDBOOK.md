@@ -2267,6 +2267,25 @@ The app A/B on the board is running from `board_ab/`.
   - Weak spot: "still open?" reused the plain count (the tools have no open-only filter).
 - **Next:** streaming, incident-context chat, the 100-question chat set on the board, an open-only filter and maintenance tools.
 
+## 2.61 Latency push before the evaluation (2026-10-29 11:30-12:30, proofs/2026-10-28_master/speed, improve7, v8x4)
+
+- **Where the time goes** (board htpd log):
+  - Report: reasoner swap 4.0-4.1 s, prefill 2.5 s, decode 179-283 steps × about 155 ms (3 streams).
+  - Chat: swap 4.0 s; first chat of the hour +5.7 s (the hourly prompt cache); a tool-call step of 36-44 tokens; an answer of 8-20 tokens.
+- **Chat keep-warm (live):**
+  - While the Campus Assistant is in use (page open, typing, an answer within 60 s), a 1-token call every 2 s keeps the reasoner and this hour's chat prefix loaded. The ping is skipped while an incident is analysed.
+  - Board, warm: **5 s per answer** (cold 8-14 s).
+  - First version bug: the ping's prompt equalled the prefix, so htpd bypassed its cache (4.9 s prefill per ping). Fixed in improve7: prefix + one token, cache hit.
+  - Cost: an alert within 60 s of chat use pays the agents' reload, about 2.6 s.
+- **htpd_v8x4 row padding (rejected):**
+  - Decode steps of 3-5 rows were padded to 5 or 6 rows on a spare sequence, because the llama-bench table said 6 rows (106 ms) cost less than 4 (133 ms).
+  - Board A/B, q10-q15: v8x3 25.0 s; pad 6 28.8 s (+15%); pad 5 27.8 s (+11%). Severity and label identical 6/6.
+  - Real decode steps don't follow the prompt-processing table. Padding stays off (env HTPD_PAD_ROWS unset, `reasoner_pad` unset); the binary stays on the board, unused.
+- **Next real levers:**
+  - Profile the ~40 ms per-step host overhead (logits copy, picks, OPPOLL) with a per-phase timer.
+  - Force fully determined text (sensor ids, tool-call boilerplate).
+  - Rebalance groups when agent_checks runs long.
+
 ## 3. If something goes wrong
 
 **Golden rule: just run the same `train.ps1` command again.** It continues where it stopped: training resumes

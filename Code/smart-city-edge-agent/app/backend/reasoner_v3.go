@@ -1326,6 +1326,9 @@ func v3SplitGroups() *v3Split {
 // reasonerStreams: htpd --reason-streams for the split groups (1 = no split).
 func reasonerStreams() int {
 	if sp := v3SplitGroups(); sp != nil {
+		if reasonerProfile("reasoner_pad", "SCE_REASONER_PAD") == "1" {
+			return len(sp.Groups) + 1 // htpd v8x4 row padding: one spare sequence (HTPD_PAD_ROWS in the profile env)
+		}
 		return len(sp.Groups)
 	}
 	return 1

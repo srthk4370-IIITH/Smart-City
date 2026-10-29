@@ -41,10 +41,10 @@ The top bar has: **Deck · Today · Journey · Route · Decisions · Proofs · R
 ### 1.2 Today (the most important page for the evaluation)
 Sections from top to bottom:
 
-1. **Banner: "Live now: edge-agent 12a10c1d"** (the Campus Assistant build with the chat queue). Domain agents B50,
+1. **Banner: "Live now: edge-agent 8e4ed42c"** (Campus Assistant with chat queue and keep-warm). Domain agents B50,
    reasoner rsn_v1, htpd_v8x3, split 3, retrieval library of 254 reference reports, and the Campus Assistant chat.
    Checked through the app after the deploy: chaos scenarios passed, critical breach opened by the fast path in
-   **5.5 s**, AI report on the same incident at **53.5 s**. Source: `improve6/STATUS.md`. (The later Ask-AI button
+   **5.7 s**, AI report on the same incident at **47.7 s**. Source: `improve7/STATUS.md`. (The later Ask-AI button
    build in `improve4/STATUS.md` shows "FAILED", but that was a false failure of the deploy script (its log rotated),
    not of the app; the board went back to the healthy chat build and the button build is being retried.)
 2. **On the board:** a table of every part that runs (agents, reasoner, NPU daemon, split decoding, contract repairs,
@@ -129,7 +129,7 @@ Have the app on the board running in parallel if someone else is demoing it.
 | # | Time | Click | What to say (short) |
 |---|---|---|---|
 | 1 | 0:00-1:00 | **Deck** | "Agentic edge AI for a smart campus. Domain agents read each sensor, a reasoner writes one cross-domain report, all on the QIDK, offline, no cloud. Every number here links to a proof file." Point at the status strip: live build, agents B50, reasoner rsn_v1. |
-| 2 | 1:00-2:30 | **Today**, banner + On the board | "This is what runs right now: edge-agent 12a10c1d. Llama 3.2 3B agents (B50) and Qwen3.5-4B reasoner (rsn_v1), both Q4_0 on the Hexagon NPU, one model at a time, through our htpd daemon, plus the Campus Assistant chat. We deployed it this morning and checked it through the app: critical breach to incident in 5.5 s, AI report on the same incident in 53.5 s." |
+| 2 | 1:00-2:30 | **Today**, banner + On the board | "This is what runs right now: edge-agent 8e4ed42c. Llama 3.2 3B agents (B50) and Qwen3.5-4B reasoner (rsn_v1), both Q4_0 on the Hexagon NPU, one model at a time, through our htpd daemon, plus the Campus Assistant chat. We deployed it this morning and checked it through the app: critical breach to incident in 5.7 s, AI report on the same incident in 47.7 s." |
 | 3 | 2:30-3:30 | Today, **How an incident flows** | Walk the 6 steps. Stress: the preliminary report appears in the same second, and the operator can start ticking the checklist at once; the AI report merges in. The operator approves every action; the AI never switches anything. |
 | 4 | 3:30-5:00 | Today, **Latency** | "On the NPU: preliminary at 0 s, title and severity 8-15 s, full report 25-39 s. The reasoner went 27.8 → 25.8 → 21.6 s with polling and split decoding. In the real world the bigger delay is sensor time: 8 readings at 5 min each is 40-55 min. Critical cases skip it through the fast path." |
 | 5 | 5:00-6:30 | Today, **Accuracy** | "Reasoner on 150 held-out incidents: severity 91.9%, label 87.8%, 0% ungrounded. This morning's contract repairs moved the label from 83.2% to 87.6% on 386 real board answers, with 0 new errors." |

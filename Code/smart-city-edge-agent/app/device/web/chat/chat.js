@@ -148,3 +148,10 @@ $('#del').addEventListener('click', async () => {
 });
 api('/api/status').then((st) => { if (st && st.running_on) $('#sub').textContent = 'On-device AI · ' + st.running_on.split(',')[0]; }).catch(() => {});
 renderChat(); loadSessions(); setTimeout(() => $("#q").focus(), 300);
+/* keep the reasoner warm on the NPU while this page is in use (backend Warm: ~60 s after the last activity) */
+let lastWarm = 0;
+function warm() { if (Date.now() - lastWarm < 15000) return; lastWarm = Date.now(); fetch('/api/chat/warm', { method: 'POST' }).catch(() => {}); }
+warm();
+addEventListener('focus', warm);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) warm(); });
+$('#q').addEventListener('input', warm);
