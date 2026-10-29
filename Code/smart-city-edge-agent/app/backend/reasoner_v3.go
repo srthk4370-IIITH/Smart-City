@@ -385,6 +385,7 @@ var (
 	v3IDRe       = regexp.MustCompile(`\b(S\d+\.E\d+|S\d+|M\d+|R\d+|H\d+)\b`)
 	v3NumRe      = regexp.MustCompile(`\d+(?:\.\d+)?`)
 	v3NormalRe   = regexp.MustCompile(`(?i)\bnormal\b`)
+	v3LocRe      = regexp.MustCompile(`[A-Z]{2} building, level \d+`)
 )
 
 // v3Known: every citable id and number in the prompt and the tool results.
@@ -451,6 +452,19 @@ func checkReportV3(text, knownText string) (*reportV3Raw, []string, []string) {
 	}
 	if !contains(ReportLabels, r.Label) {
 		errs = append(errs, fmt.Sprintf("label %q not allowed", r.Label))
+	}
+	// Contract repairs (gold 2026-10-29: 151/151 normal+needs_more_data answers are labelled unknown, and 5,761/5,761
+	// titles name a location from the input). Board rsn_v1/v2 q14/q15 kept normal_operation; rsn_v2 q19 titled
+	// "VN building, level 04" for a TH building, level 03 incident.
+	if r.Severity == "normal" && r.NeedsMoreData && r.Label != "unknown" {
+		repairs = append(repairs, fmt.Sprintf("label %s -> unknown (normal + needs_more_data)", r.Label))
+		r.Label = "unknown"
+	}
+	if m := v3LocRe.FindString(r.Title); m != "" && !strings.Contains(knownText, m) {
+		if in := v3LocRe.FindString(knownText); in != "" {
+			repairs = append(repairs, fmt.Sprintf("title location %q -> %q (not in the input)", m, in))
+			r.Title = strings.Replace(r.Title, m, in, 1)
+		}
 	}
 	// Over-long lists are trimmed to the contract (SPEC §3), not rejected: priority order is trained, so the head is
 	// the most important part. Board 2026-10-27: two good 3 h refinements listed 7 evidence ids (4 sensors) and
@@ -1288,6 +1302,11 @@ func v3SplitGroups() *v3Split {
 	case "3":
 		return &v3Split{"causal_chain", [][]string{{"observations"},
 			{"agent_checks", "affected_domains", "suspect_sensors", "evidence", "confidence"},
+			{"checklist", "monitor_next", "needs_more_data", "needs_deeper", "explanation"}}}
+	case "3r": // 2026-10-29: fork after label (title/severity/label decoded exactly as in "3"); root_cause + causal_chain
+		// move into the lightest group, so ~45 fewer serial head steps while the longest group (checklist..) is unchanged
+		return &v3Split{"label", [][]string{{"root_cause", "causal_chain", "agent_checks", "affected_domains", "suspect_sensors", "evidence", "confidence"},
+			{"observations"},
 			{"checklist", "monitor_next", "needs_more_data", "needs_deeper", "explanation"}}}
 	case "6": // pp6 steps run on HMX at ~the cost of 3 rows; longest group = observations (2026-10-28 plan, board A/B pending)
 		return &v3Split{"causal_chain", [][]string{{"observations"}, {"agent_checks"},

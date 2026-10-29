@@ -2240,6 +2240,17 @@ The app A/B on the board is running from `board_ab/`.
 - htpd_v8x3: bounded constrained pick (top-64, then top-1024, then the forced token, with a full scan only as the last resort); 150 s wall-clock guard per reason request (stop "timeout" -> deterministic report); slow-pick counters in the log.
 - Gates: parity 5/5, rsn_v2 parse 10/10, sev gold 10 vs 10, label gold 8 vs 9, consistency 9/9.
 
+## 2.59 Morning of the evaluation (2026-10-29, proofs/2026-10-28_master/improve*, split3r, gpu_bench_out)
+
+- **Live:** edge-agent b770aa57 (htpd_v8x3, rsn_v1, B50, split 3, retrieval seeds). Each step passed chaos 2 + fastcheck (fast path 5.6 s, AI 42-47 s).
+- **Reasoner contract repairs (reasoner_v3.go):** normal + needs_more_data -> label unknown (gold 151/151); a title location not in the input is replaced by one from the input (gold 5,761/5,761). Replay on 386 board answers: label 83.2% -> 87.6%, 0 new errors.
+- **Preliminary checklist (workflow.go, reason.go, app.js):** the checklist is built from the preliminary report; ack / tick / add step are allowed while the reasoner writes (close, dismiss, approve-all still wait). The AI report merges in: ticked steps the AI repeats stay done and take the AI's reason, open steps it drops are withdrawn, new ones are marked new.
+- **rsn_v2 rejected on evidence:** host RWH, same 106 ids: severity 87.6% vs v1 94.7%, label 85.6 vs 88.4, check recall 0.81 vs 0.90. On the board it also invented a title location (q19) and misread 324 > 300 ppm (q11).
+- **GPU (Adreno 750, upstream llama.cpp OpenCL, GPU alone):** pp1 7.35, pp3 8.44, tg 8.35 t/s, about 2.5x slower than the NPU split. Not a latency path. The first run's CPU heat (94 C) was the one-time OpenCL kernel JIT (cache kept on the board).
+- **Split "3r" (fork after label):** no gain (22.2 vs 22.2 s); its first group became the longest stream (292 tokens). Split 3 stays. Group rebalancing is exhausted.
+- **Fixed:** rag_rollback.sh and final_rollback.sh did not stop htpd_v8x3.
+- **v1 chat:** chat dev 100/100 answered, first tool 100%, numbers exact 90%, ungrounded 0. The app has no chat endpoint yet (future work).
+
 ## 3. If something goes wrong
 
 **Golden rule: just run the same `train.ps1` command again.** It continues where it stopped: training resumes

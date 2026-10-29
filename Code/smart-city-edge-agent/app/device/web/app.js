@@ -1468,7 +1468,7 @@ let footNoteOpen = null; // incident id whose note is expanded (survives footer 
 function toggleFootNote(e) { const n = e.currentTarget, on = !n.classList.contains('open'); n.classList.toggle('open', on); n.setAttribute('aria-expanded', String(on)); footNoteOpen = on ? n.dataset.id : null; }
 function renderIncFoot(inc, force) {
   const f = $('#inc-foot'), wf = wfOfI(inc), ff = S.footForm && S.footForm.id === inc.id ? S.footForm : null;
-  const sig = [inc.id, inc.approval, inc.state, wf, inc.owner, inc.suggest_outcome, inc.outcome, ff ? ff.kind + ff.outcome : '', opName()].join('|');
+  const sig = [inc.id, inc.approval, inc.state, wf, inc.owner, inc.suggest_outcome, inc.outcome, ff ? ff.kind + ff.outcome : '', opName(), prelimOpen(inc)].join('|');
   if (!force && f.dataset.sig === sig) return; f.dataset.sig = sig;
   if (wf === 'closed') {
     const by = inc.closed_by === 'system' ? 'automatically' : inc.closed_by ? 'by ' + inc.closed_by : '';
@@ -1478,16 +1478,17 @@ function renderIncFoot(inc, force) {
     return;
   }
   if (ff) { f.replaceChildren(footForm(inc)); return; }
-  const running = wf === 'analysing', failed = wf === 'interrupted', owned = wf === 'in_progress' || (wf === 'resolved' && inc.owner);
-  const hint = running ? 'Waiting for the analysis to finish ...' : failed ? 'No report: re-run this incident (Technical details), or dismiss it with a note.'
+  const pre = prelimOpen(inc), busy = inc.state === 'running'; // preliminary shown: act now, the AI report merges in
+  const running = wf === 'analysing' && !pre, failed = wf === 'interrupted', owned = wf === 'in_progress' || (wf === 'resolved' && inc.owner);
+  const hint = running ? 'Waiting for the analysis to finish ...' : pre && !owned ? 'Preliminary report: you can take this and tick steps now. The AI report will update the list; your ticks stay.' : failed ? 'No report: re-run this incident (Technical details), or dismiss it with a note.'
     : owned ? (inc.owner ? inc.owner + ' is on it' + (inc.acked_at ? ' since ' + dclock(inc.acked_at) : '') + '. ' : '') + 'Tick the steps above, then close it with how it ended.'
       : 'I\'m on it = you take this and work through the steps. Dismiss = not needed (note required). Nothing switches automatically.';
   const me = opName();
   fill(f, h('p', { class: 'foot-hint', text: hint }),
     h('div', { class: 'foot-row' },
-      h('button', { class: 'btn danger', type: 'button', disabled: running ? true : null, text: 'Dismiss…', onclick: () => openFootForm(inc, 'dismiss') }),
+      h('button', { class: 'btn danger', type: 'button', disabled: running || busy ? true : null, text: 'Dismiss…', onclick: () => openFootForm(inc, 'dismiss') }),
       owned || wf === 'resolved'
-        ? h('button', { class: 'btn primary', type: 'button', text: 'Close…', onclick: () => openFootForm(inc, 'close') })
+        ? h('button', { class: 'btn primary', type: 'button', disabled: busy ? true : null, title: busy ? 'Close once the AI report is in' : null, text: 'Close…', onclick: () => openFootForm(inc, 'close') })
         : h('button', { class: 'btn primary', type: 'button', disabled: running || failed ? true : null, onclick: () => wfAct(inc, '/ack', {}, 'Recorded: you are on it') },
           'I\'m on it' + (me ? ' (' + me + ')' : ''))),
     owned && inc.owner && me && inc.owner !== me && !running ? h('button', { type: 'button', class: 'btn sm plain', onclick: () => wfAct(inc, '/ack', {}, 'You took this over') }, 'Take over as ' + me) : null);
@@ -2050,8 +2051,10 @@ async function wfAct(inc, path, body, okMsg) {
 const STEP_GLYPH = { open: '☐', done: '☑', not_needed: '⊘', withdrawn: '–' };
 const NN_REASONS = ['Already fine', 'Not possible now', 'Wrong suggestion'];
 const SRC_WORD = { report: 'From the AI report', agent: 'From the domain agent', rules: 'From the automatic rules', playbook: 'Standard playbook', rule: 'Repair rule (fault came back within 30 days)' };
+// preliminary report shown while the reasoner writes: the checklist is live (backend decidableEarly)
+function prelimOpen(inc) { return !!(inc.state === 'running' && inc.final && inc.final.preliminary && inc.final.parsed); }
 function checklist(inc) {
-  const wf = wfOfI(inc), live = wf !== 'closed' && wf !== 'analysing' && wf !== 'interrupted';
+  const wf = wfOfI(inc), pre = prelimOpen(inc), live = (wf !== 'closed' && wf !== 'analysing' && wf !== 'interrupted') || (wf === 'analysing' && pre);
   const all = inc.steps || [];
   const steps = all.filter((s) => s.state !== 'withdrawn' || ((wf === 'in_progress' || wf === 'resolved') && s.by));
   const counted = steps.filter((s) => s.state !== 'withdrawn'), ticked = counted.filter((s) => s.state !== 'open').length;
@@ -2059,7 +2062,8 @@ function checklist(inc) {
   const items = steps.map((s) => {
     const k = inc.id + ':' + s.id, nn = S.ckNN === k;
     const by = s.state === 'done' || s.state === 'not_needed' ? (s.state === 'done' ? 'Done' : 'Not needed') + (s.by ? ' · ' + s.by : '') + (s.at ? ' · ' + dclock(s.at) : '') + (s.note ? ' · “' + s.note + '”' : '') : '';
-    const tags = [s.new ? 'New since you acknowledged' : null, s.accepted && s.state === 'open' ? 'Accepted' : null, s.state === 'withdrawn' ? 'No longer suggested' : null].filter(Boolean);
+    const tags = [s.new ? 'New since you acknowledged' : null, s.accepted && s.state === 'open' ? 'Accepted' : null, s.state === 'withdrawn' ? 'No longer suggested' : null,
+      s.added_at_stage === 'preliminary' ? (pre ? 'Preliminary: may change when the AI report arrives' : 'From the preliminary report') : null].filter(Boolean);
     let act = null;
     if (live && s.state === 'open') {
       act = nn ? nnForm(inc, s, k) : h('div', { class: 'ck-act' },
@@ -2073,7 +2077,7 @@ function checklist(inc) {
         h('div', { class: 'ck-body' }, h('div', { class: 'ck-t', text: s.text }),
           tags.length ? h('div', { class: 'ck-tags' }, tags.map((t) => h('span', { class: 'ck-tag', text: t }))) : null,
           s.why ? h('div', { class: 'ck-why', text: 'Why: ' + s.why }) : null,
-          h('div', { class: 'ck-src', text: (s.source === 'operator' ? 'Added by ' + (s.by || 'an operator') : (SRC_WORD[s.source] || nice(s.source))) + (s.added_at_stage && s.added_at_stage !== 'early' ? ' · at the ' + (DH_STAGE[s.added_at_stage] || s.added_at_stage) + ' re-check' : '') }),
+          h('div', { class: 'ck-src', text: (s.source === 'operator' ? 'Added by ' + (s.by || 'an operator') : (SRC_WORD[s.source] || nice(s.source))) + (s.added_at_stage && s.added_at_stage !== 'early' && s.added_at_stage !== 'preliminary' ? ' · at the ' + (DH_STAGE[s.added_at_stage] || s.added_at_stage) + ' re-check' : '') }),
           by ? h('div', { class: 'ck-by', text: by }) : null)),
       act);
   });

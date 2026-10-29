@@ -6,7 +6,7 @@
 
 <section class="section">
   <span class="label">On the board</span>
-  <p class="lead">Qualcomm QIDK (Snapdragon 8 Gen 3, SM8650), Hexagon V75 NPU, Android 14. Everything below runs on the board alone, offline. Two models share the NPU through one daemon, which swaps between them.</p>
+  <p class="lead">Qualcomm QIDK (Snapdragon 8 Gen 3, SM8650), Hexagon V75 NPU, Android 14. Everything below runs on the board alone, offline. Two models share the NPU through one daemon, one model at a time, which swaps between them.</p>
   <div class="ptable td-table" data-slot="parts"></div>
   <p class="muted td-note" data-slot="parts-note"></p>
 </section>
@@ -17,8 +17,8 @@
     <li><b>Sensor readings</b> arrive every 5 min (the demo replays real campus data, 1 reading every 2 s). The rules watch every sensor.</li>
     <li data-fast><b>Critical fast path:</b> 2 readings in a row past a critical limit open the incident at once, with a rules-only report.</li>
     <li><b>Event gate:</b> 8 abnormal readings start the AI: one domain agent per flagged sensor, all decoded together on the NPU.</li>
-    <li><b>Preliminary report</b> (rules plus the agents' findings) on screen within seconds.</li>
-    <li><b>Reasoner report</b> (Qwen3.5-4B) replaces it: title and severity first, then the full report.</li>
+    <li><b>Preliminary report</b> in the same second the incident opens: rules computed from the live values, worded like the most similar past report (retrieval). Its checklist is live at once: the operator can acknowledge and tick steps while the AI writes.</li>
+    <li><b>Reasoner report</b> (Qwen3.5-4B, rsn_v1) replaces it: title and severity first, then the full report. The checklist merges: ticked steps stay done, dropped open steps are withdrawn, new ones are marked new.</li>
     <li><b>Re-checks</b> at 1.5 h and 3 h re-read the sensors with a longer window and can raise or lower the severity. The operator approves every action.</li>
   </ol>
 </section>
@@ -35,8 +35,14 @@
 </section>
 
 <section class="section">
-  <span class="label">Tonight's run</span>
-  <p class="lead">The final deploy and its checks, read from the proof files when the site was built.</p>
+  <span class="label">This morning (29 Oct)</span>
+  <p class="lead">What changed on the morning of the evaluation, what was tried and rejected, and why. Each card names its proof file.</p>
+  <div class="grid" data-slot="morning"></div>
+</section>
+
+<section class="section">
+  <span class="label">Overnight run (28 to 29 Oct)</span>
+  <p class="lead">The final overnight deploy and its checks, read from the proof files when the site was built. This morning's builds sit on top of it.</p>
   <div class="grid" data-slot="tonight"></div>
 </section>
 
@@ -47,7 +53,8 @@
     <li><b>Heat.</b> Back-to-back heavy incidents push the board to 90 to 94 °C and the thermal guard trips. The board needs a heatsink or fan in the field.</li>
     <li><b>The NPU is not bit-for-bit repeatable.</b> The same prompt can give a different answer near a decision boundary: severity agrees 97% of the time across repeats (100% with the guard).</li>
     <li><b>Known model weaknesses.</b> Recurring small spikes, pump cycling, and erratic or exponential shapes at 3 h are still often misnamed. Hourly sensors (such as TDS) have too few points and stay rules-only.</li>
-    <li><b>One NPU, two models.</b> Swapping between the agents' model and the reasoner costs about 3 to 4 s per incident; bursts queue.</li>
+    <li><b>One NPU, two models.</b> Only one model fits on the NPU at a time (two resident models rebooted the board), so each incident pays a model swap of a few seconds; bursts queue.</li>
+    <li><b>The GPU is not a shortcut.</b> Measured this morning: the reasoner on the Adreno 750 GPU alone runs about 2.5x slower than on the NPU.</li>
     <li><b>Data.</b> All models were trained and tested on one campus's sensors (test months held out, about 15% of sensors held out completely).</li>
   </ul>
 </section>
@@ -55,10 +62,11 @@
 <section class="section">
   <span class="label">What's next</span>
   <ul class="td-list" data-slot="next-list">
-    <li><b>After the evaluation:</b> the pruned output layer A/B (about −12% reasoner time; held back because the board rebooted once with it) and the GPU benchmark.</li>
-    <li><b>Reasoner on the GPU</b>, agents on the NPU: no model swap, and the next incident's agents can run while a report is written. Needs a memory coexistence test first.</li>
-    <li><b>Younger events:</b> use the gate study to switch on the early, provisional AI report for the shapes the agents read reliably at 3 to 7 readings.</li>
-    <li><b>Storage and fog:</b> the last 1,000 incidents on the board plus an all-time index; derived data (never raw readings) to a free cloud database, with the board as the only writer.</li>
+    <li><b>Conversational interface.</b> The reasoner was already trained on about 2,000 chat tool traces. Missing: an <code>/api/chat</code> endpoint, the chat tools over the incident store, a chat panel, and NPU scheduling (chat waits behind alerts).</li>
+    <li><b>Reasoner speed.</b> Force fully determined text (for example the sensor id after "S1 (") in the htpd forcer; group rebalancing is exhausted.</li>
+    <li><b>Younger events.</b> Young-window training (data ready, paused) to shorten the 8-reading gate; the early provisional AI is built but off.</li>
+    <li><b>GPU for bursts.</b> Run a second incident's agents on the GPU while the NPU reasoner writes; needs a memory-safety check first.</li>
+    <li><b>rsn_v3.</b> Fix rsn_v2's severity regressions before another training round.</li>
   </ul>
 </section>
 

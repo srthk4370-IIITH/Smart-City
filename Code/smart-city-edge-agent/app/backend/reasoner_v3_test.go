@@ -407,3 +407,23 @@ func TestV3SplitProfile(t *testing.T) {
 		t.Fatalf("groups %v != schema tail %v", keys, all[5:])
 	}
 }
+
+func TestCheckReportV3ContractRepairs(t *testing.T) {
+	known := v3Prompt + "\nlimit 1500\nS1 at VN building, level 02"
+	moved := strings.Replace(v3Good, "VN building, level 02", "TH building, level 03", 1)
+	r, errs, rep := checkReportV3(moved, known)
+	if len(errs) != 0 || !strings.HasPrefix(r.Title, "VN building, level 02:") || len(rep) != 1 {
+		t.Fatalf("title location repair: %q %v %v", r.Title, errs, rep)
+	}
+	nmd := strings.Replace(strings.Replace(v3Good, `"needs_more_data": false`, `"needs_more_data": true`, 1),
+		`"severity": "critical"`, `"severity": "normal"`, 1)
+	nmd = strings.Replace(nmd, `"inspect_ventilation"`, `"monitor"`, 1)
+	nmd = strings.Replace(nmd, "CO2 over the critical limit in an occupied room", "data gaps", 1)
+	r, _, rep = checkReportV3(nmd, known)
+	if r.Label != "unknown" || len(rep) != 1 {
+		t.Fatalf("normal + needs_more_data label repair: %q %v", r.Label, rep)
+	}
+	if r, _, _ = checkReportV3(v3Good, known); r.Label != "occupancy_driven_load" || !strings.HasPrefix(r.Title, "VN building, level 02:") {
+		t.Fatalf("good report changed: %q %q", r.Label, r.Title)
+	}
+}

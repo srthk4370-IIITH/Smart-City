@@ -34,12 +34,14 @@ def state(t):
         return None
     reasoner = p("reasoner_model") or "qwen35_reasoner_q4_0.gguf"
     rname = "rsn_v2" if "rsn_v2" in reasoner else "rsn_v1"
-    if retry.get("live"):
+    if retry.get("live") and "rsn_v1" not in str(retry.get("result") or ""):   # the retry shipped htpd_v8x3 with rsn_v1 kept
         rname = "rsn_v2"
     split = (d.get("split_post_result") or p("reasoner_split") or d.get("split") or "3").split()[0]
     ch = (t.get("chaos_tonight") or {}).get("summary") or {}
+    ml = (t.get("morning") or {}).get("live") or {}   # evaluation-morning deploy (improve*/STATUS.md) wins when present
     return dict(final=("pending" if not f.get("present") else "passed" if live else "rolled back"), live=live, rname=rname,
-                split=split, rag=bool(rag.get("live")), ch=ch, bin=p("bin") or "htpd_v8x2", result=f.get("result"))
+                split=ml.get("split") or split, rag=bool(rag.get("live")), ch=ch, bin=ml.get("bin") or p("bin") or "htpd_v8x2",
+                result=f.get("result"), ea=ml.get("edge_agent"), apk=ml.get("apk"), fc=ml.get("fastcheck") or {})
 
 
 def timing(s):
@@ -104,8 +106,14 @@ def main():
             "Recurring sub-threshold spikes and pump cycling are still often misnamed, and non-critical events still wait 8 readings "
             "for the AI. The gate study (agents on 3-7 readings) is the next step for the latter.",
         "What is next?":
-            "After the evaluation: the pruned output-layer A/B (about −12% reasoner time, held back after a board reboot), the GPU "
-            "benchmark and a reasoner-on-GPU coexistence test, the gate study for earlier AI reports, and storage/fog sync.",
+            "After the evaluation: (1) the conversational interface (endpoint, chat tools over the incident store, chat panel, board "
+            "test); (2) reasoner speed by forcing fully determined text in the htpd forcer; (3) young-window training to shorten the "
+            "8-reading gate; (4) the GPU for bursts (a second incident's agents while the NPU reasoner writes), after a memory-safety "
+            "check; (5) rsn_v3, fixing rsn_v2's severity regressions first.",
+        "Why the NPU and not the GPU?":
+            "Measured twice. Agents: ~8.4 s per agent on the Adreno GPU, no batching gain. Reasoner (29 Oct, upstream llama.cpp "
+            "OpenCL, GPU alone): 7.35 / 8.44 / 8.35 tokens/s (pp1 / pp3 / tg), about 2.5x slower than the NPU split. "
+            "Source: proofs/2026-10-28_master/gpu_bench_out/out.md.",
         "What happens after training finishes?":
             "Done: v2 was merged, exported to GGUF Q4_0 for htpd and deployed on 21 Oct; the agents later moved to mixA50 (25 Oct) "
             "and B50 (28 Oct), each only after a paired test on the board or its host copy.",
@@ -119,7 +127,12 @@ def main():
             f"Domain agents B50 (Llama 3.2 3B, Q4_0) and the {s['rname']} reasoner (Qwen3.5-4B, Q4_0) on one NPU through {s['bin']}, "
             f"split decoding with {s['split']} groups, a preliminary report"
             + (" with retrieval of similar past incidents" if s["rag"] else " from rules and agents")
-            + f", policy gate, native app. Final deploy: {s['final']}. Details on the Today page.",
+            + (", 254 seed reference reports, a checklist that starts from the preliminary report and merges with the AI report"
+               if s.get("ea") else "")
+            + ", policy gate, native app, all offline on the board."
+            + (f" Live build: edge-agent {s['ea']} (APK {s['apk']}), deployed the morning of 29 Oct and checked through the app "
+               f"(fast path {s['fc'].get('fast_s')} s, AI report on the same incident {s['fc'].get('ai_update_s')} s)."
+               if s.get("ea") else f" Final deploy: {s['final']}.") + " Details on the Today page.",
         "Where is training right now?":
             "Finished. v2 completed 4,494 steps (best dev loss 0.054) and shipped 21 Oct; the reasoner (Qwen3.5-4B, QLoRA r32, about 21 h) "
             "was trained next. No training runs on the board.",
@@ -148,8 +161,32 @@ def main():
          "Measured on the board: MTP and n-gram drafts were 1% to 20% slower, because verifying 2-4 tokens costs 82-133 ms against "
          "66 ms for one, and rollback snapshots doubled prefill."),
         ("latency", "Why not run the reasoner on the GPU?",
-         "Estimated about 19-20 s for one report, the same as the NPU; it wins only for bursts (no swap, agents in parallel). It needs "
-         "a memory coexistence test first, because a second model on the GPU once rebooted the board."),
+         "Measured on 29 Oct: Adreno 750, upstream llama.cpp OpenCL, GPU alone: 7.35 / 8.44 / 8.35 tokens/s (pp1 / pp3 / tg), about "
+         "2.5x slower than the NPU split. It is not a latency path; it may help bursts later (a second incident's agents on the GPU "
+         "while the NPU reasoner writes) after a memory-safety check."),
+        ("reasoner", "Why did you reject rsn_v2?",
+         "On the same 106 held-out incidents (host copy of the board model): severity 94.7% for rsn_v1 vs 87.6% for rsn_v2, label 88.4% "
+         "vs 85.6%, checklist recall 0.90 vs 0.81. On the board rsn_v2 also invented a title location and misread 324 > 300 ppm. "
+         "Severity is what operators act on, so rsn_v1 stays."),
+        ("reasoner", "What are the contract repairs?",
+         "Rule-based checks after the reasoner: severity normal with needs_more_data gets the label unknown (gold rule 151/151), and a "
+         "title location not in the input is replaced by one from the input (5,761/5,761). Replayed on 386 board answers: label "
+         "83.2% -> 87.6%, 0 new errors. Deployed 29 Oct."),
+        ("latency", "What does the operator see in the first seconds?",
+         "A preliminary report in the same second the incident opens: a rules report from the live values in the wording of the most "
+         "similar past report (hybrid retrieval: structured vector 0.7 + TF-IDF 0.3; 254 seed reports plus every live AI report). "
+         "Severity is the higher of rules and retrieval, so it never under-alerts. Its checklist is live, and the AI report merges in "
+         "about 40 s later."),
+        ("latency", "Is the 40-55 min wait solved?",
+         "No. Non-critical events still need 8 readings (40-55 min of real sensor time at one reading per 5 min) before the AI runs. "
+         "Critical breaches take the fast path (2 readings past the limit). Young-window training to shorten the gate is the next step."),
+        ("status", "Is there a chat interface?",
+         "Not yet in the app. rsn_v1 was trained with about 2,000 chat tool traces and scores 100% answered, 100% first tool right, "
+         "90% numbers exact, 0% ungrounded on 100 dev questions (laptop). Missing: an /api/chat endpoint, the chat tools over the "
+         "incident store, a chat panel and NPU scheduling. It is the first item after the evaluation."),
+        ("latency", "Did split 3r or more split groups help?",
+         "No. Split 4: +1%; split 6 does not fit the NPU session; split 3r (fork after the label) 22.2 vs 22.2 s on 10 incidents. "
+         "Split 3 stays."),
         ("latency", "What is the critical fast path?",
          "2 readings in a row past a sensor's critical limit open the incident at once with a rules-only report; the agents and "
          "reasoner still run at 8 readings and update the same incident. Power, tank level and flow have no fixed limits, so no fast path."

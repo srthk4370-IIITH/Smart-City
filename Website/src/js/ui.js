@@ -4,7 +4,7 @@ import * as charts from './charts.js';
 export const PAGES = [
   { id: 'deck', title: 'Deck', sub: 'The slides, full screen' },
   { id: 'today', title: 'Today', sub: 'What runs on the board now, with its numbers' },
-  { id: 'journey', title: 'Journey', sub: 'Ten steps from one slow call to today' },
+  { id: 'journey', title: 'Journey', sub: 'Eleven steps from one slow call to today' },
   { id: 'route', title: 'Route', sub: 'How we got here, step by step' },
   { id: 'decisions', title: 'Decisions', sub: 'What we chose, what we rejected, why' },
   { id: 'proofs', title: 'Proofs', sub: 'Every number, its file and its script' },

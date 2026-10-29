@@ -9,6 +9,8 @@ Sources (any may be missing; the Today page then says "pending"):
   proofs/2026-10-28_master/gate_study/table_B50.md                     event-gate study (young windows)
   proofs/2026-10-25_reasoner_final/eval/results/round2_result.txt      rsn_v2 laptop eval
   proofs/2026-10-28_master/final/chaos/chaos_*_incident.json           tonight's app run (aggregates only)
+  proofs/2026-10-28_master/improve*/STATUS.md, split3r/result.txt,     evaluation-morning deploys, split-3r A/B,
+    gpu_bench_out/out.md                                               GPU llama-bench table
 Privacy: only aggregates and status lines leave this script; no sensor windows, prompts, or model texts.
 """
 import datetime as dt
@@ -277,6 +279,56 @@ def fastcheck():
     return {"file": rel(fs[-1]), "updated": stamp(fs[-1]), "summary": keep}
 
 
+def morning():
+    """The evaluation morning (29 Oct): improve/STATUS.md, improve2/STATUS.md (deploys), split3r/result.txt (SUMMARY line),
+    gpu_bench_out/out.md (first llama-bench table). Status lines, md5 prefixes, timings and t/s only."""
+    out = {"files": []}
+    deploys = []
+    for name in ("improve", "improve2"):
+        p = M / name / "STATUS.md"
+        s = rd(p)
+        if not s:
+            continue
+        out["files"].append(rel(p))
+        h = re.search(r"^#\s*(.+)", s, re.M)
+        b = re.search(r"apk ([0-9a-f]{8}), edge-agent ([0-9a-f]{8})", s)
+        dep = re.search(r"I2 DEPLOYED: edge-agent ([0-9a-f]{8})", s)
+        board = re.search(r"board now: ([0-9a-f]{32}).*?reasoner_split=(\d+)\s+bin=\S*/(htpd_\w+)\s+reasoner_model=\S*/(\S+\.gguf)", s)
+        deploys.append({
+            "name": name, "file": rel(p), "updated": stamp(p),
+            "heading": h.group(1).strip() if h else name,
+            "apk": b.group(1) if b else None, "edge_agent": b.group(2) if b else None,
+            "deployed": dep.group(1) if dep else None,
+            "fastcheck": result_json(s.split("fastcheck", 1)[1].split("\n", 1)[0]) if "fastcheck {" in s else None,
+            "board": ({"edge_agent_md5": board.group(1), "split": board.group(2), "bin": board.group(3), "reasoner_model": board.group(4)}
+                      if board else None),
+            "lines": [l[2:].strip() for l in s.splitlines() if l.startswith("- ") and "fastcheck" not in l and "board now" not in l],
+        })
+    out["deploys"] = deploys
+    live = next((d for d in reversed(deploys) if d.get("deployed") and d.get("board")), None)
+    out["live"] = live and {"edge_agent": live["deployed"], "apk": live["apk"], "file": live["file"], "updated": live["updated"],
+                            "fastcheck": live["fastcheck"], **live["board"]}
+    p = M / "split3r" / "result.txt"
+    s = rd(p)
+    if s:
+        m = re.search(r"^SUMMARY .*?mean 3 ([0-9.]+) s 3r ([0-9.]+) s \(([^)]*)\).*?DEPLOY=(\d)", s, re.M)
+        out["split3r"] = {"file": rel(p), "updated": stamp(p), "split3_s": float(m.group(1)) if m else None,
+                          "split3r_s": float(m.group(2)) if m else None, "delta": m.group(3) if m else None,
+                          "deployed": (m.group(4) == "1") if m else None, "n": len(re.findall(r"^q\d+ ", s, re.M))}
+    p = M / "gpu_bench_out" / "out.md"
+    s = rd(p)
+    if s:
+        t = md_table(s)
+        rows = []
+        if t:
+            hdr = [c.lower() for c in t[0]]
+            ti, vi = hdr.index("test"), hdr.index("t/s")
+            rows = [[r[ti], r[vi]] for r in t[1:] if len(r) > vi]
+        out["gpu"] = {"file": rel(p), "updated": stamp(p), "rows": rows,
+                      "device": "Adreno 750, upstream llama.cpp OpenCL, GPU alone", "model": "qwen35 4B Q4_0 (rsn_v1)"}
+    return out
+
+
 TITLE_RE = re.compile(r""""title":\s*"(?:[^"\\]|\\.)*",?\s*|title='[^']*'""")
 
 
@@ -295,7 +347,9 @@ def main():
     out = {
         "meta": {"title": "Today: what runs on the board", "generated_at": NOW, "script": rel(S),
                  "source_files": [rel(M / "FINAL_STATUS.md"), rel(M / "final.log"), rel(M / "split_post.log"), rel(M / "RAG_STATUS.md"),
-                                  rel(M / "gate_study" / "table_B50.md"), rel(R2), rel(M / "CHAIN_STATUS.json"), rel(M / "RSN_V2_RETRY.md"), rel(M / "OVERNIGHT_STATUS.md")],
+                                  rel(M / "gate_study" / "table_B50.md"), rel(R2), rel(M / "CHAIN_STATUS.json"), rel(M / "RSN_V2_RETRY.md"), rel(M / "OVERNIGHT_STATUS.md"),
+                                  rel(M / "improve" / "STATUS.md"), rel(M / "improve2" / "STATUS.md"), rel(M / "split3r" / "result.txt"),
+                                  rel(M / "gpu_bench_out" / "out.md")],
                  "notes": "Read from the proof files when the site was built; the board itself is not probed by the build."},
         "final": final_status(),
         "final_log": final_log(),
@@ -309,6 +363,7 @@ def main():
         "chaos_tonight": chaos([F / "chaos"]),
         "fastcheck": fastcheck(),
         "models_md5": models(),
+        "morning": morning(),
     }
     out = scrub(out)
     bad = check_no_raw(out)

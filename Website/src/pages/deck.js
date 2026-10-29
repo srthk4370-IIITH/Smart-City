@@ -23,16 +23,18 @@ export default async function mount(ctx) {
     const item = (label, value) => ctx.h('div.status__item', null, ctx.h('span.label', { text: label }), ctx.h('span.v', { text: value }));
     const deploy = !f.present ? 'in progress' : f.passed ? 'passed' : 'rolled back';
     const live = f.present && f.passed;
-    const reasoner = ((t.rsn_v2_retry || {}).live || (live && /rsn_v2/.test(d.reasoner || ''))) ? 'Qwen3.5-4B rsn_v2' : 'Qwen3.5-4B rsn_v1';
+    // the rsn_v2 retry shipped htpd_v8x3 with rsn_v1 kept, and rsn_v2 was rejected on 29 Oct: rsn_v2 only if a profile names it
+    const ml = (t.morning || {}).live || null;
+    const reasoner = ((ml && /rsn_v2/.test(ml.reasoner_model || '')) || (!ml && live && /rsn_v2/.test(d.reasoner || ''))) ? 'Qwen3.5-4B rsn_v2' : 'Qwen3.5-4B rsn_v1';
     const ch = t.chaos_tonight && t.chaos_tonight.summary;
     const strip = ctx.h('div.status', { role: 'status' },
       item('Agents', 'B50 · Llama 3.2 3B'), item('Reasoner', reasoner),
       item('Event → full report', ch && ch.done_min ? `${ch.done_min}–${ch.done_max} s` : '28–39 s'),
-      item('Final deploy', deploy),
+      ml ? item('Live build', `edge-agent ${ml.edge_agent}`) : item('Final deploy', deploy),
       item('As of', String((t.meta && t.meta.generated_at) || '').replace('T', ' ').slice(0, 16)));
     $('status').append(strip, ctx.h('p.deck-trlink', { style: 'margin:12px 0 0;display:flex;gap:8px;flex-wrap:wrap' },
       ctx.h('a.chip.chip--ours', { href: '#/today' }, 'Today: what runs on the board →'),
-      ctx.h('a.chip', { href: '#/journey' }, 'Journey: ten steps to here →')));
+      ctx.h('a.chip', { href: '#/journey' }, 'Journey: eleven steps to here →')));
   }).catch(() => { /* no today.json in this build: the strip is simply absent */ });
 
   const intro = [...root.querySelectorAll('[data-intro]')];

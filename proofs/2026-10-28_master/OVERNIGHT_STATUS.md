@@ -1,4 +1,4 @@
-# Overnight status (2026-10-28T22:28:37Z, IST 03:58)
+# Overnight status (2026-10-29T04:29:12Z, IST 09:59)
 
 | job | state |
 |---|---|
@@ -7,11 +7,10 @@
 | rag_deploy | stopped |
 | rag_seed | stopped |
 | website_final | stopped |
-| seed_deploy | alive |
 | watch | alive |
 
-**Board:** online, 46 C, MemAvailable 9450 MB, procs: none
-**BOARD_LOCK:** seed
+**Board:** online, 52 C, MemAvailable 4605 MB, procs: 21899 edge-agent 21907 htpd_v8x3 
+**BOARD_LOCK:** free
 **Stalled-htpd SIGTERMs tonight:** 0
 
 ## final.sh

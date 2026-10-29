@@ -1200,6 +1200,9 @@ func (r *Reasoner) preliminary(inc *Incident, rc *ReportCall) {
 		rc.Note = inc.Final.Note // keep what the first preliminary was based on
 	}
 	inc.Final = rc
+	if wf := wfOf(inc); wf != wfClosed && wf != wfInterrupted {
+		mergeSteps(inc, "preliminary") // actionable at once; the AI report merges into it (workflow.go)
+	}
 	r.mu.Unlock()
 	r.log(inc, "Preliminary report shown (rules + agent findings); the reasoner is writing the full report")
 }

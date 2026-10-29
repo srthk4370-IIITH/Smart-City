@@ -298,11 +298,24 @@ func stepKey(s Step) string {
 // mergeSteps brings the checklist up to date with a (re-)analysis. Ticked steps are kept; open steps
 // that are no longer suggested are withdrawn ("no longer suggested"); new ones are added, marked new
 // when someone had already acknowledged. Operator and rule steps are never withdrawn. Caller holds r.mu.
+// Stage "preliminary" builds the checklist from the preliminary report (quietly: it is replaced within a minute);
+// the AI report's "early" merge after it is logged like a re-check, so ticked steps stay and dropped ones are withdrawn.
 func mergeSteps(inc *Incident, stage string) {
 	cands := suggestedSteps(inc)
+	prelim := false
+	for _, s := range inc.Steps {
+		prelim = prelim || s.Stage == "preliminary"
+	}
+	quiet := stage == "preliminary" || (stage == "early" && !prelim)
+	what := "the " + stageText(stage) + " re-check"
+	if stage == "early" {
+		what = "the AI report"
+	}
 	want := map[string]bool{}
+	cand := map[string]Step{}
 	for _, c := range cands {
 		want[stepKey(c)] = true
+		cand[stepKey(c)] = c
 	}
 	have := map[string]bool{}
 	for i := range inc.Steps {
@@ -314,19 +327,24 @@ func mergeSteps(inc *Incident, stage string) {
 		switch {
 		case !want[stepKey(*s)] && s.State == "open":
 			s.State = "withdrawn"
-			inc.event("system", "step_withdrawn", s.ID, "", "", "no longer suggested after the "+stageText(stage)+" re-check")
+			if stage != "preliminary" {
+				inc.event("system", "step_withdrawn", s.ID, "", "", "no longer suggested after "+what)
+			}
 		case want[stepKey(*s)] && s.State == "withdrawn":
 			s.State = "open"
+		}
+		if c, ok := cand[stepKey(*s)]; ok && s.Stage == "preliminary" && stage != "preliminary" {
+			s.Stage, s.Source, s.Why, s.Target = stage, c.Source, c.Why, c.Target // confirmed by the AI report
 		}
 	}
 	for _, c := range cands {
 		if have[stepKey(c)] {
 			continue
 		}
-		c.Stage, c.New = stage, inc.Owner != "" && stage != "early"
+		c.Stage, c.New = stage, inc.Owner != "" && !quiet
 		s := addStep(inc, c)
-		if stage != "early" {
-			inc.event("system", "step_added", s.ID, "", "", "suggested by the "+stageText(stage)+" re-check")
+		if !quiet {
+			inc.event("system", "step_added", s.ID, "", "", "suggested by "+what)
 		}
 	}
 }
@@ -550,6 +568,16 @@ func (r *Reasoner) mutate(id string, f func(inc *Incident) error) (*Incident, er
 	return inc, nil
 }
 
+// decidableEarly: acknowledge, tick and add steps are allowed while the reasoner writes, once the preliminary report
+// is shown (owner 2026-10-29: act on the preliminary checklist; the AI report then merges into it). Close, dismiss and
+// approve-all still wait for the AI report.
+func decidableEarly(inc *Incident) error {
+	if inc.State == "running" && inc.Final != nil && inc.Final.Preliminary && inc.Final.Parsed != nil && wfOf(inc) != wfClosed {
+		return nil
+	}
+	return decidable(inc, false)
+}
+
 // decidable: the shared refusals of every decision (the report must exist and the record be open).
 func decidable(inc *Incident, allowFailed bool) error {
 	switch {
@@ -579,7 +607,7 @@ func (r *Reasoner) Ack(id, op string) (*Incident, error) {
 		return nil, err
 	}
 	return r.mutate(id, func(inc *Incident) error {
-		if err := decidable(inc, false); err != nil {
+		if err := decidableEarly(inc); err != nil {
 			return err
 		}
 		ackLocked(inc, op, "")
@@ -629,7 +657,7 @@ func (r *Reasoner) SetStep(id, sid, op, state, note string) (*Incident, error) {
 		return nil, wfErr(400, "note too long (max %d characters)", maxNote)
 	}
 	return r.mutate(id, func(inc *Incident) error {
-		if err := decidable(inc, false); err != nil {
+		if err := decidableEarly(inc); err != nil {
 			return err
 		}
 		var s *Step
@@ -666,7 +694,7 @@ func (r *Reasoner) AddStep(id, op, text string) (*Incident, error) {
 		return nil, wfErr(400, "step too long (max %d characters)", maxStepText)
 	}
 	return r.mutate(id, func(inc *Incident) error {
-		if err := decidable(inc, false); err != nil {
+		if err := decidableEarly(inc); err != nil {
 			return err
 		}
 		own := 0

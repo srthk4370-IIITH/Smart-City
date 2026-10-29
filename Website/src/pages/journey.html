@@ -1,7 +1,7 @@
 <section class="section">
-  <span class="label">Journey · 6 to 28 October 2026</span>
+  <span class="label">Journey · 6 to 29 October 2026</span>
   <p class="statement">From one slow model call to a two-model edge system.</p>
-  <p class="lead">Ten steps, oldest first. Each says what we did, why, and what we measured on the QIDK. Steps we tried and dropped are listed too, because they explain why things are the way they are.</p>
+  <p class="lead">Eleven steps, oldest first. Each says what we did, why, and what we measured on the QIDK. Steps we tried and dropped are listed too, because they explain why things are the way they are.</p>
   <div class="jr-legend" aria-hidden="true">
     <span><i class="jr-dot is-kept"></i>kept, runs today</span>
     <span><i class="jr-dot is-replaced"></i>kept, later replaced</span>
@@ -87,7 +87,8 @@
           <li><b>Speculative decoding</b> (MTP and n-gram): 1% to 20% slower, since small verify batches cost more than one token on this NPU.</li>
           <li><b>Hexagon SDK route</b> (upstream llama.cpp and our own 32x4 HVX kernel): reasoner +3% to +6%, agents −4% to −5%; net about zero.</li>
           <li><b>Smaller output layer</b>: 4-bit lm_head −4% but changed a label; the pruned lm_head ran once, then the board rebooted at 90 to 94 °C. Held back.</li>
-          <li><b>Reasoner on the GPU</b>: estimated about 19 to 20 s for one report (about the same as the NPU), better only for bursts. Not built before the evaluation.</li>
+          <li><b>Reasoner on the GPU</b>: measured on 29 Oct (Adreno 750, upstream llama.cpp OpenCL, GPU alone): 7.35 / 8.44 / 8.35 tokens/s, about 2.5x slower than the NPU split. Not a latency path.</li>
+          <li><b>More split groups</b>: split 4 +1%, split 6 does not fit the NPU session, split 3r (fork after the label) 22.2 vs 22.2 s. Split 3 stays.</li>
         </ul></dd>
       <dt>Result</dt><dd>Event to full report through the app: 30 to 43 s → 28 to 39 s, with the preliminary report on screen within seconds.</dd>
     </dl>
@@ -121,6 +122,25 @@
     <dl class="jr-dl">
       <dt>What</dt><dd>A single script snapshots the known-good board state, picks the split setting, runs a board accuracy and consistency gate for a second reasoner (rsn_v2), deploys the app with the fast path, then runs 6 scenarios and a critical-breach check through the app. Any failure restores the snapshot.</dd>
       <dt>Result</dt><dd data-slot="consolidation">See <a href="#/today">Today</a> for what passed and what runs now.</dd>
+    </dl>
+  </li>
+
+  <li class="jr-step is-kept" data-proof="proofs/2026-10-28_master/improve2">
+    <span class="label">11 · 29 Oct morning · Last fixes</span>
+    <h2 class="jr-title">Small, measured fixes; two bigger ideas rejected on evidence</h2>
+    <dl class="jr-dl">
+      <dt>Kept</dt><dd>
+        <ul class="jr-ul">
+          <li><b>Contract repairs</b> after the reasoner (normal + needs_more_data gets label unknown; a title location must come from the input): label 83.2% → 87.6% on 386 board answers, 0 new errors.</li>
+          <li><b>Checklist from the preliminary report</b>: operators can acknowledge and tick while the AI writes; the AI report merges in without losing ticked steps.</li>
+          <li><b>Retrieval seed library</b>: 254 reference reports written by rsn_v1 on the training split, so the preliminary report has similar past incidents from day one.</li>
+        </ul></dd>
+      <dt>Rejected</dt><dd>
+        <ul class="jr-ul">
+          <li><b>rsn_v2</b>: on the same 106 held-out incidents, severity 87.6% against rsn_v1's 94.7%. rsn_v1 stays.</li>
+          <li><b>Reasoner on the GPU</b>: about 2.5x slower than the NPU. <b>Split 3r</b>: 22.2 vs 22.2 s.</li>
+        </ul></dd>
+      <dt>Result</dt><dd>Live: edge-agent b770aa57, checked through the app (fast path 5.6 s, AI report on the same incident 42.2 s). See <a href="#/today">Today</a>.</dd>
     </dl>
   </li>
 </ol>

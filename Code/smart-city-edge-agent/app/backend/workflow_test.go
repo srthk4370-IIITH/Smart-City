@@ -741,3 +741,34 @@ func TestWorkflowHTTP(t *testing.T) {
 	_ = a
 	_ = b
 }
+
+func TestPreliminaryChecklistMergesIntoAI(t *testing.T) {
+	inc := &Incident{ID: "INC-P", State: "running", Severity: "warning",
+		Final: &ReportCall{Preliminary: true, Valid: true, Parsed: &Report{Severity: "warning", Action: "inspect_hvac", RootCause: "AC off"}}}
+	inc.Workflow = wfAnalysing
+	mergeSteps(inc, "preliminary")
+	if len(inc.Steps) == 0 || inc.Steps[0].Stage != "preliminary" || inc.Steps[0].Action != "inspect_hvac" {
+		t.Fatalf("preliminary steps: %+v", inc.Steps)
+	}
+	if err := decidableEarly(inc); err != nil {
+		t.Fatalf("ticking must be allowed on the preliminary: %v", err)
+	}
+	if err := decidable(inc, false); err == nil {
+		t.Fatal("close/dismiss must still wait for the AI report")
+	}
+	inc.Steps[0].State, inc.Owner = "done", "op"
+	inc.Final = &ReportCall{Valid: true, Parsed: &Report{Severity: "warning", Action: "inspect_hvac", RootCause: "AC unit tripped"}}
+	mergeSteps(inc, "early")
+	if inc.Steps[0].State != "done" || inc.Steps[0].Stage != "early" || inc.Steps[0].Why != "AC unit tripped" {
+		t.Fatalf("AI-confirmed tick must stay done and lose the preliminary tag: %+v", inc.Steps[0])
+	}
+	inc2 := &Incident{ID: "INC-Q", State: "running", Severity: "warning",
+		Final: &ReportCall{Preliminary: true, Valid: true, Parsed: &Report{Severity: "warning", Action: "inspect_hvac", RootCause: "x"}}}
+	inc2.Workflow = wfAnalysing
+	mergeSteps(inc2, "preliminary")
+	inc2.Final = &ReportCall{Valid: true, Parsed: &Report{Severity: "warning", Action: "inspect_ventilation", RootCause: "y"}}
+	mergeSteps(inc2, "early")
+	if inc2.Steps[0].State != "withdrawn" {
+		t.Fatalf("open preliminary step the AI dropped must be withdrawn: %+v", inc2.Steps)
+	}
+}
