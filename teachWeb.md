@@ -41,17 +41,19 @@ The top bar has: **Deck · Today · Journey · Route · Decisions · Proofs · R
 ### 1.2 Today (the most important page for the evaluation)
 Sections from top to bottom:
 
-1. **Banner: "Live now: edge-agent b770aa57"** (APK c62b6014). Domain agents B50, reasoner rsn_v1, htpd_v8x3,
-   split 3, retrieval library of 254 reference reports. Checked through the app after the deploy: chaos scenarios
-   passed, critical breach opened by the fast path in **5.6 s**, AI report on the same incident at **42.2 s**.
-   Source: `improve2/STATUS.md`.
+1. **Banner: "Live now: edge-agent 12a10c1d"** (the Campus Assistant build with the chat queue). Domain agents B50,
+   reasoner rsn_v1, htpd_v8x3, split 3, retrieval library of 254 reference reports, and the Campus Assistant chat.
+   Checked through the app after the deploy: chaos scenarios passed, critical breach opened by the fast path in
+   **5.5 s**, AI report on the same incident at **53.5 s**. Source: `improve6/STATUS.md`. (The later Ask-AI button
+   build in `improve4/STATUS.md` shows "FAILED", but that was a false failure of the deploy script (its log rotated),
+   not of the app; the board went back to the healthy chat build and the button build is being retried.)
 2. **On the board:** a table of every part that runs (agents, reasoner, NPU daemon, split decoding, contract repairs,
    app, preliminary report, critical fast path, early AI) with md5 values and a "why" column.
 3. **How an incident flows today:** sensor readings → critical fast path → event gate (8 readings) → preliminary report
    in the same second (rules + retrieval, checklist usable at once) → reasoner report (merges the checklist) →
    re-checks at 1.5 h and 3 h, operator approves every action.
 4. **Latency:** big numbers: preliminary report at 0 s, reasoner title and severity 8 to 15 s, full report
-   25.2 to 38.6 s (overnight final deploy, 6 scenarios), fast path 5.6 s with AI update 42.2 s. Two tables:
+   25.2 to 38.6 s (overnight final deploy, 6 scenarios), fast path 5.5 s with AI update 53.5 s (live build). Two tables:
    where the NPU time goes (including the ladder **27.8 → 25.8 → 21.6 s**: base → polling → split decoding,
    and 22.2 s on this morning's 10-incident A/B), and latency levers kept and dropped (GPU and split 3r now listed as
    dropped, with measurements).
@@ -59,7 +61,9 @@ Sections from top to bottom:
    board 30-prompt check; 97% severity consistency, 100% with the guard; contract repairs 83.2% → 87.6%;
    rsn_v1 vs rsn_v2 94.7% vs 87.6%; chat dev set) and domain agents card (B50).
 6. **This morning (29 Oct)** (new section):
-   - two deploys this morning, both checked through the app (fast path 5.6 s both times; AI report 47.2 s then 42.2 s);
+   - four builds this morning, each checked through the app: three stayed live in turn (fast path 5.6 / 5.6 / 5.5 s;
+     AI report 47.2 / 42.2 / 42.3 s); the fourth (Ask-AI button build) hit a deploy-script false failure, was retried and passed (improve5), and the
+     sixth added the chat queue (improve6, live: fast path 5.5 s, AI report 53.5 s);
    - contract repairs: label 83.2% → 87.6% on 386 board answers, 0 new errors;
    - checklist from the preliminary report with the smart merge;
    - rsn_v2 rejected: the 106-case table (severity 94.7 vs 87.6, label 88.4 vs 85.6, check recall 0.90 vs 0.81,
@@ -67,7 +71,13 @@ Sections from top to bottom:
    - GPU measured: 7.35 / 8.44 / 8.35 tokens/s (pp1 / pp3 / tg), about 2.5x slower than the NPU;
    - split 3r: 22.2 vs 22.2 s, no gain;
    - two-stage report with retrieval: how it works and its deploy check (4/4 at 0 s, 2/4 retrieved);
-   - conversational interface: what is ready, what is missing, the 4-step plan.
+   - **Campus Assistant (conversational interface): live** (new card): a second app on the same backend, rsn_v1 in its
+     trained chat mode with the exact trained prompt and 9 read-only tools (incidents, sensor faults and history,
+     sensors, domain health, action history, documents), up to 5 lookups, history kept on the board, "How I found this"
+     shows the tool calls, queued behind incident analysis and answered automatically (alerts first). Board check: 9-14 s per answer,
+     count_incidents → 89 today, refused "close them all"; weak spot: "which are still open?" reused the plain count
+     (no open-only filter). Host chat dev set: 100% answered, 100% first tool, 90% numbers exact, 0% ungrounded.
+     Sources: `improve3/STATUS.md`, HANDBOOK 2.60.
 7. **Overnight run (28 to 29 Oct):** the final overnight deploy steps, 6 scenarios through the app, split 4/6 A/B,
    retrieval deploy, rsn_v2 retry, overnight job table.
 8. **Known limits** and **What's next** (five items, see section 4 below).
@@ -76,7 +86,7 @@ Sections from top to bottom:
 
 ### 1.3 Journey
 - **What it shows:** eleven steps from 6 to 29 Oct, oldest first. Each step: what we did, why, what we measured,
-  and what we dropped. Step 11 (new) is this morning: contract repairs, preliminary checklist, seed library kept;
+  and what we dropped. Step 11 (new) is this morning: Campus Assistant, contract repairs, preliminary checklist, seed library kept;
   rsn_v2, GPU and split 3r rejected.
 - **Where the numbers come from:** each step has a proof chip that links to its folder.
 - **Key takeaway:** we measured every idea and dropped the ones that did not help. That is the story of the project.
@@ -104,7 +114,8 @@ Sections from top to bottom:
 ### 1.8 Q&A
 - **What it shows:** "What happens when...?" situations, the use case, and a searchable list of about 100 questions,
   each with a short answer and a chart. Answers updated today: what runs now, why not the GPU (measured), why rsn_v2
-  was rejected, contract repairs, what the operator sees first, whether the 40-55 min wait is solved (no), chat status,
+  was rejected, contract repairs, what the operator sees first, whether the 40-55 min wait is solved (no), the Campus
+  Assistant chat (live),
   split 3r.
 - **Key takeaway:** use it live when an evaluator asks something: type a keyword, show the answer.
 
@@ -118,14 +129,14 @@ Have the app on the board running in parallel if someone else is demoing it.
 | # | Time | Click | What to say (short) |
 |---|---|---|---|
 | 1 | 0:00-1:00 | **Deck** | "Agentic edge AI for a smart campus. Domain agents read each sensor, a reasoner writes one cross-domain report, all on the QIDK, offline, no cloud. Every number here links to a proof file." Point at the status strip: live build, agents B50, reasoner rsn_v1. |
-| 2 | 1:00-2:30 | **Today**, banner + On the board | "This is what runs right now: build b770aa57. Llama 3.2 3B agents (B50) and Qwen3.5-4B reasoner (rsn_v1), both Q4_0 on the Hexagon NPU, one model at a time, through our htpd daemon. We deployed it this morning and checked it through the app: critical breach to incident in 5.6 s, AI report on the same incident in 42.2 s." |
+| 2 | 1:00-2:30 | **Today**, banner + On the board | "This is what runs right now: edge-agent 12a10c1d. Llama 3.2 3B agents (B50) and Qwen3.5-4B reasoner (rsn_v1), both Q4_0 on the Hexagon NPU, one model at a time, through our htpd daemon, plus the Campus Assistant chat. We deployed it this morning and checked it through the app: critical breach to incident in 5.5 s, AI report on the same incident in 53.5 s." |
 | 3 | 2:30-3:30 | Today, **How an incident flows** | Walk the 6 steps. Stress: the preliminary report appears in the same second, and the operator can start ticking the checklist at once; the AI report merges in. The operator approves every action; the AI never switches anything. |
 | 4 | 3:30-5:00 | Today, **Latency** | "On the NPU: preliminary at 0 s, title and severity 8-15 s, full report 25-39 s. The reasoner went 27.8 → 25.8 → 21.6 s with polling and split decoding. In the real world the bigger delay is sensor time: 8 readings at 5 min each is 40-55 min. Critical cases skip it through the fast path." |
 | 5 | 5:00-6:30 | Today, **Accuracy** | "Reasoner on 150 held-out incidents: severity 91.9%, label 87.8%, 0% ungrounded. This morning's contract repairs moved the label from 83.2% to 87.6% on 386 real board answers, with 0 new errors." |
 | 6 | 6:30-8:30 | Today, **This morning** | "We also say no on evidence. rsn_v2 lost on the same 106 incidents, severity 87.6% vs 94.7%, so rsn_v1 stays. We measured the GPU: about 2.5x slower than the NPU. Split 3r: no gain. Retrieval: the preliminary uses the most similar past report from a library of 254 seeds plus every live report, but the numbers always come from the live values, and severity never goes below the rules." |
 | 7 | 8:30-9:30 | **Journey** (scroll to step 9-11) | "The real delay is sensor time, not NPU time. The last step is this morning: small measured fixes, bigger ideas rejected on evidence." |
 | 8 | 9:30-10:30 | **Proofs** (open one chart) | "Any number you doubt, we open here, with its file." Pick one (e.g. a latency chart) and show the source chip. |
-| 9 | 10:30-11:30 | Today, **Known limits + What's next** | Read the limits honestly. Next: conversational interface, reasoner speed via forced text, young-window training, GPU for bursts, rsn_v3. |
+| 9 | 10:30-11:30 | **Board: Campus Assistant** (live demo, not on the website) | Open the Campus Assistant icon on the board. Ask "How many incidents were there today?", then "Please close them all." (it refuses: read-only), then tap "How I found this". Say: "The same on-device reasoner answers questions from the incident store, with exact numbers, and never acts on its own." Then read Known limits + What's next on Today. |
 | 10 | 11:30-12:00 | **Q&A** | "And the questions you are likely to ask are here." Type "GPU" or "rsn_v2" to show it works. |
 
 If you have only 5 minutes: steps 2, 4, 5, 6, 9.
@@ -183,9 +194,11 @@ If the AI fails the gate, a deterministic report is used.
 Not bit for bit. Same prompt 5 times: severity agrees 97%, 100% with the severity guard.
 
 **Can I chat with it?**
-Not in the app yet. The reasoner was trained with about 2,000 chat tool traces and scores 100% answered, 100% first tool
-right, 90% numbers exact, 0% ungrounded on 100 dev questions. Missing: the endpoint, the chat tools over the incident
-store, a chat panel and NPU scheduling. It is the first item after the evaluation.
+Yes, on the board: the **Campus Assistant** (✦ Ask AI in the dashboard, or its own icon). It is the same rsn_v1 model
+in its trained chat mode with 9 read-only tools over the incident store. On the board it answers in 9-14 s, quotes exact
+numbers, shows how it found them, and refuses to act. On 100 chat dev questions (laptop, same file): 100% answered,
+100% right first tool, 90% numbers exact, 0% ungrounded. The website describes it on Today ("Campus Assistant ...
+live" card, with the board check table); demo it on the board.
 
 **What if the board hangs?**
 htpd_v8x3 has a 150 s wall-clock guard per report, bounded token picking, and a heartbeat stall log; the overnight
@@ -198,8 +211,8 @@ two resident models (reboot). All on the Today and Journey pages.
 ---
 
 ## 4. Next steps (say them in this order)
-1. Conversational interface: endpoint + chat tools over the incident store, chat panel, guard (answers quote tool numbers,
-   no actuation), board test (latency per answer, the 100-question set on the board).
+1. Chat v2: the Campus Assistant is live (beginner version). Next: stream answers, open the chat from an incident with
+   that context, run the 100-question chat set on the board, add maintenance-log tools.
 2. Reasoner speed: force fully determined text (for example the sensor id after "S1 (") in the htpd forcer;
    group rebalancing is exhausted.
 3. Young-window training (data ready, paused) to shorten the 8-reading gate; early AI is built but off.
@@ -216,7 +229,9 @@ two resident models (reboot). All on the Today and Journey pages.
 - **Do not say the GPU is faster or "the next speed-up".** It was measured about 2.5x slower than the NPU.
 - **Do not say split 3r, split 4 or split 6 helped.** They did not.
 - **Do not call the preliminary report "the AI"** or say it reasons. It is rules plus wording from a similar past report.
-- **Do not say the chat interface exists in the app.** It is trained and scored on the laptop, not built into the app.
+- **Do not oversell the chat.** The Campus Assistant is a beginner version: read-only, short answers, one question at a
+  time, and a question asked during an incident analysis waits in a queue (alerts come first). Its 100-question score is from the
+  laptop with the same model file; on the board we ran a short check (see teach.md §9).
 - **Do not quote numbers that are not on the site or in the fact sheet.** If unsure, open Proofs or Q&A and read it.
 - **Do not mix demo time and real time.** The demo replays one reading every 2 s; in the field it is one every 5 min.
 - **Do not show the password** on the projector; log in before you share the screen.

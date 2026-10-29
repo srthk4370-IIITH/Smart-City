@@ -21,6 +21,9 @@ import java.net.URL;
 /** Full-screen native shell for the on-device dashboard served by EdgeService on 127.0.0.1:8000. */
 public class MainActivity extends Activity {
     static final String URL_HOME = "http://127.0.0.1:8000/";
+
+    /** Page this launcher opens (ChatActivity: the Campus Assistant at chat/). */
+    protected String startPath() { return ""; }
     static final String EXTRA_INCIDENT = "incident";
     /** true while the dashboard is in front: EdgeService then leaves alerting to the page (UX v34). */
     static volatile boolean foreground = false;
@@ -95,7 +98,7 @@ public class MainActivity extends Activity {
                         ui.post(() -> {
                             String id = pendingIncident;
                             pendingIncident = null;
-                            web.loadUrl(URL_HOME + (id != null ? "#incident/" + id : ""));
+                            web.loadUrl(id != null ? URL_HOME + "#incident/" + id : URL_HOME + startPath());
                         });
                         return;
                     }

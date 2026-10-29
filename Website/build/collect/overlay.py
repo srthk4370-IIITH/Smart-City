@@ -106,8 +106,8 @@ def main():
             "Recurring sub-threshold spikes and pump cycling are still often misnamed, and non-critical events still wait 8 readings "
             "for the AI. The gate study (agents on 3-7 readings) is the next step for the latter.",
         "What is next?":
-            "After the evaluation: (1) the conversational interface (endpoint, chat tools over the incident store, chat panel, board "
-            "test); (2) reasoner speed by forcing fully determined text in the htpd forcer; (3) young-window training to shorten the "
+            "After the evaluation: (1) the Campus Assistant chat (live since 29 Oct): streaming, chat about the open incident, the "
+            "100-question chat set on the board, an open-only filter and maintenance tools; (2) reasoner speed by forcing fully determined text in the htpd forcer; (3) young-window training to shorten the "
             "8-reading gate; (4) the GPU for bursts (a second incident's agents while the NPU reasoner writes), after a memory-safety "
             "check; (5) rsn_v3, fixing rsn_v2's severity regressions first.",
         "Why the NPU and not the GPU?":
@@ -127,10 +127,10 @@ def main():
             f"Domain agents B50 (Llama 3.2 3B, Q4_0) and the {s['rname']} reasoner (Qwen3.5-4B, Q4_0) on one NPU through {s['bin']}, "
             f"split decoding with {s['split']} groups, a preliminary report"
             + (" with retrieval of similar past incidents" if s["rag"] else " from rules and agents")
-            + (", 254 seed reference reports, a checklist that starts from the preliminary report and merges with the AI report"
+            + (", 254 seed reference reports, a checklist that starts from the preliminary report and merges with the AI report, the Campus Assistant chat (Ask AI) with read-only tools"
                if s.get("ea") else "")
             + ", policy gate, native app, all offline on the board."
-            + (f" Live build: edge-agent {s['ea']} (APK {s['apk']}), deployed the morning of 29 Oct and checked through the app "
+            + (f" Live build: edge-agent {s['ea']}, deployed the morning of 29 Oct and checked through the app "
                f"(fast path {s['fc'].get('fast_s')} s, AI report on the same incident {s['fc'].get('ai_update_s')} s)."
                if s.get("ea") else f" Final deploy: {s['final']}.") + " Details on the Today page.",
         "Where is training right now?":
@@ -181,9 +181,12 @@ def main():
          "No. Non-critical events still need 8 readings (40-55 min of real sensor time at one reading per 5 min) before the AI runs. "
          "Critical breaches take the fast path (2 readings past the limit). Young-window training to shorten the gate is the next step."),
         ("status", "Is there a chat interface?",
-         "Not yet in the app. rsn_v1 was trained with about 2,000 chat tool traces and scores 100% answered, 100% first tool right, "
-         "90% numbers exact, 0% ungrounded on 100 dev questions (laptop). Missing: an /api/chat endpoint, the chat tools over the "
-         "incident store, a chat panel and NPU scheduling. It is the first item after the evaluation."),
+         "Yes, live since 29 Oct: the Campus Assistant, a second app on the same backend (launcher icon and the dashboard's Ask AI "
+         "button). rsn_v1 answers in its trained chat mode with 9 read-only tools (incidents, sensor faults and history, sensors, "
+         "domain health, action history, documents), up to 5 lookups, and shows the tool calls under 'How I found this'. On the "
+         "board: 9-14 s per answer; it refused 'close them all'; weak spot: 'which are still open?' reused the plain count (no "
+         "open-only filter yet). Host chat dev set: 100% answered, 100% first tool right, 90% numbers exact, 0% ungrounded. "
+         "Questions asked during an incident analysis are queued and answered automatically: alerts first."),
         ("latency", "Did split 3r or more split groups help?",
          "No. Split 4: +1%; split 6 does not fit the NPU session; split 3r (fork after the label) 22.2 vs 22.2 s on 10 incidents. "
          "Split 3 stays."),

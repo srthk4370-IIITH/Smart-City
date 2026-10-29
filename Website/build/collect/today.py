@@ -284,7 +284,7 @@ def morning():
     gpu_bench_out/out.md (first llama-bench table). Status lines, md5 prefixes, timings and t/s only."""
     out = {"files": []}
     deploys = []
-    for name in ("improve", "improve2"):
+    for name in ("improve", "improve2", "improve3", "improve4", "improve5", "improve6"):
         p = M / name / "STATUS.md"
         s = rd(p)
         if not s:
@@ -293,6 +293,15 @@ def morning():
         h = re.search(r"^#\s*(.+)", s, re.M)
         b = re.search(r"apk ([0-9a-f]{8}), edge-agent ([0-9a-f]{8})", s)
         dep = re.search(r"I2 DEPLOYED: edge-agent ([0-9a-f]{8})", s)
+        failed = bool(re.search(r"FAIL|roll(ed)? ?back", s, re.I))
+        if failed:
+            dep = None
+        chat = []   # board chat checks: seconds, tools used, the operator's question (the model's answer text is not published)
+        for l in s.splitlines():
+            m = re.match(r"- chat check: (\d+) s \| tools \[(.*?)\] \| busy (\w+) \| error (\w+) \| (.*?) -> ", l)
+            if m:
+                chat.append({"s": int(m.group(1)), "tools": [x.strip(" '\"") for x in m.group(2).split(",") if x.strip()],
+                             "busy": m.group(3) == "True", "error": m.group(4) == "True", "question": m.group(5)[:120]})
         board = re.search(r"board now: ([0-9a-f]{32}).*?reasoner_split=(\d+)\s+bin=\S*/(htpd_\w+)\s+reasoner_model=\S*/(\S+\.gguf)", s)
         deploys.append({
             "name": name, "file": rel(p), "updated": stamp(p),
@@ -302,12 +311,16 @@ def morning():
             "fastcheck": result_json(s.split("fastcheck", 1)[1].split("\n", 1)[0]) if "fastcheck {" in s else None,
             "board": ({"edge_agent_md5": board.group(1), "split": board.group(2), "bin": board.group(3), "reasoner_model": board.group(4)}
                       if board else None),
-            "lines": [l[2:].strip() for l in s.splitlines() if l.startswith("- ") and "fastcheck" not in l and "board now" not in l],
+            "failed": failed, "chat_checks": chat,
+            "lines": [l[2:].strip()[:300] for l in s.splitlines()
+                      if l.startswith("- ") and "fastcheck" not in l and "board now" not in l and "chat check" not in l],
         })
     out["deploys"] = deploys
     live = next((d for d in reversed(deploys) if d.get("deployed") and d.get("board")), None)
     out["live"] = live and {"edge_agent": live["deployed"], "apk": live["apk"], "file": live["file"], "updated": live["updated"],
                             "fastcheck": live["fastcheck"], **live["board"]}
+    out["chat_checks"] = next((d["chat_checks"] for d in reversed(deploys) if d.get("chat_checks")), [])
+    out["chat_file"] = next((d["file"] for d in reversed(deploys) if d.get("chat_checks")), None)
     p = M / "split3r" / "result.txt"
     s = rd(p)
     if s:

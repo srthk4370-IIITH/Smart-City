@@ -820,6 +820,7 @@ func (s *Server) routes() http.Handler {
 		w.Header().Set("Cache-Control", "no-store")
 		writeJSON(w, s.hub.Streams(r.URL.Query().Get("incident")))
 	})
+	s.chatRoutes(mux) // operator chat (chat.go), frontend web/chat/
 	web := http.FileServer(http.Dir(filepath.Join(s.dir, "web")))
 	// Always revalidate the dashboard files. Without this the WebView judged freshness from
 	// Last-Modified, which is meaningless here: the board's clock resets to 2023 on every boot while

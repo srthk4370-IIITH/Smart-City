@@ -1,0 +1,40 @@
+<|im_start|>system
+# Tools
+
+You have access to the following functions:
+
+<tools>
+{"type": "function", "function": {"name": "count_incidents", "description": "Exact count of incidents matching filters, optionally grouped.", "parameters": {"type": "object", "properties": {"time": {"type": "object", "properties": {"preset": {"type": "string", "enum": ["today", "yesterday", "last_24h", "last_7d", "this_week", "last_30d", "this_month", "last_month", "this_year", "last_year", "all"]}, "from": {"type": "string"}, "to": {"type": "string"}}}, "domain": {"type": "string", "enum": ["air_quality", "water", "power", "occupancy", "weather", "hvac"]}, "metric": {"type": "string", "enum": ["co2", "temp", "rh", "pm25", "pm10", "level", "flow", "tds", "ph", "power_kw", "pf", "occ", "wind", "room_temp", "setpoint", "ac_on", "ac_units_on"]}, "node": {"type": "string"}, "severity": {"type": "array", "items": {"type": "string", "enum": ["critical", "warning", "sensor_fault", "normal"]}}, "pattern": {"type": "string"}, "label": {"type": "string"}, "approval": {"type": "string", "enum": ["pending", "approved", "dismissed"]}, "include_injected": {"type": "boolean"}, "group_by": {"type": "string", "enum": ["none", "day", "week", "month", "domain", "metric", "node", "severity", "label", "pattern"]}}, "required": ["time"]}}}
+{"type": "function", "function": {"name": "find_incidents", "description": "List incidents matching filters (newest first, max 10) with id, time, title, severity, label.", "parameters": {"type": "object", "properties": {"time": {"type": "object", "properties": {"preset": {"type": "string", "enum": ["today", "yesterday", "last_24h", "last_7d", "this_week", "last_30d", "this_month", "last_month", "this_year", "last_year", "all"]}, "from": {"type": "string"}, "to": {"type": "string"}}}, "domain": {"type": "string", "enum": ["air_quality", "water", "power", "occupancy", "weather", "hvac"]}, "metric": {"type": "string", "enum": ["co2", "temp", "rh", "pm25", "pm10", "level", "flow", "tds", "ph", "power_kw", "pf", "occ", "wind", "room_temp", "setpoint", "ac_on", "ac_units_on"]}, "node": {"type": "string"}, "severity": {"type": "array", "items": {"type": "string", "enum": ["critical", "warning", "sensor_fault", "normal"]}}, "label": {"type": "string"}, "text": {"type": "string"}, "limit": {"type": "integer", "minimum": 1, "maximum": 10}}, "required": ["time"]}}}
+{"type": "function", "function": {"name": "get_incident", "description": "One incident's report: root cause, severity, sensors, agent findings, revisions, operator decision.", "parameters": {"type": "object", "properties": {"id": {"type": "string", "pattern": "^INC-[0-9]{4,}$"}, "detail": {"type": "string", "enum": ["summary", "full"]}}, "required": ["id"]}}}
+{"type": "function", "function": {"name": "sensor_faults", "description": "Exact counts and lists of sensors that were faulty and/or replaced.", "parameters": {"type": "object", "properties": {"time": {"type": "object", "properties": {"preset": {"type": "string", "enum": ["today", "yesterday", "last_24h", "last_7d", "this_week", "last_30d", "this_month", "last_month", "this_year", "last_year", "all"]}, "from": {"type": "string"}, "to": {"type": "string"}}}, "domain": {"type": "string", "enum": ["air_quality", "water", "power", "occupancy", "weather", "hvac"]}, "basis": {"type": "string", "enum": ["ai", "confirmed", "replaced"]}, "distinct_sensors": {"type": "boolean"}, "fault_kind": {"type": "string", "enum": ["stuck", "bias", "drift", "noise", "dropout", "saturation", "quantised"]}}, "required": ["time", "basis"]}}}
+{"type": "function", "function": {"name": "get_sensor_history", "description": "Aggregated readings of one sensor for a period, plus the evidence summary the agents use (min/max/trend/steps).", "parameters": {"type": "object", "properties": {"node": {"type": "string"}, "metric": {"type": "string", "enum": ["co2", "temp", "rh", "pm25", "pm10", "level", "flow", "tds", "ph", "power_kw", "pf", "occ", "wind", "room_temp", "setpoint", "ac_on", "ac_units_on"]}, "time": {"type": "object", "properties": {"preset": {"type": "string", "enum": ["today", "yesterday", "last_24h", "last_7d", "this_week", "last_30d", "this_month", "last_month", "this_year", "last_year", "all"]}, "from": {"type": "string"}, "to": {"type": "string"}}}, "agg": {"type": "string", "enum": ["5min", "hourly", "daily"]}, "stats_only": {"type": "boolean"}}, "required": ["node", "metric", "time"]}}}
+{"type": "function", "function": {"name": "list_sensors", "description": "Sensors on the device with domain, location, current status and last reading.", "parameters": {"type": "object", "properties": {"domain": {"type": "string", "enum": ["air_quality", "water", "power", "occupancy", "weather", "hvac"]}, "location": {"type": "string"}, "status": {"type": "string", "enum": ["critical", "warning", "sensor_fault", "normal"]}}}}}
+{"type": "function", "function": {"name": "domain_health", "description": "Current health of each domain (worst sensor status, trend, open incidents, next steps).", "parameters": {"type": "object", "properties": {"domain": {"type": "string", "enum": ["air_quality", "water", "power", "occupancy", "weather", "hvac"]}}}}}
+{"type": "function", "function": {"name": "get_action_history", "description": "Past checklist steps, outcomes (sensor_replaced, sensor_repaired, fixed_by_action, resolved_on_its_own, false_alarm, no_action_needed) and maintenance rows (rep", "parameters": {"type": "object", "properties": {"node": {"type": "string"}, "metric": {"type": "string", "enum": ["co2", "temp", "rh", "pm25", "pm10", "level", "flow", "tds", "ph", "power_kw", "pf", "occ", "wind", "room_temp", "setpoint", "ac_on", "ac_units_on"]}, "domain": {"type": "string", "enum": ["air_quality", "water", "power", "occupancy", "weather", "hvac"]}, "time": {"type": "object", "properties": {"preset": {"type": "string", "enum": ["today", "yesterday", "last_24h", "last_7d", "this_week", "last_30d", "this_month", "last_month", "this_year", "last_year", "all"]}, "from": {"type": "string"}, "to": {"type": "string"}}}, "outcome": {"type": "string", "enum": ["sensor_replaced", "sensor_repaired", "fixed_by_action", "resolved_on_its_own", "false_alarm", "no_action_needed"]}}}}}
+{"type": "function", "function": {"name": "search_knowledge", "description": "Fog only (online).", "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "k": {"type": "integer", "minimum": 1, "maximum": 8}}, "required": ["query"]}}}
+</tools>
+
+If you choose to call a function ONLY reply in the following format with NO suffix:
+
+<tool_call>
+<function=example_function_name>
+<parameter=example_parameter_1>
+value_1
+</parameter>
+<parameter=example_parameter_2>
+This is the value for the second parameter
+that can span
+multiple lines
+</parameter>
+</function>
+</tool_call>
+
+<IMPORTANT>
+Reminder:
+- Function calls MUST follow the specified format: an inner <function=...></function> block must be nested within <tool_call></tool_call> XML tags
+- Required parameters MUST be specified
+- You may provide optional reasoning for your function call in natural language BEFORE the function call, but NOT after
+- If there is no function call available, answer the question like normal with your current knowledge and do not tell the user about function calls
+</IMPORTANT>
+

@@ -44,16 +44,16 @@ when the network does."
 
 | part | what runs | where |
 |---|---|---|
-| backend | Go `edge-agent` **b770aa57**: statistics, rules, data-quality gates, workflow, API, UI | CPU |
+| backend | Go `edge-agent` **12a10c1d**: statistics, rules, data-quality gates, workflow, API, UI | CPU |
 | domain agents | **B50**: our fine-tuned Llama-3.2-3B blend, one agent per abnormal sensor, all in one batch | NPU |
 | reasoner | **rsn_v1**: our fine-tuned Qwen3.5-4B, writes the cross-domain report | NPU |
 | NPU daemon | **htpd_v8x3**: our llama.cpp Hexagon server (batching, split decoding, safety guards) | NPU |
 | retrieval | **254** reference reports plus every live AI report, used for the instant first report | CPU |
-| app | Android foreground service, dashboard, checklist workflow | phone UI |
+| apps | **Smart City Edge** (dashboard, checklist workflow) and **Campus Assistant** (chat), two launcher icons on one backend | phone UI |
 
-- Final app check after this morning's deploy: **2 of 2 chaos scenarios done and valid**. In fastcheck the
-  fast path opened the incident in **5.6 s** and the AI report followed on the same incident at **42.2 s**
-  (`proofs/2026-10-28_master/improve2/STATUS.md`).
+- Final app check after the 11:15 deploy: **2 of 2 chaos scenarios done and valid**. In fastcheck the
+  fast path opened the incident in **5.5 s**, and the AI report followed on the same incident at **53.5 s**
+  (`proofs/2026-10-28_master/improve6/STATUS.md`). Across this morning's five deploys it ranged 42-54 s.
 - One model sits on the NPU at a time; htpd swaps agents ↔ reasoner in 4.6 s.
 
 **Say:** "Everything on this slide is what is installed on the board in front of you, checked this morning."
@@ -207,7 +207,7 @@ the system worse."
 | incident → first report on screen | **0 s** (same second) |
 | one domain agent | **5.9 s** |
 | reasoner report | **~22 s** |
-| full AI report from the incident start | **42-47 s** |
+| full AI report from the incident start | **42-54 s** |
 
 - The ladder: Genie chaos (11-13 agents) 41-57 s → htpd batching 20.7 s for 12 agents. Reasoner: 27.8 s →
   OPPOLL 25.8 s → split decoding **21.6 s**.
@@ -236,25 +236,49 @@ ship."
 
 ---
 
-## 13. Next: talk to the system (the conversational interface)
+## 13. New today: talk to the system (Campus Assistant)
 
-- The reasoner **already knows how to chat**. rsn_v1 was trained on about 2,000 chat traces with tools
-  (count incidents, find incidents, action history).
-  - On the 100-question chat test it answered **100%**, picked the right first tool **100%**, quoted exact
-    numbers 90%, and made nothing up (0% ungrounded).
-- **Path to ship it:**
-  1. an `/api/chat` endpoint with the chat tools reading the incident store;
-  2. a chat panel in the app that opens with the current incident as context;
-  3. the same safety gate: answers must quote tool numbers, with no actuation;
-  4. a board test of the latency per answer and the 100-question set on the NPU.
-- Chat waits behind alerts on the NPU, just like the re-checks do today.
+- A **second app on the same backend**, with its own launcher icon "Campus Assistant" (`web/chat/`, `backend/chat.go`).
+  - The operator asks in plain language and the on-device reasoner answers from the incident store and live
+    sensors.
+  - **Chat history** is kept on the board (`state/chats.json`).
+- **Built today, beginner version:**
+  - the **same rsn_v1 model**, using its trained chat mode: the exact prompt and the 9 read-only tools it was
+    trained with (count / find / get incident, sensor faults, sensor history, list sensors, domain health,
+    action history, documents);
+  - a tool loop of up to 5 lookups;
+  - every answer shows **"How I found this"**, i.e. which tools ran and their raw results;
+  - incident ids become links to the dashboard.
+- **Quality:**
+  - on the 100-question chat test the model answered **100%**, picked the right first tool **100%**, quoted
+    exact numbers 90%, and made nothing up (0%);
+  - in today's laptop smoke test every answer used the right tool with exact numbers;
+  - it **refused** "close INC-0442" (read-only) and politely declined off-topic questions.
+- **Safe by design:**
+  - the tools are read-only;
+  - numbers come only from tool results;
+  - one chat runs at a time;
+  - alerts come first: a question asked while an incident is being analysed is **queued**. The app shows
+    "Queued: the AI is analysing INC-…", and the answer arrives by itself when the NPU is free.
+- **Board check:** on the board through the real app, answers took **9-14 s** (reasoner swap + lookup + answer):
+  "How many incidents were there today?" → `count_incidents` → "89 incidents were recorded today"; "Please close
+  them all" → refused, read-only. Honest limit: "which are still open?" reused the plain count (the tool has no
+  open-only filter yet), so follow-ups that need a filter the tools lack can be wrong.
+- **Open it** from the dashboard's **✦ Ask AI** button, or from its own launcher icon.
 
-**Example:** "How many CO2 incidents in KH this week, and what fixed them?" The answer comes from the
-store, with numbers.
+**Show:** open "Campus Assistant" on the board and ask "How many incidents were there today?", then "Please
+close them all." (it refuses), then tap "How I found this".
+**Say:** "The same model that writes the reports also answers questions, and it never acts on its own."
 
 ---
 
-## 14. Next: faster and earlier
+## 14. Next: better chat, faster and earlier
+
+- **Chat v2:**
+  - stream the answer word by word;
+  - open the chat from an incident with that incident as context;
+  - run the 100-question chat set on the board;
+  - add maintenance-log tools.
 
 - **Reasoner speed:** have htpd write the text that is fully determined by the input (for example the
   sensor id after "S1 (") instead of generating it token by token. Group rearranging is used up; this is
@@ -272,6 +296,7 @@ store, with numbers.
 - One board, two fine-tuned models, no cloud.
 - A first report in the same second; a critical incident in 5.6 s; the full AI report in about 45 s.
 - A reasoner that explains across domains: 91.9% severity, 0% ungrounded numbers.
+- A Campus Assistant you can talk to, on the same board, that never acts on its own.
 - A person decides every action, and every number has its proof folder.
 
 **Say:** "From a CO2 spike to a person with a checklist, all on the edge. Thank you."

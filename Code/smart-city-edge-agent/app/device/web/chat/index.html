@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Campus Assistant</title>
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d0b0a" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../icon-192.png">
+<link rel="stylesheet" href="chat.css">
+</head>
+<body>
+<div class="app">
+  <aside class="side" id="side" aria-label="Chat history">
+    <div class="side-hd">
+      <div class="brand"><span class="dot" aria-hidden="true"></span>Campus Assistant</div>
+      <button class="btn new" id="new" type="button">+ New chat</button>
+    </div>
+    <nav class="hist" id="hist" aria-label="Previous chats"></nav>
+    <div class="side-ft">
+      <a class="link" href="/#incidents">Open the monitor dashboard</a>
+      <p>Answers come from the incident store on this board, read by the on-device AI. Nothing leaves the device.</p>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim" hidden></div>
+  <main class="main">
+    <header class="top">
+      <button class="icon-btn menu" id="menu" type="button" aria-label="Show chat history">☰</button>
+      <div class="top-t">
+        <h1 id="title">New chat</h1>
+        <div class="sub" id="sub">On-device AI · read-only</div>
+      </div>
+      <a class="icon-btn home" href="/#incidents" aria-label="Back to the Smart City dashboard" title="Smart City dashboard">⌂</a>
+      <button class="icon-btn" id="del" type="button" aria-label="Delete this chat" title="Delete this chat" hidden>🗑</button>
+    </header>
+    <section class="msgs" id="msgs" aria-live="polite"></section>
+    <form class="composer" id="form" autocomplete="off">
+      <textarea id="q" rows="1" maxlength="600" placeholder="Ask about incidents, sensors or actions…" aria-label="Your question"></textarea>
+      <button class="send" id="send" type="submit" aria-label="Send">↑</button>
+    </form>
+    <p class="hint">The assistant can't switch, open or close anything. It answers from data on this board and cites incident ids.</p>
+  </main>
+</div>
+<script src="chat.js"></script>
+</body>
+</html>

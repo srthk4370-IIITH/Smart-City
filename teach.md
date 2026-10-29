@@ -16,14 +16,14 @@ morning's work is section 2.59). The one-page fact sheet with every number and i
 | one domain agent on the NPU | **5.9 s** (first token 0.7 s) | board |
 | 12 agents of one incident, all together | **20.7 s** (Genie: 46-48 s) | board, HANDBOOK 2.37 |
 | reasoner report | **21.6 s** (27.8 s before OPPOLL + split decoding) | board, x2x3_ab.result |
-| full AI report from the incident start | **42-47 s** | board, this morning |
+| full AI report from the incident start | **42-54 s** | board, this morning |
 | reasoner severity right, 150 held-out incidents | **91.9%** (label 87.8%) | host, same model file |
 | reasoner severity right, same 106 incidents as v2 | **94.7%** (v2: 87.6%) | host |
 | made-up numbers, unit errors, actuation, injections followed | **0% / 0% / 0% / 0%** | host, 150 incidents |
 | report labels after today's contract repairs | **83.2% → 87.6%**, 0 new errors | 386 board answers |
 | domain agents B50 vs previous live model | severity-weighted **+61**, safety **16/16** | gate2 |
 | severity stable over 5 runs | **97%**, **100%** with the guard | board |
-| chat questions answered (reasoner already trained) | **100%** (exact numbers 90%, 0% made up) | host, 100 questions |
+| chat questions answered (Campus Assistant, live today) | **100%** (exact numbers 90%, 0% made up) | host, 100 questions |
 | everything on one board | **0** cloud calls, works offline | — |
 
 ---
@@ -46,8 +46,10 @@ sensor time the incident is re-checked.
 
 ## 2. What is installed on the board right now
 
-- **App:** `com.iiith.smartcityedge`, APK c62b6014, with the backend **edge-agent b770aa57**. It was
-  deployed this morning and passed 2/2 chaos scenarios and the fastcheck (`proofs/2026-10-28_master/improve2/STATUS.md`).
+- **App:** `com.iiith.smartcityedge`, APK 508697c4, with the backend **edge-agent 12a10c1d** (the chat-queue
+  build). It was deployed at 11:15 and passed 2/2 chaos scenarios and the fastcheck (fast path 5.5 s, AI
+  report 53.5 s; 42-54 s across the morning's deploys; `proofs/2026-10-28_master/improve6/STATUS.md`). It has two launcher icons: **Smart City Edge** (the
+  dashboard) and **Campus Assistant** (chat, §9).
 - **Profile** `/data/local/tmp/smart_city_edge/htpd_profile`:
   `bin=/data/local/tmp/llama.cpp/bin/htpd_v8x3`, `model=/data/local/tmp/gpu/ft_B50_q4_0.gguf`,
   `reasoner=v3`, `reasoner_engine=htpd`, `reasoner_model=/data/local/tmp/gpu/qwen35_reasoner_q4_0.gguf`,
@@ -85,7 +87,8 @@ sensor time the incident is re-checked.
    - close, dismiss and approve-all still wait for the AI report.
 3. **Safety fix:** the rollback scripts could not stop `htpd_v8x3`, so a rollback would have left two NPU
    programs running. They now can.
-4. **Decisions with data:**
+4. **Campus Assistant (chat), a second app on the same backend** (§9).
+5. **Decisions with data:**
    - rsn_v2 was rejected (§7);
    - the GPU was measured and ruled out as a latency path (§8);
    - the split shape "3r" was tested and gave no gain (§8).
@@ -231,21 +234,61 @@ incident shows a first report at once.
 
 ---
 
-## 9. The conversational interface (the path for later)
+## 9. The Campus Assistant (conversational interface, built today)
 
-- **Ready:** rsn_v1 was trained with about 2,000 chat traces using the tools `count_incidents`,
-  `find_incidents` and `get_action_history`, plus the incident tools. On 100 chat questions it answered
-  100%, picked the right first tool 100%, gave exact numbers 90%, and made nothing up.
-  - htpd and `runV3Loop` already support tool calls.
-- **Missing:**
-  1. an `/api/chat` endpoint;
-  2. Go implementations of the chat tools over the incident store;
-  3. a chat panel in the app that opens with the current incident;
-  4. the gate for chat: numbers must come from tool results, no actuation;
-  5. NPU scheduling, so that chat waits behind alerts like the re-checks;
-  6. a board test of the 100 questions and the latency per answer.
-- **Example:** "How many CO2 incidents in KH this week, and what fixed them?" → `count_incidents` +
-  `get_action_history` → an answer with numbers from the store.
+- **What it is.** A second frontend on the same backend. It has its own launcher icon, "Campus Assistant"
+  (`android/.../ChatActivity.java` opens `http://127.0.0.1:8000/chat/`). It is also reachable from any
+  browser on the board at `/chat/`. The frontend lives in `device/web/chat/` (index.html, chat.js, chat.css,
+  manifest).
+- **Backend** (`backend/chat.go`):
+  - `POST /api/chat {session, message}` asks a question and returns the whole session;
+  - `GET /api/chat/sessions` lists the history; `GET` / `DELETE /api/chat/sessions/<id>` opens or removes one;
+  - sessions are stored in `/data/local/tmp/smart_city_edge/state/chats.json` (newest 100).
+- **How it answers:**
+  - **rsn_v1** runs in its trained chat mode through htpd: the same reasoner slot, with no report schema.
+  - The prompt is byte-identical to training:
+    - `chat_header.txt` is the 9 chat tools, rendered exactly like the incident header (checked: the incident
+      header reproduces byte for byte);
+    - `chat_system.txt` is the trained system text, with the device time as its first line, rounded to the
+      hour so htpd's prefix cache is reused.
+  - The model calls tools (up to 5) and the Go executor answers them from the incident store and the live
+    sensors, with the same result shapes as the training executor (`eval/p0/tools_impl.py`). The model then
+    writes at most 3 short sentences that quote the tool numbers and cite `[INC-…]`.
+  - The last 2 exchanges of the session are kept as context for follow-ups.
+- **Tools (all read-only):** `count_incidents`, `find_incidents`, `get_incident`, `sensor_faults`,
+  `get_sensor_history` (7 days of 5-min readings), `list_sensors`, `domain_health`, `get_action_history`, and
+  `search_knowledge` (says "offline, no documents").
+- **Safety:**
+  - it can't switch, open or close anything, and it refuses and points to the operator controls;
+  - numbers come only from tool results;
+  - one chat at a time;
+  - **alerts first, then chat**: a question asked while an incident is being analysed waits in a queue
+    (`/api/chat/status` names what it waits for, and the UI shows "Queued: the AI is analysing INC-…"). It
+    is answered automatically as soon as the NPU is free, after at most 5 minutes; the answer shows how long
+    it waited.
+- **Quality:**
+  - chat test, 100 questions (host, same file): answered 100%, right first tool 100%, exact numbers 90%,
+    ungrounded 0%;
+  - laptop smoke test today: 5/5 correct, including refusing "close INC-0442" and declining "capital of
+    France".
+- **On the board:** checked through the real app after the 10:45 deploy (`improve3/STATUS.md`): 3 questions, **9-14 s** each
+  (it includes the reasoner swap). "How many incidents were there today?" → `count_incidents` → 89; "Please close them all." →
+  refused (read-only). Known weak spot: "Which of them are still open?" reused the plain count, because the trained
+  tools have no open-only filter (domain_health has open counts per domain). Open it from the dashboard's
+  **✦ Ask AI** button (top bar) or the Campus Assistant icon; ⌂ in the chat goes back to the dashboard.
+- **UI:**
+  - chat history in a sidebar (a drawer on the phone), grouped Today / Earlier;
+  - suggested questions on an empty chat;
+  - a typing indicator that shows what is happening ("Loading the reasoner on the NPU…") and the elapsed
+    seconds;
+  - "How I found this" expands each tool call and its raw result;
+  - incident chips open the incident in the dashboard;
+  - light and dark follow the system.
+- **Next (chat v2):**
+  - stream the answer;
+  - open the chat from an incident with that incident as context;
+  - run the 100-question set on the board;
+  - maintenance-log tools.
 
 ---
 
@@ -294,8 +337,8 @@ incident shows a first report at once.
   on evidence.
 - **Why 40-55 minutes in the real world?** The AI waits for 8 readings because young events are hard to
   read. Critical breaches open in 5.6 s, and every incident shows a first report at once.
-- **Can I talk to it?** The model is trained for chat and scores 100% answered on our chat test. The app's
-  chat panel is the next step (§9).
+- **Can I talk to it?** Yes: open Campus Assistant. It answers from the incident store with exact numbers,
+  shows how it found them, and refuses to act (§9).
 - **Is it deterministic?** Decoding is greedy, but the HTP numerics vary slightly. Severity agrees 97% over
   5 runs, and 100% with the guard.
 

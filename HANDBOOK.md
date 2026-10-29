@@ -2251,6 +2251,22 @@ The app A/B on the board is running from `board_ab/`.
 - **Fixed:** rag_rollback.sh and final_rollback.sh did not stop htpd_v8x3.
 - **v1 chat:** chat dev 100/100 answered, first tool 100%, numbers exact 90%, ungrounded 0. The app has no chat endpoint yet (future work).
 
+## 2.60 Campus Assistant: the conversational interface (2026-10-29, backend/chat.go, device/web/chat/)
+
+- **What:** a second frontend on the same backend.
+  - Launcher icon "Campus Assistant" (`ChatActivity`, URL `/chat/`) and the dashboard's **✦ Ask AI** button.
+  - Chat history is kept in `state/chats.json`.
+- **Model:** rsn_v1 in its trained chat mode through htpd (reasoner slot, no schema).
+  - `chat_header.txt` is the 9 chat tools from tools_v3.json["chat"], rendered like the incident header (which reproduces byte for byte).
+  - `chat_system.txt` is the trained SYSTEM_CHAT after its device-time line.
+  - Tool loop of up to 5 calls; executor result shapes follow eval/p0/tools_impl.py.
+  - Alerts first: a question asked during an incident analysis is queued and answered automatically (5 min cap); `/api/chat/status` names what it waits for.
+- **Checks:**
+  - Host smoke test with the same GGUF: 5/5 (counts, find, detail, refusal to close, off-topic decline).
+  - Board through the app (`proofs/2026-10-28_master/improve3/STATUS.md`): 9-14 s per answer; count_incidents → 89 today; "close them all" refused.
+  - Weak spot: "still open?" reused the plain count (the tools have no open-only filter).
+- **Next:** streaming, incident-context chat, the 100-question chat set on the board, an open-only filter and maintenance tools.
+
 ## 3. If something goes wrong
 
 **Golden rule: just run the same `train.ps1` command again.** It continues where it stopped: training resumes

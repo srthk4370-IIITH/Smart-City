@@ -50,7 +50,7 @@ export default async function mount(ctx) {
   let app = newLive ? FINAL_APP : KNOWN_GOOD_APP;
   if (rag.live && rag.apk) app = { apk: rag.apk, ea: rag.edge_agent, label: 'fast_early + retrieval preliminary build' };
   const mlive = t.morning && t.morning.live;
-  if (mlive) app = { apk: mlive.apk, ea: mlive.edge_agent, label: 'evaluation-morning build (contract repairs, preliminary checklist, retrieval seeds)' };
+  if (mlive) app = { apk: mlive.apk, ea: mlive.edge_agent, label: 'latest build (Campus Assistant chat, contract repairs, preliminary checklist, retrieval seeds)' };
   const ea = (mlive && mlive.edge_agent_md5) || (rag.live && rag.edge_agent) || (newLive && lineMd5('edge-agent')) || (d.known_good_edge_agent && !newLive ? d.known_good_edge_agent : null);
   const ragState = ragStatus(rag);
   const mo = t.morning || {}, ml = mo.live || null; // evaluation-morning deploy (improve*/STATUS.md), newest wins
@@ -61,7 +61,7 @@ export default async function mount(ctx) {
     bn.classList.add('is-pass');
     const fc = ml.fastcheck || {};
     bn.append(h('span.label', { text: `Live now: edge-agent ${ml.edge_agent} · deployed ${String(ml.updated || '').replace('T', ' ').slice(5, 16)} IST` }),
-      h('p', { text: `APK ${ml.apk}: domain agents B50, reasoner rsn_v1, ${ml.bin}, split ${ml.split}, retrieval library of 254 reference reports. Checked through the app after the deploy: 2 chaos scenarios passed; a critical breach opened its incident by the fast path in ${fc.fast_s ?? '—'} s and the AI report landed on the same incident at ${fc.ai_update_s ?? '—'} s. Everything runs on the board, offline.` }));
+      h('p', { text: `Domain agents B50, reasoner rsn_v1, ${ml.bin}, split ${ml.split}, retrieval library of 254 reference reports, and the Campus Assistant chat app. Checked through the app after the deploy: 2 chaos scenarios passed; a critical breach opened its incident by the fast path in ${fc.fast_s ?? '—'} s and the AI report landed on the same incident at ${fc.ai_update_s ?? '—'} s. Everything runs on the board, offline.` }));
   } else if (pending) {
     bn.classList.add('is-pending');
     bn.append(h('span.label', { text: 'Final deploy: in progress' }),
@@ -147,6 +147,7 @@ export default async function mount(ctx) {
     ['Contract repairs, replay on 386 board answers (29 Oct)', 'label 83.2% → 87.6%, 0 new errors'],
     ['rsn_v1 vs rsn_v2, same 106 held-out incidents (29 Oct)', 'severity 94.7% vs 87.6%: rsn_v1 kept'],
     ['Chat, 100 dev questions (laptop)', 'answered 100%, first tool right 100%, numbers exact 90%, ungrounded 0%'],
+    ['Campus Assistant on the board, 3 questions (29 Oct)', '9 to 14 s per answer; refused "close them all"'],
     ...v2acc.filter((l) => /accuracy gate/.test(l)).map((l) => ['rsn_v2, board accuracy gate (tonight)', gateLine(l)]),
     v2cons ? ['rsn_v2, board consistency (tonight)', stripTs(v2cons).replace(/^F3 rsn_v2 board consistency: /, '')] : null,
   ].filter(Boolean);
@@ -200,10 +201,12 @@ function bullets(h, items) { return h('ul.td-mdlist', null, items.map((x) => h('
 function morningCards(ui, h, el, mo) {
   const deps = (mo && mo.deploys) || [];
   if (deps.length) {
-    el.append(ui.card({ span: 12, claim: 'Two deploys this morning, each checked through the app', body: table(h, ['Build', 'APK', 'edge-agent', 'Fast path', 'AI report, same incident', 'Check'],
+    // improve4: the deploy script's readiness check failed falsely (htpd.log rotated); the board went back to the chat build, healthy
+    const ok = (d) => d.failed ? (d.name === 'improve4' ? 'not kept: deploy-script false failure (log rotation), board back on the chat build; retried' : 'failed, rolled back') : d.deployed ? (d.fastcheck && d.fastcheck.pass ? 'pass' : 'deployed') : 'in progress';
+    el.append(ui.card({ span: 12, claim: `${deps.length} deploys this morning, each checked through the app`, body: table(h, ['Build', 'APK', 'edge-agent', 'Fast path', 'AI report, same incident', 'Check'],
       deps.map((d) => [String(d.heading || '').replace(/\s*\(.*\)$/, ''), d.apk ? h('code', { text: d.apk }) : '—', d.deployed ? h('code', { text: d.deployed }) : '—',
-        d.fastcheck ? `${d.fastcheck.fast_s} s` : '—', d.fastcheck ? `${d.fastcheck.ai_update_s} s` : '—', d.fastcheck && d.fastcheck.pass ? 'pass' : '—'])),
-      why: 'Every deploy runs 2 chaos scenarios and a critical-breach check through the real app; the previous build stays ready to roll back. The second row is what runs now.', source: { files: deps.map((d) => d.file) } }));
+        d.fastcheck ? `${d.fastcheck.fast_s} s` : '—', d.fastcheck ? `${d.fastcheck.ai_update_s} s` : '—', ok(d)])),
+      why: `Every deploy runs 2 chaos scenarios and a critical-breach check through the real app; the previous build stays ready to roll back. Live now: edge-agent ${mo.live ? mo.live.edge_agent : '—'} with the Campus Assistant.`, source: { files: deps.map((d) => d.file) } }));
   } else el.append(pendingCard(ui, h, 'Deploys this morning', 'proofs/2026-10-28_master/improve2/STATUS.md', 12, 'not in this build'));
   el.append(ui.card({ span: 6, claim: 'Contract repairs: label 83.2% → 87.6%', body: bullets(h, [
     'A severity of normal with needs_more_data now gets the label unknown (the gold rule holds on 151 of 151 cases).',
@@ -240,11 +243,20 @@ function morningCards(ui, h, el, mo) {
     'Deploy check: 4 of 4 incidents had the preliminary at 0 s and the AI report replaced it on the same incident; 2 of 4 used a retrieved match, the others the rules.',
     'After the AI report, it is compared with similar past incidents and any disagreement is logged.']),
     source: { files: ['proofs/2026-10-28_master/RAG_STATUS.md', FACTS] } }));
-  el.append(ui.card({ span: 6, claim: 'Conversational interface: the path (later)', body: bullets(h, [
-    'Ready: rsn_v1 was trained with about 2,000 chat tool traces (count_incidents, find_incidents, get_action_history). Chat dev set, 100 questions: answered 100%, first tool right 100%, numbers exact 90%, ungrounded 0%.',
-    'Missing: an /api/chat endpoint, Go versions of the chat tools over the incident store, a chat panel, and NPU scheduling (chat waits behind alerts).',
-    'Plan: (1) endpoint + tools, (2) panel with the incident context, (3) guard: answers must quote tool numbers, no actuation, (4) board test: latency per answer and the 100-question set on the board.']),
-    why: 'Not in the app today; it is the first item after the evaluation.', source: { files: [FACTS, 'HANDBOOK.md §2.59'] } }));
+  const cc = (mo && mo.chat_checks) || [];
+  el.append(ui.card({ span: 12, claim: 'Campus Assistant (conversational interface): live', body: h('div', null,
+    bullets(h, [
+      'A second app on the same backend: its own launcher icon "Campus Assistant", and the "✦ Ask AI" button in the dashboard.',
+      'Model: rsn_v1 in the chat mode it was trained in (about 2,000 chat tool traces), with the exact trained prompt, through htpd on the NPU.',
+      '9 read-only tools: count, find and get incidents, sensor faults, sensor history, list sensors, domain health, action history, documents. Up to 5 lookups per answer.',
+      '"How I found this" shows every tool call behind an answer. Chat history is kept on the board.',
+      'Alerts first: a question asked during an incident analysis is queued and answered automatically.',
+      'It cannot act: asked to "close them all", it refused (its tools are read-only; an operator closes incidents after review).',
+      'Known weak spot: "which are still open?" reused the plain count, because the tools have no open-only filter yet.',
+      'Host chat dev set, 100 questions: answered 100%, first tool right 100%, numbers exact 90%, ungrounded 0%.']),
+    cc.length ? table(h, ['Board check (question)', 'Time', 'Tools used'], cc.map((c) => [c.question, `${c.s} s`, c.tools.length ? c.tools.join(', ') : 'none'])) : null),
+    why: 'Next: streaming, chat about the open incident, the 100-question chat set on the board, an open-only filter and maintenance tools.',
+    source: { files: [mo && mo.chat_file ? mo.chat_file : 'proofs/2026-10-28_master/improve3/STATUS.md', 'HANDBOOK.md §2.60', FACTS] } }));
 }
 
 // ---------------------------------------------------------------- helpers
