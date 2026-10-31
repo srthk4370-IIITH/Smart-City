@@ -67,3 +67,19 @@ synthetic (no real_agent rows, no held-out prompt or id; checked by `repair_lib.
   starting adapter -> Q4_0 -> gate (`kaggle/gate/gD_dp1`). It refuses to run when the gate shows no confusion (FORCE=1 overrides).
 - A passing gate B / D candidate goes through `chain.sh compare` and the owner-approved board A/B as before.
 Files: `kaggle/local/{repair_pool.sh, dpo.sh, repair_common.sh, repair_lib.py, cont_train.py, cont_chunk.sh}` (usage in each header).
+
+## r2 add-on: heatwave pairs (2026-11-01, owner-approved; not in r1)
+Board problem (HANDBOOK 2.67, INC-0577/0579): a weather-only critical heat incident was reported as sensor_fault. In r1's
+20k incident rows there is no weather-only incident and no weather sensor fault, and an agent's sensor_fault claim is turned into
+critical only 6 of 2,203 times. `pipeline/gen_heat_r2.py` (seed 2611, synthetic only) writes `data/heat_r2/{train,dev}.jsonl`:
+120 contrastive pairs. In each pair, real heat (smooth diurnal ramp; humidity falls, cooling load and AC rise; critical or warning,
+label weather_driven, first action monitor/review_schedule) sits next to a stuck, offset-jump, night-drift or spiking outdoor
+sensor (sensor_fault). The agent is wrong in about 45 % of rows. Split: train 192 / dev 48, by pair. Every row passes round-1
+verify.py and the app's Go gate (`pipeline/heat_r2_go_check.sh`: 240/240; see `data/heat_r2/manifest.json`).
+To include it in the next bundle, run `RUN_ID=r2x bash detach.sh mkdata_r2x .../local/make_data.sh` as usual, then
+`python3 -B proofs/2026-10-29_rsn_v3/pipeline/gen_heat_r2.py --mix-into proofs/2026-10-29_rsn_v3/kaggle/build/r2x/data` before
+`make_bundle.sh`. This step appends the 192 train rows to `incidents3_train.jsonl` at deterministic positions, re-verifies them
+and refreshes manifest.json/MD5SUMS. It refuses a second mix. The bundle allowlist needs no change.
+Keep `dev.jsonl` out of training: add it to `--gen-inc` or the gate as an extra slice. Gate check: heat dev rows must come out
+weather_driven critical or warning, and fault rows sensor_fault. The 192 rows are ~1 % of the incident rows; if the slice fails,
+repeat them ×3 (DPO pairs are also possible: chosen = gold, rejected = the swapped label).
