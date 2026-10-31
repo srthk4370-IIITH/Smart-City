@@ -1,0 +1,788 @@
+{
+ "story": "power factor 0.62",
+ "incident": {
+  "id": "INC-0553",
+  "mode": 3,
+  "state": "done",
+  "created_sim": 1792052700,
+  "created_wall": "2026-10-15 08:08:53",
+  "severity": "critical",
+  "severity_final": true,
+  "title": "Power factor at 0.616 (critical): SB00 substation, 11 kV feeder meter",
+  "rule_title": "Power factor at 0.616 (critical): SB00 substation, 11 kV feeder meter",
+  "roles": [
+   "power"
+  ],
+  "injected": false,
+  "fast_path": true,
+  "sensors": [
+   {
+    "ref": "S1",
+    "node": "EM-CR-SB00-00",
+    "metric": "pf",
+    "role": "power",
+    "location": "SB00 substation, 11 kV feeder meter",
+    "window_end": 1792054800,
+    "injected": false,
+    "window": [
+     0.61477414881696,
+     0.6195733385639112,
+     0.6209016821512541,
+     0.6228560599361965,
+     0.6196887489965631,
+     0.623301717814112,
+     0.6178458096440845,
+     0.620621630924424,
+     0.61912521879365,
+     0.6216189933925699,
+     0.6205351438987936,
+     0.6208999815635934,
+     0.6186903952066845,
+     0.6217659949902131,
+     0.6127403954323847,
+     0.6176060144613644,
+     0.6175706440865235,
+     0.6160912299237289,
+     0.6179104152151925,
+     0.6141295393604782,
+     0.6231380079161001,
+     0.6176574482783084,
+     0.6189831215577675,
+     0.6201413922412286,
+     0.6201792697962051,
+     0.6180827351936691,
+     0.623787022177077,
+     0.6218880573872048,
+     0.6225116840260047,
+     0.6220879383600301,
+     0.6169338909618608,
+     0.6201126019932081,
+     0.6171935121660412,
+     0.6219260011421919,
+     0.6173238405179554,
+     0.6192803010978425,
+     0.6233772703005411,
+     0.6258272745097812,
+     0.6184796114608871,
+     0.6152793428898614,
+     0.6183427976918499,
+     0.6142576702502098,
+     0.6165446595456419,
+     0.6191667989782724,
+     0.6195742206858521,
+     0.6223158229016633,
+     0.6239024503725908,
+     0.6156847616941614
+    ],
+    "evidence": [
+     {
+      "ID": "E1",
+      "Stat": "last",
+      "Text": "last = 0.616"
+     },
+     {
+      "ID": "E2",
+      "Stat": "max",
+      "Text": "max = 0.626 at 13:40"
+     },
+     {
+      "ID": "E3",
+      "Stat": "min",
+      "Text": "min = 0.613 at 11:45"
+     },
+     {
+      "ID": "E4",
+      "Stat": "slope",
+      "Text": "trend = -0.000/h (r2 0.00)"
+     },
+     {
+      "ID": "E5",
+      "Stat": "max_jump",
+      "Text": "largest 5-min change = -0.009 at 11:45"
+     },
+     {
+      "ID": "E6",
+      "Stat": "sma",
+      "Text": "SMA 1h = 0.619, EMA 1h = 0.619, mean 4h = 0.619"
+     },
+     {
+      "ID": "E7",
+      "Stat": "shape",
+      "Text": "halves 0.619 -> 0.620, curvature -0.003/h, oscillation crossings 14"
+     },
+     {
+      "ID": "E8",
+      "Stat": "flat",
+      "Text": "noise 0.0027, longest flat run 2 pts, plateau at max 0 pts"
+     },
+     {
+      "ID": "E9",
+      "Stat": "long_view",
+      "Text": "12 h view: under 8 h of history"
+     },
+     {
+      "ID": "E10",
+      "Stat": "episodes",
+      "Text": "recent episodes: 1 excursion beyond 3x normal noise in the last 4 h (largest 22.1x)"
+     }
+    ],
+    "global_evidence_ids": [
+     "ev:EM-CR-SB00-00:pf:last:1792054800",
+     "ev:EM-CR-SB00-00:pf:max:1792054800",
+     "ev:EM-CR-SB00-00:pf:min:1792054800",
+     "ev:EM-CR-SB00-00:pf:slope:1792054800",
+     "ev:EM-CR-SB00-00:pf:max_jump:1792054800",
+     "ev:EM-CR-SB00-00:pf:sma:1792054800",
+     "ev:EM-CR-SB00-00:pf:shape:1792054800",
+     "ev:EM-CR-SB00-00:pf:flat:1792054800",
+     "ev:EM-CR-SB00-00:pf:long_view:1792054800",
+     "ev:EM-CR-SB00-00:pf:episodes:1792054800"
+    ],
+    "rule_finding": {
+     "pattern": "stable",
+     "status": "critical",
+     "observations": [
+      "Power factor steady around 0.619, ranging only 0.613-0.626 [E6,E2,E3]",
+      "0.616 is below the critical limit of 0.7 [E1]"
+     ],
+     "likely_cause": "normal_load",
+     "confidence": 0.8,
+     "action": "monitor"
+    },
+    "context": false
+   },
+   {
+    "ref": "S2",
+    "node": "EM-CR-SB00-00",
+    "metric": "power_kw",
+    "role": "power",
+    "location": "SB00 substation, 11 kV feeder meter",
+    "window_end": 1792054800,
+    "injected": false,
+    "window": [
+     596.1122672661432,
+     596.4930718190768,
+     603.3444152677105,
+     600.9795557116655,
+     603.2622931054908,
+     603.0700842584117,
+     604.5596168951365,
+     599.800404566816,
+     606.4752429730762,
+     605.5041321097268,
+     598.6491459343307,
+     595.0441416627664,
+     601.8172029691038,
+     601.790258449875,
+     598.3471534251105,
+     593.8375281843147,
+     595.005692674198,
+     593.8408213928418,
+     599.6332354394474,
+     600.1447501563441,
+     601.2098749606863,
+     600.1451753376749,
+     605.9674428213264,
+     603.17940663323,
+     600.6868486730564,
+     598.1782372244365,
+     601.5476235748179,
+     597.3263783750181,
+     607.9062894341731,
+     596.0694442644982,
+     597.6775164473834,
+     596.1744587418668,
+     597.8903498448725,
+     606.4863634129206,
+     599.4511667332373,
+     598.8444809300034,
+     594.3245798861847,
+     609.9587903521776,
+     601.1765405322129,
+     601.9816528148846,
+     600.4201753288974,
+     594.9839391811521,
+     604.1813180273882,
+     595.616076745645,
+     597.4247603823162,
+     595.8199291332568,
+     597.6332026070319,
+     598.8374623500389
+    ],
+    "evidence": [
+     {
+      "ID": "E1",
+      "Stat": "last",
+      "Text": "last = 598.84 kW"
+     },
+     {
+      "ID": "E2",
+      "Stat": "max",
+      "Text": "max = 609.96 kW at 13:40"
+     },
+     {
+      "ID": "E3",
+      "Stat": "min",
+      "Text": "min = 593.84 kW at 11:50"
+     },
+     {
+      "ID": "E4",
+      "Stat": "slope",
+      "Text": "trend = -0.44 kW/h (r2 0.02)"
+     },
+     {
+      "ID": "E5",
+      "Stat": "max_jump",
+      "Text": "largest 5-min change = +15.63 kW at 13:40"
+     },
+     {
+      "ID": "E6",
+      "Stat": "sma",
+      "Text": "SMA 1h = 599.36, EMA 1h = 598.75, mean 4h = 599.98 kW"
+     },
+     {
+      "ID": "E7",
+      "Stat": "shape",
+      "Text": "halves 600.34 -> 599.61, curvature +2.58/h, oscillation crossings 16"
+     },
+     {
+      "ID": "E8",
+      "Stat": "flat",
+      "Text": "noise 3.740, longest flat run 1 pts, plateau at max 0 pts"
+     }
+    ],
+    "global_evidence_ids": [
+     "ev:EM-CR-SB00-00:power_kw:last:1792054800",
+     "ev:EM-CR-SB00-00:power_kw:max:1792054800",
+     "ev:EM-CR-SB00-00:power_kw:min:1792054800",
+     "ev:EM-CR-SB00-00:power_kw:slope:1792054800",
+     "ev:EM-CR-SB00-00:power_kw:max_jump:1792054800",
+     "ev:EM-CR-SB00-00:power_kw:sma:1792054800",
+     "ev:EM-CR-SB00-00:power_kw:shape:1792054800",
+     "ev:EM-CR-SB00-00:power_kw:flat:1792054800"
+    ],
+    "rule_finding": {
+     "pattern": "stable",
+     "status": "normal",
+     "observations": [
+      "Power steady around 599.98 kW, ranging only 593.84-609.96 [E6,E2,E3]"
+     ],
+     "likely_cause": "normal_load",
+     "confidence": 0.8,
+     "action": "none"
+    },
+    "context": true,
+    "why": "load level"
+   },
+   {
+    "ref": "S3",
+    "node": "AC-KH03",
+    "metric": "ac_units_on",
+    "role": "hvac",
+    "location": "KH building, level 03, AC units",
+    "window_end": 1792054800,
+    "injected": false,
+    "window": [
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2
+    ],
+    "evidence": [
+     {
+      "ID": "E1",
+      "Stat": "last",
+      "Text": "last = 2 units"
+     },
+     {
+      "ID": "E2",
+      "Stat": "max",
+      "Text": "max = 2 units at 10:35"
+     },
+     {
+      "ID": "E3",
+      "Stat": "min",
+      "Text": "min = 2 units at 10:35"
+     },
+     {
+      "ID": "E4",
+      "Stat": "slope",
+      "Text": "trend = +0.0 units/h (r2 0.00)"
+     },
+     {
+      "ID": "E5",
+      "Stat": "max_jump",
+      "Text": "largest 5-min change = +0.0 units at 10:40"
+     },
+     {
+      "ID": "E6",
+      "Stat": "sma",
+      "Text": "SMA 1h = 2, EMA 1h = 2, mean 4h = 2 units"
+     },
+     {
+      "ID": "E7",
+      "Stat": "shape",
+      "Text": "halves 2 -> 2, curvature +0.0/h, oscillation crossings 0"
+     },
+     {
+      "ID": "E8",
+      "Stat": "flat",
+      "Text": "noise 0.00, longest flat run 48 pts, plateau at max 48 pts"
+     }
+    ],
+    "global_evidence_ids": [
+     "ev:AC-KH03:ac_units_on:last:1792054800",
+     "ev:AC-KH03:ac_units_on:max:1792054800",
+     "ev:AC-KH03:ac_units_on:min:1792054800",
+     "ev:AC-KH03:ac_units_on:slope:1792054800",
+     "ev:AC-KH03:ac_units_on:max_jump:1792054800",
+     "ev:AC-KH03:ac_units_on:sma:1792054800",
+     "ev:AC-KH03:ac_units_on:shape:1792054800",
+     "ev:AC-KH03:ac_units_on:flat:1792054800"
+    ],
+    "rule_finding": {
+     "pattern": "stable",
+     "status": "normal",
+     "observations": [
+      "AC units running: now 2, 1h average 2.0, max 2 [E1,E6,E2]"
+     ],
+     "likely_cause": "hvac_context",
+     "confidence": 0.8,
+     "action": "none"
+    },
+    "context": true,
+    "why": "inductive AC compressors"
+   }
+  ],
+  "mode1_report": {
+   "root_cause": "Rule engine: EM-CR-SB00-00 pf stable (critical); EM-CR-SB00-00 power_kw stable (normal); AC-KH03 ac_units_on stable (normal)",
+   "label": "normal_operation",
+   "affected_domains": [
+    "power",
+    "hvac"
+   ],
+   "evidence": [
+    "S1.E1",
+    "S2.E1",
+    "S3.E1"
+   ],
+   "confidence": 0.8,
+   "action": "monitor",
+   "explanation": "Power factor steady around 0.619, ranging only 0.613-0.626 [E6,E2,E3] 0.616 is below the critical limit of 0.7 [E1]",
+   "requires_human_approval": true,
+   "severity": "critical"
+  },
+  "agents": [
+   {
+    "ttft_ms": 396.3,
+    "gen_tokens": 89,
+    "tokens_per_s": 41.468642251421116,
+    "early_stopped": true,
+    "ref": "S1",
+    "role": "power",
+    "model": "Llama 3.2 3B smart-city agent (fine-tuned, w4a16)",
+    "fine_tuned": true,
+    "latency_ms": 2548.768,
+    "raw": "{\"pattern\": \"stable\", \"status\": \"critical\", \"observations\": [\"Power factor varies only 0.613-0.626, normal for this sensor [E2,E3]\", \"0.616 is below the critical limit of 0.7 [E1]\"], \"likely_cause\": \"normal_load\", \"confidence\": 0.75, \"event_active\": false, \"onset\": \"10:35\"}",
+    "parsed": {
+     "pattern": "stable",
+     "status": "critical",
+     "observations": [
+      "Power factor varies only 0.613-0.626, normal for this sensor [E2,E3]",
+      "0.616 is below the critical limit of 0.7 [E1]"
+     ],
+     "likely_cause": "normal_load",
+     "confidence": 0.68,
+     "action": "monitor",
+     "event_active": false,
+     "onset": "10:35"
+    },
+    "valid": true,
+    "errors": null,
+    "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are the Power agent of a smart-campus edge monitor (IIIT Hyderabad). You receive a 4-hour window of one sensor metric (5-minute samples) with precomputed statistics. Identify the pattern, judge severity, explain what you notice using only the given numbers, and cite evidence ids (E1..E10) that support each observation. Never invent values. Never order physical actuation; recommend at most an inspection action. Reply with one JSON object only. JSON keys: pattern (stable|spike|dip|gradual_increase|gradual_decrease|step_increase|step_decrease|exponential_increase|oscillation|throttling|flatline|erratic), status (normal|warning|critical|sensor_fault), observations (1-2 short strings, each ending with cited ids like [E1,E4]), likely_cause (normal_load|load_surge|equipment_startup|load_drop_or_outage|capacity_limit_throttling|gradual_load_growth|cyclic_equipment|power_quality_issue|sensor_fault), confidence (0-1), event_active (true|false), onset (HH:MM), fault_kind (stuck|bias|drift|noise|dropout|saturation|quantised, only if sensor_fault), action (none|monitor|inspect_ventilation|inspect_hvac|check_sensor|inspect_water_system|inspect_electrical|review_schedule|request_facility_review).<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nNODE: EM-CR-SB00-00 (SB00 substation, 11 kV feeder meter)\nMETRIC: pf [ratio]\nLIMITS: warning below 0.85, critical below 0.7\nWINDOW: Thu 15 Oct 10:35 -> 14:30 IST, 48 x 5 min\nSERIES (10-min means): 0.617 0.622 0.621 0.619 0.620 0.621 0.620 0.615 0.617 0.616 0.620 0.620 0.619 0.623 0.622 0.619 0.620 0.618 0.625 0.617 0.616 0.618 0.621 0.620\nEVIDENCE:\nE1 last = 0.616\nE2 max = 0.626 at 13:40\nE3 min = 0.613 at 11:45\nE4 trend = -0.000/h (r2 0.00)\nE5 largest 5-min change = -0.009 at 11:45\nE6 SMA 1h = 0.619, EMA 1h = 0.619, mean 4h = 0.619\nE7 halves 0.619 -> 0.620, curvature -0.003/h, oscillation crossings 14\nE8 noise 0.0027, longest flat run 2 pts, plateau at max 0 pts\nE9 12 h view: under 8 h of history\nE10 recent episodes: 1 excursion beyond 3x normal noise in the last 4 h (largest 22.1x)<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n{\"pattern\": \""
+   },
+   {
+    "ttft_ms": 0,
+    "gen_tokens": 0,
+    "tokens_per_s": 0,
+    "early_stopped": false,
+    "ref": "S2",
+    "role": "power",
+    "model": "context agent (rules, CPU)",
+    "fine_tuned": false,
+    "latency_ms": 0,
+    "raw": "",
+    "parsed": {
+     "pattern": "stable",
+     "status": "normal",
+     "observations": [
+      "Power steady around 599.98 kW, ranging only 593.84-609.96 [E6,E2,E3]"
+     ],
+     "likely_cause": "normal_load",
+     "confidence": 0.8,
+     "action": "none"
+    },
+    "valid": true,
+    "errors": null,
+    "prompt": ""
+   },
+   {
+    "ttft_ms": 0,
+    "gen_tokens": 0,
+    "tokens_per_s": 0,
+    "early_stopped": false,
+    "ref": "S3",
+    "role": "hvac",
+    "model": "context agent (rules, CPU)",
+    "fine_tuned": false,
+    "latency_ms": 0,
+    "raw": "",
+    "parsed": {
+     "pattern": "stable",
+     "status": "normal",
+     "observations": [
+      "AC units running: now 2, 1h average 2.0, max 2 [E1,E6,E2]"
+     ],
+     "likely_cause": "hvac_context",
+     "confidence": 0.8,
+     "action": "none"
+    },
+    "valid": true,
+    "errors": null,
+    "prompt": ""
+   }
+  ],
+  "final": {
+   "ttft_ms": 1561.3,
+   "gen_tokens": 520,
+   "tokens_per_s": 39.584966847590266,
+   "early_stopped": false,
+   "model": "qwen3.5-4b (htpd)",
+   "latency_ms": 16304,
+   "raw": "{\"title\": \"Power factor at 0.616 (critical): SB00 substation, 11 kV feeder meter\", \"severity\": \"critical\", \"label\": \"power_quality_issue\", \"root_cause\": \"Power factor is critically low due to reactive load.\", \"causal_chain\": \"power factor critically low (S1.E1) below the critical limit (0.7) -> load steady (S2.E4)\", \"observations\": [{\"text\": \"Power factor at 0.616, under the critical limit\", \"src\": [\"S1.E1\"]}, {\"text\": \"Power factor has been decreasing at 0.000 per hour, r2 0.00\", \"src\": [\"S1.E4\"]}, {\"text\": \"Power draw trend: -0.44 kW per hour (r2 0.02)\", \"src\": [\"S2.E4\"]}, {\"text\": \"AC units running: now 2, 1h average 2.0, max 2\", \"src\": [\"S3.E1\", \"S3.E6\"]}], \"agent_checks\": [{\"ref\": \"S1\", \"claim\": \"status critical\", \"verdict\": \"corrected\", \"fact\": \"power factor 0.616 is below the critical limit of 0.7\", \"src\": [\"S1.E1\"]}, {\"ref\": \"S1\", \"claim\": \"cause normal load\", \"verdict\": \"corrected\", \"fact\": \"power factor is critically low, not normal load\", \"src\": [\"S1.E1\"]}], \"affected_domains\": [\"power\"], \"suspect_sensors\": [], \"evidence\": [\"S1.E1\", \"S2.E4\"], \"confidence\": 0.83, \"checklist\": [{\"action\": \"request_facility_review\", \"target\": \"S1 (EM-CR-SB00-00)\", \"why\": \"Escalate to facility management\"}, {\"action\": \"inspect_electrical\", \"target\": \"S1 (EM-CR-SB00-00)\", \"why\": \"Check panels, capacitor bank and big loads\"}], \"monitor_next\": \"Confirm at the next refinement that power factor has settled\", \"needs_more_data\": false, \"needs_deeper\": false, \"explanation\": \"Power factor is critically low; check the capacitor bank and large motor loads.\"}",
+   "parsed": {
+    "root_cause": "Power factor is critically low due to reactive load.",
+    "label": "power_quality_issue",
+    "affected_domains": [
+     "power"
+    ],
+    "evidence": [
+     "S1.E1",
+     "S2.E4"
+    ],
+    "confidence": 0.83,
+    "action": "request_facility_review",
+    "explanation": "Power factor is critically low; check the capacitor bank and large motor loads.",
+    "requires_human_approval": true,
+    "severity": "critical",
+    "title": "Power factor at 0.616 (critical): SB00 substation, 11 kV feeder meter",
+    "causal_chain": "power factor critically low (S1.E1) below the critical limit (0.7) -> load steady (S2.E4)",
+    "observations": [
+     {
+      "text": "Power factor at 0.616, under the critical limit",
+      "src": [
+       "S1.E1"
+      ]
+     },
+     {
+      "text": "Power factor has been decreasing at 0.000 per hour, r2 0.00",
+      "src": [
+       "S1.E4"
+      ]
+     },
+     {
+      "text": "Power draw trend: -0.44 kW per hour (r2 0.02)",
+      "src": [
+       "S2.E4"
+      ]
+     },
+     {
+      "text": "AC units running: now 2, 1h average 2.0, max 2",
+      "src": [
+       "S3.E1",
+       "S3.E6"
+      ]
+     }
+    ],
+    "agent_checks": [
+     {
+      "ref": "S1",
+      "claim": "status critical",
+      "verdict": "corrected",
+      "fact": "power factor 0.616 is below the critical limit of 0.7",
+      "src": [
+       "S1.E1"
+      ]
+     },
+     {
+      "ref": "S1",
+      "claim": "cause normal load",
+      "verdict": "corrected",
+      "fact": "power factor is critically low, not normal load",
+      "src": [
+       "S1.E1"
+      ]
+     }
+    ],
+    "checklist": [
+     {
+      "action": "request_facility_review",
+      "target": "S1 (EM-CR-SB00-00)",
+      "why": "Escalate to facility management"
+     },
+     {
+      "action": "inspect_electrical",
+      "target": "S1 (EM-CR-SB00-00)",
+      "why": "Check panels, capacitor bank and big loads"
+     }
+    ],
+    "monitor_next": "Confirm at the next refinement that power factor has settled",
+    "source": "device:qwen3.5-4b (htpd)",
+    "escalation": {
+     "offer": false
+    },
+    "severity_basis": {
+     "rule": "critical",
+     "reasoner": "critical",
+     "final": "critical"
+    }
+   },
+   "valid": true,
+   "errors": null,
+   "prompt": "<|im_start|>system\n# Tools\n\nYou have access to the following functions:\n\n<tools>\n{\"type\": \"function\", \"function\": {\"name\": \"related_context\", \"description\": \"Incident-time only.\", \"parameters\": {\"type\": \"object\", \"properties\": {\"ref\": {\"type\": \"string\"}, \"hours\": {\"type\": \"integer\"}}, \"required\": [\"ref\"]}}}\n{\"type\": \"function\", \"function\": {\"name\": \"get_sensor_history\", \"description\": \"Aggregated readings of one sensor for a period, plus the evidence summary the agents use (min/max/trend/steps).\", \"parameters\": {\"type\": \"object\", \"properties\": {\"node\": {\"type\": \"string\"}, \"metric\": {\"type\": \"string\"}, \"time\": {\"type\": \"object\", \"properties\": {\"preset\": {\"type\": \"string\"}, \"from\": {\"type\": \"string\"}, \"to\": {\"type\": \"string\"}}}, \"agg\": {\"type\": \"string\"}, \"stats_only\": {\"type\": \"boolean\"}}, \"required\": [\"node\", \"metric\", \"time\"]}}}\n{\"type\": \"function\", \"function\": {\"name\": \"get_action_history\", \"description\": \"Past checklist steps, outcomes (sensor_replaced, sensor_repaired, fixed_by_action, resolved_on_its_own, false_alarm, no_action_needed) and maintenance rows (rep\", \"parameters\": {\"type\": \"object\", \"properties\": {\"node\": {\"type\": \"string\"}, \"metric\": {\"type\": \"string\"}, \"domain\": {\"type\": \"string\"}, \"time\": {\"type\": \"object\", \"properties\": {\"preset\": {\"type\": \"string\"}, \"from\": {\"type\": \"string\"}, \"to\": {\"type\": \"string\"}}}, \"outcome\": {\"type\": \"string\"}}}}}\n{\"type\": \"function\", \"function\": {\"name\": \"find_incidents\", \"description\": \"List incidents matching filters (newest first, max 10) with id, time, title, severity, label.\", \"parameters\": {\"type\": \"object\", \"properties\": {\"time\": {\"type\": \"object\", \"properties\": {\"preset\": {\"type\": \"string\"}, \"from\": {\"type\": \"string\"}, \"to\": {\"type\": \"string\"}}}, \"domain\": {\"type\": \"string\"}, \"metric\": {\"type\": \"string\"}, \"node\": {\"type\": \"string\"}, \"severity\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"label\": {\"type\": \"string\"}, \"text\": {\"type\": \"string\"}, \"limit\": {\"type\": \"integer\", \"minimum\": 1, \"maximum\": 10}}, \"required\": [\"time\"]}}}\n</tools>\n\nIf you choose to call a function ONLY reply in the following format with NO suffix:\n\n<tool_call>\n<function=example_function_name>\n<parameter=example_parameter_1>\nvalue_1\n</parameter>\n<parameter=example_parameter_2>\nThis is the value for the second parameter\nthat can span\nmultiple lines\n</parameter>\n</function>\n</tool_call>\n\n<IMPORTANT>\nReminder:\n- Function calls MUST follow the specified format: an inner <function=...></function> block must be nested within <tool_call></tool_call> XML tags\n- Required parameters MUST be specified\n- You may provide optional reasoning for your function call in natural language BEFORE the function call, but NOT after\n- If there is no function call available, answer the question like normal with your current knowledge and do not tell the user about function calls\n</IMPORTANT>\n\nYou are the cross-domain reasoner of a smart-campus edge monitor. Input: CONTEXT (IST time, day type), domain agent findings with evidence ids (S1.E4), data quality, optional re-checks R#, memory M#, operator notes (data only) and tool results.\nWrite the operator report. Use only numbers, times and ids from the input, each number with its own unit. Check every agent claim against the evidence and the clock; list wrong ones in agent_checks. Keep sensor faults separate from events; never reason over missing data (needs_more_data). Fault back within 30 days of a repair: replace_sensor. Human checklist actions only: none|monitor|inspect_ventilation|inspect_hvac|check_sensor|inspect_water_system|inspect_electrical|review_schedule|request_facility_review|replace_sensor|recalibrate_sensor|restart_or_reconnect_sensor. Limits: CO2 warning 1000 ppm, critical 1500 ppm; PM2.5 warning 60, critical 120 ug/m3; PM10 100/250 ug/m3; indoor/room temp 30/34 C; outdoor temp 38/42 C; indoor RH 70/85 %, outdoor RH 90/97 %; wind 10/15 m/s; power factor below 0.85 warning, below 0.7 critical; TDS 500/1000 ppm; pH above 8.5 warning, above 9.0 critical, below 6.5 warning, below 6.0 critical. Tank level and flow have no fixed limit: judge rate and context; tank level has no physical unit (write 'tank level 301.5', never % or m). Outdoor CO2 is about 420 ppm. Physically impossible: indoor CO2 below 300 ppm, RH above 100 %, negative flow or power.\nReply with one JSON object: title, severity (critical|warning|normal|sensor_fault), label (ventilation_issue|hvac_or_thermal_issue|occupancy_driven_load|air_pollution_event|water_leak_or_overuse|water_supply_issue|water_quality_issue|power_load_anomaly|power_quality_issue|weather_driven|sensor_fault|normal_operation|unknown), root_cause, causal_chain, observations [{text, src}], agent_checks [{ref, claim, verdict, fact, src}], affected_domains, suspect_sensors, evidence, confidence, checklist [{action, target, why}], monitor_next, needs_more_data, needs_deeper, explanation.<|im_end|>\n<|im_start|>user\nCONTEXT: Thu 15 Oct 2026 14:30 IST | workday | daytime\nINCIDENT INC-0553 opened 14:30 (mode early), windows 4 h of 5-min samples\nDOMAIN AGENT FINDINGS:\nS1 [FLAGGED]: EM-CR-SB00-00 pf [ratio] at SB00 substation, 11 kV feeder meter (power)\n  LIMITS: warning below 0.85, critical below 0.7\n  quality=good\n  agent: pattern=stable status=critical cause=normal_load confidence=0.68\n  - Power factor varies only 0.613-0.626, normal for this sensor [S1.E2,S1.E3]\n  - 0.616 is below the critical limit of 0.7 [S1.E1]\n  S1.E1 last = 0.616\n  S1.E2 max = 0.626 at 13:40\n  S1.E3 min = 0.613 at 11:45\n  S1.E4 trend = -0.000/h (r2 0.00)\n  S1.E5 largest 5-min change = -0.009 at 11:45\n  S1.E6 SMA 1h = 0.619, EMA 1h = 0.619, mean 4h = 0.619\n  S1.E7 halves 0.619 -> 0.620, curvature -0.003/h, oscillation crossings 14\n  S1.E8 noise 0.0027, longest flat run 2 pts, plateau at max 0 pts\n  S1.E9 12 h view: under 8 h of history\n  S1.E10 recent episodes: 1 excursion beyond 3x normal noise in the last 4 h (largest 22.1x)\nS2 [related: load level]: EM-CR-SB00-00 power_kw [kW] at SB00 substation, 11 kV feeder meter (power)\n  quality=good\n  agent: pattern=stable status=normal cause=normal_load confidence=0.80\n  - Power steady around 599.98 kW, ranging only 593.84-609.96 [S2.E6,S2.E2,S2.E3]\n  S2.E1 last = 598.84 kW\n  S2.E2 max = 609.96 kW at 13:40\n  S2.E3 min = 593.84 kW at 11:50\n  S2.E4 trend = -0.44 kW/h (r2 0.02)\n  S2.E5 largest 5-min change = +15.63 kW at 13:40\nS3 [related: inductive AC compressors]: AC-KH03 ac_units_on [units] at KH building, level 03, AC units (hvac)\n  quality=good\n  agent: pattern=stable status=normal cause=hvac_context confidence=0.80\n  - AC units running: now 2, 1h average 2.0, max 2 [S3.E1,S3.E6,S3.E2]\n  S3.E1 last = 2 units\n  S3.E4 trend = +0.0 units/h (r2 0.00)\n  S3.E5 largest 5-min change = +0.0 units at 10:40\n  S3.E8 noise 0.00, longest flat run 48 pts, plateau at max 48 pts\nMEMORY (past incidents and actions on these sensors):\n  M1 2026-10-13 INC-0178 Normal operation: Tank level critical, Power warning, PM10 warning (+5 more) on EM-CR-SB00-00, closed: resolved_on_its_own (auto)\nWrite the cross-domain incident report JSON.<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+  },
+  "total_ms": 18858,
+  "npu_calls": 2,
+  "timeline": [
+   {
+    "t": "04:32:18",
+    "msg": "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+   },
+   {
+    "t": "04:32:18",
+    "msg": "Critical fast path: EM-CR-SB00-00 pf beyond its critical limit for 2 readings - incident opened at once with the rules report; the AI analysis follows when the event has lasted 8 readings and updates this incident"
+   },
+   {
+    "t": "04:32:25",
+    "msg": "AI analysis of the fast-path incident: 1 sensor(s) at 8 readings"
+   },
+   {
+    "t": "04:32:25",
+    "msg": "Event gated: 3 sensor(s) flagged, mode 3"
+   },
+   {
+    "t": "04:32:25",
+    "msg": "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+   },
+   {
+    "t": "04:32:25",
+    "msg": "Orchestrator: 1 sensor(s) to NPU agents, 2 related sensor(s) checked by context agents in parallel"
+   },
+   {
+    "t": "04:32:25",
+    "msg": "Power agent analysing EM-CR-SB00-00 pf on NPU (fine-tuned)"
+   },
+   {
+    "t": "04:32:27",
+    "msg": "Power agent done in 2.5s (first token 0.4s, 89 tokens): stable / critical (policy PASSED)"
+   },
+   {
+    "t": "04:32:27",
+    "msg": "Related domains checked and steady (2 context agents): reasoner v3 writes the report"
+   },
+   {
+    "t": "04:32:27",
+    "msg": "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+   },
+   {
+    "t": "04:32:34",
+    "msg": "Reasoner title: Power factor at 0.616 (critical): SB00 substation, 11 kV feeder meter"
+   },
+   {
+    "t": "04:32:34",
+    "msg": "Reasoner severity (provisional): critical"
+   },
+   {
+    "t": "04:32:44",
+    "msg": "Reasoner v3 report in 16.3s (1 completion(s), 0 tool call(s)), policy ok"
+   },
+   {
+    "t": "04:32:44",
+    "msg": "Finished in 18.9s, 2 NPU call(s)"
+   }
+  ],
+  "approval": "pending",
+  "approval_note": "",
+  "refine_stage": "early",
+  "next_refine_sim": 1792058100,
+  "sim_epoch": 1695357090788206805,
+  "revisions": [
+   {
+    "stage": "early",
+    "sim_end": 1792052700,
+    "wall": "2026-10-15 08:09:19",
+    "severity": "critical",
+    "title": "Power factor at 0.616 (critical): SB00 substation, 11 kV feeder meter",
+    "label": "power_quality_issue",
+    "npu_calls": 2,
+    "ms": 18858,
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "pf",
+      "pattern": "stable",
+      "status": "critical"
+     }
+    ]
+   }
+  ],
+  "workflow": "needs_decision",
+  "needs_since": 1792031959,
+  "live_epoch": 1695357090788206805,
+  "steps": [
+   {
+    "id": "s1",
+    "source": "playbook",
+    "text": "Ask an electrician to inspect the feeder and panel",
+    "why": "Standard steps for a critical power alarm (no specific AI recommendation)",
+    "added_at_stage": "preliminary",
+    "state": "withdrawn"
+   },
+   {
+    "id": "s2",
+    "source": "playbook",
+    "text": "Check for overloaded circuits",
+    "why": "Standard steps for a critical power alarm (no specific AI recommendation)",
+    "added_at_stage": "preliminary",
+    "state": "withdrawn"
+   },
+   {
+    "id": "s3",
+    "source": "playbook",
+    "text": "Agree with facilities which non-essential loads can be shed",
+    "why": "Standard steps for a critical power alarm (no specific AI recommendation)",
+    "added_at_stage": "preliminary",
+    "state": "withdrawn"
+   },
+   {
+    "id": "s4",
+    "source": "report",
+    "action": "request_facility_review",
+    "text": "Raise a facility review with the incident's evidence",
+    "why": "Power factor is critically low due to reactive load.",
+    "added_at_stage": "early",
+    "state": "open"
+   },
+   {
+    "id": "s5",
+    "source": "agent",
+    "action": "monitor",
+    "target": "EM-CR-SB00-00",
+    "text": "Keep watching the flagged readings; no on-site action yet",
+    "why": "Power factor at SB00 substation, 11 kV feeder meter: stable (critical)",
+    "added_at_stage": "early",
+    "state": "open"
+   }
+  ],
+  "events": [
+   {
+    "seq": 1,
+    "at": 1792031933,
+    "actor": "system",
+    "event": "created",
+    "detail": "3 sensor(s) flagged"
+   },
+   {
+    "seq": 2,
+    "at": 1792031959,
+    "actor": "system",
+    "event": "step_withdrawn",
+    "step_id": "s1",
+    "detail": "no longer suggested after the AI report"
+   },
+   {
+    "seq": 3,
+    "at": 1792031959,
+    "actor": "system",
+    "event": "step_withdrawn",
+    "step_id": "s2",
+    "detail": "no longer suggested after the AI report"
+   },
+   {
+    "seq": 4,
+    "at": 1792031959,
+    "actor": "system",
+    "event": "step_withdrawn",
+    "step_id": "s3",
+    "detail": "no longer suggested after the AI report"
+   },
+   {
+    "seq": 5,
+    "at": 1792031959,
+    "actor": "system",
+    "event": "step_added",
+    "step_id": "s4",
+    "detail": "suggested by the AI report"
+   },
+   {
+    "seq": 6,
+    "at": 1792031959,
+    "actor": "system",
+    "event": "step_added",
+    "step_id": "s5",
+    "detail": "suggested by the AI report"
+   },
+   {
+    "seq": 7,
+    "at": 1792031959,
+    "actor": "reasoner",
+    "event": "analysed",
+    "detail": "severity critical"
+   }
+  ]
+ }
+}

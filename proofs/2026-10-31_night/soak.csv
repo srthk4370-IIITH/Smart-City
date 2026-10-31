@@ -1,0 +1,17 @@
+ts_ist,n,kind,story,pass,fast_s,ai_update_s,chat_s,severity,title,note,temp_c,memavail_mb,htpd,edge_agent,crash_lines
+03:48:20,0,incident,CO2 2000 ppm,1,2.7,22.7,,sensor_fault,"KH building, level 03: Suspect CO2 readings",INC-0541 model=qwen3.5-4b (htpd) valid=True state=done,93,7971,htpd_v9e,1,0
+04:07:50,1,chat,List the incidents,1,,,0.2,,,"tools=['recent_incidents'] | The 5 most recent incidents, newest first: INC-0543 Room temperature stuck on, warning (KH building, level 02) (warning, 2026-10-18 00:40); INC-0542 KH building, level 03: CO2 sensor fault: negative step (sensor fault, 2026-10-15 12:50); INC-0541 KH building, level 03: Suspect CO2 readings (sensor f",51,4424,htpd_v9e,1,0
+04:32:01,2,normal,normal SR-AQ-KH03-03/co2=620 SR-AQ-KH03-03/temp=25.5,1,,,,,,no incident (as expected),52,4415,htpd_v9e,1,0
+04:49:11,3,incident,PM2.5 200,1,44.3,73.5,,sensor_fault,"PM2.5 sensor fault (bias): KN building, outdoor air station",INC-0545 model=qwen3.5-4b (htpd) valid=True state=done,93,4372,htpd_v9e,1,0
+05:08:00,4,chat,How many incidents were there today?,1,,,10.0,,,tools=['count_incidents'] | 0 incidents were recorded today.,90,4363,htpd_v9e,1,0
+05:32:01,5,normal,normal AQ-KN00-00/pm25=32 AQ-KN00-00/pm10=55,1,,,,,,no incident (as expected),52,4462,htpd_v9e,1,0
+05:49:08,6,incident,water pH 9.6,1,44.0,71.0,,critical,"KH building, level 98: Water pH critical (9.59)",INC-0549 model=qwen3.5-4b (htpd) valid=True state=done,90,4477,htpd_v9e,1,0
+06:08:03,7,chat,What is the status of the CO2 sensor in KH03?,1,,,13.2,,,"tools=['list_sensors'] | The CO2 sensor in KH03 (SR-AQ-KH03-03) is normal, reading 455.7348508659907 ppm.",91,4235,htpd_v9e,1,0
+06:32:01,8,normal,normal WM-WD-KH98-00/ph=7.4 WM-WD-KH98-00/tds=180,1,,,,,,no incident (as expected),52,4421,htpd_v9e,1,0
+06:49:08,9,incident,power factor 0.62,1,44.3,71.4,,critical,"Power factor at 0.616 (critical): SB00 substation, 11 kV feeder meter",INC-0553 model=qwen3.5-4b (htpd) valid=True state=done,94,5733,htpd_v9e,1,0
+07:12:50,10,chat,"What if occupancy increases by 50%, impact on other domains",1,,,0.2,,,"tools=['what_if'] | The occupancy sensor at KH reported 0 in every hour in the last 7 days, so the device's data cannot estimate what a change of +50% would do. Ask again once it has recorded the building in use.",47,4844,htpd_v9e,1,0
+07:37:01,11,normal,normal WE-VN04-00/temp=31 WE-VN04-00/wind=4,1,,,,,,no incident (as expected),52,4635,htpd_v9f,1,0
+07:54:10,12,incident,outdoor temp 45 C,1,46.4,73.0,,critical,"Temperature critical: VN building, level 04, rooftop weather station",INC-0564 model=deterministic (related domains verified steady) valid=True state=done,95,5796,htpd_v9f,1,0
+08:13:01,13,chat,Which sensors are abnormal right now?,1,,,11.1,,,"tools=['list_sensors', 'list_sensors'] | No sensors are critical or warning right now.",89,4218,htpd_v9f,1,0
+08:37:01,14,normal,normal EM-CR-SB00-00/pf=0.93 SR-AQ-KH03-03/rh=58,1,,,,,,no incident (as expected),52,4415,htpd_v9f,1,0
+08:54:08,15,incident,room temp 38 C,1,44.3,71.1,,sensor_fault,"Room temperature sensor fault (KH building, level 03)",INC-0568 model=qwen3.5-4b (htpd) valid=True state=done,95,4414,htpd_v9f,1,0

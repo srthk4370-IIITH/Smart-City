@@ -1392,6 +1392,12 @@ function paintStreams() {
     const el = $('#inc-detail [data-' + (refine ? 'rs' : 's') + '="' + ref + '"]');
     if (!el) { missing = true; continue; }
     paintPre(el, (refine ? S.rstream : S.stream)[k] || '');
+    if (!refine && ref === 'final') {
+      for (const box of $$('#inc-detail [data-aisf="final"]')) {
+        const nb = aiSoFarBox(S.stream[k]);
+        if (box.textContent !== nb.textContent) box.replaceWith(nb);
+      }
+    }
     if (!refine) {
       // rebuild the pill only when its words change (a rebuilt spinner restarts its animation)
       const pill = $('#inc-detail [data-sp="' + ref + '"]'), p = pill && streamPill(S.incId, ref);
@@ -1431,6 +1437,26 @@ function streamPill(incId, ref) {
   const spin = h('span', { class: 'spin', style: 'width:12px;height:12px;border-width:2px' });
   if (tx) return h('span', { class: 'pill orange' }, spin, 'Generating' + (b && f > 0 ? ' · first token ' + ((f - b.at) / 1000).toFixed(1) + ' s' : ''));
   return h('span', { class: 'pill orange' }, spin, b && b.refs.has(ref) ? 'Reading the readings' : 'On the NPU');
+}
+// "AI so far": the reasoner's head fields (title, severity, label, root cause, causal chain) as soon as each one
+// is complete in the live stream, ~10 s before the full report; not yet checked by the policy gate
+const AISF_KEYS = [['root_cause', 'Root cause'], ['causal_chain', 'How it happened'], ['label', 'Diagnosis'], ['severity', 'Severity'], ['title', 'Title']];
+function aiSoFar(text) {
+  const i = (text || '').lastIndexOf('{"title": "');
+  if (i < 0) return null;
+  const s = text.slice(i), o = {};
+  for (const [k] of AISF_KEYS) {
+    const m = s.match(new RegExp('"' + k + '": "((?:[^"\\\\]|\\\\.)*)"'));
+    if (m) try { o[k] = JSON.parse('"' + m[1] + '"'); } catch (e) { /* half an escape: next token */ }
+  }
+  return Object.keys(o).length ? o : null;
+}
+function aiSoFarBox(text) {
+  const o = aiSoFar(text);
+  if (!o) return h('div', { class: 'aisf', 'data-aisf': 'final' });
+  return h('div', { class: 'aisf', 'data-aisf': 'final' },
+    h('div', { class: 'muted', style: 'font-size:13px;margin-bottom:6px', text: 'AI so far (still writing; not yet checked by the safety gate)' }),
+    h('dl', { class: 'kv' }, AISF_KEYS.filter(([k]) => o[k]).flatMap(([k, t]) => [h('dt', { text: t }), h('dd', { style: k === 'root_cause' ? 'font-weight:700' : '', text: k === 'label' || k === 'severity' ? nice(o[k]) : o[k] })])));
 }
 function liveCard(incId, ref, role, text, note) {
   return h('div', { class: 'card agent st-none' },
@@ -1707,6 +1733,7 @@ function reasonerCard(inc) {
   } else if (running && pre) {
     const tx = S.stream[streamKeyOf(inc.id, 'final')];
     card.append(h('div', { class: 'banner', style: 'margin-bottom:12px' }, icon('clock'), h('span', { text: pre.note ? pre.note.replace(/ - /g, ' — ') + '. The AI report will replace this one.' : 'Preliminary report from the rules and the agent findings. The AI reasoner is writing the full report and will replace this one.' })));
+    card.append(aiSoFarBox(tx));
     if (pre.parsed) card.append(h('div', { style: 'margin-top:12px;opacity:.85' }, reportBody(inc, pre.parsed)));
     card.append(h('pre', { class: 'stream live', 'data-s': 'final', text: tx || '' }), h('div', { class: 'muted', style: 'font-size:13px;margin-top:6px', text: 'Reasoner typing live …' }));
   } else if (running) {
@@ -1714,7 +1741,7 @@ function reasonerCard(inc) {
     const tx = S.stream[streamKeyOf(inc.id, 'final')];
     const npu = (inc.sensors || []).filter((s) => !s.context).length, got = (inc.agents || []).filter((a) => !isCtxAgent(a)).length;
     const allAgents = inc.mode === 2 || got >= npu;
-    if (tx || allAgents) card.append(h('pre', { class: 'stream live', 'data-s': 'final', text: tx || '' }),
+    if (tx || allAgents) card.append(aiSoFarBox(tx), h('pre', { class: 'stream live', 'data-s': 'final', text: tx || '' }),
       h('div', { class: 'muted', style: 'font-size:13px;margin-top:6px', text: inc.mode === 2 ? 'One model call reads every sensor and writes the report, typing live …' : 'Combining the agent findings, typing live …' }));
     else card.append(wait('Waiting for agents …', got + ' of ' + npu + ' flagged sensor' + (npu === 1 ? '' : 's') + ' answered. The reasoner then decides root cause, severity and action across domains.'));
   } else card.append(h('div', { class: 'muted', text: 'No cross-domain report was produced.' }));
@@ -1848,7 +1875,10 @@ function renderIncDetail() {
   setText($('#isheet-t'), inc.id + (doms.length ? ' · ' + doms.join(', ') : ''));
   const sensors = inc.sensors || [];
   const flagged = sensors.filter((s) => !s.context), related = sensors.filter((s) => s.context);
-  const main = running ? null : mainReport(inc);
+  // while the AI works, the preliminary report (retrieval + rules) is shown as the report itself: actionable now,
+  // replaced when the AI report arrives (owner 2026-10-29)
+  const prelim = running && prelimOpen(inc);
+  const main = running && !prelim ? null : mainReport(inc);
   // 1. headline: severity + decision state + plain title (the rules' title and the timing stay under Technical details)
   parts.push(h('div', { class: 'op-head' },
     h('div', { class: 'rep-h', style: 'margin-bottom:8px' }, sevTag(inc),
@@ -1859,6 +1889,12 @@ function renderIncDetail() {
     wfOfI(inc) !== 'closed' && etaEl(inc) ? h('p', { class: 'op-meta' }, etaEl(inc)) : null));
   const bn = wfBanner(inc); if (bn) parts.push(bn);
   // 2. while the AI works: the progress steps (plain), its live text is under Technical details (open)
+  if (prelim) {
+    parts.push(h('div', { class: 'banner op-prelim', role: 'note' }, icon('clock'), h('span', { text: 'Preliminary report from past similar incidents and the rules. ' +
+      'The AI is writing the full report now and will replace this one. You can already work through the steps below.' })));
+    parts.push(aiSoFarBox(S.stream[streamKeyOf(inc.id, 'final')]));
+    parts.push(...opSummary(inc, main, flagged));
+  }
   if (running) parts.push(trackCard(inc));
   else if (inc.state === 'failed') parts.push(doneLine(inc));
   // 3. what is happening / why / what to do / how sure / what changed

@@ -2,8 +2,8 @@
 # owner order 2026-10-27: final checkpoint (612) -> merged Q4_0 GGUF -> Code/models_stage/${NAME}_q4_0.gguf + md5
 set -e
 PS=/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe
-free_mb() { $PS -NoProfile -Command "[int]((Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory/1024)" 2>/dev/null | tr -dc 0-9; }
-until [ "$(free_mb)" -ge 4096 ]; do echo "$(date +%T) RAM $(free_mb) MB < 4 GB, waiting"; sleep 60; done
+free_mb() { timeout 30 $PS -NoProfile -Command "(Get-CimInstance Win32_PerfFormattedData_PerfOS_Memory).AvailableMBytes" < /dev/null 2>/dev/null | tr -dc 0-9; }  # 2026-10-31: available, not free (free never reaches 4 GB on this laptop)
+until [ "$(free_mb)" -ge 1536 ]; do echo "$(date +%T) RAM $(free_mb) MB < 1.5 GB available, waiting"; sleep 60; done
 NAME=${NAME:-rsn_v1}; CK=${CK:-~/smartcity_runs/reasoner_v1/run1/ckpt_step0612}
 E=~/smartcity_runs/reasoner_v1/gguf/$NAME; mkdir -p $E; rm -rf $E/hf
 LC=~/gpu_work/llama.cpp; export PYTHONPATH=$LC/gguf-py OMP_NUM_THREADS=4

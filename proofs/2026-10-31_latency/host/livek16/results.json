@@ -1,0 +1,194 @@
+[
+ {
+  "req": "q10",
+  "k": 0,
+  "wall_s": 254.91,
+  "rss_kb": 1760352,
+  "resp": {
+   "outputs": [
+    {
+     "text": "\"title\": \"Incident-2026-12-10\", \"severity\": \"warning\", \"label\": \"water_supply_issue\", \"root_cause\": \"Water tank draining at TH building causing rapid level decrease from 261.0 to 236.1, with no corresponding inflow from WM-WF-TH98-40 flow meter.\", \"causal_chain\": \"1. WM-WL-TH98-00 (TH building) shows water level dropping at -5.9 level/h (S1.E4). 2. WM-WF-TH98-40 (TH building) shows water flow at 0.26 m3/h (S2.E1), indicating normal usage. 3. No occupancy detected (S3.E2) at TH building. 4. Tank level trend shows no inflow, only outflow. 5. S1.E2 indicates level 261.0 at 00:30, S1.E3 min at 04:25, confirming downward drift. 6. S1.E1 last = 236.1, S1.E2 max = 261.0, confirming no inflow. 7. S1.E9 shows slow drift -19.7 level since 16:30, but recent episodes show 3 excursions beyond 3x normal noise. 8. S1.E10 shows recent episodes with 10.5x noise, suggesting instability. 9. S2.E5 largest 5-min change = -0.51 m3/h at 02:35, consistent with downward trend. 10. S2.E2 max = 0.66 m3/h at 02:30, S2.E3 min = 0.03 m3/h at 01:00, confirming stable but low flow. 11. S1.E10 shows 12h view with 3 excursions beyond 3x normal noise, suggesting instability. 12. S1.E10 shows 12h view with 3 excursions beyond 3x normal noise, suggesting instability.\", \"observations\": [{\"text\": \"Water tank level at TH building (WM-WL-TH98-00) dropping rapidly at -5.9 level/h (S1.E4).\", \"src\": [\"S1.E4\"]}, {\"text\": \"Water flow at TH building (WM-WF-TH98-40) is stable at 0.26 m3/h (S2.E1).\", \"src\": [\"S2.E1\"]}, {\"text\": \"Water flow at TH building (WM-WF-TH98-40) shows max 0.66 m3/h at 02:30 (S2.E2).\", \"src\": [\"S2.E2\"]}, {\"text\": \"Water flow at TH building (WM-WF-TH98-40) shows min 0.03 m3/h at 01:00 (S2.E3).\", \"src\": [\"S2.E3\"]}, {\"text\": \"Water flow at TH building (WM-WF-TH9, \"agent_checks\": [{\"ref\": \"S1\", \"claim\": \"Tank level keeps falling at -5.9 level/h\", \"verdict\": \"corrected\", \"fact\": \"S1.E4 trend = -5.9 level/h, r2 0.97\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"Level 261.0 level is past the high mark of 161.2\", \"verdict\": \"corrected\", \"fact\": \"S1.E2 max = 261.0 level at 00:30\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"No presence detected at TH building\", \"verdict\": \"corrected\", \"fact\": \"S3.E2 occupied fraction = 0.00\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E1 last = 236.1 level\", \"verdict\": \"corrected\", \"fact\": \"S1.E1 last =, \"checklist\": [{\"action\": \"check_sensor\", \"target\": \"WM-WL-TH98-00\", \"why\": \"Verify if level drop is due to tank drain or external inflow. Current trend shows no inflow, suggesting drain or no inflow.\"}, {\"action\": \"check_sensor\", \"target\": \"WM-WF-TH98-40\", \"why\": \"Verify if flow is sufficient to counteract drain. Flow is 0.26 m3/h, which may be insufficient for large drain rate.\"}, {\"action\": \"review_schedule\", \"target\": \"TH building\", \"why\": \"Check if any scheduled maintenance or events could explain the level drop. No occupancy detected, so likely external drain.\"}, {\"action\": \"request_facility_review\", \"target\": \"TH building\", \"why\": \"Review if there is a water supply line or inflow source that could explain the level drop. No inflow detected, so likely drain.\"}, {\"action\": \"replace_sensor\", \"target\": \"WM-WL-TH98-0",
+     "tokens": 1154,
+     "ttft_ms": 46670.3,
+     "ms": 253060.5,
+     "stop": "max",
+     "forced": 178
+    }
+   ],
+   "prefill_ms": 46708.1,
+   "swap_ms": 1817.2,
+   "total_ms": 254903.0,
+   "reason": {
+    "swapped": true,
+    "unload_ms": 185.1,
+    "load_ms": 1632.1,
+    "cache": "saved",
+    "cached_tokens": 1317,
+    "cache_ms": 28931.5,
+    "kept": true,
+    "streams": 3
+   },
+   "id": "rwh:rwh-00098"
+  }
+ },
+ {
+  "req": "q11",
+  "k": 1,
+  "wall_s": 226.24,
+  "rss_kb": 1584716,
+  "resp": {
+   "outputs": [
+    {
+     "text": "\"title\": \"Incident-9696\", \"severity\": \"warning\", \"label\": \"occupancy_driven_load\", \"root_cause\": \"Occupancy-driven load (S2) causing rapid CO2 fluctuations (S1) at PB building, room 02, 04:35 IST.\", \"causal_chain\": \"Agent S2 reports occupancy=0 (vacant). Agent S1 reports CO2=324 ppm, falling at -9.4 ppm/h. S2.E2 confirms vacant state. S1.E1 last=324 ppm. S1.E3 min=324 ppm at 04:35. S1.E4 trend=-9.4 ppm/h. S1.E5 largest 5-min change=-14.0 ppm at 02:40. S1.E9 12h view slow drift -110 ppm since 16:40. S1.E10 recent episodes 8 excursions beyond 3x normal noise in last 12h. S2.E4 first occupied at never. S2.E5 last occupied at never. Memory M1: 2026-11-09 INC-0697 co2 sensor_fault on SR-AQ-PB02-03 (recalibrated, closed as repaired).\", \"observations\": [{\"text\": \"S1.E1 last CO2=324 ppm\", \"src\": [\"S1.E1\"]}, {\"text\": \"S1.E2 max CO2=367 ppm at 00:45\", \"src\": [\"S1.E2\"]}, {\"text\": \"S1.E3 min CO2=324 ppm at 04:35\", \"src\": [\"S1.E3\"]}, {\"text\": \"S1.E4 trend=-9.4 ppm/h\", \"src\": [\"S1.E4\"]}, {\"text\": \"S1.E5 largest 5-min change=-14.0 ppm at 02:40\", \"src\": [\"S1.E5\"]}, {\"text\": \"S1.E9 12h view slow drift -110.0 ppm since 16:40\", \"src\": [\"S1.E9\"]}, {\"text\": \"S1.E10 recent episodes 8 excursions beyond 3x normal noise in last 12h\", \"src\": [\"S1.E10\"]}, {\"text\": \"S2.E2 occupancy=0 (vacant)\", \"src\": [\"S2.E2\"]}, {\"text\": \"S2.E4 first occupied at never\", \"src\": [\"S2.E4\"]}, {\"text\": \"S2.E5 last occupied at never\", \"src\": [\"S2.E5\"]}, {\"text\": \"S1.E10 8 excursions beyond 3x normal noise in last 12h\", \"src\": [\"S1.E10\"]}, {\"text\": \"S1.E10 8 excursions beyond 3x normal noise in last 12h\", \"src\": [\"S1.E10\"]}, {\"text\": \"S1.E10 8 excursions beyond 3x normal noise in last 12h, \"agent_checks\": [{\"ref\": \"S1\", \"claim\": \"CO2 falling at -9.4 ppm/h\", \"verdict\": \"corrected\", \"fact\": \"S1.E4 trend = -9.4 ppm/h\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E1 last = 324 ppm\", \"verdict\": \"corrected\", \"fact\": \"S1.E1 last = 324 ppm\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E2 max = 367 ppm at 00:45\", \"verdict\": \"corrected\", \"fact\": \"S1.E2 max = 367 ppm at 00:45\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E3 min = 324 ppm at 04:35\", \"verdict\": \"corrected\", \"fact\": \"S1.E3 min = 324 ppm at 04:35\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E4 trend = -9.4 ppm/h\", \"verdict\": \"corrected\", \"fact\": \"S1.E4 trend = -9.4 ppm/h\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E5 largest 5-min change = -14.0 ppm at 02:40\", \"verdict\": \"corrected\", \"fact\": \"S1.E5 largest 5-min change = -14.0 ppm at 02:40\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E9 12 h view: slow drift -110.0 ppm since 16:40\", \"verdict\":, \"checklist\": [{\"action\": \"none\", \"target\": \"SR-AQ-PB02-03\", \"why\": \"Agent S1 flagged as normal, but S1.E10 shows 8 excursions beyond 3x normal noise in last 12h, indicating instability.\"}, {\"action\": \"inspect_ventilation\", \"target\": \"SR-AQ-PB02-03\", \"why\": \"Agent S1 claims quality=good, but S1.E10 shows 8 excursions beyond 3x normal noise, suggesting ventilation may be insufficient or failing.\"}, {\"action\": \"check_sensor\", \"target\": \"SR-AQ-PB02-03\", \"why\": \"Agent S1 claims quality=good, but S1.E10 shows 8 excursions beyond 3x normal noise in last 12h, suggesting sensor may be malfunctioning or data quality is compromised.\"}, {\"action\": \"review_schedule\", \"target\": \"SR-AQ-PB02-03\", \"why\": \"Agent S1 claims quality=good, but S1.E10 shows 8 excursions beyond 3x normal noise in last 12h, suggesting schedule may be misaligned with occupancy or ventilation needs.\"}, {\"action\": \"request_facility_review\", \"target\": \"SR-AQ-PB02-03\", \"why\": \"Agent S1 claims quality=good, but S1.E10 shows 8 excursions beyond 3x normal noise in last 12h, suggesting facility review needed to rule out ventilation or HVAC issues.\"}, {\"action\": \"replace_sensor\", \"target\": \"SR-AQ-PB02-03\", \"why\": \"Agent S1 claims quality=good, but S1.E10 shows 8 excursions beyond 3x normal noise in last 12h, suggesting sensor may be malfunctioning or data quality is",
+     "tokens": 1524,
+     "ttft_ms": 12123.8,
+     "ms": 226218.3,
+     "stop": "max",
+     "forced": 292
+    }
+   ],
+   "prefill_ms": 12174.4,
+   "swap_ms": 0.0,
+   "total_ms": 226234.6,
+   "reason": {
+    "swapped": false,
+    "unload_ms": 0.0,
+    "load_ms": 0.0,
+    "cache": "mem",
+    "cached_tokens": 1317,
+    "cache_ms": 18.2,
+    "kept": true,
+    "streams": 3
+   },
+   "id": "rwh:rwh-00147"
+  }
+ },
+ {
+  "req": "q12",
+  "k": 2,
+  "wall_s": 188.97,
+  "rss_kb": 1544468,
+  "resp": {
+   "outputs": [
+    {
+     "text": "\"title\": \"Night Cooling Recovery Incident\", \"severity\": \"normal\", \"label\": \"occupancy_driven_load\", \"root_cause\": \"AC unit (SR-AC-KH01-11) initiated cooling at 22:30 to recover from 27.9\u00b0C to 26.6\u00b0C. Cooling successfully achieved target 26.6\u00b0C by 22:55. No physical faults detected.\", \"causal_chain\": \"1. Incident-22:55: AC unit SR-AC-KH01-11 (hvac) initiated cooling mode. 2. 22:30: Cooling started, temperature dropped from 27.9\u00b0C to 26.6\u00b0C. 3. 22:55: Cooling stable at 26.6\u00b0C (within comfort band 20.0-25.0\u00b0C). 4. 22:30-22:55: Cooling rate -0.3\u00b0C/h (S1.E4). 5. 22:30-19:00: Cooling recovery from 27.9\u00b0C to 26.6\u00b0C (S1.E1, S1.E2). 6. 22:30-22:55: AC on 6/48 samples, mode cool, starts 1, stops 0 (S1.E5). 7. 22:30-22:55: No occupancy change (S1.E8). 8. 22:30-22:55: No level shift or drift (S1.E9). 9. 22:30-22:55: No excursions beyond 3x normal noise (S1.E10). 10. 22:30-22:55: No false alarm (S1.E1).\", \"observations\": [{\"text\": \"AC unit SR-AC-KH01-11 (hvac) at KH building, level 01\", \"src\": [\"S1.E1\", \"S1.E2\", \"S1.E3\", \"S1.E4\", \"S1.E5\", \"S1.E6\", \"S1.E7\", \"S1.E8\", \"S1.E9\", \"S1.E10\"]}], \"agent_checks\": [{\"ref\": \"S1.E1\", \"claim\": \"Cooling recovery from 27.9 C to 26.6 C since 22:30\", \"verdict\": \"corrected\", \"fact\": \"Confirmed by S1.E1 and S1.E2 data showing 27.9\u219226.6 C in 25 min window.\", \"src\": [\"S1.E1\", \"S1.E2\"]}, {\"ref\": \"S1.E3\", \"claim\": \"S1.E3 above band for last 240 min since 19:00\", \"verdict\": \"corrected\", \"fact\": \"Confirmed by S1.E3 trend showing 240 min duration above band.\", \"src\": [\"S1.E3\"]}, {\"ref\": \"S1.E4\", \"claim\": \"Trend -0.3 C/h, last hour -1.1 C/h\", \"verdict\": \"corrected\", \"fact\": \"Confirmed by S1.E4 trend analysis.\", \"src\": [\"S1.E4\"]}, {\"ref\": \"S1.E5\", \"claim\": \"AC on 6/48 samples, mode cool, starts 1, stops 0, last start 22:30, \"checklist\": [{\"action\": \"none\", \"target\": \"SR-AC-KH01-11\", \"why\": \"Agent report indicates normal_operation with confidence 0.72, no faults or anomalies.\"}, {\"action\": \"inspect_ventilation\", \"target\": \"KH building, level 01\", \"why\": \"Check for any physical obstruction or airflow issues that might have contributed to the cooling recovery.\"}, {\"action\": \"check_sensor\", \"target\": \"SR-AC-KH01-11\", \"why\": \"Verify AC status and temperature stability post-incident to confirm no hidden faults.\"}], \"monitor_next\": \"Continue monitoring SR-AC-KH01-11 for 24h to ensure no recurrence of cooling recovery or temperature excursions.\", \"needs_more_data\": false, \"needs_deeper\": false, \"explanation\": \"Agent findings are consistent with a normal occupancy-driven load event. The AC unit successfully cooled the room from 27.9\u00b0C to 26.6\u00b0C within 25 minutes. No physical faults, sensor drift, or environmental anomalies were identified. The incident is classified as normal_operation.\"}",
+     "tokens": 1046,
+     "ttft_ms": 10313.1,
+     "ms": 188918.5,
+     "stop": "max",
+     "forced": 154
+    }
+   ],
+   "prefill_ms": 10348.1,
+   "swap_ms": 0.0,
+   "total_ms": 188964.1,
+   "reason": {
+    "swapped": false,
+    "unload_ms": 0.0,
+    "load_ms": 0.0,
+    "cache": "mem",
+    "cached_tokens": 1317,
+    "cache_ms": 12.1,
+    "kept": true,
+    "streams": 3
+   },
+   "id": "rwh:rwh-00011"
+  }
+ },
+ {
+  "req": "q10",
+  "k": 3,
+  "wall_s": 237.2,
+  "rss_kb": 1527148,
+  "resp": {
+   "outputs": [
+    {
+     "text": "\"title\": \"Incident-2026-12-10\", \"severity\": \"warning\", \"label\": \"water_supply_issue\", \"root_cause\": \"Water tank draining at TH building causing rapid level decrease from 261.0 to 236.1, with no corresponding inflow from WM-WF-TH98-40 flow meter.\", \"causal_chain\": \"1. WM-WL-TH98-00 (TH building) shows water level dropping at -5.9 level/h (S1.E4). 2. WM-WF-TH98-40 (TH building) shows water flow at 0.26 m3/h (S2.E1), indicating normal usage. 3. No occupancy detected (S3.E2) at TH building. 4. Tank level trend shows no inflow, only outflow. 5. S1.E2 indicates level 261.0 at 00:30, S1.E3 min at 04:25, confirming downward drift. 6. S1.E1 last = 236.1, S1.E2 max = 261.0, confirming no inflow. 7. S1.E9 shows slow drift -19.7 level since 16:30, but recent episodes show 3 excursions beyond 3x normal noise. 8. S1.E10 shows recent episodes with 10.5x noise, suggesting instability. 9. S2.E5 largest 5-min change = -0.51 m3/h at 02:35, consistent with downward trend. 10. S2.E2 max = 0.66 m3/h at 02:30, S2.E3 min = 0.03 m3/h at 01:00, confirming stable but low flow. 11. S1.E10 shows 12h view with 3 excursions beyond 3x normal noise, suggesting instability. 12. S1.E10 shows 12h view with 3 excursions beyond 3x normal noise, suggesting instability.\", \"observations\": [{\"text\": \"Water tank level at TH building (WM-WL-TH98-00) dropping rapidly at -5.9 level/h (S1.E4).\", \"src\": [\"S1.E4\"]}, {\"text\": \"Water flow at TH building (WM-WF-TH98-40) is stable at 0.26 m3/h (S2.E1).\", \"src\": [\"S2.E1\"]}, {\"text\": \"Water flow at TH building (WM-WF-TH98-40) shows max 0.66 m3/h at 02:30 (S2.E2).\", \"src\": [\"S2.E2\"]}, {\"text\": \"Water flow at TH building (WM-WF-TH98-40) shows min 0.03 m3/h at 01:00 (S2.E3).\", \"src\": [\"S2.E3\"]}, {\"text\": \"Water flow at TH building (WM-WF-TH9, \"agent_checks\": [{\"ref\": \"S1\", \"claim\": \"Tank level keeps falling at -5.9 level/h\", \"verdict\": \"corrected\", \"fact\": \"S1.E4 trend = -5.9 level/h, r2 0.97\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"Level 261.0 level is past the high mark of 161.2\", \"verdict\": \"corrected\", \"fact\": \"S1.E2 max = 261.0 level at 00:30\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"No presence detected at TH building\", \"verdict\": \"corrected\", \"fact\": \"S3.E2 occupied fraction = 0.00\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E1 last = 236.1 level\", \"verdict\": \"corrected\", \"fact\": \"S1.E1 last =, \"checklist\": [{\"action\": \"check_sensor\", \"target\": \"WM-WL-TH98-00\", \"why\": \"Verify if level drop is due to tank drain or external inflow. Current trend shows no inflow, suggesting drain or no inflow.\"}, {\"action\": \"check_sensor\", \"target\": \"WM-WF-TH98-40\", \"why\": \"Verify if flow is sufficient to counteract drain. Flow is 0.26 m3/h, which may be insufficient for large drain rate.\"}, {\"action\": \"review_schedule\", \"target\": \"TH building\", \"why\": \"Check if any scheduled maintenance or events could explain the level drop. No occupancy detected, so likely external drain.\"}, {\"action\": \"request_facility_review\", \"target\": \"TH building\", \"why\": \"Review if there is a water supply line or inflow source that could explain the level drop. No inflow detected, so likely drain.\"}, {\"action\": \"replace_sensor\", \"target\": \"WM-WL-TH98-0",
+     "tokens": 1154,
+     "ttft_ms": 15628.5,
+     "ms": 237128.5,
+     "stop": "max",
+     "forced": 178
+    }
+   ],
+   "prefill_ms": 15679.5,
+   "swap_ms": 0.0,
+   "total_ms": 237190.1,
+   "reason": {
+    "swapped": false,
+    "unload_ms": 0.0,
+    "load_ms": 0.0,
+    "cache": "mem",
+    "cached_tokens": 1317,
+    "cache_ms": 14.4,
+    "kept": true,
+    "streams": 3
+   },
+   "id": "rwh:rwh-00098"
+  }
+ },
+ {
+  "req": "q11",
+  "k": 4,
+  "wall_s": 222.17,
+  "rss_kb": 1535816,
+  "resp": {
+   "outputs": [
+    {
+     "text": "\"title\": \"Incident-9696\", \"severity\": \"warning\", \"label\": \"occupancy_driven_load\", \"root_cause\": \"Occupancy-driven load (S2) causing rapid CO2 fluctuations (S1) at PB building, room 02, 04:35 IST.\", \"causal_chain\": \"Agent S2 reports occupancy=0 (vacant). Agent S1 reports CO2=324 ppm, falling at -9.4 ppm/h. S2.E2 confirms vacant state. S1.E1 last=324 ppm. S1.E3 min=324 ppm at 04:35. S1.E4 trend=-9.4 ppm/h. S1.E5 largest 5-min change=-14.0 ppm at 02:40. S1.E9 12h view slow drift -110 ppm since 16:40. S1.E10 recent episodes 8 excursions beyond 3x normal noise in last 12h. S2.E4 first occupied at never. S2.E5 last occupied at never. Memory M1: 2026-11-09 INC-0697 co2 sensor_fault on SR-AQ-PB02-03 (recalibrated, closed as repaired).\", \"observations\": [{\"text\": \"S1.E1 last CO2=324 ppm\", \"src\": [\"S1.E1\"]}, {\"text\": \"S1.E2 max CO2=367 ppm at 00:45\", \"src\": [\"S1.E2\"]}, {\"text\": \"S1.E3 min CO2=324 ppm at 04:35\", \"src\": [\"S1.E3\"]}, {\"text\": \"S1.E4 trend=-9.4 ppm/h\", \"src\": [\"S1.E4\"]}, {\"text\": \"S1.E5 largest 5-min change=-14.0 ppm at 02:40\", \"src\": [\"S1.E5\"]}, {\"text\": \"S1.E9 12h view slow drift -110.0 ppm since 16:40\", \"src\": [\"S1.E9\"]}, {\"text\": \"S1.E10 recent episodes 8 excursions beyond 3x normal noise in last 12h\", \"src\": [\"S1.E10\"]}, {\"text\": \"S2.E2 occupancy=0 (vacant)\", \"src\": [\"S2.E2\"]}, {\"text\": \"S2.E4 first occupied at never\", \"src\": [\"S2.E4\"]}, {\"text\": \"S2.E5 last occupied at never\", \"src\": [\"S2.E5\"]}, {\"text\": \"S1.E10 8 excursions beyond 3x normal noise in last 12h\", \"src\": [\"S1.E10\"]}, {\"text\": \"S1.E10 8 excursions beyond 3x normal noise in last 12h\", \"src\": [\"S1.E10\"]}, {\"text\": \"S1.E10 8 excursions beyond 3x normal noise in last 12h, \"agent_checks\": [{\"ref\": \"S1\", \"claim\": \"CO2 falling at -9.4 ppm/h\", \"verdict\": \"corrected\", \"fact\": \"S1.E4 trend = -9.4 ppm/h\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E1 last = 324 ppm\", \"verdict\": \"corrected\", \"fact\": \"S1.E1 last = 324 ppm\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E2 max = 367 ppm at 00:45\", \"verdict\": \"corrected\", \"fact\": \"S1.E2 max = 367 ppm at 00:45\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E3 min = 324 ppm at 04:35\", \"verdict\": \"corrected\", \"fact\": \"S1.E3 min = 324 ppm at 04:35\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E4 trend = -9.4 ppm/h\", \"verdict\": \"corrected\", \"fact\": \"S1.E4 trend = -9.4 ppm/h\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E5 largest 5-min change = -14.0 ppm at 02:40\", \"verdict\": \"corrected\", \"fact\": \"S1.E5 largest 5-min change = -14.0 ppm at 02:40\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E9 12 h view: slow drift -110.0 ppm since 16:40\", \"verdict\":, \"checklist\": [{\"action\": \"none\", \"target\": \"SR-AQ-PB02-03\", \"why\": \"Agent S1 flagged as normal, but S1.E10 shows 8 excursions beyond 3x normal noise in last 12h, indicating instability.\"}, {\"action\": \"inspect_ventilation\", \"target\": \"SR-AQ-PB02-03\", \"why\": \"Agent S1 claims quality=good, but S1.E10 shows 8 excursions beyond 3x normal noise, suggesting ventilation may be insufficient or failing.\"}, {\"action\": \"check_sensor\", \"target\": \"SR-AQ-PB02-03\", \"why\": \"Agent S1 claims quality=good, but S1.E10 shows 8 excursions beyond 3x normal noise in last 12h, suggesting sensor may be malfunctioning or data quality is compromised.\"}, {\"action\": \"review_schedule\", \"target\": \"SR-AQ-PB02-03\", \"why\": \"Agent S1 claims quality=good, but S1.E10 shows 8 excursions beyond 3x normal noise in last 12h, suggesting schedule may be misaligned with occupancy or ventilation needs.\"}, {\"action\": \"request_facility_review\", \"target\": \"SR-AQ-PB02-03\", \"why\": \"Agent S1 claims quality=good, but S1.E10 shows 8 excursions beyond 3x normal noise in last 12h, suggesting facility review needed to rule out ventilation or HVAC issues.\"}, {\"action\": \"replace_sensor\", \"target\": \"SR-AQ-PB02-03\", \"why\": \"Agent S1 claims quality=good, but S1.E10 shows 8 excursions beyond 3x normal noise in last 12h, suggesting sensor may be malfunctioning or data quality is",
+     "tokens": 1524,
+     "ttft_ms": 19821.2,
+     "ms": 221714.8,
+     "stop": "max",
+     "forced": 292
+    }
+   ],
+   "prefill_ms": 19878.3,
+   "swap_ms": 0.0,
+   "total_ms": 222160.4,
+   "reason": {
+    "swapped": false,
+    "unload_ms": 0.0,
+    "load_ms": 0.0,
+    "cache": "mem",
+    "cached_tokens": 1317,
+    "cache_ms": 18.9,
+    "kept": true,
+    "streams": 3
+   },
+   "id": "rwh:rwh-00147"
+  }
+ },
+ {
+  "req": "q12",
+  "k": 5,
+  "wall_s": 177.85,
+  "rss_kb": 1540868,
+  "resp": {
+   "outputs": [
+    {
+     "text": "\"title\": \"Night Cooling Recovery Incident\", \"severity\": \"normal\", \"label\": \"occupancy_driven_load\", \"root_cause\": \"AC unit (SR-AC-KH01-11) initiated cooling at 22:30 to recover from 27.9\u00b0C to 26.6\u00b0C. Cooling successfully achieved target 26.6\u00b0C by 22:55. No physical faults detected.\", \"causal_chain\": \"1. Incident-22:55: AC unit SR-AC-KH01-11 (hvac) initiated cooling mode. 2. 22:30: Cooling started, temperature dropped from 27.9\u00b0C to 26.6\u00b0C. 3. 22:55: Cooling stable at 26.6\u00b0C (within comfort band 20.0-25.0\u00b0C). 4. 22:30-22:55: Cooling rate -0.3\u00b0C/h (S1.E4). 5. 22:30-19:00: Cooling recovery from 27.9\u00b0C to 26.6\u00b0C (S1.E1, S1.E2). 6. 22:30-22:55: AC on 6/48 samples, mode cool, starts 1, stops 0 (S1.E5). 7. 22:30-22:55: No occupancy change (S1.E8). 8. 22:30-22:55: No level shift or drift (S1.E9). 9. 22:30-22:55: No excursions beyond 3x normal noise (S1.E10). 10. 22:30-22:55: No false alarm (S1.E1).\", \"observations\": [{\"text\": \"AC unit SR-AC-KH01-11 (hvac) at KH building, level 01\", \"src\": [\"S1.E1\", \"S1.E2\", \"S1.E3\", \"S1.E4\", \"S1.E5\", \"S1.E6\", \"S1.E7\", \"S1.E8\", \"S1.E9\", \"S1.E10\"]}], \"agent_checks\": [{\"ref\": \"S1.E1\", \"claim\": \"Cooling recovery from 27.9 C to 26.6 C since 22:30\", \"verdict\": \"corrected\", \"fact\": \"Confirmed by S1.E1 and S1.E2 data showing 27.9\u219226.6 C in 25 min window.\", \"src\": [\"S1.E1\", \"S1.E2\"]}, {\"ref\": \"S1.E3\", \"claim\": \"S1.E3 above band for last 240 min since 19:00\", \"verdict\": \"corrected\", \"fact\": \"Confirmed by S1.E3 trend showing 240 min duration above band.\", \"src\": [\"S1.E3\"]}, {\"ref\": \"S1.E4\", \"claim\": \"Trend -0.3 C/h, last hour -1.1 C/h\", \"verdict\": \"corrected\", \"fact\": \"Confirmed by S1.E4 trend analysis.\", \"src\": [\"S1.E4\"]}, {\"ref\": \"S1.E5\", \"claim\": \"AC on 6/48 samples, mode cool, starts 1, stops 0, last start 22:30, \"checklist\": [{\"action\": \"none\", \"target\": \"SR-AC-KH01-11\", \"why\": \"Agent report indicates normal_operation with confidence 0.72, no faults or anomalies.\"}, {\"action\": \"inspect_ventilation\", \"target\": \"KH building, level 01\", \"why\": \"Check for any physical obstruction or airflow issues that might have contributed to the cooling recovery.\"}, {\"action\": \"check_sensor\", \"target\": \"SR-AC-KH01-11\", \"why\": \"Verify AC status and temperature stability post-incident to confirm no hidden faults.\"}], \"monitor_next\": \"Continue monitoring SR-AC-KH01-11 for 24h to ensure no recurrence of cooling recovery or temperature excursions.\", \"needs_more_data\": false, \"needs_deeper\": false, \"explanation\": \"Agent findings are consistent with a normal occupancy-driven load event. The AC unit successfully cooled the room from 27.9\u00b0C to 26.6\u00b0C within 25 minutes. No physical faults, sensor drift, or environmental anomalies were identified. The incident is classified as normal_operation.\"}",
+     "tokens": 1046,
+     "ttft_ms": 11388.8,
+     "ms": 177788.4,
+     "stop": "max",
+     "forced": 154
+    }
+   ],
+   "prefill_ms": 11426.9,
+   "swap_ms": 0.0,
+   "total_ms": 177838.2,
+   "reason": {
+    "swapped": false,
+    "unload_ms": 0.0,
+    "load_ms": 0.0,
+    "cache": "mem",
+    "cached_tokens": 1317,
+    "cache_ms": 40.0,
+    "kept": true,
+    "streams": 3
+   },
+   "id": "rwh:rwh-00011"
+  }
+ }
+]

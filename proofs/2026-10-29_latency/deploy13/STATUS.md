@@ -1,0 +1,12 @@
+# Deploy 13 (what_if typical base, recent by id): full head back + v8x5 + AI-so-far UI + chat peak fix (18:54 IST)
+- chat: 0 s | tools ['what_if'] | busy False | error False | What if occupancy increases by 50%, impact on other domains -> An estimate fitted from recent device data (in the last 7 days): it shows an association, not a guarantee. If occupancy at KH changes +50% (0 to 0), the recent data shows no clear link to the other readings there. No cle
+- chat: 0 s | tools ['recent_incidents'] | busy False | error False | List the incidents -> The 5 most recent incidents, newest first: INC-0495 KH building, level 03: Suspect CO2 readings (sensor fault, 2026-10-13 10:25); INC-0490 KH building, level 03: Suspect CO2 readings (sensor fault, 2026-10-13 10:25); INC
+- chat: 11 s | tools ['count_incidents'] | busy False | error False | How many incidents were there today? -> There were 55 incidents today.
+- DEPLOYED: APK 5da085bc, bin htpd_v8x5, reasoner qwen35_reasoner (full head); chaos 2 rc=0; fastcheck {"fast_incident": "INC-0495", "fast_s": 5.6, "ai_update_s": 52.3, "final_model": "qwen3.5-4b (htpd)", "valid": true, "severity": "sensor_fault", "title": "KH building, level 03: Suspect CO2 readings", "pass": true}
+- htpd: htpd: reasoner load phases: model 3887 ms, context 111 ms, pieces 0 ms
+- htpd: htpd: reason step profile: 207 steps, rows 2.61/step (max 14); ms/step build 0.00 decode 135.89 pick 0.06 handle 0.29 flush 0.01
+- htpd: htpd: reason 3 streams, 207 decode steps, prefill 5019 ms, cache saved (1317 tokens, 2358 ms)
+- htpd: htpd: reasoner load phases: model 3647 ms, context 93 ms, pieces 0 ms
+- htpd: htpd: reason step profile: 30 steps, rows 1.00/step (max 1); ms/step build 0.00 decode 88.67 pick 0.03 handle 0.00 flush 0.01
+- htpd: htpd: reason step profile: 8 steps, rows 1.00/step (max 1); ms/step build 0.00 decode 88.48 pick 0.03 handle 0.00 flush 0.01
+- board now: reasoner_split=3 bin=/data/local/tmp/llama.cpp/bin/htpd_v8x5 reasoner_model=/data/local/tmp/gpu/qwen35_reasoner_q4_0.gguf 

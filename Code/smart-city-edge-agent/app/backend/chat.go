@@ -43,8 +43,35 @@ func chatStaticPrefix(now time.Time) string {
 	return chatHeader + first + chatSystem + "<|im_end|>\n<|im_start|>user\n"
 }
 
+// Chat prompt = the Qwen3.5 HF chat template (models/qwen3.5-4b/chat_template.jinja) as training renders it:
+//   - earlier exchanges (before the last user question): the template drops reasoning from them, so a history answer
+//     is "<|im_start|>assistant\n" + trim(answer) + "<|im_end|>\n" - no <think> block at all (thinking on or off);
+//   - the user text is trimmed; tool results are "<|im_start|>user\n<tool_response>\n...\n</tool_response>" joined by "\n";
+//   - assistant rounds of the current question keep their reasoning: "<|im_start|>assistant\n<think>\n" + reasoning +
+//     "\n</think>\n\n" + calls; the generation prompt is chatAssistantOpen().
+//
+// chatThinkAdaptive selects the current-turn opening: false (rsn_v1, trained with enable_thinking=False) = the empty
+// think block v3AssistantOpen; true (rsn_v3, adaptive thinking: trained with thinking on, the target either reasons
+// or closes the block at once) = "<|im_start|>assistant\n<think>\n", the template's add_generation_prompt with
+// thinking enabled, and the model writes the (possibly empty) reasoning and "</think>" itself. Profile key chat_think
+// (or SCE_CHAT_THINK) = "adaptive" switches it on.
+func chatThinkAdaptive() bool { return reasonerProfile("chat_think", "SCE_CHAT_THINK") == "adaptive" }
+
+const chatAssistantOpenAdaptive = "<|im_start|>assistant\n<think>\n"
+
+func chatAssistantOpen(adaptive bool) string {
+	if adaptive {
+		return chatAssistantOpenAdaptive
+	}
+	return v3AssistantOpen
+}
+
 // chatPrompt: prefix + up to chatKeepTurns earlier exchanges + the question + this question's tool rounds.
 func chatPrompt(prefix string, history []ChatMsg, question string, turns []v3Turn) string {
+	return chatPromptMode(prefix, history, question, turns, chatThinkAdaptive())
+}
+
+func chatPromptMode(prefix string, history []ChatMsg, question string, turns []v3Turn, adaptive bool) string {
 	var b strings.Builder
 	b.WriteString(prefix)
 	var pairs [][2]string
@@ -57,10 +84,14 @@ func chatPrompt(prefix string, history []ChatMsg, question string, turns []v3Tur
 		pairs = pairs[len(pairs)-chatKeepTurns:]
 	}
 	for _, p := range pairs {
-		b.WriteString(p[0] + "<|im_end|>\n" + v3AssistantOpen + p[1] + "<|im_end|>\n<|im_start|>user\n")
+		b.WriteString(strings.TrimSpace(p[0]) + "<|im_end|>\n<|im_start|>assistant\n" + strings.TrimSpace(chatClean(p[1])) + "<|im_end|>\n<|im_start|>user\n")
 	}
-	b.WriteString(question + "<|im_end|>\n" + v3AssistantOpen)
+	open := chatAssistantOpen(adaptive)
+	b.WriteString(strings.TrimSpace(question) + "<|im_end|>\n" + open)
 	for _, t := range turns {
+		if adaptive {
+			b.WriteString(strings.TrimSpace(t.Think) + "\n</think>\n\n")
+		}
 		for i, c := range t.Calls {
 			if i > 0 {
 				b.WriteString("\n")
@@ -78,9 +109,18 @@ func chatPrompt(prefix string, history []ChatMsg, question string, turns []v3Tur
 			}
 			b.WriteString("<tool_response>\n" + r + "\n</tool_response>")
 		}
-		b.WriteString("<|im_end|>\n" + v3AssistantOpen)
+		b.WriteString("<|im_end|>\n" + open)
 	}
 	return b.String()
+}
+
+// chatThinkOf: the reasoning of one generated round (adaptive mode: the text before "</think>"; the prompt already
+// opened the block).
+func chatThinkOf(text string) string {
+	if i := strings.Index(text, "</think>"); i >= 0 {
+		return strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(text[:i]), "<think>"))
+	}
+	return ""
 }
 
 // htpdChatLLM: the reasoner slot without the report schema (free text, stops at EOG), with the chat prefix.
@@ -269,6 +309,12 @@ func (c *chatStore) Ask(ctx context.Context, r *Reasoner, id, question string) (
 func (c *chatStore) answer(ctx context.Context, r *Reasoner, history []ChatMsg, question string) ChatMsg {
 	t0 := time.Now()
 	msg := ChatMsg{Role: "assistant", At: time.Now().Unix()}
+	// a routed question (peak, current levels, recent / open incidents, faulty sensors, what-if) needs no NPU
+	// (chat_router.go): answered at once from one tool, never queued behind an incident analysis
+	if text, tool, ok := (chatTools{r: r, now: chatNowOf(r)}).chatRouted(question, history); ok {
+		msg.Text, msg.Tools, msg.Ms = text, []ChatTool{tool}, time.Since(t0).Milliseconds()
+		return msg
+	}
 	// Queue, don't refuse (owner 2026-10-29): wait for the chat ahead and for any incident analysis (alerts first),
 	// then answer. The UI polls /api/chat/status to show what the question is waiting for. Give up after 5 min.
 	c.setWait("another question")
@@ -323,7 +369,7 @@ func (c *chatStore) answer(ctx context.Context, r *Reasoner, history []ChatMsg, 
 		if room := chatMaxCalls - used; len(calls) > room {
 			calls = calls[:room]
 		}
-		t := v3Turn{Calls: calls}
+		t := v3Turn{Calls: calls, Think: chatThinkOf(text)}
 		for _, call := range calls {
 			res := tools.Exec(ctx, call.Name, call.Args())
 			t.Results = append(t.Results, res)
@@ -344,6 +390,9 @@ func (c *chatStore) answer(ctx context.Context, r *Reasoner, history []ChatMsg, 
 var chatCallRe = regexp.MustCompile(`(?s)<tool_call>.*?(</tool_call>|$)|<think>.*?</think>`)
 
 func chatClean(s string) string {
+	if i := strings.LastIndex(s, "</think>"); i >= 0 { // adaptive thinking: the prompt opened the block
+		s = s[i+len("</think>"):]
+	}
 	s = chatCallRe.ReplaceAllString(s, "")
 	s = strings.ReplaceAll(s, "<|im_end|>", "")
 	return strings.TrimSpace(s)
@@ -643,7 +692,7 @@ func (t chatTools) run(name string, args map[string]any) (map[string]any, error)
 				break
 			}
 			items = append(items, map[string]any{"id": ci.inc.ID, "time": ts(ci.at), "title": ci.inc.Title, "severity": normSeverity(ci.inc.Severity),
-				"label": ci.label, "domains": ci.domains, "approval": ci.inc.Approval, "outcome": ci.inc.Outcome})
+				"label": chatNull(ci.label), "domains": ci.domains, "approval": ci.inc.Approval, "outcome": chatNull(ci.inc.Outcome)})
 		}
 		return map[string]any{"items": items, "total": len(incs), "coverage": chatCoverage(a, b, t.now)}, nil
 	case "get_incident":
@@ -670,8 +719,8 @@ func (t chatTools) run(name string, args map[string]any) (map[string]any, error)
 			for _, st := range p.Steps {
 				steps = append(steps, map[string]any{"action": st.Action, "state": st.State, "by": st.By})
 			}
-			out := map[string]any{"id": p.ID, "time": ts(ci.at), "title": p.Title, "severity": normSeverity(p.Severity), "label": ci.label,
-				"root_cause": ci.root, "sensors": sens, "approval": p.Approval, "workflow": wfOf(p), "outcome": p.Outcome, "steps": steps,
+			out := map[string]any{"id": p.ID, "time": ts(ci.at), "title": p.Title, "severity": normSeverity(p.Severity), "label": chatNull(ci.label),
+				"root_cause": chatNull(ci.root), "sensors": sens, "approval": p.Approval, "workflow": wfOf(p), "outcome": chatNull(p.Outcome), "steps": steps,
 				"injected": p.Injected, "refine_stage": p.RefineStage}
 			t.r.mu.RUnlock()
 			return out, nil
@@ -850,11 +899,12 @@ func (t chatTools) run(name string, args map[string]any) (map[string]any, error)
 		out := []map[string]any{}
 		if t.r.eng != nil {
 			_, states, _ := t.r.eng.Snapshot()
+			faults := t.chatFaultsNow(t.incidents())
 			for _, s := range states {
 				if (dom != "" && s.Role != dom) || (loc != "" && !strings.Contains(strings.ToLower(s.Node+" "+s.Location), loc)) {
 					continue
 				}
-				st := normSeverity(s.Status)
+				st := chatLiveStatus(s, faults) // the chat tools' live status (chat_tools_v3.go), as in training
 				if status != "" && st != status {
 					continue
 				}
@@ -939,6 +989,8 @@ func (t chatTools) run(name string, args map[string]any) (map[string]any, error)
 		}
 		return map[string]any{"outcome_counts": counts, "maintenance_counts": map[string]int{}, "maintenance": []any{},
 			"items": items, "coverage": chatCoverage(a, b, t.now)}, nil
+	case "rank_readings", "current_levels", "recent_incidents", "open_incidents", "faulty_sensors", "what_if":
+		return t.runV3(name, args) // chat_tools_v3.go
 	case "search_knowledge":
 		return map[string]any{"available": false, "passages": []any{},
 			"note": "search_knowledge runs on the fog server, which is unreachable (device offline). No documents are available."}, nil

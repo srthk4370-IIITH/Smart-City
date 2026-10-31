@@ -347,6 +347,15 @@ func maxi(a, b int) int {
 
 // Window returns the last 48 points ending at end (gap rules mirror training/generate_dataset.windows).
 func (e *Engine) Window(node, metric string, end int64) ([]float64, bool) {
+	return e.window(node, metric, end, false)
+}
+
+// window: Window; critical=true is the event gate's critical bypass (owner 2026-10-31, deploy22): when the
+// reading AT end is beyond the CRITICAL limit, the coverage rules (at most 3 of 48 missing, both edges present)
+// are skipped so a critical value after a sensor silence opens the incident at once instead of after ~40 new
+// readings. Missing leading points take the real readings from before the gap, newest first (time-compressed, no
+// invented values; the oldest one repeats if history is short), inner gaps interpolated as usual. Non-critical: unchanged.
+func (e *Engine) window(node, metric string, end int64, critical bool) ([]float64, bool) {
 	s := e.series[key(node, metric)]
 	if s == nil {
 		return nil, false
@@ -385,7 +394,31 @@ func (e *Engine) Window(node, metric string, end int64) ([]float64, bool) {
 		}
 	}
 	if have < minHave || pts[0] == nil || pts[Window-1] == nil {
-		return nil, false
+		v, fresh := s[end]
+		if !critical || !fresh || role == "occupancy" || !valueCritical(role, metric, v) {
+			return nil, false
+		}
+		if pts[0] == nil {
+			first := 0
+			for pts[first] == nil {
+				first++
+			}
+			var older []int64 // real readings before the window, newest first
+			for b := range s {
+				if b < end-int64(Window-1)*bucketSec {
+					older = append(older, b)
+				}
+			}
+			sort.Slice(older, func(i, j int) bool { return older[i] > older[j] })
+			fill := *pts[first]
+			for i, j := first-1, 0; i >= 0; i, j = i-1, j+1 {
+				if j < len(older) {
+					fill = s[older[j]]
+				}
+				vv := fill
+				pts[i] = &vv
+			}
+		}
 	}
 	xs := make([]float64, Window)
 	for i := 0; i < Window; i++ {
@@ -548,6 +581,7 @@ func (e *Engine) detect() []Candidate {
 		st.Injected = e.injectedSensor(st.Node, st.Metric)
 		var xs []float64
 		var f Finding
+		bypass := false // critical reading through a coverage gap (deploy22): fast path only
 		if hvacAgentSensor(st.Role, st.Node, st.Metric) {
 			// v2 per-unit HVAC: the HVAC teacher rule on the 4 h window gates events like any other sensor
 			var ok bool
@@ -586,6 +620,10 @@ func (e *Engine) detect() []Candidate {
 		} else {
 			var ok bool
 			xs, ok = e.Window(st.Node, st.Metric, e.sim)
+			if !ok { // critical readings skip the coverage gate (deploy22)
+				xs, ok = e.window(st.Node, st.Metric, e.sim, true)
+				bypass = ok
+			}
 			st.DataOK = ok
 			if !ok {
 				// not enough real readings (gap, offline, warming up, replaced): no AI, a reason instead
@@ -602,6 +640,11 @@ func (e *Engine) detect() []Candidate {
 				st.SMA1h, st.EMA1h, st.SlopePerH = &sm, &em, &sl
 			}
 			f = RuleFinding(st.Role, st.Metric, st.Node, xs, e.sim)
+			if bypass && f.Pattern == "flatline" {
+				// the flat run is the gap fill (history shorter than the window), not a stuck sensor: judge the
+				// real critical level as a stable shape
+				f = ruleFindingAs("stable", st.Role, st.Metric, st.Node, xs, e.sim)
+			}
 		}
 		if sevRank(f.Status) > 0 && !hvacAgentSensor(st.Role, st.Node, st.Metric) {
 			// one isolated single-reading glitch must not raise an alarm on its own (gate only: a candidate
@@ -673,6 +716,16 @@ func (e *Engine) detect() []Candidate {
 			} else {
 				continue
 			}
+		}
+		if bypass {
+			// the gap-filled window only opens the fast incident; the AI and the batch gate wait for real coverage
+			// (a filled window reads as a stuck sensor to the reasoner, board INC-0583)
+			st.critRun++
+			if !st.alerted && st.fastAt == 0 && st.critRun >= fastReadings {
+				st.fastAt = e.sim
+				fast = append(fast, Candidate{st.Node, st.Metric, st.Role, f, xs, e.sim, st.Injected, true, false})
+			}
+			continue
 		}
 		st.same++
 		st.AbnormalFor, st.Reported = st.same, st.alerted

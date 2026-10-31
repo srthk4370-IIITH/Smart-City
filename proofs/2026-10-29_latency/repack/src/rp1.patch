@@ -1,0 +1,238 @@
+--- ggml-hexagon.base.cpp	2026-10-29 23:11:43.793022200 +0530
++++ ggml-hexagon.rp.cpp	2026-10-29 23:19:35.714159300 +0530
+@@ -12,6 +12,7 @@
+ #include <chrono>
+ #include <mutex>
+ #include <thread>
++#include <condition_variable>
+ #include <cstddef>
+ #include <stdexcept>
+ #include <string>
+@@ -874,7 +875,10 @@
+     }
+ }
+ 
++static void ggml_hexagon_repack_stats_report(const char * why);
++
+ static void ggml_backend_hexagon_buffer_free_buffer(ggml_backend_buffer_t buffer) {
++    ggml_hexagon_repack_stats_report("buffer free");
+     auto sbuf = static_cast<ggml_hexagon_shared_buffer *>(buffer->context);
+     sbuf->sess->unclone_buffer(sbuf);
+     delete sbuf;
+@@ -2416,7 +2420,7 @@
+     GGML_UNUSED(size);
+ }
+ 
+-static void repack_tensor_tiled(ggml_tensor * tensor, const void * data, size_t size) {
++static void repack_tensor_tiled_serial(ggml_tensor * tensor, const void * data, size_t size) {
+     switch (tensor->type) {
+         case GGML_TYPE_Q4_0:
+             repack_q4_0_tiled(tensor, data, 0, size);
+@@ -2463,6 +2467,207 @@
+     }
+ }
+ 
++// ** Parallel repack (QIDK patch rp1)
++// Every *_tiled repack writes slice s, column tile ct (32 rows) to
++//   t->data + s * matrix_size + ct * n_k_tiles * tile_size
++// and reads only rows [ct*32, ct*32+32) of slice s from the source. Column tiles are therefore independent:
++// we split the (slice, column-tile) range across threads and run the unchanged serial repack on 2-D views
++// (ne1 = rows of the chunk, ne2 = ne3 = 1). Padding rows only exist in the last column tile of a slice and the
++// last chunk of a slice ends at ne1, so the view reproduces them exactly. Output is byte-identical.
++static size_t ggml_hexagon_repack_tile_size(enum ggml_type type) {
++    switch (type) {
++        case GGML_TYPE_Q4_0:   return HTP_MM_WEIGHT_TILE_SIZE_Q4_0;
++        case GGML_TYPE_IQ4_NL: return HTP_MM_WEIGHT_TILE_SIZE_Q4_0;  // repack_q4_0_tiled is used for IQ4_NL
++        case GGML_TYPE_Q4_1:   return HTP_MM_WEIGHT_TILE_SIZE_Q4_1;
++        case GGML_TYPE_Q4_K:   return HTP_MM_WEIGHT_TILE_SIZE_Q4_1;  // repack_q4_K_tiled uses the Q4_1 tile
++        case GGML_TYPE_Q8_0:   return HTP_MM_WEIGHT_TILE_SIZE_Q8_0;
++        case GGML_TYPE_MXFP4:  return HTP_MM_WEIGHT_TILE_SIZE_MXFP4;
++        case GGML_TYPE_Q5_K:   return HTP_MM_WEIGHT_TILE_SIZE_Q5_K;
++        case GGML_TYPE_Q6_K:   return HTP_MM_WEIGHT_TILE_SIZE_Q6_K;
++        case GGML_TYPE_Q3_K:   return HTP_MM_WEIGHT_TILE_SIZE_Q3_K;
++        case GGML_TYPE_Q2_K:   return HTP_MM_WEIGHT_TILE_SIZE_Q2_K;
++        default:               return 0;
++    }
++}
++
++static int ggml_hexagon_repack_threads() {
++    static int n = -1;
++    if (n < 0) {
++        unsigned hc = std::thread::hardware_concurrency();
++        int v = (int) (hc == 0 ? 1 : (hc < 8 ? hc : 8));
++        const char * e = getenv("GGML_HEXAGON_REPACK_THREADS");
++        if (e && *e) {
++            v = atoi(e);
++        }
++        if (v < 1) v = 1;
++        if (v > 64) v = 64;
++        n = v;
++    }
++    return n;
++}
++
++// repack global column tiles [g0, g1) (g = slice * n_col_tiles + ct) with the serial code on 2-D views
++static void repack_tensor_tiled_range(const ggml_tensor * t, const void * data, int64_t g0, int64_t g1) {
++    const int64_t ne0         = t->ne[0];
++    const int64_t ne1         = t->ne[1];
++    const int64_t n_col_tiles = hex_round_up(ne1, 32) / 32;
++    const int64_t n_k_tiles   = hex_round_up(ne0, 32) / 32;
++    const size_t  ct_bytes    = (size_t) n_k_tiles * ggml_hexagon_repack_tile_size(t->type);
++    const size_t  matrix_size = (size_t) n_col_tiles * ct_bytes;
++    const size_t  row_size    = ggml_row_size(t->type, ne0);
++
++    while (g0 < g1) {
++        const int64_t s   = g0 / n_col_tiles;
++        const int64_t ct0 = g0 % n_col_tiles;
++        const int64_t ct1 = (std::min)(n_col_tiles, ct0 + (g1 - g0));
++        const int64_t r0  = ct0 * 32;
++        const int64_t r1  = (std::min)(ne1, ct1 * 32);
++
++        ggml_tensor v = *t;
++        v.ne[1] = r1 - r0;
++        v.ne[2] = 1;
++        v.ne[3] = 1;
++        v.nb[2] = v.nb[1] * v.ne[1];
++        v.nb[3] = v.nb[2];
++        v.data  = (uint8_t *) t->data + s * matrix_size + ct0 * ct_bytes;
++        const uint8_t * src = (const uint8_t *) data + ((size_t) s * ne1 + r0) * row_size;
++        repack_tensor_tiled_serial(&v, src, (size_t) (r1 - r0) * row_size);
++
++        g0 += ct1 - ct0;
++    }
++}
++
++// Persistent worker pool (created on first use, lives for the process; never destroyed so no exit-time races).
++// Work is handed out in small chunks of column tiles through an atomic counter, so a worker that the
++// scheduler put on a slow core simply takes fewer chunks (static even splits were slower than serial on SM8650).
++struct rp_pool {
++    std::mutex              job_m;
++    std::mutex              m;
++    std::condition_variable cv, done_cv;
++    uint64_t                gen      = 0;
++    int                     active   = 0;
++    int                     nworkers = 0;
++    const ggml_tensor *     t        = nullptr;
++    const void *            data     = nullptr;
++    int64_t                 n_total  = 0;
++    int64_t                 chunk    = 1;
++    std::atomic<int64_t>    next{0};
++};
++
++static void rp_pool_run(rp_pool * p, const ggml_tensor * t, const void * data, int64_t n_total, int64_t chunk) {
++    for (;;) {
++        const int64_t g0 = p->next.fetch_add(chunk);
++        if (g0 >= n_total) break;
++        repack_tensor_tiled_range(t, data, g0, (std::min)(n_total, g0 + chunk));
++    }
++}
++
++static void rp_pool_worker(rp_pool * p) {
++    uint64_t seen = 0;
++    for (;;) {
++        const ggml_tensor * t; const void * data; int64_t n_total, chunk;
++        {
++            std::unique_lock<std::mutex> lk(p->m);
++            p->cv.wait(lk, [&] { return p->gen != seen; });
++            seen = p->gen; t = p->t; data = p->data; n_total = p->n_total; chunk = p->chunk;
++        }
++        rp_pool_run(p, t, data, n_total, chunk);
++        {
++            std::lock_guard<std::mutex> lk(p->m);
++            if (--p->active == 0) p->done_cv.notify_one();
++        }
++    }
++}
++
++static rp_pool * rp_pool_get(int nworkers) {
++    static std::mutex init_m;
++    static rp_pool *  pool = nullptr;
++    std::lock_guard<std::mutex> lk(init_m);
++    if (pool == nullptr) {
++        pool = new rp_pool();
++        for (int i = 0; i < nworkers; i++) {
++            try {
++                std::thread(rp_pool_worker, pool).detach();
++                pool->nworkers++;
++            } catch (...) {
++                break;  // fewer workers; 0 -> serial path
++            }
++        }
++    }
++    return pool;
++}
++
++static void repack_tensor_tiled_mt(ggml_tensor * tensor, const void * data, size_t size) {
++    const int     nth         = ggml_hexagon_repack_threads();
++    const size_t  tile_size   = ggml_hexagon_repack_tile_size(tensor->type);
++    const int64_t n_col_tiles = hex_round_up(tensor->ne[1], 32) / 32;
++    const int64_t n_total     = n_col_tiles * tensor->ne[2] * tensor->ne[3];
++
++    // small tensors or unknown layouts: keep the original single-threaded path
++    if (nth <= 1 || tile_size == 0 || size < (size_t) 256 * 1024 || n_total < 2 || size != ggml_nbytes(tensor)) {
++        repack_tensor_tiled_serial(tensor, data, size);
++        return;
++    }
++
++    rp_pool * p = rp_pool_get(nth - 1);
++    if (p == nullptr || p->nworkers == 0) {
++        repack_tensor_tiled_serial(tensor, data, size);
++        return;
++    }
++
++    std::lock_guard<std::mutex> job_lock(p->job_m);  // one repack job at a time
++    const int64_t nw = (int64_t) p->nworkers + 1;
++    {
++        std::lock_guard<std::mutex> lk(p->m);
++        p->t       = tensor;
++        p->data    = data;
++        p->n_total = n_total;
++        p->chunk   = (std::max)((int64_t) 1, n_total / (nw * 4));
++        p->next.store(0);
++        p->active  = p->nworkers;
++        p->gen++;
++    }
++    p->cv.notify_all();
++    rp_pool_run(p, tensor, data, n_total, p->chunk);  // the caller works too
++    std::unique_lock<std::mutex> lk(p->m);
++    p->done_cv.wait(lk, [p] { return p->active == 0; });
++}
++
++// GGML_HEXAGON_REPACK_STATS=1: wall time of all repacks since the last report, printed when a buffer is freed
++static std::atomic<int64_t> g_rp_ns{0}, g_rp_bytes{0}, g_rp_n{0};
++
++static bool ggml_hexagon_repack_stats_on() {
++    static int on = -1;
++    if (on < 0) {
++        const char * e = getenv("GGML_HEXAGON_REPACK_STATS");
++        on = (e && atoi(e) != 0) ? 1 : 0;
++    }
++    return on == 1;
++}
++
++static void ggml_hexagon_repack_stats_report(const char * why) {
++    if (!ggml_hexagon_repack_stats_on()) return;
++    const int64_t n = g_rp_n.exchange(0);
++    const int64_t ns = g_rp_ns.exchange(0);
++    const int64_t by = g_rp_bytes.exchange(0);
++    if (n > 0) {
++        fprintf(stderr, "ggml-hex: repack stats (%s): %lld tensors, %.1f MB, %.1f ms wall, %d threads\n", why,
++                      (long long) n, by / 1048576.0, ns / 1e6, ggml_hexagon_repack_threads());
++    }
++}
++
++static void repack_tensor_tiled(ggml_tensor * tensor, const void * data, size_t size) {
++    if (!ggml_hexagon_repack_stats_on()) {
++        repack_tensor_tiled_mt(tensor, data, size);
++        return;
++    }
++    const auto t0 = std::chrono::steady_clock::now();
++    repack_tensor_tiled_mt(tensor, data, size);
++    g_rp_ns += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - t0).count();
++    g_rp_bytes += (int64_t) size;
++    g_rp_n += 1;
++}
++
+ static void ggml_backend_hexagon_buffer_set_tensor(ggml_backend_buffer_t buffer,
+                                                    ggml_tensor *         tensor,
+                                                    const void *          data,

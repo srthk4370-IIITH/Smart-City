@@ -1,0 +1,12 @@
+# Deploy 14 (rp29 parallel repack lib + chat router zero-driver what_if) (06:37 IST)
+- chat: 0 s | tools ['what_if'] | busy False | error False | What if occupancy increases by 50%, impact on other domains -> The occupancy sensor at KH reported 0 in every hour in the last 7 days, so the device's data cannot estimate what a change of +50% would do. Ask again once it has recorded the building in use.
+- chat: 0 s | tools ['recent_incidents'] | busy False | error False | List the incidents -> The 5 most recent incidents, newest first: INC-0505 CO2 step increase: KH building, level 03, indoor air sensor 03 (sensor fault, 2026-10-14 10:30); INC-0496 KH building, level 03: CO2 sensor fault: negative step (sensor
+- chat: 11 s | tools ['count_incidents'] | busy False | error False | How many incidents were there today? -> There were 99 incidents today.
+- DEPLOYED: APK 458cffb5, bin htpd_v8x5 + lib_rp29; chaos 2 rc=0; fastcheck {"fast_incident": "INC-0505", "fast_s": 5.6, "ai_update_s": 52.6, "final_model": "deterministic (related domains verified steady)", "valid": true, "severity": "sensor_fault", "title": "CO2 step increase: KH building, level 03, indoor air sensor 03", "pass": true}
+- htpd: htpd: reason 3 streams, 179 decode steps, prefill 5095 ms, cache saved (1317 tokens, 2394 ms)
+- htpd: ggml-hex: repack stats (buffer free): 249 tensors, 2411.9 MB, 754.9 ms wall, 8 threads
+- htpd: ggml-hex: repack stats (buffer free): 197 tensors, 1911.2 MB, 447.0 ms wall, 8 threads
+- htpd: htpd: reasoner load phases: model 2783 ms, context 111 ms, pieces 0 ms
+- htpd: htpd: reason step profile: 30 steps, rows 1.00/step (max 1); ms/step build 0.00 decode 90.36 pick 0.03 handle 0.00 flush 0.01
+- htpd: htpd: reason step profile: 8 steps, rows 1.00/step (max 1); ms/step build 0.00 decode 90.45 pick 0.03 handle 0.00 flush 0.01
+- board now: reasoner_split=3 reasoner_model=/data/local/tmp/gpu/qwen35_reasoner_q4_0.gguf bin=/data/local/tmp/llama.cpp/bin/htpd_v8x5 env=HTPD_AGENT_MAX_NEW=160 HTPD_JSON_ABORT=2 HTPD_SYNTH_PREFIX_CACHE=1 GGML_HEXAGON_OPPOLL=1 HTPD_REASON_IDLE_MS=3000 LD_LIBRARY_PATH=/data/local/tmp/llama.cpp/lib_rp29 ADSP_LIBRARY_PATH=/data/local/tmp/llama.cpp/lib_rp29 GGML_HEXAGON_REPACK_THREADS=8 GGML_HEXAGON_REPACK_STATS=1 

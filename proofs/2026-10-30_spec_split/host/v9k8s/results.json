@@ -1,0 +1,66 @@
+[
+ {
+  "req": "q10",
+  "k": 0,
+  "wall_s": 375.12,
+  "rss_kb": 1867000,
+  "resp": {
+   "outputs": [
+    {
+     "text": "\"title\": \"Incident-2026-12-10\", \"severity\": \"warning\", \"label\": \"water_supply_issue\", \"root_cause\": \"Water tank draining at TH building causing rapid level decrease from 261.0 to 236.1, with 10.5x normal noise spikes in last 12h.\", \"causal_chain\": \"1. Water tank level sensor (S1) shows gradual decrease of -5.9 level/h (r2 0.97) from 261.0 (00:30) to 236.1 (04:25). 2. S1.E2 indicates max level 261.0 at 00:30, S1.E3 min 236.1 at 04:25. 3. S1.E5 shows +4.5 level change at 04:00, likely a transient spike. 4. S1.E9 shows 12h view slow drift -19.7 level since 16:30 (r2 0.61). 5. S1.E10 shows 3 excursions beyond 3x normal noise in last 12h. 6. S2.E1 shows water flow steady at 0.26 m3/h. 7. S2.E2 max flow 0.66 m3/h at 02:30. 8. S3 shows vacant state (0/1) with no presence detected. 9. Tank level 261.0 is past high mark 161.2, overflow risk >195.0. 10. Tank level 236.1 is past high mark 161.2, overflow risk >195.0. 11. Tank level 236.1 is past high mark 161.2, overflow risk >195.0.\", \"observations\": [{\"text\": \"Water tank level sensor 00 (water) at TH building, level 98\", \"src\": [\"S1.E1\", \"S1.E2\", \"S1.E3\", \"S1.E4\", \"S1.E5\", \"S1.E6\", \"S1.E7\", \"S1.E8\", \"S1.E9\", \"S1.E10\"]}, {\"text\": \"Water flow meter 40 (water) at TH building, level 98\", \"src\": [\"S2.E1\", \"S2.E2\", \"S2.E3\", \"S2.E4\"]}, {\"text\": \"Room occupancy sensor 01 (gateway TH95) at TH building\", \"src\": [\"S3.E1\", \"S3.E2\", \"S3.E4\", \"S3.E5\"]}], \"agent_checks\": [{\"ref\": \"S1\", \"claim\": \"Tank level 261.0 is past high mark 161.2\", \"verdict\": \"corrected\", \"fact\": \"S1.E2 max level 261.0 at 00:30, S1.E3 min level 236.1 at 04:25. 261.0 > 161.2. 236.1 > 161.2. 236.1 > 161.2.\", \"src\": [\"S1.E2\", \"S1.E3\"]}, {\"ref\": \"S1\", \"claim\": \"Tank level 236.1 is past high mark 161.2\", \"verdict\": \"corrected\", \"fact\": \"S1.E3 min level 236.1 at 04:25, S1.E2 max level 261.0 at 00:30. 236.1 > 161.2. 236.1 > 161.2. 236.1 > 161, \"checklist\": [{\"action\": \"inspect_water_system\", \"target\": \"TH building water tank\", \"why\": \"Verify physical overflow risk at 261.0 and 236.1 levels; check for leaks or drainage anomalies.\"}, {\"action\": \"review_schedule\", \"target\": \"TH building water tank\", \"why\": \"Review scheduled drainings to confirm gradual decrease pattern vs. sudden spikes.\"}, {\"action\": \"check_sensor\", \"target\": \"WM-WL-TH98-00\", \"why\": \"Validate sensor readings against expected gradual decrease trend and noise characteristics.\"}, {\"action\": \"request_facility_review\", \"target\": \"TH building water tank\", \"why\": \"Request review of water supply system to rule out external leaks or unauthorized drainage.\"}], \"monitor_next\": \"Continue monitoring water level sensor (S1) for any sudden jumps or drops; watch for critical level >195.0.\", \"needs_more_data\": true, \"needs_deeper\": true, \"explanation\": \"The primary issue is a water supply system anomaly (water tank draining) causing rapid level decrease. The agent findings show a consistent -5.9 level/h trend from 261.0 to 236.1, which is physically",
+     "tokens": 1157,
+     "ttft_ms": 55121.4,
+     "ms": 372541.2,
+     "stop": "max",
+     "forced": 146
+    }
+   ],
+   "prefill_ms": 55178.5,
+   "swap_ms": 2543.6,
+   "total_ms": 375100.6,
+   "reason": {
+    "swapped": true,
+    "unload_ms": 153.0,
+    "load_ms": 2390.6,
+    "cache": "saved",
+    "cached_tokens": 1317,
+    "cache_ms": 31127.2,
+    "kept": true,
+    "streams": 3
+   },
+   "id": "rwh:rwh-00098"
+  }
+ },
+ {
+  "req": "q14",
+  "k": 1,
+  "wall_s": 208.18,
+  "rss_kb": 1861664,
+  "resp": {
+   "outputs": [
+    {
+     "text": "\"title\": \"Incident-1684\", \"severity\": \"warning\", \"label\": \"power_load_anomaly\", \"root_cause\": \"S1.E5 indicates a sudden load surge of -2.33 kW at 12:10 IST, causing erratic readings and a warning status. The pattern is consistent with a temporary power fluctuation or load spike.\", \"causal_chain\": \"1. Incident opened at 12:45 IST. 2. S1.E5 shows a -2.33 kW load jump at 12:10 IST. 3. S1.E1 (last reading) is 20.09 kW. 4. S1.E3 (min) is 18.53 kW at 12:10 IST. 5. S1.E4 shows a +0.01 kW/h trend (flat). 6. S1.E5 largest 5-min change is -2.33 kW at 12:10 IST. 7. S1.E6 SMA 1h = 20.07 kW. 8. S1.E7 shows oscillation with curvature +1.00/h. 9. S1.E8 shows noise 0.697. 10. Agent pattern: erratic status, warning. 11. Operator note: switch_off_main_pump.\", \"observations\": [{\"text\": \"S1.E5 largest 5-min change = -2.33 kW at 12:10\", \"src\": [\"S1.E5\", \"S1.E1\", \"S1.E3\", \"S1.E6\", \"S1.E7\", \"S1.E8\"]}, {\"text\": \"S1.E1 last = 20.09 kW\", \"src\": [\"S1.E1\"]}, {\"text\": \"S1.E2 max = 21.07 kW at 09:05\", \"src\": [\"S1.E2\"]}, {\"text\": \"S1.E3 min = 18.53 kW at 12:10\", \"src\": [\"S1.E3\"]}, {\"text\": \"S1.E4 trend = +0.01 kW/h (r2 0.00)\", \"src\": [\"S1.E4\"]}, {\"text\": \"S1.E6 SMA 1h = 20.07 kW\", \"src\": [\"S1.E6\"]}, {\"text\": \"S1.E7 halves 19.86 -> 19.90, curvature +1.00/h\", \"src\": [\"S1.E7\"]}, {\"text\": \"S1.E8 noise 0.697\", \"src\": [\"S1.E8\"]}, {\"text\": \"S1.E5 largest 5-min change = -2.33 kW at 12:10\", \"src\": [\"S1.E5\"]}, {\"text\": \"S1.E1 last = 20.09 kW\", \"src\": [\"S1.E1\"]}, {\"text\": \"S1.E2 max = 21.07 kW at 09:05\", \"src\": [\"S1, \"agent_checks\": [{\"ref\": \"S1\", \"claim\": \"Load jumped -2.33 kW at 12:10\", \"verdict\": \"corrected\", \"fact\": \"S1.E5 largest 5-min change = -2.33 kW at 12:10 IST\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"Pattern erratic, status warning\", \"verdict\": \"corrected\", \"fact\": \"S1 quality=bad, agent pattern=erratic, status=warning\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E1 last = 20.09 kW\", \"verdict\": \"corrected\", \"fact\": \"S1.E1 last = 20.09 kW\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E2 max = 21.07 kW at 09:05\", \"verdict\": \"corrected\", \"fact\": \"S1.E2 max = 21.07 kW at 09:05\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E3 min = 18.53 kW at 12:10\", \"verdict\": \"corrected\", \"fact\": \"S1.E3 min = 18.53 kW at 12:10\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E4 trend = +0.01 kW/h\", \"verdict\": \"corrected\", \"fact\": \"S1.E4 trend = +0.01 kW/h\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E5 largest 5-min change = -2.3, \"checklist\": [{\"action\": \"check_sensor\", \"target\": \"S1\", \"why\": \"Verify if -2.33 kW surge is real or artifact; check for power quality issues.\"}], \"monitor_next\": \"Continue monitoring S1 for stabilization; check for sustained load anomalies.\", \"needs_more_data\": true, \"needs_deeper\": true, \"explanation\": \"The incident report indicates a power load anomaly (S1.E5) at 12:10 IST. The erratic status and warning suggest the load surge may be real or an artifact. The -2.33 kW jump is the primary suspect. Operator note suggests immediate action. Needs verification of the -2.33 kW claim and confirmation of the power quality issue before finalizing the report.\"}",
+     "tokens": 1265,
+     "ttft_ms": 12821.7,
+     "ms": 207976.1,
+     "stop": "max",
+     "forced": 242
+    }
+   ],
+   "prefill_ms": 13059.8,
+   "swap_ms": 0.0,
+   "total_ms": 208178.5,
+   "reason": {
+    "swapped": false,
+    "unload_ms": 0.0,
+    "load_ms": 0.0,
+    "cache": "mem",
+    "cached_tokens": 1317,
+    "cache_ms": 536.0,
+    "kept": true,
+    "streams": 3
+   },
+   "id": "rwh:rwh-00002"
+  }
+ }
+]

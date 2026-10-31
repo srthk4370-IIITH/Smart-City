@@ -1,0 +1,754 @@
+{
+ "story": "water pH 9.6",
+ "incident": {
+  "id": "INC-0549",
+  "mode": 3,
+  "state": "done",
+  "created_sim": 1792052700,
+  "created_wall": "2026-10-15 07:08:53",
+  "severity": "critical",
+  "severity_final": true,
+  "title": "KH building, level 98: Water pH critical (9.59)",
+  "rule_title": "KH building, level 98: Water pH critical (9.59)",
+  "roles": [
+   "water"
+  ],
+  "injected": false,
+  "fast_path": true,
+  "sensors": [
+   {
+    "ref": "S1",
+    "node": "WM-WD-KH98-00",
+    "metric": "ph",
+    "role": "water",
+    "location": "KH building, level 98, water quality sensor 00",
+    "window_end": 1792054800,
+    "injected": false,
+    "window": [
+     9.607502305686808,
+     9.58434194307775,
+     9.588844337203955,
+     9.564217679064301,
+     9.620048695995571,
+     9.579850726900741,
+     9.632675961655117,
+     9.62500769996597,
+     9.590600023113556,
+     9.633513678172266,
+     9.600120838279409,
+     9.580530547786049,
+     9.631960746110453,
+     9.601237808775249,
+     9.550819898075906,
+     9.614820468642177,
+     9.615000659252104,
+     9.584127916112172,
+     9.605621661329888,
+     9.638338113125501,
+     9.553627273955506,
+     9.566884230075017,
+     9.606427681394376,
+     9.564646318425469,
+     9.592861509621885,
+     9.625953649794617,
+     9.614623014253647,
+     9.57621323401678,
+     9.57329734447075,
+     9.623365332318539,
+     9.531365011690205,
+     9.662735418746196,
+     9.594246412883212,
+     9.551367974912077,
+     9.56542750506946,
+     9.621983068039025,
+     9.606086375967958,
+     9.650707163393847,
+     9.601679923159155,
+     9.581343364544109,
+     9.611834247951249,
+     9.591609080652153,
+     9.606786404828823,
+     9.593115340256245,
+     9.616092363009425,
+     9.622275888368483,
+     9.584202708871707,
+     9.593260202346253
+    ],
+    "evidence": [
+     {
+      "ID": "E1",
+      "Stat": "last",
+      "Text": "last = 9.59 pH"
+     },
+     {
+      "ID": "E2",
+      "Stat": "max",
+      "Text": "max = 9.66 pH at 13:10"
+     },
+     {
+      "ID": "E3",
+      "Stat": "min",
+      "Text": "min = 9.53 pH at 13:05"
+     },
+     {
+      "ID": "E4",
+      "Stat": "slope",
+      "Text": "trend = +0.00 pH/h (r2 0.00)"
+     },
+     {
+      "ID": "E5",
+      "Stat": "max_jump",
+      "Text": "largest 5-min change = +0.13 pH at 13:10"
+     },
+     {
+      "ID": "E6",
+      "Stat": "sma",
+      "Text": "SMA 1h = 9.60, EMA 1h = 9.60, mean 4h = 9.60 pH"
+     },
+     {
+      "ID": "E7",
+      "Stat": "shape",
+      "Text": "halves 9.60 -> 9.60, curvature -0.01/h, oscillation crossings 21"
+     },
+     {
+      "ID": "E8",
+      "Stat": "flat",
+      "Text": "noise 0.030, longest flat run 2 pts, plateau at max 13 pts"
+     },
+     {
+      "ID": "E9",
+      "Stat": "long_view",
+      "Text": "12 h view: under 8 h of history"
+     },
+     {
+      "ID": "E10",
+      "Stat": "episodes",
+      "Text": "recent episodes: 1 excursion beyond 3x normal noise in the last 4 h (largest 19.1x)"
+     }
+    ],
+    "global_evidence_ids": [
+     "ev:WM-WD-KH98-00:ph:last:1792054800",
+     "ev:WM-WD-KH98-00:ph:max:1792054800",
+     "ev:WM-WD-KH98-00:ph:min:1792054800",
+     "ev:WM-WD-KH98-00:ph:slope:1792054800",
+     "ev:WM-WD-KH98-00:ph:max_jump:1792054800",
+     "ev:WM-WD-KH98-00:ph:sma:1792054800",
+     "ev:WM-WD-KH98-00:ph:shape:1792054800",
+     "ev:WM-WD-KH98-00:ph:flat:1792054800",
+     "ev:WM-WD-KH98-00:ph:long_view:1792054800",
+     "ev:WM-WD-KH98-00:ph:episodes:1792054800"
+    ],
+    "rule_finding": {
+     "pattern": "stable",
+     "status": "critical",
+     "observations": [
+      "pH steady around 9.60 pH, ranging only 9.53-9.66 [E6,E2,E3]",
+      "9.59 pH exceeds the critical limit of 9.0 pH [E1]"
+     ],
+     "likely_cause": "normal_usage",
+     "confidence": 0.8,
+     "action": "monitor"
+    },
+    "context": false
+   },
+   {
+    "ref": "S2",
+    "node": "WM-WF-KH98-40",
+    "metric": "flow",
+    "role": "water",
+    "location": "KH building, level 98, water flow meter 40",
+    "window_end": 1792054800,
+    "injected": false,
+    "window": [
+     4.965982761979633,
+     5.095100609598028,
+     4.976834448586095,
+     5.133168863495245,
+     5.026299472169751,
+     5.055221544846489,
+     5.090206836530187,
+     4.967755146600944,
+     4.792444691059801,
+     4.998516649451334,
+     5.029134067964024,
+     4.918887991561739,
+     4.830011975646334,
+     4.859726589895555,
+     5.034364706003095,
+     4.954532480304524,
+     4.993611017799015,
+     4.839948981233492,
+     4.947505100909549,
+     4.941948860580459,
+     5.016612576906759,
+     4.84966353163863,
+     4.980154610130787,
+     5.041934297642591,
+     5.153333312796308,
+     5.03119256569293,
+     5.015613794729541,
+     5.1319235805142815,
+     5.115751211511936,
+     5.09881898419187,
+     5.027932849151297,
+     5.1126671879814225,
+     5.068427652564038,
+     4.860812544568751,
+     5.017968318959286,
+     4.865387261450239,
+     4.852775645756102,
+     4.8517650129101915,
+     5.051358602709057,
+     5.002797675277038,
+     5.024478396604516,
+     4.788639921552347,
+     4.923065268519216,
+     5.0806834431623065,
+     4.976591210753943,
+     5.022298425928673,
+     4.854289439785794,
+     4.943881000166051
+    ],
+    "evidence": [
+     {
+      "ID": "E1",
+      "Stat": "last",
+      "Text": "last = 4.94 m3/h"
+     },
+     {
+      "ID": "E2",
+      "Stat": "max",
+      "Text": "max = 5.15 m3/h at 12:35"
+     },
+     {
+      "ID": "E3",
+      "Stat": "min",
+      "Text": "min = 4.79 m3/h at 14:00"
+     },
+     {
+      "ID": "E4",
+      "Stat": "slope",
+      "Text": "trend = -0.01 m3/h/h (r2 0.01)"
+     },
+     {
+      "ID": "E5",
+      "Stat": "max_jump",
+      "Text": "largest 5-min change = -0.24 m3/h at 14:00"
+     },
+     {
+      "ID": "E6",
+      "Stat": "sma",
+      "Text": "SMA 1h = 4.95, EMA 1h = 4.96, mean 4h = 4.98 m3/h"
+     },
+     {
+      "ID": "E7",
+      "Stat": "shape",
+      "Text": "halves 4.97 -> 4.99, curvature -0.09/h, oscillation crossings 16"
+     },
+     {
+      "ID": "E8",
+      "Stat": "flat",
+      "Text": "noise 0.083, longest flat run 2 pts, plateau at max 0 pts"
+     }
+    ],
+    "global_evidence_ids": [
+     "ev:WM-WF-KH98-40:flow:last:1792054800",
+     "ev:WM-WF-KH98-40:flow:max:1792054800",
+     "ev:WM-WF-KH98-40:flow:min:1792054800",
+     "ev:WM-WF-KH98-40:flow:slope:1792054800",
+     "ev:WM-WF-KH98-40:flow:max_jump:1792054800",
+     "ev:WM-WF-KH98-40:flow:sma:1792054800",
+     "ev:WM-WF-KH98-40:flow:shape:1792054800",
+     "ev:WM-WF-KH98-40:flow:flat:1792054800"
+    ],
+    "rule_finding": {
+     "pattern": "stable",
+     "status": "normal",
+     "observations": [
+      "Flow steady around 4.98 m3/h, ranging only 4.79-5.15 [E6,E2,E3]"
+     ],
+     "likely_cause": "normal_usage",
+     "confidence": 0.8,
+     "action": "none"
+    },
+    "context": true,
+    "why": "low flow / stagnation"
+   },
+   {
+    "ref": "S3",
+    "node": "WM-WD-KH98-00",
+    "metric": "tds",
+    "role": "water",
+    "location": "KH building, level 98, water quality sensor 00",
+    "window_end": 1792054800,
+    "injected": false,
+    "window": [
+     146.2328647539274,
+     148.69554411112995,
+     148.0886145693557,
+     151.39779984365742,
+     148.0148569143179,
+     148.71310418694924,
+     153.41222943045696,
+     147.0867680884906,
+     153.71003656425987,
+     143.41256054917145,
+     151.82229185572916,
+     157.03181942644994,
+     153.29520742090656,
+     151.72845494605542,
+     155.44067109251858,
+     150.41476912120427,
+     149.0799644515159,
+     154.77775078563695,
+     151.5187297539185,
+     150.6262270596268,
+     151.22452860075413,
+     148.25942401641456,
+     148.60399389422935,
+     147.25477355013575,
+     149.99451768577234,
+     150.30006127654076,
+     147.46638592654858,
+     141.93015723730235,
+     152.67371597623213,
+     152.20947512669431,
+     143.96168662713958,
+     149.24650945512818,
+     150.61314970425036,
+     152.86916137064716,
+     148.86997480780738,
+     150.1050312786008,
+     148.28034930135323,
+     151.999171262607,
+     146.2391840143026,
+     148.88419394118262,
+     151.7137289947793,
+     149.91629463849804,
+     149.82506182337687,
+     151.62220069193555,
+     153.3469696864101,
+     150.12219294574138,
+     145.4097471620461,
+     147.10370689089123
+    ],
+    "evidence": [
+     {
+      "ID": "E1",
+      "Stat": "last",
+      "Text": "last = 147 ppm"
+     },
+     {
+      "ID": "E2",
+      "Stat": "max",
+      "Text": "max = 157 ppm at 11:30"
+     },
+     {
+      "ID": "E3",
+      "Stat": "min",
+      "Text": "min = 142 ppm at 12:50"
+     },
+     {
+      "ID": "E4",
+      "Stat": "slope",
+      "Text": "trend = -0.2 ppm/h (r2 0.01)"
+     },
+     {
+      "ID": "E5",
+      "Stat": "max_jump",
+      "Text": "largest 5-min change = +10.7 ppm at 12:55"
+     },
+     {
+      "ID": "E6",
+      "Stat": "sma",
+      "Text": "SMA 1h = 150, EMA 1h = 149, mean 4h = 150 ppm"
+     },
+     {
+      "ID": "E7",
+      "Stat": "shape",
+      "Text": "halves 150 -> 149, curvature -6.2/h, oscillation crossings 18"
+     },
+     {
+      "ID": "E8",
+      "Stat": "flat",
+      "Text": "noise 3.00, longest flat run 2 pts, plateau at max 0 pts"
+     }
+    ],
+    "global_evidence_ids": [
+     "ev:WM-WD-KH98-00:tds:last:1792054800",
+     "ev:WM-WD-KH98-00:tds:max:1792054800",
+     "ev:WM-WD-KH98-00:tds:min:1792054800",
+     "ev:WM-WD-KH98-00:tds:slope:1792054800",
+     "ev:WM-WD-KH98-00:tds:max_jump:1792054800",
+     "ev:WM-WD-KH98-00:tds:sma:1792054800",
+     "ev:WM-WD-KH98-00:tds:shape:1792054800",
+     "ev:WM-WD-KH98-00:tds:flat:1792054800"
+    ],
+    "rule_finding": {
+     "pattern": "stable",
+     "status": "normal",
+     "observations": [
+      "TDS steady around 150 ppm, ranging only 142-157 [E6,E2,E3]"
+     ],
+     "likely_cause": "normal_usage",
+     "confidence": 0.8,
+     "action": "none"
+    },
+    "context": true,
+    "why": "water quality context"
+   }
+  ],
+  "mode1_report": {
+   "root_cause": "Rule engine: WM-WD-KH98-00 ph stable (critical); WM-WF-KH98-40 flow stable (normal); WM-WD-KH98-00 tds stable (normal)",
+   "label": "normal_operation",
+   "affected_domains": [
+    "water"
+   ],
+   "evidence": [
+    "S1.E1",
+    "S2.E1",
+    "S3.E1"
+   ],
+   "confidence": 0.8,
+   "action": "monitor",
+   "explanation": "pH steady around 9.60 pH, ranging only 9.53-9.66 [E6,E2,E3] 9.59 pH exceeds the critical limit of 9.0 pH [E1]",
+   "requires_human_approval": true,
+   "severity": "critical"
+  },
+  "agents": [
+   {
+    "ttft_ms": 691.3,
+    "gen_tokens": 84,
+    "tokens_per_s": 51.46743459346853,
+    "early_stopped": true,
+    "ref": "S1",
+    "role": "water",
+    "model": "Llama 3.2 3B smart-city agent (fine-tuned, w4a16)",
+    "fine_tuned": true,
+    "latency_ms": 2343.113,
+    "raw": "{\"pattern\": \"stable\", \"status\": \"critical\", \"observations\": [\"No change of note: PH holds near 9.60 pH [E6]\", \"9.59 pH exceeds the critical limit of 9.0 pH [E1]\"], \"likely_cause\": \"normal_usage\", \"confidence\": 0.75, \"event_active\": false, \"onset\": \"10:35\"}",
+    "parsed": {
+     "pattern": "stable",
+     "status": "critical",
+     "observations": [
+      "No change of note: PH holds near 9.60 pH [E6]",
+      "9.59 pH exceeds the critical limit of 9.0 pH [E1]"
+     ],
+     "likely_cause": "normal_usage",
+     "confidence": 0.68,
+     "action": "monitor",
+     "event_active": false,
+     "onset": "10:35"
+    },
+    "valid": true,
+    "errors": null,
+    "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are the Water agent of a smart-campus edge monitor (IIIT Hyderabad). You receive a 4-hour window of one sensor metric (5-minute samples) with precomputed statistics. Identify the pattern, judge severity, explain what you notice using only the given numbers, and cite evidence ids (E1..E10) that support each observation. Never invent values. Never order physical actuation; recommend at most an inspection action. Reply with one JSON object only. JSON keys: pattern (stable|spike|dip|gradual_increase|gradual_decrease|step_increase|step_decrease|exponential_increase|oscillation|throttling|flatline|erratic), status (normal|warning|critical|sensor_fault), observations (1-2 short strings, each ending with cited ids like [E1,E4]), likely_cause (normal_usage|high_demand|possible_leak|tank_filling|tank_draining|supply_interruption|pump_cycling|water_quality_issue|sensor_fault|tank_overflow_risk|fill_valve_stuck), confidence (0-1), event_active (true|false), onset (HH:MM), fault_kind (stuck|bias|drift|noise|dropout|saturation|quantised, only if sensor_fault), action (none|monitor|inspect_ventilation|inspect_hvac|check_sensor|inspect_water_system|inspect_electrical|review_schedule|request_facility_review).<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nNODE: WM-WD-KH98-00 (KH building, level 98, water quality sensor 00)\nMETRIC: ph [pH]\nLIMITS: warning above 8.5, critical above 9.0\nWINDOW: Thu 15 Oct 10:35 -> 14:30 IST, 48 x 5 min\nSERIES (10-min means): 9.60 9.58 9.60 9.63 9.61 9.59 9.62 9.58 9.60 9.62 9.56 9.59 9.61 9.60 9.60 9.60 9.57 9.59 9.63 9.59 9.60 9.60 9.62 9.59\nEVIDENCE:\nE1 last = 9.59 pH\nE2 max = 9.66 pH at 13:10\nE3 min = 9.53 pH at 13:05\nE4 trend = +0.00 pH/h (r2 0.00)\nE5 largest 5-min change = +0.13 pH at 13:10\nE6 SMA 1h = 9.60, EMA 1h = 9.60, mean 4h = 9.60 pH\nE7 halves 9.60 -> 9.60, curvature -0.01/h, oscillation crossings 21\nE8 noise 0.030, longest flat run 2 pts, plateau at max 13 pts\nE9 12 h view: under 8 h of history\nE10 recent episodes: 1 excursion beyond 3x normal noise in the last 4 h (largest 19.1x)<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n{\"pattern\": \""
+   },
+   {
+    "ttft_ms": 0,
+    "gen_tokens": 0,
+    "tokens_per_s": 0,
+    "early_stopped": false,
+    "ref": "S2",
+    "role": "water",
+    "model": "context agent (rules, CPU)",
+    "fine_tuned": false,
+    "latency_ms": 0,
+    "raw": "",
+    "parsed": {
+     "pattern": "stable",
+     "status": "normal",
+     "observations": [
+      "Flow steady around 4.98 m3/h, ranging only 4.79-5.15 [E6,E2,E3]"
+     ],
+     "likely_cause": "normal_usage",
+     "confidence": 0.8,
+     "action": "none"
+    },
+    "valid": true,
+    "errors": null,
+    "prompt": ""
+   },
+   {
+    "ttft_ms": 0,
+    "gen_tokens": 0,
+    "tokens_per_s": 0,
+    "early_stopped": false,
+    "ref": "S3",
+    "role": "water",
+    "model": "context agent (rules, CPU)",
+    "fine_tuned": false,
+    "latency_ms": 0,
+    "raw": "",
+    "parsed": {
+     "pattern": "stable",
+     "status": "normal",
+     "observations": [
+      "TDS steady around 150 ppm, ranging only 142-157 [E6,E2,E3]"
+     ],
+     "likely_cause": "normal_usage",
+     "confidence": 0.8,
+     "action": "none"
+    },
+    "valid": true,
+    "errors": null,
+    "prompt": ""
+   }
+  ],
+  "final": {
+   "ttft_ms": 1825.6,
+   "gen_tokens": 429,
+   "tokens_per_s": 29.923830250272037,
+   "early_stopped": false,
+   "model": "qwen3.5-4b (htpd)",
+   "latency_ms": 17227,
+   "raw": "{\"title\": \"KH building, level 98: Water pH critical (9.59)\", \"severity\": \"critical\", \"label\": \"water_quality_issue\", \"root_cause\": \"Water pH is critically high due to contamination.\", \"causal_chain\": \"pH high and rising (S1.E4) beyond the limit (S1.E1); TDS steady (S3.E2) -> water quality issue\", \"observations\": [{\"text\": \"pH at 9.59 pH, past the critical limit of 9.0 pH\", \"src\": [\"S1.E1\"]}, {\"text\": \"pH climbed from 9.53 at 13:05 to 9.66 at 13:10\", \"src\": [\"S1.E2\", \"S1.E3\"]}, {\"text\": \"TDS at 157 ppm at 11:30, no unusual change\", \"src\": [\"S3.E2\"]}], \"agent_checks\": [], \"affected_domains\": [\"water\"], \"suspect_sensors\": [], \"evidence\": [\"S1.E1\", \"S1.E4\", \"S3.E2\"], \"confidence\": 0.83, \"checklist\": [{\"action\": \"request_facility_review\", \"target\": \"S1 (WM-WD-KH98-00)\", \"why\": \"Escalate to facility management\"}, {\"action\": \"inspect_water_system\", \"target\": \"S1 (WM-WD-KH98-00)\", \"why\": \"Check pump, inlet valve and pipework\"}], \"monitor_next\": \"Confirm at the next refinement that pH has settled\", \"needs_more_data\": false, \"needs_deeper\": false, \"explanation\": \"pH is 9.59 pH and still rising; this is a water-quality problem, not normal usage. Get it tested. The same thing happened on 2026-10-14 (M1).\"}",
+   "parsed": {
+    "root_cause": "Water pH is critically high due to contamination.",
+    "label": "water_quality_issue",
+    "affected_domains": [
+     "water"
+    ],
+    "evidence": [
+     "S1.E1",
+     "S1.E4",
+     "S3.E2"
+    ],
+    "confidence": 0.83,
+    "action": "request_facility_review",
+    "explanation": "pH is 9.59 pH and still rising; this is a water-quality problem, not normal usage. Get it tested. The same thing happened on 2026-10-14 (M1).",
+    "requires_human_approval": true,
+    "severity": "critical",
+    "title": "KH building, level 98: Water pH critical (9.59)",
+    "causal_chain": "pH high and rising (S1.E4) beyond the limit (S1.E1); TDS steady (S3.E2) -> water quality issue",
+    "observations": [
+     {
+      "text": "pH at 9.59 pH, past the critical limit of 9.0 pH",
+      "src": [
+       "S1.E1"
+      ]
+     },
+     {
+      "text": "pH climbed from 9.53 at 13:05 to 9.66 at 13:10",
+      "src": [
+       "S1.E2",
+       "S1.E3"
+      ]
+     },
+     {
+      "text": "TDS at 157 ppm at 11:30, no unusual change",
+      "src": [
+       "S3.E2"
+      ]
+     }
+    ],
+    "checklist": [
+     {
+      "action": "request_facility_review",
+      "target": "S1 (WM-WD-KH98-00)",
+      "why": "Escalate to facility management"
+     },
+     {
+      "action": "inspect_water_system",
+      "target": "S1 (WM-WD-KH98-00)",
+      "why": "Check pump, inlet valve and pipework"
+     }
+    ],
+    "monitor_next": "Confirm at the next refinement that pH has settled",
+    "source": "device:qwen3.5-4b (htpd)",
+    "escalation": {
+     "offer": false
+    },
+    "severity_basis": {
+     "rule": "critical",
+     "reasoner": "critical",
+     "final": "critical"
+    }
+   },
+   "valid": true,
+   "errors": null,
+   "prompt": "<|im_start|>system\n# Tools\n\nYou have access to the following functions:\n\n<tools>\n{\"type\": \"function\", \"function\": {\"name\": \"related_context\", \"description\": \"Incident-time only.\", \"parameters\": {\"type\": \"object\", \"properties\": {\"ref\": {\"type\": \"string\"}, \"hours\": {\"type\": \"integer\"}}, \"required\": [\"ref\"]}}}\n{\"type\": \"function\", \"function\": {\"name\": \"get_sensor_history\", \"description\": \"Aggregated readings of one sensor for a period, plus the evidence summary the agents use (min/max/trend/steps).\", \"parameters\": {\"type\": \"object\", \"properties\": {\"node\": {\"type\": \"string\"}, \"metric\": {\"type\": \"string\"}, \"time\": {\"type\": \"object\", \"properties\": {\"preset\": {\"type\": \"string\"}, \"from\": {\"type\": \"string\"}, \"to\": {\"type\": \"string\"}}}, \"agg\": {\"type\": \"string\"}, \"stats_only\": {\"type\": \"boolean\"}}, \"required\": [\"node\", \"metric\", \"time\"]}}}\n{\"type\": \"function\", \"function\": {\"name\": \"get_action_history\", \"description\": \"Past checklist steps, outcomes (sensor_replaced, sensor_repaired, fixed_by_action, resolved_on_its_own, false_alarm, no_action_needed) and maintenance rows (rep\", \"parameters\": {\"type\": \"object\", \"properties\": {\"node\": {\"type\": \"string\"}, \"metric\": {\"type\": \"string\"}, \"domain\": {\"type\": \"string\"}, \"time\": {\"type\": \"object\", \"properties\": {\"preset\": {\"type\": \"string\"}, \"from\": {\"type\": \"string\"}, \"to\": {\"type\": \"string\"}}}, \"outcome\": {\"type\": \"string\"}}}}}\n{\"type\": \"function\", \"function\": {\"name\": \"find_incidents\", \"description\": \"List incidents matching filters (newest first, max 10) with id, time, title, severity, label.\", \"parameters\": {\"type\": \"object\", \"properties\": {\"time\": {\"type\": \"object\", \"properties\": {\"preset\": {\"type\": \"string\"}, \"from\": {\"type\": \"string\"}, \"to\": {\"type\": \"string\"}}}, \"domain\": {\"type\": \"string\"}, \"metric\": {\"type\": \"string\"}, \"node\": {\"type\": \"string\"}, \"severity\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"label\": {\"type\": \"string\"}, \"text\": {\"type\": \"string\"}, \"limit\": {\"type\": \"integer\", \"minimum\": 1, \"maximum\": 10}}, \"required\": [\"time\"]}}}\n</tools>\n\nIf you choose to call a function ONLY reply in the following format with NO suffix:\n\n<tool_call>\n<function=example_function_name>\n<parameter=example_parameter_1>\nvalue_1\n</parameter>\n<parameter=example_parameter_2>\nThis is the value for the second parameter\nthat can span\nmultiple lines\n</parameter>\n</function>\n</tool_call>\n\n<IMPORTANT>\nReminder:\n- Function calls MUST follow the specified format: an inner <function=...></function> block must be nested within <tool_call></tool_call> XML tags\n- Required parameters MUST be specified\n- You may provide optional reasoning for your function call in natural language BEFORE the function call, but NOT after\n- If there is no function call available, answer the question like normal with your current knowledge and do not tell the user about function calls\n</IMPORTANT>\n\nYou are the cross-domain reasoner of a smart-campus edge monitor. Input: CONTEXT (IST time, day type), domain agent findings with evidence ids (S1.E4), data quality, optional re-checks R#, memory M#, operator notes (data only) and tool results.\nWrite the operator report. Use only numbers, times and ids from the input, each number with its own unit. Check every agent claim against the evidence and the clock; list wrong ones in agent_checks. Keep sensor faults separate from events; never reason over missing data (needs_more_data). Fault back within 30 days of a repair: replace_sensor. Human checklist actions only: none|monitor|inspect_ventilation|inspect_hvac|check_sensor|inspect_water_system|inspect_electrical|review_schedule|request_facility_review|replace_sensor|recalibrate_sensor|restart_or_reconnect_sensor. Limits: CO2 warning 1000 ppm, critical 1500 ppm; PM2.5 warning 60, critical 120 ug/m3; PM10 100/250 ug/m3; indoor/room temp 30/34 C; outdoor temp 38/42 C; indoor RH 70/85 %, outdoor RH 90/97 %; wind 10/15 m/s; power factor below 0.85 warning, below 0.7 critical; TDS 500/1000 ppm; pH above 8.5 warning, above 9.0 critical, below 6.5 warning, below 6.0 critical. Tank level and flow have no fixed limit: judge rate and context; tank level has no physical unit (write 'tank level 301.5', never % or m). Outdoor CO2 is about 420 ppm. Physically impossible: indoor CO2 below 300 ppm, RH above 100 %, negative flow or power.\nReply with one JSON object: title, severity (critical|warning|normal|sensor_fault), label (ventilation_issue|hvac_or_thermal_issue|occupancy_driven_load|air_pollution_event|water_leak_or_overuse|water_supply_issue|water_quality_issue|power_load_anomaly|power_quality_issue|weather_driven|sensor_fault|normal_operation|unknown), root_cause, causal_chain, observations [{text, src}], agent_checks [{ref, claim, verdict, fact, src}], affected_domains, suspect_sensors, evidence, confidence, checklist [{action, target, why}], monitor_next, needs_more_data, needs_deeper, explanation.<|im_end|>\n<|im_start|>user\nCONTEXT: Thu 15 Oct 2026 14:30 IST | workday | daytime\nINCIDENT INC-0549 opened 14:30 (mode early), windows 4 h of 5-min samples\nDOMAIN AGENT FINDINGS:\nS1 [FLAGGED]: WM-WD-KH98-00 ph [pH] at KH building, level 98, water quality sensor 00 (water)\n  LIMITS: warning above 8.5, critical above 9.0\n  quality=good\n  agent: pattern=stable status=critical cause=normal_usage confidence=0.68\n  - No change of note: PH holds near 9.60 pH [S1.E6]\n  - 9.59 pH exceeds the critical limit of 9.0 pH [S1.E1]\n  S1.E1 last = 9.59 pH\n  S1.E2 max = 9.66 pH at 13:10\n  S1.E3 min = 9.53 pH at 13:05\n  S1.E4 trend = +0.00 pH/h (r2 0.00)\n  S1.E5 largest 5-min change = +0.13 pH at 13:10\n  S1.E6 SMA 1h = 9.60, EMA 1h = 9.60, mean 4h = 9.60 pH\n  S1.E7 halves 9.60 -> 9.60, curvature -0.01/h, oscillation crossings 21\n  S1.E8 noise 0.030, longest flat run 2 pts, plateau at max 13 pts\n  S1.E9 12 h view: under 8 h of history\n  S1.E10 recent episodes: 1 excursion beyond 3x normal noise in the last 4 h (largest 19.1x)\nS2 [related: low flow / stagnation]: WM-WF-KH98-40 flow [m3/h] at KH building, level 98, water flow meter 40 (water)\n  quality=good\n  agent: pattern=stable status=normal cause=normal_usage confidence=0.80\n  - Flow steady around 4.98 m3/h, ranging only 4.79-5.15 [S2.E6,S2.E2,S2.E3]\n  S2.E1 last = 4.94 m3/h\n  S2.E2 max = 5.15 m3/h at 12:35\n  S2.E3 min = 4.79 m3/h at 14:00\n  S2.E4 trend = -0.01 m3/h/h (r2 0.01)\n  S2.E5 largest 5-min change = -0.24 m3/h at 14:00\nS3 [related: water quality context]: WM-WD-KH98-00 tds [ppm] at KH building, level 98, water quality sensor 00 (water)\n  quality=good\n  agent: pattern=stable status=normal cause=normal_usage confidence=0.80\n  - TDS steady around 150 ppm, ranging only 142-157 [S3.E6,S3.E2,S3.E3]\n  S3.E1 last = 147 ppm\n  S3.E2 max = 157 ppm at 11:30\n  S3.E3 min = 142 ppm at 12:50\n  S3.E4 trend = -0.2 ppm/h (r2 0.01)\n  S3.E5 largest 5-min change = +10.7 ppm at 12:55\nMEMORY (past incidents and actions on these sensors):\n  M1 2026-10-14 INC-0284 pH level shift (12 h view): KH building, level 98, water quality sensor 00 on WM-WD-KH98-00, closed: resolved_on_its_own (auto)\n  M2 2026-10-13 INC-0179 Sensor fault: Wind speed warning, PM2.5 sensor fault, Temperature sensor fault (+3 more) on WM-WD-KH98-00, closed: resolved_on_its_own (auto)\n  M3 2026-10-13 INC-0178 Normal operation: Tank level critical, Power warning, PM10 warning (+5 more) on WM-WF-KH98-40, closed: resolved_on_its_own (auto)\nWrite the cross-domain incident report JSON.<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+  },
+  "total_ms": 19575,
+  "npu_calls": 2,
+  "timeline": [
+   {
+    "t": "03:32:17",
+    "msg": "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+   },
+   {
+    "t": "03:32:17",
+    "msg": "Critical fast path: WM-WD-KH98-00 ph beyond its critical limit for 2 readings - incident opened at once with the rules report; the AI analysis follows when the event has lasted 8 readings and updates this incident"
+   },
+   {
+    "t": "03:32:24",
+    "msg": "AI analysis of the fast-path incident: 1 sensor(s) at 8 readings"
+   },
+   {
+    "t": "03:32:24",
+    "msg": "Event gated: 3 sensor(s) flagged, mode 3"
+   },
+   {
+    "t": "03:32:24",
+    "msg": "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+   },
+   {
+    "t": "03:32:24",
+    "msg": "Orchestrator: 1 sensor(s) to NPU agents, 2 related sensor(s) checked by context agents in parallel"
+   },
+   {
+    "t": "03:32:24",
+    "msg": "Water agent analysing WM-WD-KH98-00 ph on NPU (fine-tuned)"
+   },
+   {
+    "t": "03:32:27",
+    "msg": "Water agent done in 2.3s (first token 0.7s, 84 tokens): stable / critical (policy PASSED)"
+   },
+   {
+    "t": "03:32:27",
+    "msg": "Related domains checked and steady (2 context agents): reasoner v3 writes the report"
+   },
+   {
+    "t": "03:32:27",
+    "msg": "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+   },
+   {
+    "t": "03:32:33",
+    "msg": "Reasoner title: KH building, level 98: Water pH critical (9.59)"
+   },
+   {
+    "t": "03:32:33",
+    "msg": "Reasoner severity (provisional): critical"
+   },
+   {
+    "t": "03:32:44",
+    "msg": "Reasoner v3 report in 17.2s (1 completion(s), 0 tool call(s)), policy ok"
+   },
+   {
+    "t": "03:32:44",
+    "msg": "Finished in 19.6s, 2 NPU call(s)"
+   }
+  ],
+  "approval": "pending",
+  "approval_note": "",
+  "refine_stage": "early",
+  "next_refine_sim": 1792058100,
+  "sim_epoch": 1695353490548110627,
+  "revisions": [
+   {
+    "stage": "early",
+    "sim_end": 1792052700,
+    "wall": "2026-10-15 07:09:20",
+    "severity": "critical",
+    "title": "KH building, level 98: Water pH critical (9.59)",
+    "label": "water_quality_issue",
+    "npu_calls": 2,
+    "ms": 19575,
+    "sensors": [
+     {
+      "ref": "S1",
+      "metric": "ph",
+      "pattern": "stable",
+      "status": "critical"
+     }
+    ]
+   }
+  ],
+  "workflow": "needs_decision",
+  "needs_since": 1792028360,
+  "live_epoch": 1695353490548110627,
+  "steps": [
+   {
+    "id": "s1",
+    "source": "report",
+    "action": "request_facility_review",
+    "text": "Raise a facility review with the incident's evidence",
+    "why": "Water pH is critically high due to contamination.",
+    "added_at_stage": "early",
+    "state": "open"
+   },
+   {
+    "id": "s2",
+    "source": "playbook",
+    "text": "Inspect the tank and pumps",
+    "why": "Standard steps for a critical water alarm (no specific AI recommendation)",
+    "added_at_stage": "preliminary",
+    "state": "withdrawn"
+   },
+   {
+    "id": "s3",
+    "source": "playbook",
+    "text": "Check for leaks or overflow",
+    "why": "Standard steps for a critical water alarm (no specific AI recommendation)",
+    "added_at_stage": "preliminary",
+    "state": "withdrawn"
+   },
+   {
+    "id": "s4",
+    "source": "playbook",
+    "text": "Confirm the level sensor with a manual reading",
+    "why": "Standard steps for a critical water alarm (no specific AI recommendation)",
+    "added_at_stage": "preliminary",
+    "state": "withdrawn"
+   },
+   {
+    "id": "s5",
+    "source": "agent",
+    "action": "monitor",
+    "target": "WM-WD-KH98-00",
+    "text": "Keep watching the flagged readings; no on-site action yet",
+    "why": "pH at KH building, level 98, water quality sensor 00: stable (critical)",
+    "added_at_stage": "early",
+    "state": "open"
+   }
+  ],
+  "events": [
+   {
+    "seq": 1,
+    "at": 1792028333,
+    "actor": "system",
+    "event": "created",
+    "detail": "3 sensor(s) flagged"
+   },
+   {
+    "seq": 2,
+    "at": 1792028360,
+    "actor": "system",
+    "event": "step_withdrawn",
+    "step_id": "s2",
+    "detail": "no longer suggested after the AI report"
+   },
+   {
+    "seq": 3,
+    "at": 1792028360,
+    "actor": "system",
+    "event": "step_withdrawn",
+    "step_id": "s3",
+    "detail": "no longer suggested after the AI report"
+   },
+   {
+    "seq": 4,
+    "at": 1792028360,
+    "actor": "system",
+    "event": "step_withdrawn",
+    "step_id": "s4",
+    "detail": "no longer suggested after the AI report"
+   },
+   {
+    "seq": 5,
+    "at": 1792028360,
+    "actor": "system",
+    "event": "step_added",
+    "step_id": "s5",
+    "detail": "suggested by the AI report"
+   },
+   {
+    "seq": 6,
+    "at": 1792028360,
+    "actor": "reasoner",
+    "event": "analysed",
+    "detail": "severity critical"
+   }
+  ]
+ }
+}

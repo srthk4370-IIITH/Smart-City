@@ -1,0 +1,226 @@
+[
+ {
+  "req": "q10",
+  "k": 0,
+  "wall_s": 161.12,
+  "rss_kb": 1724512,
+  "resp": {
+   "outputs": [
+    {
+     "text": "\"title\": \"Incident-2026-12-10\", \"severity\": \"warning\", \"label\": \"water_supply_issue\", \"root_cause\": \"Water tank draining at TH building causing rapid level decrease from 261.0 to 236.1, with 10.5x normal noise spikes in last 12h.\", \"causal_chain\": \"1. Water tank level sensor (S1) shows gradual decrease of -5.9 level/h (r2 0.97) from 261.0 (00:30) to 236.1 (04:25). 2. S1.E2 indicates max level 261.0 at 00:30, S1.E3 min 236.1 at 04:25. 3. S1.E5 shows +4.5 level change at 04:00, likely a transient spike. 4. S1.E9 shows 12h view slow drift -19.7 level since 16:30 (r2 0.61). 5. S1.E10 shows 3 excursions beyond 3x normal noise in last 12h. 6. S2.E1 shows water flow steady at 0.26 m3/h. 7. S2.E2 max flow 0.66 m3/h at 02:30. 8. S3 shows vacant state (0/1) with no presence detected. 9. Tank level 261.0 is past high mark 161.2, overflow risk >195.0. 10. Tank level 236.1 is past high mark 161.2, overflow risk >195.0. 11. Tank level 236.1 is past high mark 161.2, overflow risk >195.0.\", \"observations\": [{\"text\": \"Water tank level sensor 00 (water) at TH building, level 98\", \"src\": [\"S1.E1\", \"S1.E2\", \"S1.E3\", \"S1.E4\", \"S1.E5\", \"S1.E6\", \"S1.E7\", \"S1.E8\", \"S1.E9\", \"S1.E10\"]}, {\"text\": \"Water flow meter 40 (water) at TH building, level 98\", \"src\": [\"S2.E1\", \"S2.E2\", \"S2.E3\", \"S2.E4\"]}, {\"text\": \"Room occupancy sensor 01 (gateway TH95) at TH building\", \"src\": [\"S3.E1\", \"S3.E2\", \"S3.E4\", \"S3.E5\"]}], \"agent_checks\": [{\"ref\": \"S1\", \"claim\": \"Tank level 261.0 is past high mark 161.2\", \"verdict\": \"corrected\", \"fact\": \"S1.E2 max level 261.0 at 00:30, S1.E3 min level 236.1 at 04:25. 261.0 > 161.2. 236.1 > 161.2. 236.1 > 161.2.\", \"src\": [\"S1.E2\", \"S1.E3\"]}, {\"ref\": \"S1\", \"claim\": \"Tank level 236.1 is past high mark 161.2\", \"verdict\": \"corrected\", \"fact\": \"S1.E3 min level 236.1 at 04:25. 236.1 > 161.2.\", \"src\": [\"S1.E3\"]}, {\"ref\": \"S1\", \"claim\": \"Tank level 236.1 is past high mark 161.2\", \"verdict\": \", \"checklist\": [{\"action\": \"inspect_water_system\", \"target\": \"TH building water tank\", \"why\": \"Verify physical overflow risk at 261.0 level (past 161.2 high mark) and 236.1 level (past 161.2 high mark). Check for leaks or drainage.\"}], \"monitor_next\": \"Continue monitoring water level sensor (S1) for stabilization or further decline. Check water flow meter (S2) for anomalies.\", \"needs_more_data\": true, \"needs_deeper\": true, \"explanation\": \"The primary issue is a rapid water level decrease (-5.9 level/h) from 261.0 to 236.1, which is past the high mark of 161.2, indicating overflow risk. The 10.5x noise spikes suggest sensor instability or external factors. The vacant state (S3) is unrelated to the water level issue. Human intervention required to prevent overflow.\"}",
+     "tokens": 1103,
+     "ttft_ms": 34461.1,
+     "ms": 159683.1,
+     "stop": "max",
+     "forced": 125
+    }
+   ],
+   "prefill_ms": 34500.3,
+   "swap_ms": 1423.5,
+   "total_ms": 161117.4,
+   "reason": {
+    "swapped": true,
+    "unload_ms": 115.6,
+    "load_ms": 1307.9,
+    "cache": "saved",
+    "cached_tokens": 1317,
+    "cache_ms": 20489.6,
+    "kept": true,
+    "streams": 3
+   },
+   "id": "rwh:rwh-00098"
+  }
+ },
+ {
+  "req": "q10",
+  "k": 1,
+  "wall_s": 138.41,
+  "rss_kb": 1724520,
+  "resp": {
+   "outputs": [
+    {
+     "text": "\"title\": \"Incident-2026-12-10\", \"severity\": \"warning\", \"label\": \"water_supply_issue\", \"root_cause\": \"Water tank draining at TH building causing rapid level decrease from 261.0 to 236.1, with 10.5x normal noise spikes in last 12h.\", \"causal_chain\": \"1. Water tank level sensor (S1) shows gradual decrease of -5.9 level/h (r2 0.97) from 261.0 (00:30) to 236.1 (04:25). 2. S1.E2 indicates max level 261.0 at 00:30, S1.E3 min 236.1 at 04:25. 3. S1.E5 shows +4.5 level change at 04:00, likely a transient spike. 4. S1.E9 shows 12h view slow drift -19.7 level since 16:30 (r2 0.61). 5. S1.E10 shows 3 excursions beyond 3x normal noise in last 12h. 6. S2.E1 shows water flow steady at 0.26 m3/h. 7. S2.E2 max flow 0.66 m3/h at 02:30. 8. S3 shows vacant state (0/1) with no presence detected. 9. Tank level 261.0 is past high mark 161.2, overflow risk >195.0. 10. Tank level 236.1 is past high mark 161.2, overflow risk >195.0. 11. Tank level 236.1 is past high mark 161.2, overflow risk >195.0.\", \"observations\": [{\"text\": \"Water tank level sensor 00 (water) at TH building, level 98\", \"src\": [\"S1.E1\", \"S1.E2\", \"S1.E3\", \"S1.E4\", \"S1.E5\", \"S1.E6\", \"S1.E7\", \"S1.E8\", \"S1.E9\", \"S1.E10\"]}, {\"text\": \"Water flow meter 40 (water) at TH building, level 98\", \"src\": [\"S2.E1\", \"S2.E2\", \"S2.E3\", \"S2.E4\"]}, {\"text\": \"Room occupancy sensor 01 (gateway TH95) at TH building\", \"src\": [\"S3.E1\", \"S3.E2\", \"S3.E4\", \"S3.E5\"]}], \"agent_checks\": [{\"ref\": \"S1\", \"claim\": \"Tank level 261.0 is past high mark 161.2\", \"verdict\": \"corrected\", \"fact\": \"S1.E2 max level 261.0 at 00:30, S1.E3 min level 236.1 at 04:25. 261.0 > 161.2. 236.1 > 161.2. 236.1 > 161.2.\", \"src\": [\"S1.E2\", \"S1.E3\"]}, {\"ref\": \"S1\", \"claim\": \"Tank level 236.1 is past high mark 161.2\", \"verdict\": \"corrected\", \"fact\": \"S1.E3 min level 236.1 at 04:25. 236.1 > 161.2.\", \"src\": [\"S1.E3\"]}, {\"ref\": \"S1\", \"claim\": \"Tank level 236.1 is past high mark 161.2\", \"verdict\": \", \"checklist\": [{\"action\": \"inspect_water_system\", \"target\": \"TH building water tank\", \"why\": \"Verify physical overflow risk at 261.0 level (past 161.2 high mark) and 236.1 level (past 161.2 high mark). Check for leaks or drainage.\"}], \"monitor_next\": \"Continue monitoring water level sensor (S1) for stabilization or further decline. Check water flow meter (S2) for anomalies.\", \"needs_more_data\": true, \"needs_deeper\": true, \"explanation\": \"The primary issue is a rapid water level decrease (-5.9 level/h) from 261.0 to 236.1, which is past the high mark of 161.2, indicating overflow risk. The 10.5x noise spikes suggest sensor instability or external factors. The vacant state (S3) is unrelated to the water level issue. Human intervention required to prevent overflow.\"}",
+     "tokens": 1103,
+     "ttft_ms": 13726.2,
+     "ms": 138393.4,
+     "stop": "max",
+     "forced": 125
+    }
+   ],
+   "prefill_ms": 13755.2,
+   "swap_ms": 0.0,
+   "total_ms": 138403.8,
+   "reason": {
+    "swapped": false,
+    "unload_ms": 0.0,
+    "load_ms": 0.0,
+    "cache": "mem",
+    "cached_tokens": 1317,
+    "cache_ms": 6.9,
+    "kept": true,
+    "streams": 3
+   },
+   "id": "rwh:rwh-00098"
+  }
+ },
+ {
+  "req": "q11",
+  "k": 2,
+  "wall_s": 124.53,
+  "rss_kb": 1754728,
+  "resp": {
+   "outputs": [
+    {
+     "text": "\"title\": \"Incident-9696\", \"severity\": \"warning\", \"label\": \"occupancy_driven_load\", \"root_cause\": \"Occupancy-driven load (S2) causing rapid CO2 fluctuations (S1) at PB building, room 02, 04:35 IST.\", \"causal_chain\": \"Agent S2 reports occupancy=0 (vacant). Agent S1 reports CO2=324 ppm, falling at -9.4 ppm/h. S2.E2 confirms vacant state. S1.E1 last=324 ppm. S1.E3 min=324 ppm at 04:35. S1.E4 trend=-9.4 ppm/h. S1.E5 largest 5-min change=-14.0 ppm at 02:40. S1.E9 12h view slow drift -110 ppm since 16:40. S1.E10 recent episodes 8 excursions beyond 3x normal noise in last 12h. S2.E4 first occupied at never. S2.E5 last occupied at never. Memory M1: 2026-11-09 INC-0697 co2 sensor_fault on SR-AQ-PB02-03 (recalibrated, closed as repaired).\", \"observations\": [{\"text\": \"S1.E1 last CO2=324 ppm\", \"src\": [\"S1.E1\"]}, {\"text\": \"S1.E2 max CO2=367 ppm at 00:45\", \"src\": [\"S1.E2\"]}, {\"text\": \"S1.E3 min CO2=324 ppm at 04:35\", \"src\": [\"S1.E3\"]}, {\"text\": \"S1.E4 trend=-9.4 ppm/h\", \"src\": [\"S1.E4\"]}, {\"text\": \"S1.E5 largest 5-min change=-14.0 ppm at 02:40\", \"src\": [\"S1.E5\"]}, {\"text\": \"S1.E9 12h view slow drift -110.0 ppm since 16:40\", \"src\": [\"S1.E9\"]}, {\"text\": \"S1.E10 recent episodes 8 excursions beyond 3x normal noise in last 12h\", \"src\": [\"S1.E10\"]}, {\"text\": \"S2.E2 occupancy=0 (vacant)\", \"src\": [\"S2.E2\"]}, {\"text\": \"S2.E4 first occupied at never\", \"src\": [\"S2.E4\"]}, {\"text\": \"S2.E5 last occupied at never\", \"src\": [\"S2.E5\"]}, {\"text\": \"S1.E10 8 excursions beyond 3x normal noise in last 12h\", \"src\": [\"S1.E10\"]}, {\"text\": \"S1.E10 8 excursions beyond 3x normal noise in last 12h\", \"src\": [\"S1.E10\"]}, {\"text\": \"S1.E10 8 excursions beyond 3x normal noise in last 12h, \"agent_checks\": [{\"ref\": \"S1\", \"claim\": \"CO2 falling at -9.4 ppm/h\", \"verdict\": \"corrected\", \"fact\": \"S1.E4 trend = -9.4 ppm/h\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E1 last = 324 ppm\", \"verdict\": \"corrected\", \"fact\": \"S1.E1 last = 324 ppm\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E2 max = 367 ppm at 00:45\", \"verdict\": \"corrected\", \"fact\": \"S1.E2 max = 367 ppm at 00:45\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E3 min = 324 ppm at 04:35\", \"verdict\": \"corrected\", \"fact\": \"S1.E3 min = 324 ppm at 04:35\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E4 trend = -9.4 ppm/h\", \"verdict\": \"corrected\", \"fact\": \"S1.E4 trend = -9.4 ppm/h\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E5 largest 5-min change = -14.0 ppm at 02:40\", \"verdict\": \"corrected\", \"fact\": \"S1.E5 largest 5-min change = -14.0 ppm at 02:40\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E9 12 h view: slow drift -110.0 ppm since 16:40\", \"verdict\":, \"checklist\": [{\"action\": \"none\", \"target\": \"SR-AQ-PB02-03\", \"why\": \"Agent S1 flagged but quality=good, no fault reported.\"}, {\"action\": \"inspect_ventilation\", \"target\": \"SR-AQ-PB02-03\", \"why\": \"Agent S1 notes gradual decrease, potential HVAC or occupancy driven.\"}, {\"action\": \"check_sensor\", \"target\": \"SR-AQ-PB02-03\", \"why\": \"Agent S1 notes 12h drift -110 ppm, possible sensor drift or HVAC issue.\"}, {\"action\": \"review_schedule\", \"target\": \"SR-AQ-PB02-03\", \"why\": \"Agent S1 notes 8 excursions beyond 3x normal noise, possible HVAC cycling or occupancy.\"}, {\"action\": \"request_facility_review\", \"target\": \"SR-AQ-PB02-03\", \"why\": \"Agent S1 notes 12h drift -110 ppm, possible HVAC or occupancy driven.\"}, {\"action\": \"recalibrate_sensor\", \"target\": \"SR-AQ-PB02-03\", \"why\": \"Agent S1 notes 12h drift -110 ppm, possible HVAC or occupancy driven.\"}, {\"action\": \"restart_or_reconnect_sensor\", \"target\": \"SR-AQ-PB02-03\", \"why\": \"Agent S1 notes 12h drift -110 ppm, possible HVAC or occupancy driven.\"}], \"monitor_next\": \"Continue monitoring S1 and S2 for 24h to confirm if drift stabilizes or if new excursions occur.\", \"needs_more_data\": true, \"needs_deeper\": true, \"explanation\": \"Agent S2 confirms vacant state (0 occupancy). Agent S1 shows CO2 at 324 ppm with a -9.4",
+     "tokens": 1524,
+     "ttft_ms": 10013.5,
+     "ms": 124516.8,
+     "stop": "max",
+     "forced": 328
+    }
+   ],
+   "prefill_ms": 10049.0,
+   "swap_ms": 0.0,
+   "total_ms": 124528.1,
+   "reason": {
+    "swapped": false,
+    "unload_ms": 0.0,
+    "load_ms": 0.0,
+    "cache": "mem",
+    "cached_tokens": 1317,
+    "cache_ms": 10.6,
+    "kept": true,
+    "streams": 3
+   },
+   "id": "rwh:rwh-00147"
+  }
+ },
+ {
+  "req": "q12",
+  "k": 3,
+  "wall_s": 132.92,
+  "rss_kb": 1753596,
+  "resp": {
+   "outputs": [
+    {
+     "text": "\"title\": \"Night Cooling Recovery Incident\", \"severity\": \"normal\", \"label\": \"occupancy_driven_load\", \"root_cause\": \"AC unit (SR-AC-KH01-11) initiated cooling at 22:30 to recover from 27.9\u00b0C to 26.6\u00b0C. Cooling maintained until 22:55 (22:30\u201322:55), then unit turned off. No external weather-driven anomalies detected.\", \"causal_chain\": \"1. Incident-22:55: AC unit SR-AC-KH01-11 (hvac) initiated cooling mode. 2. 22:30: Cooling started, temperature dropped from 27.9\u00b0C to 26.6\u00b0C. 3. 22:40\u201322:55: Temperature stabilized at 26.6\u00b0C (comfort band 20.0\u201325.0\u00b0C). 4. 22:55: AC unit turned off. 5. 22:30\u201322:55: Cooling maintained, no excursions beyond normal noise.\", \"observations\": [{\"text\": \"AC unit SR-AC-KH01-11 (hvac) at KH building, level 01\", \"src\": [\"S1.E1\", \"S1.E4\"]}, {\"text\": \"Cooling recovery from 27.9\u00b0C to 26.6\u00b0C since 22:30\", \"src\": [\"S1.E1\", \"S1.E4\"]}, {\"text\": \"S1.E1 room now 26.6 C, setpoint 23.0 C\", \"src\": [\"S1.E1\"]}, {\"text\": \"S1.E2 max 28.5 C at 19:00, min 26.6 C at 22:55\", \"src\": [\"S1.E2\"]}, {\"text\": \"S1.E3 above band for last 240 min since 19:00\", \"src\": [\"S1.E3\"]}, {\"text\": \"S1.E4 trend -0.3 C/h, last hour -1.1 C/h\", \"src\": [\"S1.E4\"]}, {\"text\": \"S1.E5 AC on 6/48 samples, mode cool, starts 1, stops 0, last start 22:30\", \"src\": [\"S1.E5\"]}, {\"text\": \"S1.E6 on-runs shortest 30 min, median 30 min\", \"src\": [\"S1.E6\"]}, {\"text\": \"S1.E7 setpoint unchanged at 23.0 C; temp flat 20 min max\", \"src\": [\"S1.E7\"]}, {\"text\": \"S1.E8 occupancy n/a; usually on 0% at this hour\", \"src\": [\"S1.E8\"]}, {\"text\": \"S1.E9 12 h view: no level shift or drift\", \"src\": [\"S1.E9\"]}, {\"text\": \"S1.E10 recent episodes: no excursions beyond 3x normal noise\", \"src\":, \"agent_checks\": [{\"ref\": \"S1.E1\", \"claim\": \"Cooling recovery from 27.9 C to 26.6 C since 22:30\", \"verdict\": \"corrected\", \"fact\": \"Confirmed by S1.E1 and S1.E4 trend analysis.\", \"src\": [\"S1.E1\", \"S1.E4\"]}, {\"ref\": \"S1.E2\", \"claim\": \"Max 28.5 C at 19:00, min 26.6 C at 22:55\", \"verdict\": \"corrected\", \"fact\": \"S1.E2 data matches observed cooling trajectory.\", \"src\": [\"S1.E2\"]}, {\"ref\": \"S1.E3\", \"claim\": \"Above band for last 240 min since 19:00\", \"verdict\": \"corrected\", \"fact\": \"S1.E3 shows sustained elevated temperature consistent with cooling recovery.\", \"src\": [\"S1.E3\"]}, {\"ref\": \"S1.E4\", \"claim\": \"Trend -0.3 C/h, last hour -1.1 C/h\", \"verdict\": \"corrected\", \"fact\": \"S1.E4 trend analysis matches observed cooling rate.\", \"src\": [\"S1.E4\"]}, {\"ref\": \"S1.E5\", \"claim\": \"AC on 6/48 samples, mode cool, starts 1, stops 0, last start 22:30\", \"verdict\": \"corrected\", \"fact\": \"S1.E5 confirms AC mode cool and timing matches incident start.\", \"src\": [\"S1.E5\"]}, {\"ref\": \"S1.E6\", \"claim\": \"On-runs shortest 30 min, median 30 min\", \"verdict\": \"corrected\", \"fact\": \"S1.E6 confirms AC operation duration consistent with cooling mode.\", \"src\": [\"S1.E6\"]}, {\"ref\": \"S1.E7\", \"claim\": \", \"checklist\": [{\"action\": \"none\", \"target\": \"SR-AC-KH01-11\", \"why\": \"Unit initiated cooling at 22:30, no manual intervention required.\"}, {\"action\": \"inspect_ventilation\", \"target\": \"KH building\", \"why\": \"Verify airflow and temperature stability post-cooling.\"}, {\"action\": \"check_sensor\", \"target\": \"SR-AC-KH01-11\", \"why\": \"Confirm unit status and temperature trend post-22:55.\"}], \"monitor_next\": \"Continue monitoring for 240 min (4h) to ensure no re-escalation of temperature.\", \"needs_more_data\": false, \"needs_deeper\": false, \"explanation\": \"Agent findings indicate a normal, occupancy-driven cooling event. The AC unit responded to the 22:30 start time, successfully cooling the room from 27.9\u00b0C to 26.6\u00b0C. The unit remained stable at the target temperature until 22:55, after which it turned off. No critical faults, power issues, or environmental anomalies were identified. No human checklist actions required.\"}",
+     "tokens": 1402,
+     "ttft_ms": 8634.1,
+     "ms": 132909.0,
+     "stop": "max",
+     "forced": 277
+    }
+   ],
+   "prefill_ms": 8663.2,
+   "swap_ms": 0.0,
+   "total_ms": 132920.0,
+   "reason": {
+    "swapped": false,
+    "unload_ms": 0.0,
+    "load_ms": 0.0,
+    "cache": "mem",
+    "cached_tokens": 1317,
+    "cache_ms": 11.6,
+    "kept": true,
+    "streams": 3
+   },
+   "id": "rwh:rwh-00011"
+  }
+ },
+ {
+  "req": "q13",
+  "k": 4,
+  "wall_s": 129.31,
+  "rss_kb": 1757228,
+  "resp": {
+   "outputs": [
+    {
+     "text": "\"title\": \"Incident Report - Incident-8822\", \"severity\": \"warning\", \"label\": \"air_pollution_event\", \"root_cause\": \"Ventilation insufficient leading to CO2 accumulation; AC unit tripped at 13:00\", \"causal_chain\": \"1. Incident-8822 opened 15:25. 2. CO2 at PB00 building (S1) shows exponential increase from 490 ppm at 11:45 to 1258 ppm at 15:25. 3. Trend +180.8 ppm/h, r2 0.83. 4. 1258 ppm exceeds warning limit of 1000 ppm. 5. S1.E1 last = 1258 ppm. 6. S1.E2 max = 1258 ppm at 15:25. 7. S1.E3 min = 490 ppm at 11:45. 8. S1.E4 trend = +180.8 ppm/h. 9. S1.E5 largest 5-min change = +52.0 ppm at 14:40. 10. S1.E6 SMA 1h = 1062, EMA 1h = 1074, mean 4h = 711 ppm. 11. S1.E7 halves 529 -> 893, curvature +391.2/h. 12. S1.E8 noise 15.53. 13. S1.E9 12 h view: no level shift or drift. 14. S1.E10 recent episodes: 1 excursion beyond 3x normal noise in last 12 h. 15. S2 [AC] shows unit_tripped at 13:00, room temp 26.2 C (setpoint 24.0 C). 16. S3 [Occupancy] shows room occupied all window 15:25-11:30. 17. Electrician visited yesterday for socket repair.\", \"observations\": [{\"text\": \"CO2 at PB00 building, level 00, indoor air sensor 04 (air_quality) quality=good\", \"src\": [\"S1.E1\", \"S1.E4\"]}, {\"text\": \"AC indoor unit 04 (hvac) quality=good\", \"src\": [\"S2.E1\", \"S2.E4\", \"S2.E5\"]}, {\"text\": \"Room occupancy sensor 04 (gateway PB95) quality=good\", \"src\": [\"S3.E1\", \"S3.E2\", \"S3.E4\", \"S3.E5\"]}], \"agent_checks\": [{\"ref\": \"S1\", \"claim\": \"CO2 climbing at +180.8 ppm/h\", \"verdict\": \"corrected\", \"fact\": \"S1.E4 trend = +180.8 ppm/h\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"1258 ppm exceeds warning limit of 1000 ppm\", \"verdict\": \"corrected\", \"fact\": \"S1.E1 last = 1258 ppm, warning limit 1000 ppm\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E2 max = 1258 ppm at 15:25\", \"verdict\": \"corrected\", \"fact\": \"S1.E2 max = 1258 ppm at 15:25\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E3 min = 490 ppm at, \"checklist\": [{\"action\": \"inspect_ventilation\", \"target\": \"PB00 building ventilation system\", \"why\": \"Agent S1 indicates ventilation_insufficient causing CO2 climb; agent_checks S1.E1, S1.E2, S1.E3, S1.E4, S1.E5, S1.E6, S1.E7, S1.E8, S1.E9, S1.E10 all support this. 1258 ppm exceeds 1000 ppm warning. Trend +180.8 ppm/h. 12 h view shows no level shift or drift. 14. Recent episodes show 1 excursion beyond 3x normal noise. 18. AC unit tripped at 13:00, not restarted. 19. Electrician visited yesterday for socket repair.\"}, {\"action\": \"check_sensor\", \"target\": \"PB00 building air_quality sensor 04\", \"why\": \"Agent S1 confirms quality=good but CO2",
+     "tokens": 1058,
+     "ttft_ms": 13190.9,
+     "ms": 129293.5,
+     "stop": "max",
+     "forced": 130
+    }
+   ],
+   "prefill_ms": 13221.9,
+   "swap_ms": 0.0,
+   "total_ms": 129305.9,
+   "reason": {
+    "swapped": false,
+    "unload_ms": 0.0,
+    "load_ms": 0.0,
+    "cache": "mem",
+    "cached_tokens": 1317,
+    "cache_ms": 10.3,
+    "kept": true,
+    "streams": 3
+   },
+   "id": "rwh:rwh-00085"
+  }
+ },
+ {
+  "req": "q14",
+  "k": 5,
+  "wall_s": 116.03,
+  "rss_kb": 1752328,
+  "resp": {
+   "outputs": [
+    {
+     "text": "\"title\": \"Incident-1684\", \"severity\": \"warning\", \"label\": \"power_load_anomaly\", \"root_cause\": \"S1.E5 indicates a sudden load surge of -2.33 kW at 12:10 IST, causing erratic readings and a warning status. The pattern is consistent with a temporary power fluctuation or load spike.\", \"causal_chain\": \"1. Incident opened at 12:45 IST. 2. S1.E5 shows a -2.33 kW load jump at 12:10 IST. 3. S1.E1 (last reading) is 20.09 kW. 4. S1.E3 (min) is 18.53 kW at 12:10 IST. 5. S1.E4 shows a +0.01 kW/h trend (flat). 6. S1.E5 largest 5-min change is -2.33 kW at 12:10 IST. 7. S1.E6 SMA 1h = 20.07 kW. 8. S1.E7 shows oscillation with curvature +1.00/h. 9. S1.E8 shows noise 0.697. 10. Agent pattern: erratic status, warning. 11. Operator note: switch_off_main_pump.\", \"observations\": [{\"text\": \"S1.E5 largest 5-min change = -2.33 kW at 12:10\", \"src\": [\"S1.E5\", \"S1.E1\", \"S1.E3\", \"S1.E6\", \"S1.E7\", \"S1.E8\"]}, {\"text\": \"S1.E1 last = 20.09 kW\", \"src\": [\"S1.E1\"]}, {\"text\": \"S1.E2 max = 21.07 kW at 09:05\", \"src\": [\"S1.E2\"]}, {\"text\": \"S1.E3 min = 18.53 kW at 12:10\", \"src\": [\"S1.E3\"]}, {\"text\": \"S1.E4 trend = +0.01 kW/h (r2 0.00)\", \"src\": [\"S1.E4\"]}, {\"text\": \"S1.E6 SMA 1h = 20.07 kW\", \"src\": [\"S1.E6\"]}, {\"text\": \"S1.E7 halves 19.86 -> 19.90, curvature +1.00/h\", \"src\": [\"S1.E7\"]}, {\"text\": \"S1.E8 noise 0.697\", \"src\": [\"S1.E8\"]}, {\"text\": \"S1.E5 largest 5-min change = -2.33 kW at 12:10\", \"src\": [\"S1.E5\"]}, {\"text\": \"S1.E1 last = 20.09 kW\", \"src\": [\"S1.E1\"]}, {\"text\": \"S1.E2 max = 21.07 kW at 09:05\", \"src\": [\"S1, \"agent_checks\": [{\"ref\": \"S1\", \"claim\": \"Load jumped -2.33 kW at 12:10\", \"verdict\": \"corrected\", \"fact\": \"S1.E5 largest 5-min change = -2.33 kW at 12:10 IST\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"Pattern erratic, status warning\", \"verdict\": \"corrected\", \"fact\": \"S1 quality=bad, agent pattern=erratic, status=warning\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E1 last = 20.09 kW\", \"verdict\": \"corrected\", \"fact\": \"S1.E1 last = 20.09 kW\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E2 max = 21.07 kW at 09:05\", \"verdict\": \"corrected\", \"fact\": \"S1.E2 max = 21.07 kW at 09:05\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E3 min = 18.53 kW at 12:10\", \"verdict\": \"corrected\", \"fact\": \"S1.E3 min = 18.53 kW at 12:10\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E4 trend = +0.01 kW/h\", \"verdict\": \"corrected\", \"fact\": \"S1.E4 trend = +0.01 kW/h\", \"src\": []}, {\"ref\": \"S1\", \"claim\": \"S1.E5 largest 5-min change = -2.3, \"checklist\": [{\"action\": \"check_sensor\", \"target\": \"S1\", \"why\": \"Verify if -2.33 kW surge is real or artifact; check for power quality issues.\"}], \"monitor_next\": \"Continue monitoring S1 for stabilization; check for sustained load anomalies.\", \"needs_more_data\": true, \"needs_deeper\": true, \"explanation\": \"The incident report indicates a warning status due to erratic sensor readings (S1) and a specific load surge event (S1.E5) at 12:10 IST. The data quality is poor (14 of 48 readings missing). The root cause appears to be a temporary power fluctuation or load spike. Further investigation is needed to confirm the nature of the surge and rule out sensor artifacts. The operator note suggests immediate action to switch off the main pump, but this should be verified against the sensor data.\"}",
+     "tokens": 1290,
+     "ttft_ms": 6978.5,
+     "ms": 116016.9,
+     "stop": "max",
+     "forced": 242
+    }
+   ],
+   "prefill_ms": 7004.2,
+   "swap_ms": 0.0,
+   "total_ms": 116026.0,
+   "reason": {
+    "swapped": false,
+    "unload_ms": 0.0,
+    "load_ms": 0.0,
+    "cache": "mem",
+    "cached_tokens": 1317,
+    "cache_ms": 8.3,
+    "kept": true,
+    "streams": 3
+   },
+   "id": "rwh:rwh-00002"
+  }
+ },
+ {
+  "req": "q15",
+  "k": 6,
+  "wall_s": 117.24,
+  "rss_kb": 1751772,
+  "resp": {
+   "outputs": [
+    {
+     "text": "\"title\": \"Incident-8633\", \"severity\": \"warning\", \"label\": \"power_load_anomaly\", \"root_cause\": \"Sudden load surge at 08:20 (S1.E5) causing erratic power_kw readings (S1.E1, S1.E2, S1.E3, S1.E4, S1.E5, S1.E7, S1.E8).\", \"causal_chain\": \"1. Incident opened 10:25 IST. 2. Agent S1 flagged power_kw quality=bad with 20/48 missing readings. 3. S1.E5 shows load surge -1.86 kW at 08:20. 4. S1.E1 (last) = 21.31 kW, S1.E2 (max) = 21.31 kW at 07:15. 5. S1.E3 (min) = 18.65 kW at 08:20. 6. S1.E4 trend = -0.06 kW/h (r2 0.01), S1.E7 oscillation crossings 23. 7. S1.E8 noise 0.627, plateau at max 1 pts. 8. Pattern indicates load_surge at 08:20. 9. Data quality=bad due to missing readings.\", \"observations\": [{\"text\": \"S1.E5 largest 5-min change = -1.86 kW at 08:20\", \"src\": [\"S1.E5\"]}, {\"text\": \"S1.E1 last = 21.31 kW\", \"src\": [\"S1.E1\"]}, {\"text\": \"S1.E2 max = 21.31 kW at 07:15\", \"src\": [\"S1.E2\"]}, {\"text\": \"S1.E3 min = 18.65 kW at 08:20\", \"src\": [\"S1.E3\"]}, {\"text\": \"S1.E4 trend = -0.06 kW/h (r2 0.01)\", \"src\": [\"S1.E4\"]}, {\"text\": \"S1.E7 oscillation crossings 23\", \"src\": [\"S1.E7\"]}, {\"text\": \"S1.E8 noise 0.627, plateau at max 1 pts\", \"src\": [\"S1.E8\"]}, {\"text\": \"S1 quality=bad (20 of 48 readings missing)\", \"src\": [\"S1\"]}], \"agent_checks\": [{\"ref\": \"S1\", \"claim\": \"quality=bad (20 of 48 readings missing)\", \"verdict\": \"corrected\", \"fact\": \"Agent report states quality=bad with 20/48 readings missing in 4h window.\", \"src\": []}, {\"ref\": \"S1.E5\", \"claim\": \"Load jumped -1.86 kW at 08:20\", \"verdict\": \"corrected\", \"fact\": \"S1.E5 largest 5-min change = -1.86 kW at 08:20.\", \"src\": []}, {\"ref\": \"S1.E1\", \"claim\": \"Last = 21.31 kW\", \"verdict\": \"corrected\", \"fact\": \"S1.E1 last = 21.31 kW.\", \"src\": []}, {\"ref\": \"S1.E2\", \"claim\": \"Max = 21.31 kW at 07:15\", \"verdict\": \"corrected\", \"fact\": \"S1.E2 max = 21.31 kW at 07:15.\", \"src\": []}, {\"ref\": \"S1.E3\", \"claim\": \"Min = 18.65 kW at 08:20\", \"verdict\": \"corrected\", \"fact\": \"S1.E3 min = 18.65 kW at 08:20.\", \"src\": []}, {\"ref\": \"S1.E4\", \"claim\": \"Trend = -0.06 kW/h\", \"verdict\": \"corrected\", \"fact\": \"S1.E4 trend = -0.06 kW/h.\", \"src\": []}, {\"ref\": \"S1.E7, \"checklist\": [{\"action\": \"check_sensor\", \"target\": \"S1\", \"why\": \"Verify power_kw quality and missing readings at 08:20 vs 07:15.\"}], \"monitor_next\": \"Re-check S1.E1, S1.E2, S1.E3, S1.E4, S1.E5, S1.E7, S1.E8 after 08:20 to confirm surge magnitude and duration.\", \"needs_more_data\": true, \"needs_deeper\": true, \"explanation\": \"Agent S1 reports quality=bad with 20/48 readings missing in 4h window. S1.E5 shows -1.86 kW surge at 08:20. S1.E1 (last) = 21.31 kW, S1.E2 (max) = 21.31 kW at 07:15. S1.E3 min = 18.65 kW at 08:20. S1.E4 trend = -0.06 kW/h. S1.E7 oscillation crossings 23. S1.E8 noise 0.627. Pattern suggests load_surge at 08:20. Data quality=bad due to missing readings. Need to verify S1.E1-E8 readings and confirm if S1.E5 surge is real or artifact.\"}",
+     "tokens": 1266,
+     "ttft_ms": 6168.0,
+     "ms": 117225.0,
+     "stop": "max",
+     "forced": 222
+    }
+   ],
+   "prefill_ms": 6208.1,
+   "swap_ms": 0.0,
+   "total_ms": 117237.6,
+   "reason": {
+    "swapped": false,
+    "unload_ms": 0.0,
+    "load_ms": 0.0,
+    "cache": "mem",
+    "cached_tokens": 1317,
+    "cache_ms": 7.2,
+    "kept": true,
+    "streams": 3
+   },
+   "id": "rwh:rwh-00043"
+  }
+ }
+]

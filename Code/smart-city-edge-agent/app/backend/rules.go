@@ -363,7 +363,11 @@ func occLabelFinding(pattern string, s OccStats, end int64) Finding {
 
 // RuleFinding = Mode 1 output for one window (deterministic, no LLM).
 func RuleFinding(role, metric, node string, xs []float64, end int64) Finding {
-	pattern := RulePattern(role, metric, xs, end)
+	return ruleFindingAs(RulePattern(role, metric, xs, end), role, metric, node, xs, end)
+}
+
+// ruleFindingAs: RuleFinding with a given pattern (engine critical gap bypass).
+func ruleFindingAs(pattern, role, metric, node string, xs []float64, end int64) Finding {
 	if role == "occupancy" {
 		return occLabelFinding(pattern, ComputeOccStats(xs), end)
 	}

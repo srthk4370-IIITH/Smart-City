@@ -1,0 +1,364 @@
+# rsn_v3 local pipeline status (append-only)
+
+- 2026-10-29 14:08:03 [make_data dry1] start (seed 31, pool 26000, target 12000, skip_chat 1)
+- 2026-10-29 14:08:29 [make_data dry1] chat3 ok: train 8000 dev 300 rows, self-test PASS
+- 2026-10-29 14:09:02 [make_data dry1] incidents: incidents3: 12000 rows (pool 26000 -> verified 26000, leak 0, dup 0, border 600) in 32 s
+- 2026-10-29 14:09:14 [make_data dry1] re-verify: check.jsonl: 12000/12000 pass (100.0%) fails={}
+- 2026-10-29 14:09:19 [make_data dry1] DONE data -> /mnt/c/Users/hp/Desktop/qidk/proofs/2026-10-29_rsn_v3/kaggle/build/dry1/data (60M)
+- 2026-10-29 14:09:38 [make_bundle dry1] start (data /mnt/c/Users/hp/Desktop/qidk/proofs/2026-10-29_rsn_v3/kaggle/build/dry1/data)
+- 2026-10-29 14:09:40 [make_bundle dry1] FAIL: chat3 sources changed since make_data verified them: rerun make_data with a new RUN_ID
+- 2026-10-29 14:09:52 [make_data dry2] start (seed 31, pool 26000, target 12000, skip_chat 1)
+- 2026-10-29 14:10:36 [make_data dry2] chat3 ok: train 8000 dev 300 rows, self-test PASS
+- 2026-10-29 14:11:10 [make_data dry2] incidents: incidents3: 12000 rows (pool 26000 -> verified 26000, leak 0, dup 0, border 600) in 33 s
+- 2026-10-29 14:11:26 [make_data dry2] re-verify: check.jsonl: 12000/12000 pass (100.0%) fails={}
+- 2026-10-29 14:11:33 [make_data dry2] DONE data -> /mnt/c/Users/hp/Desktop/qidk/proofs/2026-10-29_rsn_v3/kaggle/build/dry2/data (60M)
+- 2026-10-29 14:11:34 [make_bundle dry2] start (data /mnt/c/Users/hp/Desktop/qidk/proofs/2026-10-29_rsn_v3/kaggle/build/dry2/data)
+- 2026-10-29 14:11:39 [make_bundle dry2] FAIL: non-allowlisted / denied files staged: proofs/2026-10-25_reasoner_final/data/train_store.sqlite-shm proofs/2026-10-25_reasoner_final/data/train_store.sqlite-wal proofs/2026-10-25_reasoner_final/data/train_store.sqlite-shm proofs/2026-10-25_reasoner_final/data/train_store.sqlite-wal
+- 2026-10-29 14:12:01 [make_bundle dry2] start (data /mnt/c/Users/hp/Desktop/qidk/proofs/2026-10-29_rsn_v3/kaggle/build/dry2/data)
+- 2026-10-29 14:12:18 [make_bundle dry2] DONE bundle /mnt/c/Users/hp/Desktop/qidk/proofs/2026-10-29_rsn_v3/kaggle/build/dry2/rsn_v3_bundle.zip (11M, md5 19fb7b3b2edaf225336bbe8f33b23e76)
+- 2026-10-29 14:13:56 [make_data dry3] start (seed 31, pool 26000, target 12000, skip_chat 1)
+- 2026-10-29 14:14:35 [make_data dry3] chat3 ok: train 8000 dev 300 rows, self-test PASS
+- 2026-10-29 14:15:12 [make_data dry3] incidents: incidents3: 12000 rows (pool 26000 -> verified 26000, leak 0, dup 0, border 600) in 36 s
+- 2026-10-29 14:15:27 [make_data dry3] re-verify: check.jsonl: 12000/12000 pass (100.0%) fails={}
+- 2026-10-29 14:15:34 [make_data dry3] DONE data -> /mnt/c/Users/hp/Desktop/qidk/proofs/2026-10-29_rsn_v3/kaggle/build/dry3/data (60M)
+- 2026-10-29 14:15:34 [make_bundle dry3] start (data /mnt/c/Users/hp/Desktop/qidk/proofs/2026-10-29_rsn_v3/kaggle/build/dry3/data)
+- 2026-10-29 14:15:51 [make_bundle dry3] DONE bundle /mnt/c/Users/hp/Desktop/qidk/proofs/2026-10-29_rsn_v3/kaggle/build/dry3/rsn_v3_bundle.zip (11M, md5 7e56821cac33c1d0c1f298d20e5295db)
+- 2026-10-29 14:30 [agent] dry-run builds dry1-dry3 deleted (built while chat3 data was being regenerated); real run = new RUN_ID after the chat3 data is final
+- 2026-10-29 18:25:46 [laptop_probe] len 6144: no result (see /home/hp_srthk4370/smartcity_runs/rsn3_probe/probe_6144.log)
+- 2026-10-29 18:25:47 [laptop_probe] waiting: Windows free RAM 521 MB < 1536 MB
+- 2026-10-29 18:28:48 [laptop_probe] len 5120: no result (see /home/hp_srthk4370/smartcity_runs/rsn3_probe/probe_5120.log)
+- 2026-10-29 18:28:49 [laptop_probe] waiting: Windows free RAM 466 MB < 1536 MB
+- 2026-10-29 18:33:26 [laptop_probe] len 4096: no result (see /home/hp_srthk4370/smartcity_runs/rsn3_probe/probe_4096.log)
+- 2026-10-29 18:33:27 [laptop_probe] waiting: Windows free RAM 416 MB < 1536 MB
+- 2026-10-29 18:35:43 [laptop_probe] len 3072: no result (see /home/hp_srthk4370/smartcity_runs/rsn3_probe/probe_3072.log)
+- 2026-10-29 19:02:16 [make_data r1] start (seed 31, pool 44000, target 20000, skip_chat 1)
+- 2026-10-29 19:13:04 [make_data r1] chat3 ok: train 8000 dev 300 rows, self-test PASS
+- 2026-10-29 19:14:12 [make_data r1] incidents: incidents3: 20000 rows (pool 44000 -> verified 44000, leak 0, dup 1, border 600) in 67 s
+- 2026-10-29 19:14:12 [make_data r1] RWH-2 (held out, never bundled): {"rows":150,"seed":4242,"families":{"real_agent":44,"acidic":9,"rain_level":7,"ac_after_hours":6,"rh_impossible":5,"insufficient":4,"tds":4,"agent_miss":4,"holiday_low":4,"idle_flow":4,"vent_fail":4,"
+- 2026-10-29 19:14:20 [make_data r1] compact targets: {"n": 1106, "mean_tokens_before": 467.3, "mean_tokens_after": 439.8, "cut_pct_on_compacted_rows": 5.9}; {'compacted': 11031, 'unchanged': 8969}
+- 2026-10-29 19:14:38 [make_data r1] re-verify: check.jsonl: 20000/20000 pass (100.0%) fails={}
+- 2026-10-29 19:14:43 [make_data r1] DONE data -> /mnt/c/Users/hp/Desktop/qidk/proofs/2026-10-29_rsn_v3/kaggle/build/r1/data (103M)
+- 2026-10-29 19:14:43 [make_bundle r1] start (data /mnt/c/Users/hp/Desktop/qidk/proofs/2026-10-29_rsn_v3/kaggle/build/r1/data)
+- 2026-10-29 19:15:08 [make_bundle r1] DONE bundle /mnt/c/Users/hp/Desktop/qidk/proofs/2026-10-29_rsn_v3/kaggle/build/r1/rsn_v3_bundle.zip (15M, md5 399a9f50637df053891e58f6c43f8b99)
+- 2026-10-29 22:43:12 [make_bundle r2] waiting: Windows free RAM 1016 MB < 1536 MB
+- 2026-10-29 22:44:13 [make_bundle r2] start (data /mnt/c/Users/hp/Desktop/qidk/proofs/2026-10-29_rsn_v3/kaggle/build/r1/data)
+- 2026-10-29 22:44:30 [make_bundle r2] DONE bundle /mnt/c/Users/hp/Desktop/qidk/proofs/2026-10-29_rsn_v3/kaggle/build/r2/rsn_v3_bundle.zip (15M, md5 d5efe71b8e04adb98539f59ef916bb36)
+- 2026-10-29 22:45:27 [laptop_chain r1] chain start (run r1, pid 15586)
+- 2026-10-29 22:45:27 [laptop_chain r1] step data_a done
+- 2026-10-30 12:20 [kaggle s1] PROJECTION: nf4, 2 GPUs (fla), 420 tok/s probe; live 427 tok/s, step 30/2000 loss 0.45, ETA epoch 1 48.9 h (~5 sessions; incident part 1250 steps ~3 sessions). Notebook updated: guarded causal-conv1d install (owner re-imports before session 2).
+- 2026-10-30 07:36:32 [laptop_chain r1] chain start (run r1, pid 822)
+- 2026-10-30 16:26:40 [laptop_chain r1] step distill done
+- 2026-10-30 16:27:50 [laptop_chain r1] chain start (run r1, pid 471)
+- 2026-10-30 17:01:04 [laptop_chain r1] chain start (run r1, pid 2329)
+- 2026-10-30 17:01:05 [laptop_chain r1] waiting: Windows free RAM 694 MB < 2048 MB
+- 2026-10-30 17:14:33 [laptop_chain r1] chain start (run r1, pid 2842)
+- 2026-10-30 17:19:41 [laptop_chain r1] chain start (run r1, pid 432)
+- 2026-10-30 17:40:20 [laptop_chain r1] replay: replay: 1000 prompts, 962 kept -> /mnt/c/Users/hp/Desktop/qidk/proofs/2026-10-29_rsn_v3/kaggle/build/r1/replay/replay_train.jsonl
+- 2026-10-30 17:40:20 [laptop_chain r1] step replay done
+- 2026-10-30 17:40:30 [make_bundle_b r1] DONE bundle B /mnt/c/Users/hp/Desktop/qidk/proofs/2026-10-29_rsn_v3/kaggle/build/r1/rsn_v3_chat_bundle.zip (2.4M, md5 4b9af3de742d4ede02e4d1b8feb1fe30)
+- 2026-10-30 17:40:30 [laptop_chain r1] step bundle_b done
+- 2026-10-30 17:40:45 [laptop_chain r1] mix3: replay 962 rows; chat 8549 rows (target 12000 = 0.375 of 20000 incident rows; 8000 questions; hard 3909; {None: 962, 'reference': 6593, 'template': 630, 'distill': 1321, 'distill_long': 5})
+- 2026-10-30 17:40:45 [laptop_chain r1] step mix done
+- 2026-10-30 17:41:10 [laptop_chain r1] step base_2b done
+- 2026-10-30 17:41:12 [laptop_train r1] waiting: Windows free RAM 761 MB < 1536 MB
+- 2026-10-30 17:51:52 [laptop_train r1] rsn3_2b_r1 probe len 6144: {"world": 1, "quant": "nf4", "fla": true, "dtype": "bfloat16", "tok_s": 432.4, "peak_vram_gib": 4.05, "loss": 1.0109, "oom_steps": 0, "longest_tokens": 6144, "proj_e1_h": 48.0, "proj_e2_h": 21.2}
+- 2026-10-30 17:51:52 [laptop_train r1] rsn3_2b_r1 chunk start (max_len 6144, 3 h, chat on)
+- 2026-10-30 17:57:06 [laptop_train r1] rsn3_2b_r1 paused (gpu 60C, ram 1129 MB)
+- 2026-10-30 18:04:34 [laptop_train r1] rsn3_2b_r1 resumed (gpu 59C, ram 2719 MB)
+- 2026-10-30 18:05:38 [laptop_train r1] rsn3_2b_r1 paused (gpu 59C, ram 1252 MB)
+- 2026-10-30 18:08:45 [laptop_train r1] rsn3_2b_r1 resumed (gpu 56C, ram 3364 MB)
+- 2026-10-30 18:10:17 [laptop_train r1] rsn3_2b_r1 paused (gpu 56C, ram 404 MB)
+- 2026-10-30 18:10:48 [laptop_train r1] rsn3_2b_r1 resumed (gpu 53C, ram 3846 MB)
+- 2026-10-30 18:12:23 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 2551 MB)
+- 2026-10-30 18:12:54 [laptop_train r1] rsn3_2b_r1 resumed (gpu 62C, ram 2726 MB)
+- 2026-10-30 18:13:25 [laptop_train r1] rsn3_2b_r1 paused (gpu 87C, ram 2727 MB)
+- 2026-10-30 18:13:57 [laptop_train r1] rsn3_2b_r1 resumed (gpu 65C, ram 2896 MB)
+- 2026-10-30 18:14:28 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 2984 MB)
+- 2026-10-30 18:14:59 [laptop_train r1] rsn3_2b_r1 resumed (gpu 65C, ram 2820 MB)
+- 2026-10-30 18:15:30 [laptop_train r1] rsn3_2b_r1 paused (gpu 85C, ram 2754 MB)
+- 2026-10-30 18:16:01 [laptop_train r1] rsn3_2b_r1 resumed (gpu 64C, ram 2820 MB)
+- 2026-10-30 18:16:32 [laptop_train r1] rsn3_2b_r1 paused (gpu 85C, ram 2764 MB)
+- 2026-10-30 18:17:03 [laptop_train r1] rsn3_2b_r1 resumed (gpu 65C, ram 3517 MB)
+- 2026-10-30 18:17:34 [laptop_train r1] rsn3_2b_r1 paused (gpu 87C, ram 3071 MB)
+- 2026-10-30 18:18:04 [laptop_train r1] rsn3_2b_r1 resumed (gpu 62C, ram 3004 MB)
+- 2026-10-30 18:18:35 [laptop_train r1] rsn3_2b_r1 paused (gpu 85C, ram 2566 MB)
+- 2026-10-30 18:20:07 [laptop_train r1] rsn3_2b_r1 resumed (gpu 56C, ram 3211 MB)
+- 2026-10-30 18:21:09 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 3434 MB)
+- 2026-10-30 18:21:40 [laptop_train r1] rsn3_2b_r1 resumed (gpu 62C, ram 2919 MB)
+- 2026-10-30 18:22:11 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 2702 MB)
+- 2026-10-30 18:22:41 [laptop_train r1] rsn3_2b_r1 resumed (gpu 60C, ram 2979 MB)
+- 2026-10-30 18:23:12 [laptop_train r1] rsn3_2b_r1 paused (gpu 85C, ram 3232 MB)
+- 2026-10-30 18:23:12 [laptop_train r1] rsn3_2b_r1 heartbeat: [18:15:04] DEV step 0 incident 1.1715 chat 0.6024
+- 2026-10-30 18:23:42 [laptop_train r1] rsn3_2b_r1 resumed (gpu 59C, ram 3511 MB)
+- 2026-10-30 18:24:44 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 3523 MB)
+- 2026-10-30 18:25:14 [laptop_train r1] rsn3_2b_r1 resumed (gpu 61C, ram 3104 MB)
+- 2026-10-30 18:26:46 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 3138 MB)
+- 2026-10-30 18:27:17 [laptop_train r1] rsn3_2b_r1 resumed (gpu 63C, ram 3076 MB)
+- 2026-10-30 18:28:18 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 3019 MB)
+- 2026-10-30 18:28:49 [laptop_train r1] rsn3_2b_r1 resumed (gpu 63C, ram 2680 MB)
+- 2026-10-30 18:29:52 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 1594 MB)
+- 2026-10-30 18:30:23 [laptop_train r1] rsn3_2b_r1 resumed (gpu 66C, ram 2725 MB)
+- 2026-10-30 18:30:53 [laptop_train r1] rsn3_2b_r1 paused (gpu 87C, ram 2501 MB)
+- 2026-10-30 18:38:41 [laptop_train r1] rsn3_2b_r1 resumed (gpu 58C, ram 2707 MB)
+- 2026-10-30 18:39:43 [laptop_train r1] rsn3_2b_r1 paused (gpu 85C, ram 3089 MB)
+- 2026-10-30 18:40:13 [laptop_train r1] rsn3_2b_r1 resumed (gpu 63C, ram 2876 MB)
+- 2026-10-30 18:40:44 [laptop_train r1] rsn3_2b_r1 paused (gpu 87C, ram 2579 MB)
+- 2026-10-30 18:50:09 [laptop_train r1] rsn3_2b_r1 resumed (gpu 56C, ram 2675 MB)
+- 2026-10-30 18:51:11 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 2815 MB)
+- 2026-10-30 18:52:43 [laptop_train r1] rsn3_2b_r1 resumed (gpu 59C, ram 2814 MB)
+- 2026-10-30 18:53:45 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 2759 MB)
+- 2026-10-30 18:54:16 [laptop_train r1] rsn3_2b_r1 resumed (gpu 63C, ram 2786 MB)
+- 2026-10-30 18:54:16 [laptop_train r1] rsn3_2b_r1 heartbeat: [18:39:30] step 10/1845 (e1) loss 0.9605 lr 2.00e-05 234 tok/s ETA epoch1 85.0 h scale 1
+- 2026-10-30 18:54:47 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 2965 MB)
+- 2026-10-30 18:55:19 [laptop_train r1] rsn3_2b_r1 resumed (gpu 64C, ram 2733 MB)
+- 2026-10-30 18:57:26 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 1981 MB)
+- 2026-10-30 19:00:02 [laptop_train r1] rsn3_2b_r1 resumed (gpu 60C, ram 2724 MB)
+- 2026-10-30 19:00:33 [laptop_train r1] rsn3_2b_r1 paused (gpu 85C, ram 2750 MB)
+- 2026-10-30 19:10:27 [laptop_train r1] rsn3_2b_r1 resumed (gpu 56C, ram 2565 MB)
+- 2026-10-30 19:11:28 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 2857 MB)
+- 2026-10-30 19:11:59 [laptop_train r1] rsn3_2b_r1 resumed (gpu 61C, ram 2829 MB)
+- 2026-10-30 19:13:01 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 2585 MB)
+- 2026-10-30 19:13:32 [laptop_train r1] rsn3_2b_r1 resumed (gpu 63C, ram 2602 MB)
+- 2026-10-30 19:14:03 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 2632 MB)
+- 2026-10-30 19:14:33 [laptop_train r1] rsn3_2b_r1 resumed (gpu 62C, ram 2738 MB)
+- 2026-10-30 19:15:04 [laptop_train r1] rsn3_2b_r1 paused (gpu 87C, ram 2585 MB)
+- 2026-10-30 19:15:35 [laptop_train r1] rsn3_2b_r1 resumed (gpu 63C, ram 2949 MB)
+- 2026-10-30 19:16:06 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 2915 MB)
+- 2026-10-30 19:16:36 [laptop_train r1] rsn3_2b_r1 resumed (gpu 61C, ram 2965 MB)
+- 2026-10-30 19:17:07 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 2920 MB)
+- 2026-10-30 19:17:38 [laptop_train r1] rsn3_2b_r1 resumed (gpu 60C, ram 2964 MB)
+- 2026-10-30 19:18:08 [laptop_train r1] rsn3_2b_r1 paused (gpu 85C, ram 2863 MB)
+- 2026-10-30 19:18:39 [laptop_train r1] rsn3_2b_r1 resumed (gpu 61C, ram 2971 MB)
+- 2026-10-30 19:19:10 [laptop_train r1] rsn3_2b_r1 paused (gpu 85C, ram 1717 MB)
+- 2026-10-30 19:25:21 [laptop_train r1] rsn3_2b_r1 heartbeat: [19:17:46] step 20/1845 (e1) loss 0.6894 lr 3.82e-05 175 tok/s ETA epoch1 124.7 h scale 1
+- 2026-10-30 19:27:25 [laptop_train r1] rsn3_2b_r1 resumed (gpu 51C, ram 2592 MB)
+- 2026-10-30 19:28:58 [laptop_train r1] rsn3_2b_r1 paused (gpu 85C, ram 2790 MB)
+- 2026-10-30 19:29:29 [laptop_train r1] rsn3_2b_r1 resumed (gpu 60C, ram 2802 MB)
+- 2026-10-30 19:30:00 [laptop_train r1] rsn3_2b_r1 paused (gpu 85C, ram 3016 MB)
+- 2026-10-30 19:30:31 [laptop_train r1] rsn3_2b_r1 resumed (gpu 60C, ram 2942 MB)
+- 2026-10-30 19:31:33 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 2975 MB)
+- 2026-10-30 19:32:03 [laptop_train r1] rsn3_2b_r1 resumed (gpu 63C, ram 2964 MB)
+- 2026-10-30 19:32:34 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 2331 MB)
+- 2026-10-30 19:34:06 [laptop_train r1] rsn3_2b_r1 resumed (gpu 55C, ram 2619 MB)
+- 2026-10-30 19:35:08 [laptop_train r1] rsn3_2b_r1 paused (gpu 85C, ram 2269 MB)
+- 2026-10-30 19:36:10 [laptop_train r1] rsn3_2b_r1 resumed (gpu 58C, ram 2567 MB)
+- 2026-10-30 19:37:11 [laptop_train r1] rsn3_2b_r1 paused (gpu 87C, ram 2806 MB)
+- 2026-10-30 19:37:42 [laptop_train r1] rsn3_2b_r1 resumed (gpu 61C, ram 2899 MB)
+- 2026-10-30 19:38:12 [laptop_train r1] rsn3_2b_r1 paused (gpu 85C, ram 2766 MB)
+- 2026-10-30 19:39:46 [laptop_train r1] rsn3_2b_r1 resumed (gpu 58C, ram 2746 MB)
+- 2026-10-30 19:40:48 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 3150 MB)
+- 2026-10-30 19:41:19 [laptop_train r1] rsn3_2b_r1 resumed (gpu 63C, ram 3118 MB)
+- 2026-10-30 19:41:49 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 3054 MB)
+- 2026-10-30 19:42:20 [laptop_train r1] rsn3_2b_r1 resumed (gpu 62C, ram 2809 MB)
+- 2026-10-30 19:43:23 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 2684 MB)
+- 2026-10-30 19:43:54 [laptop_train r1] rsn3_2b_r1 resumed (gpu 67C, ram 2604 MB)
+- 2026-10-30 19:44:57 [laptop_train r1] rsn3_2b_r1 paused (gpu 85C, ram 2852 MB)
+- 2026-10-30 19:45:28 [laptop_train r1] rsn3_2b_r1 resumed (gpu 64C, ram 3444 MB)
+- 2026-10-30 19:45:59 [laptop_train r1] rsn3_2b_r1 paused (gpu 85C, ram 3389 MB)
+- 2026-10-30 19:46:29 [laptop_train r1] rsn3_2b_r1 resumed (gpu 63C, ram 2963 MB)
+- 2026-10-30 19:47:00 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 3287 MB)
+- 2026-10-30 19:47:31 [laptop_train r1] rsn3_2b_r1 resumed (gpu 60C, ram 3358 MB)
+- 2026-10-30 19:48:32 [laptop_train r1] rsn3_2b_r1 paused (gpu 87C, ram 3356 MB)
+- 2026-10-30 19:49:03 [laptop_train r1] rsn3_2b_r1 resumed (gpu 61C, ram 3327 MB)
+- 2026-10-30 19:50:04 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 3393 MB)
+- 2026-10-30 19:50:35 [laptop_train r1] rsn3_2b_r1 resumed (gpu 62C, ram 3306 MB)
+- 2026-10-30 19:51:05 [laptop_train r1] rsn3_2b_r1 paused (gpu 85C, ram 3307 MB)
+- 2026-10-30 19:51:36 [laptop_train r1] rsn3_2b_r1 resumed (gpu 60C, ram 3315 MB)
+- 2026-10-30 19:52:38 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 2246 MB)
+- 2026-10-30 19:55:42 [laptop_train r1] rsn3_2b_r1 resumed (gpu 51C, ram 2631 MB)
+- 2026-10-30 19:56:13 [laptop_train r1] rsn3_2b_r1 heartbeat: [19:52:27] step 35/1845 (e1) loss 0.5046 lr 6.54e-05 453 tok/s ETA epoch1 49.4 h scale 1
+- 2026-10-30 19:57:15 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 2809 MB)
+- 2026-10-30 19:59:48 [laptop_train r1] rsn3_2b_r1 resumed (gpu 51C, ram 2629 MB)
+- 2026-10-30 20:01:20 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 2663 MB)
+- 2026-10-30 20:01:50 [laptop_train r1] rsn3_2b_r1 resumed (gpu 61C, ram 2749 MB)
+- 2026-10-30 20:02:21 [laptop_train r1] rsn3_2b_r1 paused (gpu 85C, ram 2639 MB)
+- 2026-10-30 20:03:23 [laptop_train r1] rsn3_2b_r1 resumed (gpu 55C, ram 2930 MB)
+- 2026-10-30 20:04:25 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 2557 MB)
+- 2026-10-30 20:15:19 [laptop_train r1] rsn3_2b_r1 resumed (gpu 58C, ram 2574 MB)
+- 2026-10-30 20:17:24 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 1975 MB)
+- 2026-10-30 20:19:59 [laptop_train r1] rsn3_2b_r1 resumed (gpu 60C, ram 2634 MB)
+- 2026-10-30 20:21:01 [laptop_train r1] rsn3_2b_r1 paused (gpu 85C, ram 2613 MB)
+- 2026-10-30 20:21:32 [laptop_train r1] rsn3_2b_r1 resumed (gpu 64C, ram 2737 MB)
+- 2026-10-30 20:22:34 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 2360 MB)
+- 2026-10-30 20:26:15 [laptop_train r1] rsn3_2b_r1 resumed (gpu 60C, ram 2769 MB)
+- 2026-10-30 20:27:17 [laptop_train r1] rsn3_2b_r1 paused (gpu 85C, ram 2704 MB)
+- 2026-10-30 20:27:17 [laptop_train r1] rsn3_2b_r1 heartbeat: [20:04:20] step 40/1845 (e1) loss 0.4220 lr 7.45e-05 299 tok/s ETA epoch1 71.4 h scale 1
+- 2026-10-30 20:28:51 [laptop_train r1] rsn3_2b_r1 resumed (gpu 61C, ram 2654 MB)
+- 2026-10-30 20:29:54 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 2587 MB)
+- 2026-10-30 20:30:25 [laptop_train r1] rsn3_2b_r1 resumed (gpu 65C, ram 2672 MB)
+- 2026-10-30 20:30:56 [laptop_train r1] rsn3_2b_r1 paused (gpu 85C, ram 2261 MB)
+- 2026-10-30 20:33:00 [laptop_train r1] rsn3_2b_r1 resumed (gpu 60C, ram 2742 MB)
+- 2026-10-30 20:35:10 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 2157 MB)
+- 2026-10-30 20:40:24 [laptop_train r1] rsn3_2b_r1 resumed (gpu 59C, ram 3513 MB)
+- 2026-10-30 20:41:59 [laptop_train r1] rsn3_2b_r1 paused (gpu 85C, ram 2685 MB)
+- 2026-10-30 20:42:29 [laptop_train r1] rsn3_2b_r1 resumed (gpu 64C, ram 2660 MB)
+- 2026-10-30 20:43:32 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 2421 MB)
+- 2026-10-30 20:45:05 [laptop_train r1] rsn3_2b_r1 resumed (gpu 61C, ram 2610 MB)
+- 2026-10-30 20:46:07 [laptop_train r1] rsn3_2b_r1 paused (gpu 87C, ram 2482 MB)
+- 2026-10-30 20:48:13 [laptop_train r1] rsn3_2b_r1 resumed (gpu 61C, ram 2861 MB)
+- 2026-10-30 20:49:46 [laptop_train r1] rsn3_2b_r1 paused (gpu 85C, ram 2706 MB)
+- 2026-10-30 20:54:29 [laptop_train r1] rsn3_2b_r1 resumed (gpu 59C, ram 2803 MB)
+- 2026-10-30 20:55:31 [laptop_train r1] rsn3_2b_r1 paused (gpu 86C, ram 2818 MB)
+- 2026-10-30 20:56:02 [laptop_train r1] rsn3_2b_r1 resumed (gpu 65C, ram 2881 MB)
+- 2026-10-30 20:57:05 [laptop_train r1] rsn3_2b_r1 paused (gpu 85C, ram 2218 MB)
+- 2026-10-30 20:58:40 [laptop_train r1] rsn3_2b_r1 heartbeat: [20:43:27] checkpoint step 50
+- 2026-10-30 21:07:02 [laptop_train r1] rsn3_2b_r1 resumed (gpu 52C, ram 3068 MB)
+- 2026-10-30 21:08:35 [laptop_train r1] rsn3_2b_r1 paused (gpu 87C, ram 3413 MB)
+- 2026-10-30 21:09:05 [laptop_train r1] rsn3_2b_r1 resumed (gpu 63C, ram 3181 MB)
+- 2026-10-30 21:10:07 [laptop_train r1] rsn3_2b_r1 paused (gpu 85C, ram 2804 MB)
+- 2026-10-30 21:11:41 [laptop_train r1] rsn3_2b_r1 resumed (gpu 59C, ram 3015 MB)
+- 2026-10-30 21:12:05 [laptop_train r1] rsn3_2b_r1 chunk end rc=3: [21:11:51] EXIT (hours limit / STOP) at step 57
+- 2026-10-30 21:12:09 [laptop_train r1] rsn3_2b_r1 chunk start (max_len 6144, 3 h, chat on)
+- 2026-10-30 21:12:33 [laptop_train r1] rsn3_2b_r1 paused #1 (gpu 63C, ram 792 MB)
+- 2026-10-30 21:16:52 [laptop_train r1] rsn3_2b_r1 paused #2 (gpu 54C, ram 22 MB)
+- 2026-10-30 21:29:32 [laptop_train r1] rsn3_2b_r1 paused #18 (gpu 79C, ram 1155 MB)
+- 2026-10-30 21:42:30 [laptop_train r1] rsn3_2b_r1 paused #31 (gpu 85C, ram 2220 MB)
+- 2026-10-30 21:45:32 [laptop_train r1] rsn3_2b_r1 heartbeat: [21:40:16] step 65/1845 (e1) loss 0.2332 lr 9.97e-05 214 tok/s ETA epoch1 102.2 h scale 1
+- 2026-10-30 21:54:35 [laptop_train r1] rsn3_2b_r1 paused #61 (gpu 85C, ram 3079 MB)
+- 2026-10-30 22:07:41 [laptop_train r1] rsn3_2b_r1 paused #91 (gpu 86C, ram 2494 MB)
+- 2026-10-30 22:18:16 [laptop_train r1] rsn3_2b_r1 heartbeat: [22:15:37] step 85/1845 (e1) loss 0.1751 lr 9.95e-05 388 tok/s ETA epoch1 54.6 h scale 1
+- 2026-10-30 22:19:41 [laptop_train r1] rsn3_2b_r1 paused #121 (gpu 84C, ram 3473 MB)
+- 2026-10-30 22:34:29 [laptop_train r1] rsn3_2b_r1 paused #151 (gpu 84C, ram 3728 MB)
+- 2026-10-30 22:49:48 [laptop_train r1] rsn3_2b_r1 paused #181 (gpu 85C, ram 3675 MB)
+- 2026-10-30 22:50:20 [laptop_train r1] rsn3_2b_r1 heartbeat: [22:48:38] step 105/1845 (e1) loss 0.1351 lr 9.93e-05 347 tok/s ETA epoch1 59.8 h scale 1
+- 2026-10-30 23:05:08 [laptop_train r1] rsn3_2b_r1 paused #211 (gpu 84C, ram 3860 MB)
+- 2026-10-30 23:20:27 [laptop_train r1] rsn3_2b_r1 paused #241 (gpu 86C, ram 3361 MB)
+- 2026-10-30 23:22:26 [laptop_train r1] rsn3_2b_r1 heartbeat: [23:16:55] checkpoint step 125
+- 2026-10-30 23:35:46 [laptop_train r1] rsn3_2b_r1 paused #271 (gpu 84C, ram 3622 MB)
+- 2026-10-30 23:51:15 [laptop_train r1] rsn3_2b_r1 paused #301 (gpu 85C, ram 3752 MB)
+- 2026-10-30 23:54:30 [laptop_train r1] rsn3_2b_r1 heartbeat: [23:52:10] checkpoint step 150
+- 2026-10-31 00:07:07 [laptop_train r1] rsn3_2b_r1 paused #331 (gpu 84C, ram 3787 MB)
+- 2026-10-31 00:18:42 [laptop_train r1] rsn3_2b_r1 chunk end rc=3: [00:18:32] EXIT (hours limit / STOP) at step 169
+- 2026-10-31 00:18:42 [laptop_train r1] rsn3_2b_r1 chunk start (max_len 6144, 3 h, chat on)
+- 2026-10-31 00:19:04 [laptop_train r1] rsn3_2b_r1 paused #1 (gpu 64C, ram 796 MB)
+- 2026-10-31 00:19:47 [laptop_train r1] rsn3_2b_r1 paused #2 (gpu 57C, ram 219 MB)
+- 2026-10-31 00:35:59 [laptop_train r1] rsn3_2b_r1 paused #31 (gpu 85C, ram 3925 MB)
+- 2026-10-31 00:50:47 [laptop_train r1] rsn3_2b_r1 heartbeat: [00:49:23] step 190/1845 (e1) loss 0.1093 lr 9.77e-05 509 tok/s ETA epoch1 38.9 h scale 1
+- 2026-10-31 00:50:57 [laptop_train r1] rsn3_2b_r1 paused #61 (gpu 84C, ram 4502 MB)
+- 2026-10-31 01:06:17 [laptop_train r1] rsn3_2b_r1 paused #91 (gpu 84C, ram 4331 MB)
+- 2026-10-31 01:22:56 [laptop_train r1] rsn3_2b_r1 heartbeat: [01:07:00] DEV step 200 incident 0.1036 chat 0.0738
+- 2026-10-31 01:35:16 [laptop_train r1] rsn3_2b_r1 paused #121 (gpu 84C, ram 3897 MB)
+- 2026-10-31 01:37:07 [laptop_train r1] rsn3_2b_r1 paused #125 (gpu 81C, ram 1119 MB)
+- 2026-10-31 01:47:25 [laptop_train r1] rsn3_2b_r1 paused #127 (gpu 77C, ram 1175 MB)
+- 2026-10-31 01:55:27 [laptop_train r1] rsn3_2b_r1 heartbeat: [01:52:24] step 210/1845 (e1) loss 0.1009 lr 9.72e-05 179 tok/s ETA epoch1 102.0 h scale 1
+- 2026-10-31 02:06:19 [laptop_train r1] rsn3_2b_r1 paused #151 (gpu 84C, ram 4229 MB)
+- 2026-10-31 02:22:00 [laptop_train r1] rsn3_2b_r1 paused #181 (gpu 84C, ram 3845 MB)
+- 2026-10-31 02:27:31 [laptop_train r1] rsn3_2b_r1 heartbeat: [02:26:22] step 235/1845 (e1) loss 0.1046 lr 9.64e-05 506 tok/s ETA epoch1 37.9 h scale 1
+- 2026-10-31 02:37:31 [laptop_train r1] rsn3_2b_r1 paused #211 (gpu 84C, ram 3890 MB)
+- 2026-10-31 02:53:23 [laptop_train r1] rsn3_2b_r1 paused #241 (gpu 84C, ram 3888 MB)
+- 2026-10-31 02:59:37 [laptop_train r1] rsn3_2b_r1 heartbeat: [02:54:38] step 255/1845 (e1) loss 0.0675 lr 9.58e-05 507 tok/s ETA epoch1 39.6 h scale 1
+- 2026-10-31 03:08:54 [laptop_train r1] rsn3_2b_r1 paused #271 (gpu 85C, ram 3692 MB)
+- 2026-10-31 03:21:34 [laptop_train r1] rsn3_2b_r1 chunk end rc=3: [03:21:25] EXIT (hours limit / STOP) at step 274
+- 2026-10-31 03:21:35 [laptop_train r1] rsn3_2b_r1 chunk start (max_len 6144, 3 h, chat on)
+- 2026-10-31 03:21:59 [laptop_train r1] rsn3_2b_r1 paused #1 (gpu 64C, ram 101 MB)
+- 2026-10-31 03:27:00 [laptop_train r1] rsn3_2b_r1 paused #2 (gpu 46C, ram 525 MB)
+- 2026-10-31 03:43:45 [laptop_train r1] rsn3_2b_r1 paused #31 (gpu 84C, ram 4111 MB)
+- 2026-10-31 03:53:42 [laptop_train r1] rsn3_2b_r1 heartbeat: [03:49:46] step 290/1845 (e1) loss 0.0632 lr 9.46e-05 521 tok/s ETA epoch1 36.2 h scale 1
+- 2026-10-31 03:58:42 [laptop_train r1] rsn3_2b_r1 paused #61 (gpu 85C, ram 4651 MB)
+- 2026-10-31 04:13:29 [laptop_train r1] rsn3_2b_r1 paused #91 (gpu 84C, ram 4412 MB)
+- 2026-10-31 04:25:45 [laptop_train r1] rsn3_2b_r1 heartbeat: [04:22:35] step 310/1845 (e1) loss 0.0740 lr 9.39e-05 505 tok/s ETA epoch1 38.8 h scale 1
+- 2026-10-31 04:28:27 [laptop_train r1] rsn3_2b_r1 paused #121 (gpu 85C, ram 4540 MB)
+- 2026-10-31 04:43:46 [laptop_train r1] rsn3_2b_r1 paused #151 (gpu 85C, ram 4228 MB)
+- 2026-10-31 04:57:49 [laptop_train r1] rsn3_2b_r1 heartbeat: [04:50:49] step 330/1845 (e1) loss 0.1156 lr 9.31e-05 496 tok/s ETA epoch1 36.1 h scale 1
+- 2026-10-31 04:58:42 [laptop_train r1] rsn3_2b_r1 paused #181 (gpu 85C, ram 4481 MB)
+- 2026-10-31 05:13:51 [laptop_train r1] rsn3_2b_r1 paused #211 (gpu 86C, ram 4365 MB)
+- 2026-10-31 05:28:59 [laptop_train r1] rsn3_2b_r1 paused #241 (gpu 85C, ram 4398 MB)
+- 2026-10-31 05:29:52 [laptop_train r1] rsn3_2b_r1 heartbeat: [05:26:41] step 355/1845 (e1) loss 0.0458 lr 9.20e-05 511 tok/s ETA epoch1 35.9 h scale 1
+- 2026-10-31 05:44:29 [laptop_train r1] rsn3_2b_r1 paused #271 (gpu 85C, ram 4441 MB)
+- 2026-10-31 05:59:37 [laptop_train r1] rsn3_2b_r1 paused #301 (gpu 85C, ram 4277 MB)
+- 2026-10-31 06:01:56 [laptop_train r1] rsn3_2b_r1 heartbeat: [06:01:30] step 380/1845 (e1) loss 0.0731 lr 9.09e-05 506 tok/s ETA epoch1 34.8 h scale 1
+- 2026-10-31 06:14:57 [laptop_train r1] rsn3_2b_r1 paused #331 (gpu 85C, ram 4072 MB)
+- 2026-10-31 06:28:24 [laptop_train r1] rsn3_2b_r1 chunk end rc=3: [06:28:15] EXIT (hours limit / STOP) at step 399
+- 2026-10-31 06:28:25 [laptop_train r1] rsn3_2b_r1 chunk start (max_len 6144, 3 h, chat on)
+- 2026-10-31 06:28:47 [laptop_train r1] rsn3_2b_r1 paused #1 (gpu 64C, ram 287 MB)
+- 2026-10-31 06:31:06 [laptop_train r1] rsn3_2b_r1 paused #2 (gpu 48C, ram 475 MB)
+- 2026-10-31 06:57:48 [laptop_train r1] rsn3_2b_r1 paused #31 (gpu 84C, ram 4249 MB)
+- 2026-10-31 07:00:38 [laptop_train r1] rsn3_2b_r1 heartbeat: [06:53:53] GEN step 400 {"step": 400, "t": 1793429633.9288595, "dev": {"n_inc": 40, "parse": 1.0, "severity": 0.975, "label": 0.95, "n_chat"
+- 2026-10-31 07:12:24 [laptop_train r1] rsn3_2b_r1 paused #61 (gpu 84C, ram 4408 MB)
+- 2026-10-31 07:27:01 [laptop_train r1] rsn3_2b_r1 paused #91 (gpu 84C, ram 4446 MB)
+- 2026-10-31 07:32:42 [laptop_train r1] rsn3_2b_r1 heartbeat: [07:30:48] checkpoint step 425
+- 2026-10-31 07:42:20 [laptop_train r1] rsn3_2b_r1 paused #121 (gpu 85C, ram 4524 MB)
+- 2026-10-31 07:57:19 [laptop_train r1] rsn3_2b_r1 paused #151 (gpu 85C, ram 4163 MB)
+- 2026-10-31 08:04:49 [laptop_train r1] rsn3_2b_r1 heartbeat: [07:59:52] step 445/1845 (e1) loss 0.0450 lr 8.77e-05 485 tok/s ETA epoch1 35.1 h scale 1
+- 2026-10-31 08:10:15 [laptop_train r1] rsn3_2b_r1 paused #181 (gpu 85C, ram 326 MB)
+- 2026-10-31 08:21:37 [laptop_train r1] rsn3_2b_r1 paused #211 (gpu 86C, ram 3835 MB)
+- 2026-10-31 08:33:03 [laptop_train r1] rsn3_2b_r1 paused #241 (gpu 86C, ram 3156 MB)
+- 2026-10-31 08:37:25 [laptop_train r1] rsn3_2b_r1 heartbeat: [08:34:22] step 465/1845 (e1) loss 0.0638 lr 8.66e-05 405 tok/s ETA epoch1 41.0 h scale 1
+- 2026-10-31 08:45:02 [laptop_train r1] rsn3_2b_r1 paused #271 (gpu 84C, ram 2258 MB)
+- 2026-10-31 08:58:06 [laptop_train r1] rsn3_2b_r1 paused #301 (gpu 85C, ram 3555 MB)
+- 2026-10-31 09:09:41 [laptop_train r1] rsn3_2b_r1 heartbeat: [09:07:19] step 485/1845 (e1) loss 0.0583 lr 8.55e-05 482 tok/s ETA epoch1 34.1 h scale 1
+- 2026-10-31 09:12:21 [laptop_train r1] rsn3_2b_r1 paused #331 (gpu 86C, ram 3409 MB)
+- 2026-10-31 09:26:36 [laptop_train r1] rsn3_2b_r1 paused #361 (gpu 85C, ram 3386 MB)
+- 2026-10-31 09:34:03 [laptop_train r1] rsn3_2b_r1 chunk end rc=3: [09:33:45] EXIT (hours limit / STOP) at step 500
+- 2026-10-31 09:34:04 [laptop_train r1] rsn3_2b_r1 chunk start (max_len 6144, 3 h, chat on)
+- 2026-10-31 09:34:27 [laptop_train r1] rsn3_2b_r1 paused #1 (gpu 64C, ram 622 MB)
+- 2026-10-31 09:38:54 [laptop_train r1] rsn3_2b_r1 paused #2 (gpu 52C, ram 473 MB)
+- 2026-10-31 09:56:08 [laptop_train r1] rsn3_2b_r1 paused #31 (gpu 86C, ram 3333 MB)
+- 2026-10-31 10:06:39 [laptop_train r1] rsn3_2b_r1 heartbeat: [10:05:30] step 515/1845 (e1) loss 0.0788 lr 8.38e-05 416 tok/s ETA epoch1 38.6 h scale 1
+- 2026-10-31 10:08:19 [laptop_train r1] rsn3_2b_r1 paused #61 (gpu 85C, ram 2708 MB)
+- 2026-10-31 10:19:28 [laptop_train r1] rsn3_2b_r1 paused #91 (gpu 84C, ram 2722 MB)
+- 2026-10-31 10:33:13 [laptop_train r1] rsn3_2b_r1 paused #113 (gpu 73C, ram 1516 MB)
+- 2026-10-31 10:39:20 [laptop_train r1] rsn3_2b_r1 heartbeat: [10:23:29] checkpoint step 525
+- 2026-10-31 10:57:36 [laptop_train r1] rsn3_2b_r1 paused #121 (gpu 84C, ram 2862 MB)
+- 2026-10-31 11:10:50 [laptop_train r1] rsn3_2b_r1 paused #151 (gpu 85C, ram 3260 MB)
+- 2026-10-31 11:12:05 [laptop_train r1] rsn3_2b_r1 heartbeat: [11:11:14] step 540/1845 (e1) loss 0.0738 lr 8.23e-05 477 tok/s ETA epoch1 32.5 h scale 1
+- 2026-10-31 11:25:15 [laptop_train r1] rsn3_2b_r1 paused #181 (gpu 85C, ram 3042 MB)
+- 2026-10-31 11:38:39 [laptop_train r1] rsn3_2b_r1 paused #211 (gpu 85C, ram 2876 MB)
+- 2026-10-31 11:44:12 [laptop_train r1] rsn3_2b_r1 heartbeat: [11:40:53] step 560/1845 (e1) loss 0.0607 lr 8.10e-05 474 tok/s ETA epoch1 31.7 h scale 1
+- 2026-10-31 11:52:34 [laptop_train r1] rsn3_2b_r1 paused #241 (gpu 84C, ram 2932 MB)
+- 2026-10-31 12:06:40 [laptop_train r1] rsn3_2b_r1 paused #271 (gpu 85C, ram 2765 MB)
+- 2026-10-31 12:16:19 [laptop_train r1] rsn3_2b_r1 heartbeat: [12:11:03] step 580/1845 (e1) loss 0.0609 lr 7.98e-05 471 tok/s ETA epoch1 30.9 h scale 1
+- 2026-10-31 12:20:36 [laptop_train r1] rsn3_2b_r1 paused #301 (gpu 86C, ram 2657 MB)
+- 2026-10-31 12:34:31 [laptop_train r1] rsn3_2b_r1 paused #331 (gpu 86C, ram 2721 MB)
+- 2026-10-31 12:46:30 [laptop_train r1] rsn3_2b_r1 chunk end rc=3: [12:46:19] EXIT (hours limit / STOP) at step 599
+- 2026-10-31 12:46:30 [laptop_train r1] rsn3_2b_r1 chunk start (max_len 6144, 3 h, chat on)
+- 2026-10-31 12:46:42 [laptop_train r1] rsn3_2b_r1 paused #1 (gpu 55C, ram 843 MB)
+- 2026-10-31 12:47:57 [laptop_train r1] rsn3_2b_r1 paused #2 (gpu 54C, ram 372 MB)
+- 2026-10-31 12:53:50 [laptop_train r1] rsn3_2b_r1 paused #3 (gpu 50C, ram 170 MB)
+- 2026-10-31 13:25:32 [laptop_train r1] rsn3_2b_r1 chunk end rc=3: [13:25:14] EXIT (hours limit / STOP) at step 600
+- 2026-10-31 13:25:37 [laptop_chain r1] new 4B adapter /mnt/c/Users/hp/Downloads/rsn_v3_adapter_best.zip (md5 58a44ebd2254) -> g4b_1
+- 2026-10-31 13:25:43 [import_adapter g4b_1] start: /mnt/c/Users/hp/Downloads/rsn_v3_adapter_best.zip (md5 58a44ebd2254f381fd04ca129638c10d) -> /mnt/c/Users/hp/Desktop/qidk/Code/models_stage/rsn_v3_4b_1_q4_0.gguf
+- 2026-10-31 14:05:25 [import_adapter g4b_1] FAIL: merge_q4.sh failed (see /home/hp_srthk4370/smartcity_runs/reasoner_v1/rsn_v3_g4b_1/merge_q4.log)
+- 2026-10-31 14:05:25 [laptop_chain r1] 4B import g4b_1 failed
+- 2026-10-31 14:05:26 [laptop_train r1] rsn3_2b_r1 chunk start (max_len 6144, 3 h, chat on)
+- 2026-10-31 14:05:37 [laptop_train r1] rsn3_2b_r1 paused #1 (gpu 46C, ram 1001 MB)
+- 2026-10-31 14:06:15 [laptop_train r1] rsn3_2b_r1 paused #2 (gpu 49C, ram 177 MB)
+- 2026-10-31 14:07:21 [laptop_train r1] rsn3_2b_r1 paused #3 (gpu 50C, ram 726 MB)
+- 2026-10-31 14:07:53 [laptop_train r1] rsn3_2b_r1 chunk end rc=3: [14:07:49] EXIT (hours limit / STOP) at step 600
+- 2026-10-31 14:07:58 [laptop_chain r1] new 4B adapter /mnt/c/Users/hp/Downloads/rsn_v3_adapter_best.zip (md5 58a44ebd2254) -> g4b_1
+- 2026-10-31 14:08:02 [import_adapter g4b_1] start: /mnt/c/Users/hp/Downloads/rsn_v3_adapter_best.zip (md5 58a44ebd2254f381fd04ca129638c10d) -> /mnt/c/Users/hp/Desktop/qidk/Code/models_stage/rsn_v3_4b_1_q4_0.gguf
+- 2026-10-31 14:17:41 [laptop_chain r1] chain start (run r1, pid 477)
+- 2026-10-31 14:17:47 [laptop_train r1] rsn3_2b_r1 chunk start (max_len 6144, 3 h, chat on)
+- 2026-10-31 14:18:10 [laptop_train r1] rsn3_2b_r1 paused #1 (gpu 54C, ram 132 MB)
+- 2026-10-31 14:18:31 [laptop_train r1] rsn3_2b_r1 paused #2 (gpu 54C, ram 649 MB)
+- 2026-10-31 14:34:28 [laptop_train r1] rsn3_2b_r1 paused #31 (gpu 84C, ram 4034 MB)
+- 2026-10-31 14:48:45 [laptop_train r1] rsn3_2b_r1 paused #61 (gpu 85C, ram 4181 MB)
+- 2026-10-31 14:50:12 [laptop_train r1] rsn3_2b_r1 heartbeat: [14:47:25] step 620/1845 (e1) loss 0.0592 lr 7.72e-05 484 tok/s ETA epoch1 30.1 h scale 1
+- 2026-10-31 15:03:36 [laptop_train r1] rsn3_2b_r1 paused #91 (gpu 85C, ram 4155 MB)
+- 2026-10-31 15:18:17 [laptop_train r1] rsn3_2b_r1 paused #121 (gpu 84C, ram 4047 MB)
+- 2026-10-31 15:22:48 [laptop_train r1] rsn3_2b_r1 heartbeat: [15:16:42] step 640/1845 (e1) loss 0.0724 lr 7.58e-05 488 tok/s ETA epoch1 29.5 h scale 1
+- 2026-10-31 15:33:09 [laptop_train r1] rsn3_2b_r1 paused #151 (gpu 85C, ram 3730 MB)
+- 2026-10-31 15:47:50 [laptop_train r1] rsn3_2b_r1 paused #181 (gpu 85C, ram 3694 MB)
+- 2026-10-31 15:55:25 [laptop_train r1] rsn3_2b_r1 heartbeat: [15:53:59] step 665/1845 (e1) loss 0.0649 lr 7.41e-05 488 tok/s ETA epoch1 30.4 h scale 1
+- 2026-10-31 16:02:42 [laptop_train r1] rsn3_2b_r1 paused #211 (gpu 85C, ram 3869 MB)
+- 2026-10-31 16:17:12 [laptop_train r1] rsn3_2b_r1 paused #241 (gpu 85C, ram 3772 MB)
+- 2026-10-31 16:28:03 [laptop_train r1] rsn3_2b_r1 heartbeat: [16:23:03] step 685/1845 (e1) loss 0.0770 lr 7.27e-05 486 tok/s ETA epoch1 28.0 h scale 1
+- 2026-10-31 16:31:53 [laptop_train r1] rsn3_2b_r1 paused #271 (gpu 84C, ram 3842 MB)
+- 2026-10-31 16:46:44 [laptop_train r1] rsn3_2b_r1 paused #301 (gpu 85C, ram 3502 MB)
+- 2026-10-31 16:59:56 [laptop_train r1] rsn3_2b_r1 paused #331 (gpu 86C, ram 1224 MB)
+- 2026-10-31 17:01:03 [laptop_train r1] rsn3_2b_r1 heartbeat: [16:56:59] step 705/1845 (e1) loss 0.0505 lr 7.13e-05 314 tok/s ETA epoch1 46.2 h scale 1
+- 2026-10-31 17:01:41 [laptop_train r1] rsn3_2b_r1 paused #335 (gpu 84C, ram 994 MB)
+- 2026-10-31 17:11:38 [laptop_train r1] rsn3_2b_r1 paused #361 (gpu 86C, ram 2434 MB)
+- 2026-10-31 17:21:16 [laptop_train r1] rsn3_2b_r1 chunk end rc=3: [17:21:05] EXIT (hours limit / STOP) at step 718
+- 2026-10-31 17:21:27 [laptop_train r1] rsn3_2b_r1 chunk start (max_len 6144, 3 h, chat on)
+- 2026-10-31 17:21:51 [laptop_train r1] rsn3_2b_r1 paused #1 (gpu 65C, ram 385 MB)
+- 2026-10-31 17:22:25 [laptop_train r1] rsn3_2b_r1 paused #2 (gpu 62C, ram 106 MB)
+- 2026-10-31 17:34:30 [laptop_train r1] rsn3_2b_r1 paused #31 (gpu 86C, ram 2105 MB)
+- 2026-10-31 17:46:44 [laptop_train r1] rsn3_2b_r1 paused #61 (gpu 85C, ram 3015 MB)
+- 2026-10-31 17:54:03 [laptop_train r1] rsn3_2b_r1 chunk end rc=3: [17:53:56] EXIT (hours limit / STOP) at step 735
+- 2026-10-31 17:54:03 [laptop_chain r1] STOP file: chain stops here (rm kaggle/chain/STOP and relaunch to continue)
+- 2026-10-31 18:10:07 [laptop_chain r1] chain start (run r1, pid 446)
+- 2026-10-31 18:41:54 [laptop_train r1] waiting: Windows free RAM ? MB < 1536 MB
+- 2026-10-31 18:42:56 [laptop_train r1] rsn3_2b_r1 chunk start (max_len 6144, 3 h, chat on)
+- 2026-10-31 18:43:18 [laptop_train r1] rsn3_2b_r1 paused #1 (gpu 55C, ram 320 MB)
+- 2026-10-31 18:43:47 [laptop_train r1] rsn3_2b_r1 paused #2 (gpu 57C, ram 319 MB)

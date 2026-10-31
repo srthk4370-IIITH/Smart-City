@@ -2286,6 +2286,18 @@ The app A/B on the board is running from `board_ab/`.
   - Force fully determined text (sensor ids, tool-call boilerplate).
   - Rebalance groups when agent_checks runs long.
 
+## 2.62 Lab afternoon: profile, pruned head, AI-so-far panel (2026-10-29 14:30-, proofs/2026-10-29_latency)
+
+- **Board storage:** /data was 100% full. The owner removed 6 unused models + stale prefix states (manifest with md5s: proofs/2026-10-29_runs_archive/MANIFEST.md); 17 GB free.
+- **Board reboot ~14:23 IST** before any lab run (sys.boot.reason=reboot, cause unknown; clock reset to 2023-09).
+- **Lab windows** (`lab_run.sh` laptop driver + `lab_ab.sh` on the board): app stopped per window, restarted after; `touch proofs/2026-10-29_latency/DEMO_NOW` aborts. Heat: every request starts at ≤55 °C; kill at ≥105 °C for 6 s (owner). Normal NPU work reaches 84-97 °C on the hottest zone (NSP throttle trip 100 °C, shutdown 115 °C); a 75 °C or 95 °C guard killed normal runs.
+- **htpd v8x5** (55394fe2): per-step and model-load phase timers; token pieces kept across swaps; disk prefix cache LRU-bounded to 4 files per model (`HTPD_REASON_DISK_KEEP`), touched on load. Fixes the hourly chat-prefix leak.
+- **Where the time goes (measured):** decode step 97-123 ms, all inside `llama_decode` (2.1-2.8 rows/step); CPU pick + forcer + emit < 0.4 ms. No host-overhead lever. Swap: model load 3.67 s (ggml-hexagon repacks every weight on the CPU, single-threaded), context 0.1 s, pieces 4 ms.
+- **Pruned lm_head (htpd_v8x5p b47d028e + libllama_p + rsn_v1_q4_0_keep.gguf):** q10-q15 mean 22.6 → 20.2 s (−11%), load 3.67 → 2.82 s; severity+label 6/6 as the full head; text identical 2/6 (fewer head rows change the HTP rounding, near-ties flip: wording, one checklist target S2 → S1 on q13). Agents unchanged (9/10 identical = run-to-run). No reboot, max 97 °C. Owner: deploy now (deploy8.sh, auto rollback).
+- **UI "AI so far":** while the reasoner writes, title/severity/label/root cause/causal chain appear as soon as each is complete in the stream (about 10 s before the full report), marked "not yet checked by the safety gate". sw cache v38.
+- **Not levers:** list trimming (4/96 reports trimmed); incident reports make no tool calls (the 10 s eog calls in the log are chat).
+- **Next:** multithreaded weight repack in ggml-hexagon (swap 2.8 s); a larger pruned-head check (q16-q35).
+
 ## 3. If something goes wrong
 
 **Golden rule: just run the same `train.ps1` command again.** It continues where it stopped: training resumes
@@ -2630,3 +2642,56 @@ headers. It's a post-mid-eval item, as is Qwen for reasoning.
 - That incident's preliminary matched live past reports, not a seed (live reports rank 3% above seeds).
 - The first attempt rolled back only because its "loaded" check grepped a trace line that prints only with SCE_GENIE_TRACE=1.
 - Rollback: remove that file and restart the app.
+
+## 2.63 2026-10-30: reasoner decode -61% with speculative drafts inside split decoding (htpd v9, deploy18)
+- **Why it pays now:** split-3 steps already carry 2-4 rows, the costliest NPU range (pp3 113 ms, pp4 133 ms), while 6-16 rows run on HMX at a flat 106-120 ms. Extra draft rows are nearly free; every kept draft saves a step. (Single-stream speculation lost on 2026-10-27 because its baseline was a 66 ms 1-row step.)
+- **Drafts:** longest-suffix match of each stream's recent tokens in the prompt and in a corpus of 463 past board reports by the same model (SuffixDecoding-style). Verified greedily; a partially kept draft discards a scratch sequence copy (2 sequences per stream, no recurrent rollback snapshots, GDN HMX path kept) and the kept tokens are re-fed as rows next step.
+- **Offline sim** (proofs/2026-10-30_spec_split/SIM.md): steps -70%. **Board lab** (proofs/2026-10-29_latency/spec_ab, tune_ab, 6 prompts):
+
+| config | reasoner mean | sev+label vs base | identical text |
+|---|---|---|---|
+| base v8x5 | 23.3 s | - | - |
+| K=8 | 13.8 s | 6/6 | 2/6 |
+| K=4 m=3 | 16.0 s | 6/6 | 3/6 |
+| **K=8 + ALIGN** | **9.1 s** | 6/6 | 2/6 |
+
+  Base vs itself across windows is 2/6 identical text; title/root cause/causal chain were identical, differences only in later list fields. ALIGN pads streams to equal rows so a step is one ubatch (~150 ms vs 240-319 ms).
+- **Deploys:** deploy15 (v9) also drafted on single-stream chat (0-14% kept, 126 ms steps) -> deploy16 v9b gated it with the wrong variable (drafts off everywhere) -> deploy17 v9c (`NS > 1`) -> **deploy18 = v9c + `HTPD_REASON_SPLIT_SPEC=8 HTPD_REASON_SPEC_MIN=2 HTPD_REASON_SPEC_ALIGN=1 HTPD_REASON_CORPUS=/data/local/tmp/smart_city_edge/reason_corpus.jsonl`** (profile env). Fastcheck AI update 38.5 s (deploy14: 52.6 s), chat on the plain path (85 ms/step). Rollback: deploy18/known_good.
+- Lab scripts' stop lists now include htpd_v9/v9b/v9c (a missing name left the live daemon running in one window; the NPU guard held).
+
+## 2.64 2026-10-31: draft corpus learns from the app (htpd v9d, deploy19)
+- **What:** htpd_v9d (md5 73ae89e2) adds `HTPD_REASON_CORPUS_LIVE=<file>` (each complete split report's streams are added to the in-memory draft corpus and appended to the file; duplicates skipped; cap 3000 docs) and `HTPD_REASON_SPEC_KLONG=16` (up to 16 draft tokens behind a match of >= 16 tokens; `HTPD_REASON_SPEC_ROWS=48`). The corpus is rebuilt with the app's own 113 reasoner reports (reason_corpus_v2.jsonl, 576 docs). All off by default; drafts stay verified.
+- **Lab** (6 held-out real app incidents, proofs/2026-10-31_latency/VERDICT.md): reasoner 11.83 -> 8.89 s (-25%), severity+label 8/8; repeated incidents 8.3 -> 4.6-5.1 s. Text diffs only in late fields (near-tie flips, as base vs itself).
+- **Deploy19** (proofs/2026-10-29_latency/deploy19.sh): chaos 2 + fastcheck x2 (second one shows the live-corpus effect). Rollback: deploy19/known_good.
+- **Result (02:25 IST): LIVE.** chaos 2 rc=0; fastcheck x2 pass: fast path 5.8 / 5.9 s, AI update 27.0 / 27.1 s (deploy18 38.5 s, deploy14 52.6 s).
+
+## 2.65 2026-10-31: agent draft index (htpd v9e, deploy20)
+- htpd_v9e: agent drafts use n-grams up to 8 (HTPD_AGENT_NGMAX=8), a hashed index of the last 500 agent outputs (HTPD_AGENT_RECENT_MAX=500), seeded from the app's 1134 past agent outputs (HTPD_AGENT_CORPUS). Lab (24 real requests): agents 2594 -> 2058 ms (-21 to -27%), 23/24 identical (one observation reworded, verdict fields equal; owner accepted). proofs/2026-10-31_agents_latency/VERDICT.md.
+- **Deploy20 LIVE (03:50 IST):** chaos 2 rc=0; fastcheck pass, AI update 21.7 s (deploy19 27.0 s), fast path 5.8 s; chat 3/3. Rollback: proofs/2026-10-29_latency/deploy20/known_good.
+
+## 2.66 2026-10-31: chat drafts with a chat corpus (htpd v9f, deploy21)
+- **What:** htpd_v9f (md5 c3623ba5) = v9e + verified drafts for single-stream free-text requests (the Campus Assistant). Off by default. `HTPD_CHAT_SPEC=8` (max draft tokens), `HTPD_CHAT_SPEC_MIN=4` (draft only behind a match of >= 4 tokens), `HTPD_CHAT_CORPUS=<file>` (the chat's own past outputs as token ids; loaded at start, every complete answer/tool-call round appended, cap 3000). Proposer = longest suffix match in the prompt (tool results) or the chat corpus. No ALIGN padding for these. Split reports and agents are untouched (schema requests never take this path).
+- **Why it pays now when deploy15 lost:** deploy15 drafted at match >= 2 from the prompt only (0-14% kept). Tool-call rounds and answer phrasing repeat across questions, so a corpus of past chat outputs plus a >= 4 match gate keeps most drafts. Offline sim on the board's chats.json (34 model answers, held out by question): steps -51%, modelled time -46% (proofs/2026-10-31_night/chat_sim.py).
+- **Lab** (proofs/2026-10-31_night/chatlab, window cl1, 10 real chat rounds from the 5 most recent questions, corpus = outputs of other questions only):
+
+| config | mean request ms | identical text vs base |
+|---|---|---|
+| base v9e | 2864 | - |
+| **v9f K8 m4** | **2383 (-17%; up to -67% per request)** | **10/10** |
+| base2 v9e | 2845 | 10/10 |
+
+  Plain 1-row chat step on the lab was 68 ms; draft steps 77-112 ms; kept 27-84% when drafting.
+- **Deploy21** (proofs/2026-10-29_latency/deploy21.sh; seed proofs/2026-10-31_night/chat_corpus_seed.jsonl = 67 past chat outputs, md5 379f0ce0): chaos 2 rc=0, fastcheck x2 pass (fast 5.7/5.6 s, AI update 26.7/37.1 s; deploy20 21.7/32.5 s, same path, run-to-run noise), chat 4/4 answered. Rollback: deploy21/known_good (= deploy20).
+
+## 2.67 2026-10-31: weather-only validator rule + critical readings skip window coverage (deploy22, APK only)
+- **Bulk clear (owner):** 399 incidents waiting for a decision were dismissed through `POST /api/incidents/{id}/dismiss` (operator owner, outcome no_action_needed, note "bulk-cleared by owner request 2026-10-31 (test incidents)"). Before: 570 total, 399 needs_decision. After: 0 needs_decision, 536 closed. Nothing was deleted. Proof: proofs/2026-10-31_validator/bulk_clear.txt.
+- **Validator** (reasoner_v3.go `v3ActionFloor`, `weatherOnlyIncident`): a critical report may start with `monitor` or `review_schedule` only when every flagged sensor (inc.Roles) is a weather sensor. Unflagged context sensors do not count. Every other critical report still needs `inspect_*` or `request_facility_review`. The warning, normal and sensor_fault floors are unchanged. This came from INC-0564 (outdoor 45 C, reasoner first action monitor, rejected).
+- **Gap gate** (engine.go `window(..., critical)` + detect): a fresh reading beyond the CRITICAL limit skips the coverage rule (at most 3 of 48 missing). Missing leading points take the real readings from before the gap, newest first. If the shape then reads as flatline only because of that fill, it is judged as stable. The bypass opens the **fast incident only**. The AI and batch gate still wait for real coverage. Non-critical readings: unchanged.
+- **Tests:** TestCriticalSkipsCoverageGate (silences of 4 and 1020 buckets, with and without an earlier reported episode: critical -> fast in <= 2 readings, status critical, no AI candidate; warning -> insufficient_data, no event) and TestV3WeatherOnlyCriticalFloor. `go test ./...` ok (proofs/2026-10-31_validator/go_test_new.txt).
+- **Deploy22** (proofs/2026-10-29_latency/deploy22.sh; status deploy22/STATUS*.md):
+  - r1 APK 730a21df: LIVE. chaos 2 rc=0, fastcheck 5.6/5.7 s, AI 26.8/27.0 s, chat 3/3. After a 17-min silence, CO2 2000 fast incident in **2.7 s** (deploy21: 44-46 s). Problem: the AI was fed the gap-filled window and read outdoor 45 C as a stuck sensor (INC-0583).
+  - r2 APK d1250c3c: fast incident only. The first start timed out (htpd.log rotation in the ready check) and rolled back automatically to r1. The retry went LIVE: chaos 2 rc=0, fastcheck 5.7/5.7 s, AI 21.5/32.0 s, chat 3/3. Bug: the bypass sat before the re-arm of an earlier reported episode, so after the deploy fastcheck the gap test again gave 46.7 s (INC-0592).
+  - r3 APK 32506330 (bypass moved after the re-arm, test extended): built and unit-tested; first run stopped when the laptop C: drive filled (WSL crashed 19:44). Redeployed 20:15 IST: **LIVE**, chaos 2 rc=0, fastcheck 6.1/6.8 s, AI 27.5/23.1 s, chat 3/3. Gap re-test with a prior episode: proofs/2026-10-31_validator/gap_r3.txt.
+- **Laptop disk (2026-10-31):** C: had 5.8 GB free; the 4B import (merge + bf16 convert, ~16 GB inside the WSL vhdx) filled it and crashed WSL. Cleanup (owner-approved list) + vhdx compact -> **88 GB free**. import_adapter.sh now needs >= 20 GB free on C:, and merge_q4.sh waits on *available* (not free) RAM >= 1.5 GB. Root: start.ps1 / stop.ps1 control the laptop training (train_ctl.sh).
+- **Weather validator through the app:** 3 runs, outdoor 45 C (INC-0577, INC-0579, INC-0583). The reasoner report was accepted every time (qwen3.5-4b (htpd), valid, no errors). The model judged all three as sensor_fault, so the new critical+monitor branch was not exercised on the board; only the unit tests cover it.
+- **Board after the crash:** r2 live (d1250c3c). The weather gap test was killed mid-run, then all 27 sensors were reset to their defaults (replay 10:00). Rollback: deploy22/known_good_deploy21 (deploy21 APK 458cffb5 + profile).

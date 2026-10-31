@@ -82,6 +82,9 @@
 //                 --reason-ctx 4096 --reason-streams 1 --reason-ubatch 512 --reason-max-new 700
 //   env: HTPD_REASON_IDLE_MS (20000) release a held reasoner after this idle time; HTPD_REASON_TURN_CACHE=0 /
 //        HTPD_REASON_DISK_CACHE=0 turn the last-prompt state cache / the on-disk static-prefix state off.
+//        v9: HTPD_REASON_SPLIT_SPEC=K (0 = off) speculative drafts in split/stream decoding, HTPD_REASON_SPEC_MIN=m (2),
+//        HTPD_REASON_CORPUS=<file of past-report token arrays>, HTPD_REASON_SPEC_ROWS (32), HTPD_REASON_SPEC_KVU (1),
+//        HTPD_REASON_SPEC_ALIGN (0).
 //   -> {"kind":"caps"}  <- {"caps":["agents","synth","reason","release"],"reasoner":"PATH"|null,"loaded":"agents|reasoner"}
 //   -> {"kind":"reason","prompt":"..." | "prompts":[...], "max_new":N, "keep":bool, "prefix":"static prompt prefix",
 //       "schema":{"keys":[...],"items":{...},"types":{...},"enums":{...}}, "stream":bool, "id":any}
@@ -113,6 +116,9 @@
 #include <arm_neon.h>
 #endif
 
+#include <dirent.h>
+#include <sys/stat.h>
+#include <utime.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <poll.h>
@@ -130,6 +136,8 @@
 #include <memory>
 #include <mutex>
 #include <thread>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <atomic>
 
@@ -182,6 +190,46 @@ static std::vector<std::pair<std::string, htpd::NgramTable>> g_file_tables;  // 
 static llama_adapter_lora * g_lora = nullptr;
 static float g_lora_scale = 1.0f;
 static int g_kv_tag = 0;
+
+// v9e agent drafts (all off by default = v9d): HTPD_AGENT_NGMAX (n-gram orders NGMAX..1, v9d 3),
+// HTPD_AGENT_RECENT_MAX (> 0: past agent outputs are looked up in a hashed index of the last N outputs instead
+// of the linear scan of the last 64), HTPD_AGENT_CORPUS=<file> (the index is seeded from this file at start and
+// every finished agent output is appended: one output per line, token ids). Drafts stay verified against the
+// greedy argmax, and the rows per step are unchanged, so outputs are unchanged; a hash collision is only a
+// rejected draft.
+static int g_ag_ngmax = 3;
+static int g_ag_recent_max = 0;
+static std::string g_ag_corpus;
+struct AgentIndex {
+    std::deque<std::vector<llama_token>> docs;
+    std::unordered_map<uint64_t, int32_t> next;
+    int ngmax = 3;
+    size_t cap = 500;
+    static uint64_t key(const llama_token * k, int ng) {
+        uint64_t h = 0x9E3779B97F4A7C15ULL * (uint64_t) (ng + 1);
+        for (int i = 0; i < ng; ++i) { h ^= (uint64_t) (uint32_t) k[i] + 0x9E3779B97F4A7C15ULL + (h << 6) + (h >> 2); h *= 0xBF58476D1CE4E5B9ULL; }
+        return h ^ (h >> 31);
+    }
+    void index(const std::vector<llama_token> & v) {  // later continuations overwrite: the newest occurrence wins
+        for (int c = 1; c < (int) v.size(); ++c)
+            for (int ng = 1; ng <= ngmax && c - ng >= 0; ++ng) next[key(v.data() + c - ng, ng)] = v[c];
+    }
+    void add(std::vector<llama_token> v) {
+        if (v.size() < 2) return;
+        docs.push_back(std::move(v));
+        index(docs.back());
+        if (docs.size() > cap + cap / 2) {  // rebuild from the newest cap outputs (amortised)
+            while (docs.size() > cap) docs.pop_front();
+            next.clear();
+            for (auto & d : docs) index(d);
+        }
+    }
+    int lookup(const llama_token * k, int ng) const {
+        auto it = next.find(key(k, ng));
+        return it == next.end() ? -1 : it->second;
+    }
+};
+static AgentIndex g_agidx;
 
 static std::vector<llama_token> tokenize(const std::string & s) {
     std::vector<llama_token> t(s.size() + 16);
@@ -574,7 +622,7 @@ static std::vector<Out> run_batch(llama_context * ctx, const std::vector<std::st
         auto propose = [&](int s) -> int {
             const auto & h = hist[s];
             const int L = (int) h.size();
-            for (int ng = 3; ng >= 1; --ng) {
+            for (int ng = g_ag_ngmax; ng >= 1; --ng) {
                 if (L < ng + 1) continue;
                 const llama_token * key = h.data() + L - ng;
                 for (int o = 0; o < n; ++o) {
@@ -582,6 +630,10 @@ static std::vector<Out> run_batch(llama_context * ctx, const std::vector<std::st
                     int t = search(hist[o], gen0[o], (int) hist[o].size(), key, ng);
                     if (t >= 0) return t;
                 }
+                if (g_ag_recent_max > 0) {  // v9e: hashed index of past outputs (newest occurrence wins)
+                    int t = g_agidx.lookup(key, ng);
+                    if (t >= 0) return t;
+                } else
                 for (auto it = g_recent.rbegin(); it != g_recent.rend(); ++it) {
                     int t = search(*it, 0, (int) it->size(), key, ng);
                     if (t >= 0) return t;
@@ -670,6 +722,17 @@ static std::vector<Out> run_batch(llama_context * ctx, const std::vector<std::st
         for (int s = 0; s < n; ++s) {
             g_recent.emplace_back(hist[s].begin() + gen0[s], hist[s].end());
             if (g_recent.size() > 64) g_recent.erase(g_recent.begin());
+            if (g_ag_recent_max > 0) g_agidx.add(g_recent.back());
+        }
+        if (g_ag_recent_max > 0 && trim_action && !g_ag_corpus.empty()) {  // v9e: persist agent outputs
+            if (FILE * fp = fopen(g_ag_corpus.c_str(), "a")) {
+                for (int s = 0; s < n; ++s) {
+                    if ((int) hist[s].size() - gen0[s] < 2) continue;
+                    for (int j = gen0[s]; j < (int) hist[s].size(); ++j) fprintf(fp, j > gen0[s] ? " %d" : "%d", hist[s][j]);
+                    fputc('\n', fp);
+                }
+                fclose(fp);
+            }
         }
         fprintf(stderr, "htpd: draft steps %d proposed %d accepted %d\n", steps, proposed, accepted);
     }
@@ -862,12 +925,210 @@ static double g_reason_timeout_ms = 150000;   // v8x3: HTPD_REASON_TIMEOUT_MS wa
 // v8x split decoding: request "split": [[keys...], ...] (+ "split_after": key); empty = off
 static std::vector<std::vector<std::string>> g_req_split;
 static std::string g_req_split_after = "causal_chain";
+// v9 speculative drafts inside split decoding (HTPD_REASON_SPLIT_SPEC=K; 0 = off, the v8x5 code path unchanged).
+// Every stream s has a committed sequence C_s and a scratch sequence S_s (the reasoner context gets 2 sequences per
+// --reason-streams; no n_rs_seq snapshots). A stream with a draft decodes [cert..., draft...] on S_s = copy of C_s;
+// cert = rows certain to come next (the pick, its forced tokens, rows re-fed after a rejection). Drafts are verified
+// with the same greedy + forcer pick as plain decoding. All kept: S_s becomes C_s (roles swap). Partly kept: S_s is
+// dropped, C_s stays at the pre-step state and cert + kept drafts + the correction pick are next step's cert rows.
+// Drafts: the longest suffix match (>= HTPD_REASON_SPEC_MIN tokens, up to 32) of the stream's tokens in its own
+// prompt/answer (prompt lookup) or in a corpus of past reports (HTPD_REASON_CORPUS: one JSON array of token ids per
+// line); the longer match wins, ties go to the prompt.
+static int g_sspec_k = 0;            // HTPD_REASON_SPLIT_SPEC: max draft tokens per stream and step
+static int g_sspec_min = 2;          // HTPD_REASON_SPEC_MIN: min match length
+static int g_sspec_rows = 32;        // HTPD_REASON_SPEC_ROWS: draft rows stop at this many batch rows per step
+static int g_sspec_maxm = 32;        // longest suffix compared
+static bool g_sspec_kvu = true;      // HTPD_REASON_SPEC_KVU=0: per-sequence KV streams (seq_cp = full stream copy)
+static bool g_sspec_align = false;   // HTPD_REASON_SPEC_ALIGN=1: equal rows per stream (one ubatch per step)
+static bool g_sspec_ctx = false;     // the loaded reasoner context has the 2 x streams sequences
+// v9d (default off): HTPD_REASON_CORPUS_LIVE=<file>: loaded like the corpus and, after every complete split report,
+// each stream's emitted tokens (head + its group) are added to the in-memory corpus and appended to the file (exact
+// duplicates skipped; at most HTPD_REASON_CORPUS_LIVE_MAX docs, default 3000). Drafts stay verified, so only the
+// number of kept drafts changes. HTPD_REASON_SPEC_KLONG=K2 (0 = off): a stream whose draft match is at least
+// HTPD_REASON_SPEC_LONGM (16) tokens long may draft up to K2 tokens (the rows cap still applies).
+static std::string g_corpus_live;
+static int g_corpus_live_max = 3000, g_corpus_live_n = 0;
+static int g_sspec_klong = 0, g_sspec_longm = 16;
+static int g_reason_ctx_stream = 4096;  // --reason-ctx (cells one stream may use)
+
+struct SpecCorpus {
+    std::vector<llama_token> t;                                 // documents, each followed by -1
+    std::unordered_map<uint64_t, std::vector<int>> bi;          // bigram -> index of its 2nd token
+    std::unordered_map<llama_token, std::vector<int>> uni;      // unigram -> index (only for min match 1)
+    int docs = 0;
+    bool with_uni = false;
+    std::unordered_set<uint64_t> seen;                          // v9d: hashes of the docs (exact duplicates skipped)
+    static uint64_t key(llama_token a, llama_token b) { return ((uint64_t) (uint32_t) a << 32) | (uint32_t) b; }
+    static uint64_t hash(const llama_token * p, size_t n) {
+        uint64_t h = 1469598103934665603ull;
+        for (size_t i = 0; i < n; ++i) { h ^= (uint32_t) p[i]; h *= 1099511628211ull; }
+        return h ^ n;
+    }
+    // index t[i0..] (positions only grow, so the candidate lists stay in corpus order)
+    void index_from(size_t i0) {
+        for (size_t i = std::max<size_t>(i0, 1); i < t.size(); ++i) if (t[i] >= 0 && t[i - 1] >= 0) bi[key(t[i - 1], t[i])].push_back((int) i);
+        if (with_uni) for (size_t i = i0; i < t.size(); ++i) if (t[i] >= 0) uni[t[i]].push_back((int) i);
+    }
+    // append one doc (not indexed); false = empty or duplicate
+    bool push_doc(const llama_token * p, size_t n) {
+        if (n == 0 || !seen.insert(hash(p, n)).second) return false;
+        t.insert(t.end(), p, p + n); t.push_back(-1); docs++;
+        return true;
+    }
+    bool add(const std::vector<llama_token> & d) { const size_t i0 = t.size(); if (!push_doc(d.data(), d.size())) return false; index_from(i0); return true; }
+    // keep_last > 0: only the last keep_last lines of the file. Returns the docs added (-1: no file).
+    int load(const char * path, bool uni_idx, int keep_last = 0) {
+        with_uni = uni_idx;
+        FILE * fp = fopen(path, "rb");
+        if (!fp) return -1;
+        std::vector<std::vector<llama_token>> ds;
+        std::vector<llama_token> doc;
+        long v = 0;
+        bool in = false;
+        int c;
+        auto end_doc = [&] { if (!doc.empty()) { ds.push_back(std::move(doc)); doc.clear(); } };
+        while ((c = fgetc(fp)) != EOF) {
+            if (c >= '0' && c <= '9') { v = v * 10 + (c - '0'); in = true; continue; }
+            if (in) { doc.push_back((llama_token) v); v = 0; in = false; }
+            if (c == '\n') end_doc();
+        }
+        if (in) doc.push_back((llama_token) v);
+        end_doc();
+        fclose(fp);
+        const size_t first = keep_last > 0 && ds.size() > (size_t) keep_last ? ds.size() - keep_last : 0;
+        const size_t i0 = t.size();
+        int added = 0;
+        for (size_t k = first; k < ds.size(); ++k) added += push_doc(ds[k].data(), ds[k].size());
+        index_from(i0);
+        return added;
+    }
+    // longest suffix of h (<= maxm) that occurs in the corpus with a continuation; then up to K tokens, each the most
+    // frequent next token among the occurrences that share the longest match (and the tokens chosen so far)
+    int match(const std::vector<llama_token> & h, int K, int maxm, int minm, std::vector<llama_token> & d) const {
+        d.clear();
+        const int L = (int) h.size();
+        if (L < 1 || t.empty()) return 0;
+        const std::vector<int> * cand = nullptr;
+        int c0 = 0;
+        if (L >= 2) if (auto it = bi.find(key(h[L - 2], h[L - 1])); it != bi.end()) { cand = &it->second; c0 = 2; }
+        if (!cand && minm <= 1) if (auto it = uni.find(h[L - 1]); it != uni.end()) { cand = &it->second; c0 = 1; }
+        if (!cand) return 0;
+        static thread_local std::vector<int> bestp, cur;
+        int best = 0;
+        bestp.clear();
+        for (int p : *cand) {
+            if (t[p + 1] < 0) continue;  // no continuation
+            int c = c0;
+            while (c < maxm && p - c >= 0 && L - 1 - c >= 0 && t[p - c] == h[L - 1 - c]) c++;
+            if (c > best) { best = c; bestp.clear(); }
+            if (c == best) bestp.push_back(p);
+        }
+        if (best == 0) return 0;
+        cur = bestp;
+        std::vector<std::pair<llama_token, int>> cnt;
+        for (int k = 0; k < K && !cur.empty(); ++k) {
+            cnt.clear();
+            for (int p : cur) {
+                const llama_token x = t[p + 1 + k];
+                if (x < 0) continue;
+                auto it = std::find_if(cnt.begin(), cnt.end(), [&](auto & e) { return e.first == x; });
+                if (it == cnt.end()) cnt.push_back({x, 1}); else it->second++;
+            }
+            if (cnt.empty()) break;
+            auto bt = std::max_element(cnt.begin(), cnt.end(), [](auto & a, auto & b) { return a.second < b.second; });
+            const llama_token x = bt->first;
+            d.push_back(x);
+            size_t w = 0;
+            for (int p : cur) if (t[p + 1 + k] == x) cur[w++] = p;
+            cur.resize(w);
+        }
+        return d.empty() ? 0 : best;
+    }
+};
+static SpecCorpus g_corpus;
+// v9f (default off): verified drafts for single-stream free-text requests (the Campus Assistant chat). Single-stream drafting
+// lost on deploy15 (prompt lookup at match >= 2: 0-14% kept, wider steps), so v9f drafts only behind a match of
+// >= HTPD_CHAT_SPEC_MIN tokens (default 4) and also looks in a corpus of the chat's own past outputs (tool-call rounds and
+// answers repeat their wording). HTPD_CHAT_SPEC=K (max draft tokens), HTPD_CHAT_CORPUS=<file> (token-id docs, loaded at
+// start, every complete chat output appended; cap HTPD_CHAT_CORPUS_MAX, default 3000). No padding rows for these.
+static int g_chat_k = 0, g_chat_min = 4, g_chat_live_max = 3000, g_chat_live_n = 0;
+static SpecCorpus g_chat_corpus;
+static std::string g_chat_corpus_live;
+
+// prompt lookup with the longest suffix: the most recent earlier occurrence in h of the longest suffix of h (<= maxm)
+static int sspec_prompt_match(const std::vector<llama_token> & h, int K, int maxm, std::vector<llama_token> & d) {
+    d.clear();
+    const int L = (int) h.size();
+    if (L < 2) return 0;
+    const llama_token last = h[L - 1];
+    int best = 0, bi = -1;
+    for (int i = L - 2; i >= 0; --i) {
+        if (h[i] != last) continue;
+        int c = 1;
+        while (c < maxm && i - c >= 0 && h[i - c] == h[L - 1 - c]) c++;
+        if (c > best) { best = c; bi = i; if (c >= maxm) break; }
+    }
+    if (bi < 0) return 0;
+    for (int k = 0; k < K && bi + 1 + k < L; ++k) d.push_back(h[bi + 1 + k]);
+    return d.empty() ? 0 : best;
+}
+
+// draft for one stream: prompt lookup vs corpus, the longer match (ties: prompt), at least g_sspec_min tokens.
+// src: 1 prompt, 2 corpus, 0 none
+static void sspec_draft(const std::vector<llama_token> & h, int K, std::vector<llama_token> & d, int & src, int Klong = 0) {
+    static thread_local std::vector<llama_token> dc;
+    src = 0;
+    if (Klong < 0) {  // v9f chat: prompt lookup vs chat corpus, match >= g_chat_min, K = g_chat_k
+        const int mp = sspec_prompt_match(h, K, g_sspec_maxm, d);
+        const int mc = g_chat_corpus.docs ? g_chat_corpus.match(h, K, g_sspec_maxm, g_chat_min, dc) : 0;
+        if (mp >= mc && mp >= g_chat_min) { src = 1; return; }
+        if (mc > mp && mc >= g_chat_min) { d.swap(dc); src = 2; return; }
+        d.clear();
+        return;
+    }
+    if (Klong > K) {  // v9d: long drafts only behind a long match
+        sspec_draft(h, Klong, d, src);
+        const int m = src == 1 ? sspec_prompt_match(h, 1, g_sspec_maxm, dc) : src == 2 ? g_corpus.match(h, 1, g_sspec_maxm, g_sspec_min, dc) : 0;
+        if (m < g_sspec_longm && (int) d.size() > K) d.resize(K);
+        return;
+    }
+    const int mp = sspec_prompt_match(h, K, g_sspec_maxm, d);
+    const int mc = g_corpus.docs ? g_corpus.match(h, K, g_sspec_maxm, g_sspec_min, dc) : 0;
+    if (mp >= mc && mp >= g_sspec_min) { src = 1; return; }
+    if (mc > mp && mc >= g_sspec_min) { d.swap(dc); src = 2; return; }
+    d.clear();
+}
 
 struct ReasonStats {
     std::string cache = "none";  // mem | disk | saved | turn | none (stream 0)
     int cached_tokens = 0;       // prompt tokens restored instead of prefilled (all streams)
     double cache_ms = 0;
 };
+
+// v8x5: the disk prefix cache is LRU-bounded. A load touches its file; after a save only the HTPD_REASON_DISK_KEEP
+// (default 4) most recently used "<model>.prefix_*.state" files of this model stay (the chat's hourly device-time line
+// made a new ~130 MB state every hour and filled /data).
+static void prefix_cache_prune(const std::string & model_path) {
+    const int keep = std::max(1, getenv("HTPD_REASON_DISK_KEEP") ? atoi(getenv("HTPD_REASON_DISK_KEEP")) : 4);
+    const size_t sl = model_path.rfind('/');
+    const std::string dir = sl == std::string::npos ? "." : model_path.substr(0, sl);
+    const std::string stem = (sl == std::string::npos ? model_path : model_path.substr(sl + 1)) + ".prefix_";
+    std::vector<std::pair<time_t, std::string>> files;
+    if (DIR * d = opendir(dir.c_str())) {
+        while (dirent * e = readdir(d)) {
+            const std::string n = e->d_name;
+            if (n.size() <= stem.size() + 6 || n.compare(0, stem.size(), stem) != 0 || n.compare(n.size() - 6, 6, ".state") != 0) continue;
+            struct stat st;
+            const std::string p = dir + "/" + n;
+            if (stat(p.c_str(), &st) == 0) files.push_back({st.st_mtime, p});
+        }
+        closedir(d);
+    }
+    if ((int) files.size() <= keep) return;
+    std::sort(files.begin(), files.end(), [](auto & a, auto & b) { return a.first > b.first; });
+    for (size_t i = keep; i < files.size(); ++i)
+        if (remove(files[i].second.c_str()) == 0) fprintf(stderr, "htpd: prefix cache: removed %s (least recently used)\n", files[i].second.c_str());
+}
 
 static uint64_t fnv1a(const void * p, size_t n, uint64_t h = 1469598103934665603ULL) {
     const uint8_t * b = (const uint8_t *) p;
@@ -1052,6 +1313,7 @@ static std::vector<Out> run_reason(llama_context * ctx, const std::vector<std::s
         uint64_t h = fnv1a(g_reason_path_s.data(), g_reason_path_s.size());
         h = fnv1a(k.data(), k.size() * sizeof(llama_token), h);
         if (g_reason_rs > 0) h = fnv1a(&g_reason_rs, sizeof g_reason_rs, h);  // snapshot planes change the state layout
+        if (g_sspec_ctx) { const int tag = g_sspec_kvu ? 0x39b1 : 0x39b0; h = fnv1a(&tag, sizeof tag, h); }  // v9 context layout
         char b[40];
         snprintf(b, sizeof b, "%016llx", (unsigned long long) h);
         return g_reason_path_s + ".prefix_" + b + ".state";
@@ -1078,7 +1340,7 @@ static std::vector<Out> run_reason(llama_context * ctx, const std::vector<std::s
                 if (FILE * fp = fopen(path.c_str(), "rb")) {
                     fclose(fp);
                     if (llama_state_seq_load_file(ctx, path.c_str(), i, ft.data(), ft.size(), &nt) != 0 && (int) nt == P &&
-                        std::equal(ptoks.begin(), ptoks.end(), ft.begin())) { ok = true; how = "disk"; }
+                        std::equal(ptoks.begin(), ptoks.end(), ft.begin())) { ok = true; how = "disk"; utime(path.c_str(), nullptr); }
                     else llama_memory_seq_rm(mem, i, -1, -1);
                 }
             }
@@ -1088,8 +1350,10 @@ static std::vector<Out> run_reason(llama_context * ctx, const std::vector<std::s
                     ok = true; how = "saved";
                     if (g_reason_disk_cache) {  // .part + rename: a crash never leaves a torn state file
                         const std::string part = path + ".part";
-                        if (llama_state_seq_save_file(ctx, part.c_str(), i, ptoks.data(), ptoks.size()) != 0) rename(part.c_str(), path.c_str());
-                        else remove(part.c_str());
+                        if (llama_state_seq_save_file(ctx, part.c_str(), i, ptoks.data(), ptoks.size()) != 0) {
+                            rename(part.c_str(), path.c_str());
+                            prefix_cache_prune(g_reason_path_s);
+                        } else remove(part.c_str());
                     }
                 }
             }
@@ -1132,10 +1396,12 @@ static std::vector<Out> run_reason(llama_context * ctx, const std::vector<std::s
     prefill_ms = ms_since(t0);
 
     // ---- decode: each step feeds every active stream's pending token plus its forced tokens, logits on the last row
-    const int per_seq = (int) (llama_n_ctx(ctx) / std::max<uint32_t>(1, llama_n_seq_max(ctx)));
+    // v9: a split-spec context has 2 sequences per stream (committed + scratch) and, unified, one shared KV pool
+    const int per_seq = g_sspec_ctx ? g_reason_ctx_stream : (int) (llama_n_ctx(ctx) / std::max<uint32_t>(1, llama_n_seq_max(ctx)));
+    const int n_streams_ctx = g_sspec_ctx ? (int) llama_n_seq_max(ctx) / 2 : (int) llama_n_seq_max(ctx);
     // v8x split: k parallel continuation streams after the head (streams 1..k-1 start inactive)
     const int K_split = (int) g_req_split.size();
-    const bool split = n == 1 && schema && !schema->empty() && K_split >= 2 && K_split <= (int) llama_n_seq_max(ctx) &&
+    const bool split = n == 1 && schema && !schema->empty() && K_split >= 2 && K_split <= n_streams_ctx &&
                        out[0].stop != "error" && g_reason_spec == 0;
     std::vector<htpd::Schema> subs;
     std::vector<std::string> sentinel;  // per split stream: stop when the forced text names this key ("" = run to the end)
@@ -1291,7 +1557,288 @@ static std::vector<Out> run_reason(llama_context * ctx, const std::vector<std::s
     }
     flush_step();
     int steps = spec ? sp.steps : 0;
+    // v8x5 per-phase step profile: batch build, llama_decode, logits pick, handle (emit + forcer + inject), stream flush;
+    // rows = batch rows per step (pending + forced tokens of every active stream)
+    double pf_build = 0, pf_dec = 0, pf_pick = 0, pf_handle = 0, pf_flush = 0;
+    long pf_rows = 0, pf_rows_max = 0;
+    // ---- v9 split-spec decode (see g_sspec_k). Same steps as the loop below plus drafts on scratch sequences.
+    // split requests only: single-stream ones (chat) kept 0-14% of prompt drafts on the board (deploy15), so their
+    // wider steps cost more than the drafts saved
+    const bool chat1 = g_chat_k > 0 && !split && n == 1 && !(schema && !schema->empty());  // v9f: single-stream free text
+    const bool sspec = g_sspec_ctx && g_sspec_k > 0 && !spec && (NS > 1 || chat1);  // NS: split streams (n = requests, 1 for a split)
+    struct {
+        long drafted = 0, kept = 0, dsteps = 0, full = 0, partial = 0, extra = 0, ub = 0, src_p = 0, src_c = 0, dcalls = 0, pad = 0, drafted_cut = 0;
+        double cp_ms = 0, dr_ms = 0, dr_max = 0, fork_ms = 0;
+    } sx;
+    if (sspec) {
+        const int NSMAX = (int) llama_n_seq_max(ctx) / 2;
+        std::vector<int> cseq(NS), sseq(NS), cpos(NS, 0), base(NS, -1);
+        std::vector<std::vector<llama_token>> rows(NS), hist(NS), drf(NS), cert(NS);
+        for (int s = 0; s < NS; ++s) { cseq[s] = s; sseq[s] = NSMAX + s; }
+        for (int s = 0; s < n; ++s) {
+            cpos[s] = pos[s];
+            hist[s] = toks[s];
+            if (done[s]) continue;
+            rows[s].push_back(pending[s]);
+            rows[s].insert(rows[s].end(), inj[s].begin(), inj[s].end());
+            hist[s].insert(hist[s].end(), rows[s].begin(), rows[s].end());
+        }
+        std::vector<llama_token> next;
+        std::vector<int> lv;
+        auto add_row = [&](llama_token t, int p, int sq, bool lg) {
+            const int idx = batch.n_tokens++;
+            batch.token[idx] = t; batch.pos[idx] = p; batch.n_seq_id[idx] = 1; batch.seq_id[idx][0] = sq; batch.logits[idx] = lg;
+        };
+        bool failed = false;
+        while (active > 0) {
+            auto tp0 = clk::now();
+            if (g_reason_timeout_ms > 0 && ms_since(t0) > g_reason_timeout_ms) {
+                for (int s = 0; s < NS; ++s) if (!done[s]) { done[s] = true; out[s].stop = "timeout"; out[s].ms = ms_since(t0); }
+                fprintf(stderr, "htpd: reason timeout after %.0f ms (%d active streams stopped)\n", ms_since(t0), active);
+                active = 0;
+                break;
+            }
+            if (g_pick_debug && steps % 100 == 0 && steps > 0)
+                fprintf(stderr, "htpd: step %d at %.0f ms, slow picks %ld/%ld/%ld\n", steps, ms_since(t0), g_pick_slow64, g_pick_slow1k, g_pick_full);
+            g_hb_phase = 3; g_hb_step++;
+            batch.n_tokens = 0;
+            int budget = g_sspec_rows;
+            for (int s = 0; s < NS; ++s) if (!done[s]) budget -= (int) rows[s].size();
+            lv.clear();
+            for (int s = 0; s < NS; ++s) {
+                base[s] = -1;
+                drf[s].clear();
+                if (done[s]) continue;
+                cert[s] = rows[s];
+                const int p0 = cpos[s], nc = (int) cert[s].size();
+                if (budget > 0) {
+                    auto td = clk::now();
+                    int src = 0;
+                    if (chat1) sspec_draft(hist[s], std::min(g_chat_k, budget), drf[s], src, -1);
+                    else sspec_draft(hist[s], std::min(g_sspec_k, budget), drf[s], src, std::min(g_sspec_klong, budget));
+                    const double dms = ms_since(td);
+                    sx.dr_ms += dms; sx.dr_max = std::max(sx.dr_max, dms); sx.dcalls++;
+                    const int room = per_seq - 72 - p0 - nc - 1;
+                    if ((int) drf[s].size() > room) drf[s].resize(std::max(0, room));
+                    budget -= (int) drf[s].size();
+                    if (!drf[s].empty()) (src == 1 ? sx.src_p : sx.src_c)++;
+                }
+            }
+            if (g_sspec_align && !chat1) {
+                // HTPD_REASON_SPEC_ALIGN=1: every active stream gets the same row count R, so the step is ONE equal-split
+                // ubatch (rows of n streams x R) instead of one ubatch per distinct row count. Short streams are padded
+                // with a weaker draft (any match length), then by repeating their last token; pad rows are verified like
+                // any draft (a wrong one only makes the step partial for that stream).
+                int na = 0, mc = 0, mr = 0;
+                for (int s = 0; s < NS; ++s) if (!done[s]) {
+                    na++; mc = std::max(mc, (int) cert[s].size()); mr = std::max(mr, (int) (cert[s].size() + drf[s].size()));
+                }
+                const int R = std::max(mc, std::min(mr, g_sspec_rows / std::max(1, na)));
+                for (int s = 0; s < NS; ++s) {
+                    if (done[s]) continue;
+                    const int nc = (int) cert[s].size();
+                    const int want = std::min(R - nc, per_seq - 72 - cpos[s] - nc - 1);
+                    if (want <= 0) { drf[s].clear(); continue; }
+                    if ((int) drf[s].size() > want) { sx.drafted_cut += (long) drf[s].size() - want; drf[s].resize(want); continue; }
+                    if ((int) drf[s].size() == want) continue;
+                    static thread_local std::vector<llama_token> w1, w2;
+                    const int mp = sspec_prompt_match(hist[s], want, g_sspec_maxm, w1);
+                    const int mcp = g_corpus.docs ? g_corpus.match(hist[s], want, g_sspec_maxm, 1, w2) : 0;
+                    const std::vector<llama_token> & w = mcp > mp ? w2 : w1;
+                    if (w.size() > drf[s].size() && std::equal(drf[s].begin(), drf[s].end(), w.begin())) drf[s] = w;
+                    const size_t had = drf[s].size();
+                    const llama_token last_t = drf[s].empty() ? cert[s].back() : drf[s].back();
+                    while ((int) drf[s].size() < want) drf[s].push_back(last_t);
+                    sx.pad += (long) (drf[s].size() - had);
+                }
+            }
+            for (int s = 0; s < NS; ++s) {
+                if (done[s]) continue;
+                const int p0 = cpos[s], nc = (int) cert[s].size();
+                int sq = cseq[s];
+                if (!drf[s].empty()) {
+                    auto tc = clk::now();
+                    llama_memory_seq_rm(mem, sseq[s], -1, -1);
+                    llama_memory_seq_cp(mem, cseq[s], sseq[s], -1, -1);
+                    sx.cp_ms += ms_since(tc);
+                    sq = sseq[s];
+                    sx.dsteps++; sx.drafted += (long) drf[s].size();
+                }
+                base[s] = batch.n_tokens;
+                for (int j = 0; j < nc; ++j) add_row(cert[s][j], p0 + j, sq, j + 1 == nc);
+                for (size_t j = 0; j < drf[s].size(); ++j) add_row(drf[s][j], p0 + nc + (int) j, sq, true);
+                lv.push_back(nc + (int) drf[s].size());
+            }
+            std::sort(lv.begin(), lv.end());
+            sx.ub += (long) (std::unique(lv.begin(), lv.end()) - lv.begin());  // ubatches of a unified equal split
+            g_hb_phase = 2; g_hb_in_decode = 1;
+            pf_rows += batch.n_tokens; pf_rows_max = std::max<long>(pf_rows_max, batch.n_tokens);
+            auto tp1 = clk::now();
+            pf_build += std::chrono::duration<double, std::milli>(tp1 - tp0).count();
+            const int rc_dec = llama_decode(ctx, batch);
+            auto tp2 = clk::now();
+            pf_dec += std::chrono::duration<double, std::milli>(tp2 - tp1).count();
+            g_hb_in_decode = 0; g_hb_phase = 3; g_hb_step++;
+            if (rc_dec != 0) { fprintf(stderr, "htpd: reason decode failed\n"); failed = true; break; }
+            steps++;
+            for (int s = 0; s < NS; ++s) {
+                if (base[s] < 0) continue;
+                const int nc = (int) cert[s].size();
+                const std::vector<llama_token> & d = drf[s];
+                int row = base[s] + nc - 1;  // batch row whose logits predict the next token
+                size_t j = 0;                // drafts kept (accepted picks and matched forced tokens)
+                bool fin = false, fork_now = false;
+                llama_token e = 0;
+                next.clear();
+                while (true) {
+                    pos[s] = cpos[s] + nc + (int) j;  // where the pick goes (plain decoding: pos at handle time)
+                    auto tq = clk::now();
+                    e = pick_forced(llama_get_logits_ith(ctx, row), n_vocab, fz[s], &changed[s]);
+                    pf_pick += ms_since(tq);
+                    tq = clk::now();
+                    if (split && !forked && s == 0) {
+                        htpd::Forcer g = fz[0];
+                        g.feed(piece(e));
+                        if (g.forced_text().find(split_key0) != std::string::npos) { fork_now = true; pf_handle += ms_since(tq); break; }
+                    }
+                    if (j < d.size() && e == d[j] && !llama_vocab_is_eog(g_vocab, e)) {
+                        row = base[s] + nc + (int) j; j++; sx.kept++;
+                        pending[s] = e;
+                        hist[s].push_back(e);
+                        fin = handle(s);
+                        if (!fin) {
+                            size_t m = 0;  // forced tokens after it that the draft already holds
+                            while (m < inj[s].size() && j < d.size() && d[j] == inj[s][m]) {
+                                hist[s].push_back(d[j]); row = base[s] + nc + (int) j; j++; m++; sx.kept++;
+                            }
+                            if (m < inj[s].size()) {
+                                next.assign(inj[s].begin() + m, inj[s].end());
+                                hist[s].insert(hist[s].end(), next.begin(), next.end());
+                            }
+                        }
+                        pf_handle += ms_since(tq);
+                        if (fin || !next.empty()) break;
+                        continue;
+                    }
+                    pending[s] = e;
+                    fin = handle(s);
+                    if (!fin) {
+                        next.push_back(e);
+                        next.insert(next.end(), inj[s].begin(), inj[s].end());
+                        hist[s].insert(hist[s].end(), next.begin(), next.end());
+                    }
+                    pf_handle += ms_since(tq);
+                    break;
+                }
+                // commit: no draft -> C_s advanced; all drafts kept -> S_s is the new C_s; else C_s stays, rows re-fed
+                const bool partial = !d.empty() && j < d.size();
+                auto tc = clk::now();
+                if (d.empty()) cpos[s] += nc;
+                else if (!partial) {
+                    std::swap(cseq[s], sseq[s]);
+                    cpos[s] += nc + (int) d.size();
+                    llama_memory_seq_rm(mem, sseq[s], -1, -1);
+                    sx.full++;
+                } else {
+                    llama_memory_seq_rm(mem, sseq[s], -1, -1);
+                    sx.partial++;
+                }
+                sx.cp_ms += ms_since(tc);
+                rows[s].clear();
+                if (partial) {
+                    rows[s] = cert[s];
+                    rows[s].insert(rows[s].end(), d.begin(), d.begin() + j);
+                    sx.extra += (long) rows[s].size();
+                }
+                if (fin) { done[s] = true; out[s].ms = ms_since(t0); active--; continue; }
+                if (fork_now) {
+                    // fork when the head key's value has closed (as below): streams 1.. take C_0 (seq_cp), its re-feed
+                    // rows and the fork pick, each with its group's forcer
+                    forked = true;
+                    fork_len = out[0].text.size(); fork_tokens = out[0].tokens; fork_forced = out[0].forced;
+                    fork_pick = piece(e);
+                    const std::string ap = htpd::answer_prefix(prompts[0]);
+                    auto tf = clk::now();
+                    for (int i = 1; i < NS; ++i) {
+                        llama_memory_seq_rm(mem, cseq[i], -1, -1);
+                        llama_memory_seq_rm(mem, sseq[i], -1, -1);
+                        llama_memory_seq_cp(mem, cseq[0], cseq[i], -1, -1);
+                        out[i] = out[0]; cpos[i] = cpos[0]; rows[i] = rows[0]; hist[i] = hist[0]; done[i] = false; active++;
+                    }
+                    sx.fork_ms += ms_since(tf);
+                    for (int i = 0; i < NS; ++i) {
+                        pending[i] = e;
+                        pos[i] = cpos[i] + (int) rows[i].size();
+                        fz[i] = htpd::Forcer(&subs[i]);
+                        if (!fz[i].feed(ap) || !fz[i].feed(out[i].text)) fz[i] = htpd::Forcer(nullptr);
+                        if (handle(i)) { done[i] = true; out[i].ms = ms_since(t0); active--; continue; }
+                        rows[i].push_back(e);
+                        rows[i].insert(rows[i].end(), inj[i].begin(), inj[i].end());
+                        hist[i].push_back(e);
+                        hist[i].insert(hist[i].end(), inj[i].begin(), inj[i].end());
+                    }
+                    fprintf(stderr, "htpd: split at %d tokens into %d streams (seq_cp %.2f ms)\n", fork_tokens, NS, sx.fork_ms);
+                    continue;
+                }
+                rows[s].insert(rows[s].end(), next.begin(), next.end());
+            }
+            auto tf = clk::now();
+            flush_step();
+            pf_flush += ms_since(tf);
+        }
+        if (failed) active = 0;
+        if (!g_corpus_live.empty() && !failed && forked) {  // v9d: grow the corpus with this report's streams
+            bool ok = true;
+            for (int s = 0; s < NS; ++s) ok = ok && out[s].stop == "json";
+            const size_t P = toks[0].size();
+            int added = 0;
+            if (ok && g_corpus_live_n < g_corpus_live_max) {
+                FILE * lf = fopen(g_corpus_live.c_str(), "a");
+                for (int s = 0; s < NS && g_corpus_live_n < g_corpus_live_max; ++s) {
+                    if (hist[s].size() < P + 8) continue;
+                    std::vector<llama_token> d(hist[s].begin() + P, hist[s].end());
+                    if (!g_corpus.add(d)) continue;
+                    added++; g_corpus_live_n++;
+                    if (lf) {
+                        fputc('[', lf);
+                        for (size_t k = 0; k < d.size(); ++k) fprintf(lf, k ? ",%d" : "%d", (int) d[k]);
+                        fputs("]\n", lf);
+                    }
+                }
+                if (lf) fclose(lf);
+            }
+            fprintf(stderr, "htpd: v9d live corpus: %s, %d docs added (live %d, corpus %d docs)\n", ok ? "report complete" : "report incomplete",
+                    added, g_corpus_live_n, g_corpus.docs);
+        }
+        if (chat1 && !g_chat_corpus_live.empty() && !failed && out[0].stop == "eog" && g_chat_live_n < g_chat_live_max) {
+            const size_t P = toks[0].size();  // v9f: grow the chat corpus with this output
+            if (hist[0].size() >= P + 4) {
+                std::vector<llama_token> d(hist[0].begin() + P, hist[0].end());
+                if (g_chat_corpus.add(d)) {
+                    g_chat_live_n++;
+                    if (FILE * lf = fopen(g_chat_corpus_live.c_str(), "a")) {
+                        fputc('[', lf);
+                        for (size_t k = 0; k < d.size(); ++k) fprintf(lf, k ? ",%d" : "%d", (int) d[k]);
+                        fputs("]\n", lf);
+                        fclose(lf);
+                    }
+                }
+            }
+            fprintf(stderr, "htpd: v9f chat corpus: %d docs (%d added live)\n", g_chat_corpus.docs, g_chat_live_n);
+        }
+        if (steps > 0)
+            fprintf(stderr, "htpd: reason step profile: %d steps, rows %.2f/step (max %ld); ms/step build %.2f decode %.2f pick %.2f handle %.2f flush %.2f; "
+                    "split-spec K %d m %d: drafted %ld, kept %ld (%.1f%%), draft stream-steps %ld (prompt %ld, corpus %ld), all kept %ld, partial %ld (%.1f%%), "
+                    "extra cert rows %ld, ubatches %.2f/step, seq_cp+rm %.3f ms/step, fork %.2f ms, draft %.3f ms/call (max %.3f), kv %s, "
+                    "align %d (pad rows %ld, cut %ld)\n",
+                    steps, (double) pf_rows / steps, pf_rows_max, pf_build / steps, pf_dec / steps, pf_pick / steps, pf_handle / steps, pf_flush / steps,
+                    g_sspec_k, g_sspec_min, sx.drafted, sx.kept, sx.drafted ? 100.0 * sx.kept / sx.drafted : 0.0, sx.dsteps, sx.src_p, sx.src_c,
+                    sx.full, sx.partial, sx.dsteps ? 100.0 * sx.partial / sx.dsteps : 0.0, sx.extra, (double) sx.ub / steps, sx.cp_ms / steps,
+                    sx.fork_ms, sx.dcalls ? sx.dr_ms / sx.dcalls : 0.0, sx.dr_max, g_sspec_kvu ? "unified" : "streams",
+                    (int) g_sspec_align, sx.pad, sx.drafted_cut);
+    }
     while (active > 0) {
+        auto tp0 = clk::now();
         if (g_reason_timeout_ms > 0 && ms_since(t0) > g_reason_timeout_ms) {  // (b) wall-clock guard
             for (int s = 0; s < NS; ++s) if (!done[s]) { done[s] = true; out[s].stop = "timeout"; out[s].ms = ms_since(t0); }
             fprintf(stderr, "htpd: reason timeout after %.0f ms (%d active streams stopped)\n", ms_since(t0), active);
@@ -1333,13 +1880,21 @@ static std::vector<Out> run_reason(llama_context * ctx, const std::vector<std::s
             g_pad_steps++;
         }
         g_hb_phase = 2; g_hb_in_decode = 1;
+        pf_rows += batch.n_tokens; pf_rows_max = std::max<long>(pf_rows_max, batch.n_tokens);
+        auto tp1 = clk::now();
+        pf_build += std::chrono::duration<double, std::milli>(tp1 - tp0).count();
         const int rc_dec = llama_decode(ctx, batch);
+        auto tp2 = clk::now();
+        pf_dec += std::chrono::duration<double, std::milli>(tp2 - tp1).count();
         g_hb_in_decode = 0; g_hb_phase = 3; g_hb_step++;
         if (rc_dec != 0) { fprintf(stderr, "htpd: reason decode failed\n"); break; }
         steps++;
         for (int s = 0; s < NS; ++s) {
             if (last[s] < 0) continue;
+            auto tq = clk::now();
             pending[s] = pick_forced(llama_get_logits_ith(ctx, last[s]), n_vocab, fz[s], &changed[s]);
+            pf_pick += ms_since(tq);
+            tq = clk::now();
             if (split && !forked && s == 0) {
                 // fork when the head key's value has closed: the forced text after this pick names the 1st group key
                 htpd::Forcer g = fz[0];
@@ -1364,11 +1919,18 @@ static std::vector<Out> run_reason(llama_context * ctx, const std::vector<std::s
                 }
             }
             if (handle(s)) { done[s] = true; out[s].ms = ms_since(t0); active--; }
+            pf_handle += ms_since(tq);
         }
+        auto tf = clk::now();
         flush_step();
+        pf_flush += ms_since(tf);
     }
+    if (steps > 0 && !spec && !sspec)
+        fprintf(stderr, "htpd: reason step profile: %d steps, rows %.2f/step (max %ld); ms/step build %.2f decode %.2f pick %.2f handle %.2f flush %.2f\n",
+                steps, (double) pf_rows / steps, pf_rows_max, pf_build / steps, pf_dec / steps, pf_pick / steps, pf_handle / steps, pf_flush / steps);
     llama_batch_free(batch);
     g_hb_phase = 0;
+    if (sspec) for (int q = 0; q < (int) llama_n_seq_max(ctx); ++q) llama_memory_seq_rm(mem, q, -1, -1);  // C and S sequences
     for (int s = 0; s < NS; ++s) {
         llama_memory_seq_rm(mem, s, -1, -1);
         if (out[s].stop.empty()) out[s].stop = "error";
@@ -1531,6 +2093,35 @@ int main(int argc, char ** argv) {
     }
     fprintf(stderr, "htpd: v7 flags: agent_max_new %d, json_abort %d, trie %d, role_draft %d (%zu file tables), logits_read %d\n",
             g_agent_max_new, g_json_abort, g_trie, (int) g_role_draft, g_file_tables.size(), (int) g_logits_read);
+    g_ag_ngmax = std::max(1, std::min(16, env_int("HTPD_AGENT_NGMAX", 3)));
+    g_ag_recent_max = std::max(0, env_int("HTPD_AGENT_RECENT_MAX", 0));
+    if (g_ag_recent_max > 0) {
+        g_agidx.ngmax = g_ag_ngmax;
+        g_agidx.cap = (size_t) g_ag_recent_max;
+        int loaded = 0;
+        auto tcl = clk::now();
+        if (const char * f = getenv("HTPD_AGENT_CORPUS"); f && *f) {
+            g_ag_corpus = f;
+            if (FILE * fp = fopen(f, "r")) {
+                std::deque<std::vector<llama_token>> last;
+                std::vector<llama_token> cur;
+                long v = 0; bool in = false; int c;
+                const int nv = llama_vocab_n_tokens(g_vocab);
+                auto push = [&] { if (in) { if (v >= 0 && v < nv) cur.push_back((llama_token) v); v = 0; in = false; } };
+                while ((c = fgetc(fp)) != EOF) {
+                    if (c >= '0' && c <= '9') { v = v * 10 + (c - '0'); in = true; if (v > 1L << 30) v = -1; }
+                    else if (c == '\n') { push(); if (cur.size() >= 2) { last.push_back(std::move(cur)); if (last.size() > g_agidx.cap) last.pop_front(); } cur.clear(); }
+                    else push();
+                }
+                fclose(fp);
+                for (auto & d : last) { g_agidx.add(std::move(d)); loaded++; }
+            }
+        }
+        fprintf(stderr, "htpd: v9e agent drafts: n-grams %d..1, hashed recent index of %d outputs, corpus %s (%d outputs loaded, %zu keys, %.0f ms)\n",
+                g_ag_ngmax, g_ag_recent_max, g_ag_corpus.empty() ? "off" : g_ag_corpus.c_str(), loaded, g_agidx.next.size(), ms_since(tcl));
+    } else if (g_ag_ngmax != 3) {
+        fprintf(stderr, "htpd: v9e agent drafts: n-grams %d..1 (linear recent 64)\n", g_ag_ngmax);
+    }
 
     // ONE context at a time: weights + 13-stream KV + a second 4k context exceed what one DSP session
     // can map (fastrpc_mmap fails, measured). The agent context stays resident; a synthesizer call
@@ -1588,6 +2179,48 @@ int main(int argc, char ** argv) {
     if (env_int("HTPD_HEARTBEAT", 1) != 0) std::thread(hb_thread).detach();
     g_reason_spec_nmin = std::max(1, env_int("HTPD_REASON_SPEC_NMIN", 2));
     g_reason_spec_nmax = std::max(g_reason_spec_nmin, env_int("HTPD_REASON_SPEC_NMAX", 4));
+    // v9 split-spec (default off)
+    g_sspec_k = std::max(0, std::min(16, env_int("HTPD_REASON_SPLIT_SPEC", 0)));
+    g_reason_ctx_stream = reason_ctx;
+    if (g_sspec_k > 0 && g_reason_spec > 0) {
+        fprintf(stderr, "htpd: HTPD_REASON_SPEC (v8s) is set: HTPD_REASON_SPLIT_SPEC ignored\n");
+        g_sspec_k = 0;
+    }
+    if (g_sspec_k > 0) {
+        g_sspec_min = std::max(1, env_int("HTPD_REASON_SPEC_MIN", 2));
+        g_sspec_rows = std::max(1, env_int("HTPD_REASON_SPEC_ROWS", 32));
+        g_sspec_kvu = env_int("HTPD_REASON_SPEC_KVU", 1) != 0;
+        g_sspec_align = env_int("HTPD_REASON_SPEC_ALIGN", 0) != 0;
+        if (const char * cf = getenv("HTPD_REASON_CORPUS"); cf && *cf) {
+            auto tcl = clk::now();
+            if (g_corpus.load(cf, g_sspec_min <= 1) <= 0) fprintf(stderr, "htpd: reason corpus %s: cannot load (prompt lookup only)\n", cf);
+            fprintf(stderr, "htpd: reason corpus %s: %d docs, %zu tokens, %zu bigrams, %.0f ms\n", cf, g_corpus.docs, g_corpus.t.size(),
+                    g_corpus.bi.size(), ms_since(tcl));
+        }
+        g_sspec_klong = std::max(0, std::min(32, env_int("HTPD_REASON_SPEC_KLONG", 0)));
+        g_sspec_longm = std::max(2, env_int("HTPD_REASON_SPEC_LONGM", 16));
+        if (const char * lf = getenv("HTPD_REASON_CORPUS_LIVE"); lf && *lf) {
+            g_corpus_live = lf;
+            g_corpus_live_max = std::max(1, env_int("HTPD_REASON_CORPUS_LIVE_MAX", 3000));
+            auto tcl = clk::now();
+            const int a = g_corpus.load(lf, g_sspec_min <= 1, g_corpus_live_max);
+            g_corpus_live_n = std::max(0, a);
+            fprintf(stderr, "htpd: v9d live corpus %s: %d docs added (%s), corpus now %d docs, %zu tokens, %.0f ms\n", lf, g_corpus_live_n,
+                    a < 0 ? "new file" : "loaded", g_corpus.docs, g_corpus.t.size(), ms_since(tcl));
+        }
+        g_chat_k = std::max(0, std::min(16, env_int("HTPD_CHAT_SPEC", 0)));
+        g_chat_min = std::max(2, env_int("HTPD_CHAT_SPEC_MIN", 4));
+        if (const char * cf = getenv("HTPD_CHAT_CORPUS"); g_chat_k > 0 && cf && *cf) {
+            g_chat_corpus_live = cf;
+            g_chat_live_max = std::max(1, env_int("HTPD_CHAT_CORPUS_MAX", 3000));
+            const int a = g_chat_corpus.load(cf, false, g_chat_live_max);
+            fprintf(stderr, "htpd: v9f chat corpus %s: %s, %d docs, %zu tokens\n", cf, a < 0 ? "new file" : "loaded", g_chat_corpus.docs, g_chat_corpus.t.size());
+        }
+        if (g_chat_k > 0) fprintf(stderr, "htpd: v9f chat spec: K %d, min match %d\n", g_chat_k, g_chat_min);
+        fprintf(stderr, "htpd: v9 split-spec: K %d, min match %d, rows cap %d, kv %s, align %d, corpus %d docs, klong %d (match >= %d), live %s\n",
+                g_sspec_k, g_sspec_min, g_sspec_rows, g_sspec_kvu ? "unified" : "streams", (int) g_sspec_align, g_corpus.docs,
+                g_sspec_klong, g_sspec_longm, g_corpus_live.empty() ? "off" : "on");
+    }
     const int reason_idle_ms = env_int("HTPD_REASON_IDLE_MS", 20000);
     llama_model * rmodel = nullptr;
     llama_context * rctx = nullptr;
@@ -1622,7 +2255,7 @@ int main(int argc, char ** argv) {
         llama_model_free(rmodel);
         rmodel = nullptr;
         g_rcache.clear(); g_rcache.shrink_to_fit();
-        g_rpieces.clear(); g_rpieces.shrink_to_fit();
+        // v8x5: g_rpieces is kept (same reasoner GGUF on every load, ~8 MB), so a reload skips its rebuild
         const double unload = ms_since(t);
         const double reload = domain_back();
         fprintf(stderr, "htpd: reasoner unloaded (%s): unload %.0f ms, agents' model back in %.0f ms\n", why, unload, reload);
@@ -1639,7 +2272,9 @@ int main(int argc, char ** argv) {
         g_lora = nullptr;
         unload_ms = ms_since(t);
         t = clk::now();
+        double t_model = 0, t_ctx = 0, t_pieces = 0;
         rmodel = llama_model_load_from_file(reasoner_path, mp);
+        t_model = ms_since(t);
         if (!rmodel) err = "reasoner model load failed";
         else {
             auto cp = llama_context_default_params();
@@ -1652,8 +2287,19 @@ int main(int argc, char ** argv) {
             cp.n_ubatch = (uint32_t) reason_ubatch;
             g_reason_rs = 0;
             if (g_reason_spec > 0 && (llama_model_is_hybrid(rmodel) || llama_model_is_recurrent(rmodel))) cp.n_rs_seq = (uint32_t) g_reason_spec;
+            g_sspec_ctx = false;
+            if (g_sspec_k > 0) {  // v9: committed + scratch sequence per stream
+                cp.n_seq_max = (uint32_t) (2 * reason_streams);
+                cp.kv_unified = g_sspec_kvu;
+                cp.n_ctx = g_sspec_kvu ? (uint32_t) (reason_streams * reason_ctx + 256) : (uint32_t) (2 * reason_streams * reason_ctx);
+            }
             rctx = llama_init_from_model(rmodel, cp);
             if (rctx) g_reason_rs = (int) llama_n_rs_seq(rctx);
+            if (rctx && g_sspec_k > 0) {
+                g_sspec_ctx = true;
+                fprintf(stderr, "htpd: v9 split-spec reasoner context: %u sequences, n_ctx %u, kv %s\n", llama_n_seq_max(rctx),
+                        llama_n_ctx(rctx), g_sspec_kvu ? "unified" : "streams");
+            }
             if (!rctx) { llama_model_free(rmodel); rmodel = nullptr; err = "reasoner context creation failed"; }
         }
         if (!rmodel) {
@@ -1661,11 +2307,16 @@ int main(int argc, char ** argv) {
             domain_back();
             return false;
         }
+        t_ctx = ms_since(t) - t_model;
         g_vocab = llama_model_get_vocab(rmodel);
         const int nv = llama_vocab_n_tokens(g_vocab);
-        g_rpieces.resize(nv);
-        for (int k = 0; k < nv; ++k) g_rpieces[k] = piece(k);
+        if ((int) g_rpieces.size() != nv) {
+            g_rpieces.resize(nv);
+            for (int k = 0; k < nv; ++k) g_rpieces[k] = piece(k);
+        }
         load_ms = ms_since(t);
+        t_pieces = load_ms - t_model - t_ctx;
+        fprintf(stderr, "htpd: reasoner load phases: model %.0f ms, context %.0f ms, pieces %.0f ms\n", t_model, t_ctx, t_pieces);
         fprintf(stderr, "htpd: reasoner loaded in %.0f ms (agents' model unloaded in %.0f ms): %s, %s, %d streams x %d ctx\n",
                 load_ms, unload_ms, reasoner_path,
                 llama_model_is_hybrid(rmodel) || llama_model_is_recurrent(rmodel) ? (g_reason_rs > 0 ? "hybrid/recurrent (rollback snapshots for spec, whole-state cache)" : "hybrid/recurrent (no rollback, whole-state cache)") : "attention-only",

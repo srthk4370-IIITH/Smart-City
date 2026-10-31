@@ -34,6 +34,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -275,6 +276,7 @@ func (c V3Call) Args() map[string]any {
 type v3Turn struct {
 	Calls   []V3Call
 	Results []string
+	Think   string // the round's reasoning (chat, adaptive thinking: kept in the prompt like the HF template does)
 }
 
 // reasonerPromptV3: static prefix (tools + frozen system) + user + tool turns, ending at the assistant
@@ -415,6 +417,12 @@ func v3NumKnown(nums map[string]bool, n string) bool {
 
 // checkReportV3: parse + gate. ok=false means the operator must not see it (fallback report instead).
 func checkReportV3(text, knownText string) (*reportV3Raw, []string, []string) {
+	return checkReportV3For(text, knownText, false)
+}
+
+// checkReportV3For: checkReportV3 with the incident scope; weatherOnly = every flagged sensor is a weather
+// (outdoor) sensor, which relaxes only the critical first-action floor (v3ActionFloor).
+func checkReportV3For(text, knownText string, weatherOnly bool) (*reportV3Raw, []string, []string) {
 	var errs, repairs []string
 	js, ok := extractJSON(text)
 	if !ok {
@@ -531,7 +539,7 @@ func checkReportV3(text, knownText string) (*reportV3Raw, []string, []string) {
 			errs = append(errs, fmt.Sprintf("checklist %d: action %q not whitelisted", i+1, c.Action))
 		}
 	}
-	if e := v3ActionFloor(r.Severity, r.Checklist); e != "" {
+	if e := v3ActionFloor(r.Severity, r.Checklist, weatherOnly); e != "" {
 		errs = append(errs, e)
 	}
 	// critical + needs_more_data is allowed: the gold data uses it when the critical reading itself is present and
@@ -550,7 +558,7 @@ func checkReportV3(text, knownText string) (*reportV3Raw, []string, []string) {
 }
 
 // v3ActionFloor: SPEC §3 severity-to-action policy table.
-func v3ActionFloor(sev string, cl []V3ChecklistItem) string {
+func v3ActionFloor(sev string, cl []V3ChecklistItem, weatherOnly bool) string {
 	if len(cl) == 0 {
 		return ""
 	}
@@ -558,8 +566,11 @@ func v3ActionFloor(sev string, cl []V3ChecklistItem) string {
 	inspect := func(a string) bool { return strings.HasPrefix(a, "inspect_") || a == "request_facility_review" }
 	switch sev {
 	case "critical":
-		if !inspect(first) {
-			return "critical report must start with an inspect_* or request_facility_review action"
+		// weather-only incidents (outdoor heat, wind, rain): there is no facility to inspect, so a critical
+		// report may also start by watching the weather (monitor) or rescheduling outdoor activity (review_schedule).
+		weatherOK := weatherOnly && (first == "monitor" || first == "review_schedule")
+		if !inspect(first) && !weatherOK {
+			return "critical report must start with an inspect_* or request_facility_review action (monitor/review_schedule only for weather-only incidents)"
 		}
 	case "warning":
 		ok := inspect(first) || first == "review_schedule"
@@ -783,14 +794,22 @@ func (htpdReasonLLM) Name() string { return "qwen3.5-4b (htpd)" }
 
 var errHtpdNoReasoner = errors.New("htpd has no reasoner slot (needs htpd v8 started with --reasoner-model; htpd_profile reasoner_model=)")
 
+// htpdReasonCapsOK: unix time until which a positive caps answer is reused. htpd serves one request at a time, so a
+// caps check queued behind a model swap + a first-time prefix (4 + 5 s) timed out at 5 s and failed the chat
+// ("i/o timeout", board 2026-10-29); the slot cannot disappear while htpd runs, so one answer is reused for 10 min.
+var htpdReasonCapsOK atomic.Int64
+
 // htpdReasonCaps: {"kind":"caps"} -> {"caps":["reason",...],...}. A v7 htpd answers {"error":"bad request"}.
 func htpdReasonCaps(ctx context.Context) error {
+	if time.Now().Unix() < htpdReasonCapsOK.Load() {
+		return nil
+	}
 	c, err := net.DialTimeout("tcp", htpdAddr(), time.Second)
 	if err != nil {
 		return err
 	}
 	defer c.Close()
-	c.SetDeadline(time.Now().Add(5 * time.Second))
+	c.SetDeadline(time.Now().Add(60 * time.Second))
 	if _, err := c.Write([]byte(`{"kind":"caps"}` + "\n")); err != nil {
 		return err
 	}
@@ -804,6 +823,7 @@ func htpdReasonCaps(ctx context.Context) error {
 	if json.Unmarshal(line, &r) != nil || !contains(r.Caps, "reason") {
 		return errHtpdNoReasoner
 	}
+	htpdReasonCapsOK.Store(time.Now().Add(10 * time.Minute).Unix())
 	return nil
 }
 
@@ -1217,7 +1237,7 @@ func (r *Reasoner) reasonV3Fallback(ctx context.Context, inc *Incident, findings
 		rc.Errors = []string{"reasoner engine: " + err.Error()}
 	} else {
 		known := run.Prompt + "\n" + strings.Join(run.Results, "\n")
-		parsed, errs, repairs := checkReportV3(run.Text, known)
+		parsed, errs, repairs := checkReportV3For(run.Text, known, weatherOnlyIncident(inc))
 		rc.Errors, rc.Repairs = errs, repairs
 		if parsed != nil && len(errs) == 0 {
 			refs := make([]string, len(inc.Sensors))
@@ -1332,4 +1352,18 @@ func reasonerStreams() int {
 		return len(sp.Groups)
 	}
 	return 1
+}
+
+// weatherOnlyIncident: every flagged (alerting) sensor is a weather sensor; unflagged context sensors
+// (power, indoor air, HVAC added for cross-domain context) do not count.
+func weatherOnlyIncident(inc *Incident) bool {
+	if inc == nil || len(inc.Roles) == 0 {
+		return false
+	}
+	for _, r := range inc.Roles {
+		if r != "weather" {
+			return false
+		}
+	}
+	return true
 }
