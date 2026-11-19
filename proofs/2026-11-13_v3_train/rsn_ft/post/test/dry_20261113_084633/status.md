@@ -1,0 +1,42 @@
+# rsn_v3 local pipeline status (append-only)
+
+- 2026-11-13 08:47:24 [rsn_ft_gate] gate: DRY RUN (stub server, LIMIT=3): no GPU, no GPU_LOCK
+- 2026-11-13 08:47:24 [rsn_ft_gate] gate: start /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-13_v3_train/rsn_ft/post/test/dry_20261113_084633/fake_cand_q4_0.gguf vs r3-2800 (/mnt/c/Users/hp/Desktop/qidk/Code/models_stage/rsn_v3_4b_r3_q4_0.gguf) -> /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-13_v3_train/rsn_ft/post/test/dry_20261113_084633/gate
+- 2026-11-13 08:47:30 [rsn_ft_gate] gate: rep done (dry_cand p0: -1 items in 1 s (think 1))
+- 2026-11-13 08:47:34 [rsn_ft_gate] gate: rwh2 done (dry_cand rwh2: 3 items in 0 s (think 1))
+- 2026-11-13 08:47:53 [rsn_ft_gate] gate: dev3 done (chat_r3 dev3: 3 new items -> /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-13_v3_train/rsn_ft/post/test/dry_20261113_08463)
+- 2026-11-13 08:47:57 [rsn_ft_gate] gate: v4inc_test_campus_inc done (dry_cand v4 test_campus_inc: 3 items in 0 s (think 1))
+- 2026-11-13 08:48:02 [rsn_ft_gate] gate: v4inc_test_unseen_metric done (dry_cand v4 test_unseen_metric: 3 items in 0 s (think 1))
+- 2026-11-13 08:48:06 [rsn_ft_gate] gate: v4inc_test_unseen_layout done (dry_cand v4 test_unseen_layout: 3 items in 0 s (think 1))
+- 2026-11-13 08:48:11 [rsn_ft_gate] gate: v4inc_test_taxonomy done (dry_cand v4 test_taxonomy: 3 items in 0 s (think 1))
+- 2026-11-13 08:48:15 [rsn_ft_gate] gate: v4inc_test_real_agent done (dry_cand v4 test_real_agent: 3 items in 0 s (think 1))
+- 2026-11-13 08:48:31 [rsn_ft_gate] gate: v4site done (chat_v4 site: 3 new items -> /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-13_v3_train/rsn_ft/post/test/dry_20261113_08463)
+- 2026-11-13 08:48:45 [rsn_ft_gate] gate: v4fog done (chat_v4 fog: 3 new items -> /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-13_v3_train/rsn_ft/post/test/dry_20261113_084633)
+- 2026-11-13 08:48:53 [rsn_ft_gate] gate: score 1 -> # rsn_ft STRICT gate: dry_cand vs r3-2800 -> **FAIL** (rc 1)
+- 2026-11-13 08:49:08 [rsn_ft_gate] gate: bsite done (chat_v4 site: 3 new items -> /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-13_v3_train/rsn_ft/post/test/dry_20261113_08463)
+- 2026-11-13 08:49:12 [rsn_ft_gate] gate: t4new done (dry_cand test_r4: 3 items in 0 s (think 1))
+- 2026-11-13 08:49:17 [rsn_ft_gate] gate: t4base done (r3s2800_ft test_r4: 3 items in 0 s (think 0))
+- 2026-11-13 08:49:33 [rsn_ft_gate] gate: c4new done (chat_r3 r3test: 3 new items -> /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-13_v3_train/rsn_ft/post/test/dry_20261113_084)
+- 2026-11-13 08:49:47 [rsn_ft_gate] gate: c4base done (chat_r3 r3test: 3 new items -> /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-13_v3_train/rsn_ft/post/test/dry_20261113_084)
+- 2026-11-13 08:49:55 [rsn_ft_gate] gate: score 2 -> # rsn_ft STRICT gate: dry_cand vs r3-2800 -> **FAIL** (rc 1)
+- 2026-11-13 08:50:12 [rsn_ft_gate] gate: r3new done (chat_r3 r3test: 3 new items -> /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-13_v3_train/rsn_ft/post/test/dry_20261113_084)
+- 2026-11-13 08:50:16 [rsn_ft_gate] gate: t2new done (dry_cand test_r2: 3 items in 0 s (think 1))
+- 2026-11-13 08:50:25 [rsn_ft_gate] gate: score 3 -> # rsn_ft STRICT gate: dry_cand vs r3-2800 -> **FAIL** (rc 1)
+- 2026-11-13 08:50:25 [rsn_ft_gate] gate: STRICT GATE FAIL (/mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-13_v3_train/rsn_ft/post/test/dry_20261113_084633/gate/GATE_FT.md); r3-2800 stays
+- 2026-11-13 08:50:30 [rsn_ft_gate] gate: bv4inc_test_campus_inc done (r3s2800_ft v4 test_campus_inc: 3 items in 0 s (think 0))
+- 2026-11-13 08:50:34 [rsn_ft_gate] gate: bv4inc_test_unseen_metric done (r3s2800_ft v4 test_unseen_metric: 3 items in 0 s (think 0))
+- 2026-11-13 08:50:40 [rsn_ft_gate] gate: bv4inc_test_unseen_layout done (r3s2800_ft v4 test_unseen_layout: 3 items in 0 s (think 0))
+- 2026-11-13 08:50:45 [rsn_ft_gate] gate: bv4inc_test_taxonomy done (r3s2800_ft v4 test_taxonomy: 3 items in 0 s (think 0))
+- 2026-11-13 08:50:50 [rsn_ft_gate] gate: bv4inc_test_real_agent done (r3s2800_ft v4 test_real_agent: 3 items in 0 s (think 0))
+- 2026-11-13 08:51:03 [rsn_ft_gate] gate: bfog done (chat_v4 fog: 3 new items -> /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-13_v3_train/rsn_ft/post/test/dry_20261113_084633)
+- 2026-11-13 08:51:13 [rsn_ft_gate] gate: score final -> # rsn_ft STRICT gate: dry_cand vs r3-2800 -> **FAIL** (rc 1)
+- 2026-11-13 08:51:14 [rsn_ft_gate] gate: final report with the r3-2800 v4 reference (/mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-13_v3_train/rsn_ft/post/test/dry_20261113_084633/gate/GATE_FT.md, rc 1)
+- 2026-11-13 08:52:02 [rsn_ft_gate] gate: DRY RUN (stub server, LIMIT=3): no GPU, no GPU_LOCK
+- 2026-11-13 08:52:02 [rsn_ft_gate] gate: start /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-13_v3_train/rsn_ft/post/test/dry_20261113_084633/fake_cand_q4_0.gguf vs r3-2800 (/mnt/c/Users/hp/Desktop/qidk/Code/models_stage/rsn_v3_4b_r3_q4_0.gguf) -> /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-13_v3_train/rsn_ft/post/test/dry_20261113_084633/gate
+- 2026-11-13 08:52:09 [rsn_ft_gate] gate: score 1 -> # rsn_ft STRICT gate: dry_cand vs r3-2800 -> **FAIL** (rc 1)
+- 2026-11-13 08:52:18 [rsn_ft_gate] gate: score 2 -> # rsn_ft STRICT gate: dry_cand vs r3-2800 -> **FAIL** (rc 1)
+- 2026-11-13 08:52:28 [rsn_ft_gate] gate: score 3 -> # rsn_ft STRICT gate: dry_cand vs r3-2800 -> **FAIL** (rc 1)
+- 2026-11-13 08:52:28 [rsn_ft_gate] gate: STRICT GATE FAIL (/mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-13_v3_train/rsn_ft/post/test/dry_20261113_084633/gate/GATE_FT.md); r3-2800 stays
+- 2026-11-13 08:52:37 [rsn_ft_gate] gate: score final -> # rsn_ft STRICT gate: dry_cand vs r3-2800 -> **FAIL** (rc 1)
+- 2026-11-13 08:52:38 [rsn_ft_gate] gate: final report with the r3-2800 v4 reference (/mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-13_v3_train/rsn_ft/post/test/dry_20261113_084633/gate/GATE_FT.md, rc 1)
+- 2026-11-13 08:52:38 [rsn_ft_export] FAIL: export: no adapter in /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-13_v3_train/rsn_ft/post/test/dry_20261113_084633/noadapter 2

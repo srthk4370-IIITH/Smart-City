@@ -388,3 +388,872 @@
 - 2026-10-31 21:45:44 [laptop_train r1] rsn3_2b_r1 chunk end rc=3: [21:45:35] EXIT (hours limit / STOP) at step 824
 - 2026-10-31 21:45:50 [laptop_train r1] rsn3_2b_r1 chunk start (max_len 6144, 3 h, chat on)
 - 2026-10-31 21:46:27 [laptop_train r1] rsn3_2b_r1 paused #1 (gpu 66C, ram 192 MB)
+- 2026-10-31 21:58:41 [laptop_train r1] rsn3_2b_r1 paused #31 (gpu 86C, ram 3252 MB)
+- 2026-10-31 22:09:41 [laptop_train r1] rsn3_2b_r1 paused #61 (gpu 84C, ram 3923 MB)
+- 2026-10-31 22:19:07 [laptop_train r1] rsn3_2b_r1 heartbeat: [22:16:07] step 840/1845 (e1) loss 0.0443 lr 6.13e-05 402 tok/s ETA epoch1 30.5 h scale 1
+- 2026-10-31 22:21:31 [laptop_train r1] rsn3_2b_r1 paused #91 (gpu 84C, ram 3532 MB)
+- 2026-10-31 22:35:25 [laptop_train r1] rsn3_2b_r1 paused #121 (gpu 84C, ram 2282 MB)
+- 2026-10-31 22:47:49 [laptop_train r1] rsn3_2b_r1 chunk end rc=3: [22:47:44] EXIT (hours limit / STOP) at step 860
+- 2026-10-31 22:47:49 [laptop_chain r1] STOP file: chain stops here (rm kaggle/chain/STOP and relaunch to continue)
+- 2026-10-31 22:47:53 [laptop_chain r1] chain start (run r1, pid 23253)
+- 2026-10-31 22:47:57 [laptop_train r1] rsn3_2b_r1 chunk start (max_len 6144, 6 h, chat on)
+- 2026-10-31 22:48:19 [laptop_train r1] rsn3_2b_r1 paused #1 (gpu 65C, ram 536 MB)
+- 2026-10-31 22:48:52 [laptop_train r1] rsn3_2b_r1 paused #2 (gpu 60C, ram 320 MB)
+- 2026-10-31 23:01:00 [laptop_train r1] rsn3_2b_r1 paused #11 (gpu 86C, ram 633 MB)
+- 2026-10-31 23:07:27 [laptop_train r1] rsn3_2b_r1 paused #15 (gpu 85C, ram 1012 MB)
+- 2026-10-31 23:22:28 [laptop_train r1] rsn3_2b_r1 heartbeat: [23:21:12] step 885/1845 (e1) loss 0.0429 lr 5.79e-05 569 tok/s ETA epoch1 20.2 h scale 1
+- 2026-10-31 23:28:51 [laptop_train r1] rsn3_2b_r1 paused #31 (gpu 87C, ram 3204 MB)
+- 2026-10-31 23:55:45 [laptop_train r1] rsn3_2b_r1 heartbeat: [23:52:35] step 910/1845 (e1) loss 0.0495 lr 5.60e-05 632 tok/s ETA epoch1 17.8 h scale 1
+- 2026-11-01 00:28:31 [laptop_train r1] rsn3_2b_r1 heartbeat: [00:24:36] step 940/1845 (e1) loss 0.0492 lr 5.37e-05 622 tok/s ETA epoch1 17.6 h scale 1
+- 2026-11-01 00:39:28 [laptop_train r1] rsn3_2b_r1 paused #61 (gpu 87C, ram 3932 MB)
+- 2026-11-01 01:01:22 [laptop_train r1] rsn3_2b_r1 heartbeat: [00:55:53] step 970/1845 (e1) loss 0.0488 lr 5.14e-05 607 tok/s ETA epoch1 16.4 h scale 1
+- 2026-11-01 01:21:48 [laptop_train r1] rsn3_2b_r1 paused #91 (gpu 87C, ram 3765 MB)
+- 2026-11-01 01:34:13 [laptop_train r1] rsn3_2b_r1 heartbeat: [01:32:05] DEV step 1000 incident 0.0928 chat 0.0210
+- 2026-11-01 02:07:00 [laptop_train r1] rsn3_2b_r1 heartbeat: [02:04:09] step 1015/1845 (e1) loss 0.0608 lr 4.79e-05 691 tok/s ETA epoch1 13.7 h scale 1
+- 2026-11-01 02:39:49 [laptop_train r1] rsn3_2b_r1 heartbeat: [02:36:57] step 1045/1845 (e1) loss 0.0484 lr 4.57e-05 679 tok/s ETA epoch1 15.2 h scale 1
+- 2026-11-01 02:40:00 [laptop_train r1] rsn3_2b_r1 paused #121 (gpu 87C, ram 3760 MB)
+- 2026-11-01 03:09:26 [laptop_train r1] rsn3_2b_r1 paused #133 (gpu 77C, ram 978 MB)
+- 2026-11-01 03:13:47 [laptop_train r1] rsn3_2b_r1 heartbeat: [03:12:13] checkpoint step 1075
+- 2026-11-01 03:34:33 [laptop_train r1] rsn3_2b_r1 paused #151 (gpu 87C, ram 3472 MB)
+- 2026-11-01 03:46:47 [laptop_train r1] rsn3_2b_r1 heartbeat: [03:43:48] DEV step 1100 incident 0.0956 chat 0.0248
+- 2026-11-01 04:19:49 [laptop_train r1] rsn3_2b_r1 heartbeat: [04:16:03] step 1130/1845 (e1) loss 0.0462 lr 3.94e-05 713 tok/s ETA epoch1 12.0 h scale 1
+- 2026-11-01 04:28:39 [laptop_train r1] rsn3_2b_r1 paused #181 (gpu 87C, ram 3077 MB)
+- 2026-11-01 04:50:10 [laptop_train r1] rsn3_2b_r1 chunk end rc=3: [04:50:03] EXIT (hours limit / STOP) at step 1162
+- 2026-11-01 04:50:14 [laptop_train r1] rsn3_2b_r1 chunk start (max_len 6144, 6 h, chat on)
+- 2026-11-01 04:50:37 [laptop_train r1] rsn3_2b_r1 paused #1 (gpu 70C, ram 937 MB)
+- 2026-11-01 04:51:32 [laptop_train r1] rsn3_2b_r1 paused #2 (gpu 60C, ram 479 MB)
+- 2026-11-01 05:23:14 [laptop_train r1] rsn3_2b_r1 heartbeat: [05:21:28] step 1190/1845 (e1) loss 0.0430 lr 3.52e-05 663 tok/s ETA epoch1 12.2 h scale 1
+- 2026-11-01 05:54:57 [laptop_train r1] rsn3_2b_r1 paused #31 (gpu 87C, ram 3863 MB)
+- 2026-11-01 05:56:13 [laptop_train r1] rsn3_2b_r1 heartbeat: [05:52:46] GEN step 1200 {"step": 1200, "t": 1793512366.456581, "dev": {"n_inc": 40, "parse": 1.0, "severity": 0.95, "label": 1.0, "n_chat":
+- 2026-11-01 06:29:11 [laptop_train r1] rsn3_2b_r1 heartbeat: [06:25:17] step 1230/1845 (e1) loss 0.0654 lr 3.25e-05 656 tok/s ETA epoch1 11.0 h scale 1
+- 2026-11-01 06:53:25 [laptop_train r1] rsn3_2b_r1 paused #61 (gpu 87C, ram 3505 MB)
+- 2026-11-01 07:02:12 [laptop_train r1] rsn3_2b_r1 heartbeat: [06:57:36] step 1260/1845 (e1) loss 0.0553 lr 3.05e-05 705 tok/s ETA epoch1 9.9 h scale 1
+- 2026-11-01 07:35:21 [laptop_train r1] rsn3_2b_r1 heartbeat: [07:32:15] step 1290/1845 (e1) loss 0.0466 lr 2.86e-05 652 tok/s ETA epoch1 10.1 h scale 1
+- 2026-11-01 07:39:15 [laptop_train r1] rsn3_2b_r1 paused #91 (gpu 87C, ram 2721 MB)
+- 2026-11-01 08:08:44 [laptop_train r1] rsn3_2b_r1 heartbeat: [08:08:31] step 1320/1845 (e1) loss 0.0348 lr 2.68e-05 674 tok/s ETA epoch1 9.0 h scale 1
+- 2026-11-01 08:17:28 [laptop_train r1] rsn3_2b_r1 paused #108 (gpu 86C, ram 959 MB)
+- 2026-11-01 08:26:31 [laptop_train r1] rsn3_2b_r1 paused #114 (gpu 86C, ram 954 MB)
+- 2026-11-01 08:36:32 [laptop_train r1] rsn3_2b_r1 paused #120 (gpu 81C, ram 936 MB)
+- 2026-11-01 08:39:22 [laptop_train r1] rsn3_2b_r1 paused #121 (gpu 87C, ram 913 MB)
+- 2026-11-01 08:42:13 [laptop_train r1] rsn3_2b_r1 heartbeat: [08:36:02] step 1345/1845 (e1) loss 0.0563 lr 2.53e-05 656 tok/s ETA epoch1 8.8 h scale 1
+- 2026-11-01 08:51:26 [laptop_train r1] rsn3_2b_r1 paused #127 (gpu 87C, ram 497 MB)
+- 2026-11-01 08:53:53 [laptop_train r1] rsn3_2b_r1 paused #128 (gpu 86C, ram 988 MB)
+- 2026-11-01 09:15:51 [laptop_train r1] rsn3_2b_r1 heartbeat: [09:12:35] checkpoint step 1375
+- 2026-11-01 09:49:44 [laptop_train r1] rsn3_2b_r1 heartbeat: [09:43:13] DEV step 1400 incident 0.0955 chat 0.0150
+- 2026-11-01 09:54:20 [laptop_train r1] rsn3_2b_r1 paused #151 (gpu 88C, ram 3256 MB)
+- 2026-11-01 10:06:46 [laptop_train r1] rsn3_2b_r1 paused #153 (gpu 86C, ram 926 MB)
+- 2026-11-01 10:10:08 [laptop_train r1] rsn3_2b_r1 paused #155 (gpu 82C, ram 927 MB)
+- 2026-11-01 10:10:43 [laptop_train r1] rsn3_2b_r1 paused #156 (gpu 80C, ram 917 MB)
+- 2026-11-01 10:15:36 [laptop_train r1] rsn3_2b_r1 paused #157 (gpu 84C, ram 925 MB)
+- 2026-11-01 10:16:33 [laptop_train r1] rsn3_2b_r1 paused #158 (gpu 87C, ram 1023 MB)
+- 2026-11-01 10:24:23 [laptop_train r1] rsn3_2b_r1 heartbeat: [10:22:17] step 1410/1845 (e1) loss 0.0382 lr 2.18e-05 496 tok/s ETA epoch1 10.3 h scale 1
+- 2026-11-01 10:44:34 [laptop_train r1] rsn3_2b_r1 paused #181 (gpu 86C, ram 1018 MB)
+- 2026-11-01 10:44:57 [laptop_train r1] rsn3_2b_r1 paused #182 (gpu 86C, ram 947 MB)
+- 2026-11-01 10:52:23 [laptop_train r1] rsn3_2b_r1 paused #190 (gpu 72C, ram 1021 MB)
+- 2026-11-01 10:52:23 [laptop_train r1] rsn3_2b_r1 chunk end rc=3: [10:52:15] EXIT (hours limit / STOP) at step 1434
+- 2026-11-01 10:52:28 [laptop_train r1] waiting: Windows free RAM 1198 MB < 1536 MB
+- 2026-11-01 10:53:29 [laptop_train r1] rsn3_2b_r1 chunk start (max_len 6144, 6 h, chat on)
+- 2026-11-01 10:53:52 [laptop_train r1] rsn3_2b_r1 paused #1 (gpu 61C, ram 424 MB)
+- 2026-11-01 10:54:25 [laptop_train r1] rsn3_2b_r1 paused #2 (gpu 58C, ram 265 MB)
+- 2026-11-01 10:54:47 [laptop_train r1] rsn3_2b_r1 paused #3 (gpu 57C, ram 558 MB)
+- 2026-11-01 11:26:32 [laptop_train r1] rsn3_2b_r1 heartbeat: [11:24:16] step 1460/1845 (e1) loss 0.0598 lr 1.93e-05 603 tok/s ETA epoch1 8.0 h scale 1
+- 2026-11-01 11:36:56 [laptop_train r1] rsn3_2b_r1 paused #31 (gpu 87C, ram 3029 MB)
+- 2026-11-01 11:59:27 [laptop_train r1] rsn3_2b_r1 heartbeat: [11:58:04] step 1490/1845 (e1) loss 0.0592 lr 1.80e-05 625 tok/s ETA epoch1 6.7 h scale 1
+- 2026-11-01 12:32:27 [laptop_train r1] rsn3_2b_r1 heartbeat: [12:31:30] step 1520/1845 (e1) loss 0.0582 lr 1.67e-05 615 tok/s ETA epoch1 6.2 h scale 1
+- 2026-11-01 12:44:11 [laptop_train r1] rsn3_2b_r1 paused #61 (gpu 87C, ram 2697 MB)
+- 2026-11-01 13:05:33 [laptop_train r1] rsn3_2b_r1 heartbeat: [13:03:43] checkpoint step 1550
+- 2026-11-01 13:32:36 [laptop_train r1] rsn3_2b_r1 paused #91 (gpu 87C, ram 2061 MB)
+- 2026-11-01 13:35:42 [cut_at_1600] waiting for GEN step 1600, then stop + export best + gate (owner: 2B on board tonight)
+- 2026-11-01 13:36:28 [laptop_train r1] rsn3_2b_r1 paused #94 (gpu 86C, ram 579 MB)
+- 2026-11-01 13:37:32 [laptop_train r1] rsn3_2b_r1 paused #95 (gpu 86C, ram 637 MB)
+- 2026-11-01 13:38:32 [laptop_train r1] rsn3_2b_r1 paused #96 (gpu 86C, ram 702 MB)
+- 2026-11-01 13:38:55 [laptop_train r1] rsn3_2b_r1 heartbeat: [13:38:03] step 1580/1845 (e1) loss 0.0541 lr 1.45e-05 552 tok/s ETA epoch1 5.8 h scale 1
+- 2026-11-01 14:12:02 [laptop_train r1] rsn3_2b_r1 heartbeat: [14:04:24] DEV step 1600 incident 0.1001 chat 0.0162
+- 2026-11-01 14:21:36 [cut_at_1600] GEN 1600: "score": 0.925; stopping trainer
+- 2026-11-01 14:22:08 [laptop_train r1] rsn3_2b_r1 chunk end rc=3: [14:22:02] EXIT (hours limit / STOP) at step 1601
+- 2026-11-01 14:22:08 [laptop_chain r1] STOP file: chain stops here (rm kaggle/chain/STOP and relaunch to continue)
+- 2026-11-01 14:22:17 [cut_at_1600] trainer stopped; train_2b marked done; best.json: {"top":[[0.9542,1200],[0.9333,1400],[0.925,1600]],"best":0.9542,"since_best":2,"
+- 2026-11-01 14:22:17 [laptop_chain r1] chain start (run r1, pid 139272)
+- 2026-11-01 14:22:17 [laptop_chain r1] 2B export from /home/hp_srthk4370/smartcity_runs/rsn3_2b_r1/ckpt_best_1200
+- 2026-11-01 14:22:18 [export_gguf r1] waiting: Windows free RAM 2895 MB < 4096 MB
+- 2026-11-01 14:22:26 [cut_at_1600] chain restarted -> export_2b + gate
+- 2026-11-01 16:26:18 [export_gguf r1] FAIL: Windows free RAM 2824 MB < 4096 MB for 120 min 4
+- 2026-11-01 16:26:18 [laptop_chain r1] FAIL: 2B export failed
+- 2026-11-01 17:52:11 [export_gguf r1] waiting: Windows free RAM 1859 MB < 2000 MB
+- 2026-11-01 17:53:21 [export_gguf r1] waiting: Windows free RAM 1144 MB < 1500 MB
+- 2026-11-01 17:56:25 [export_gguf r1] merged 186/186 LoRA modules (scale 2.00) -> /home/hp_srthk4370/smartcity_runs/reasoner_v1/gguf/rsn_v3_2b/hf
+- 2026-11-01 17:58:58 [export_gguf r1] DONE /mnt/c/Users/hp/Desktop/qidk/Code/models_stage/rsn_v3_2b_q4_0.gguf (1.2G, md5 0cbbcaf8b91f6182bde1257840ef9ffb)
+- 2026-11-01 17:58:58 [laptop_chain r1] chain start (run r1, pid 2892)
+- 2026-11-01 17:58:58 [laptop_chain r1] 2B export from /home/hp_srthk4370/smartcity_runs/rsn3_2b_r1/ckpt_best_1200
+- 2026-11-01 17:59:17 [gate_eval g2b_r1] start: /mnt/c/Users/hp/Desktop/qidk/Code/models_stage/rsn_v3_2b_q4_0.gguf vs rsn_v1 (ft612 results, /mnt/c/Users/hp/Desktop/qidk/Code/models_stage/rsn_v1_q4_0.gguf)
+- 2026-11-01 20:43:37 [gate_eval g2b_r1] report suites: rsn_v3_g2b_r1 rwh: 150 items in 4301 s;rsn_v3_g2b_r1 dev: 120 items in 1899 s;rsn_v3_g2b_r1 p0: -1 items in 3638 s;
+- 2026-11-01 23:05:09 [gate_eval g2b_r1] chat dev v3 done (v3 300, v1 300 items)
+- 2026-11-01 23:05:15 [gate_eval g2b_r1] GATE FAIL (/mnt/c/Users/hp/Desktop/qidk/proofs/2026-10-29_rsn_v3/kaggle/gate/g2b_r1/GATE.md)
+- 2026-11-01 23:05:15 [laptop_chain r1] step export_2b done
+- 2026-11-01 23:05:15 [laptop_chain r1] watching /mnt/c/Users/hp/Downloads for rsn_v3_adapter_{best,final,epoch1}*.zip (STOP: kaggle/chain/STOP)
+- 2026-11-02 03:01:39 [laptop_chain r1] STOP file: chain stops here (rm kaggle/chain/STOP and relaunch to continue)
+- 2026-11-02 03:09:30 [make_data r2x] start (seed 47, pool 70000, target 30000, skip_chat 1)
+- 2026-11-02 03:14:58 [make_data r2x] chat3 ok: train 8000 dev 300 rows, self-test PASS
+- 2026-11-02 03:16:18 [make_data r2x] incidents: incidents3: 30000 rows (pool 70000 -> verified 70000, leak 0, dup 3, border 600) in 79 s
+- 2026-11-02 03:16:18 [make_data r2x] RWH-2 (held out, never bundled): 
+- 2026-11-02 03:16:28 [make_data r2x] compact targets: {"n": 1500, "mean_tokens_before": 467.1, "mean_tokens_after": 439.6, "cut_pct_on_compacted_rows": 5.9}; {'unchanged': 13589, 'compacted': 16411}
+- 2026-11-02 03:16:53 [make_data r2x] re-verify: check.jsonl: 30000/30000 pass (100.0%) fails={}
+- 2026-11-02 03:16:58 [make_data r2x] DONE data -> /mnt/c/Users/hp/Desktop/qidk/proofs/2026-10-29_rsn_v3/kaggle/build/r2x/data (153M)
+- 2026-11-02 04:48:15 [laptop_train] waiting: Windows free RAM 1481 MB < 1536 MB
+- 2026-11-02 04:56:37 [laptop_train] rsn3_2b_r2bench_base probe len 6144: {"world": 1, "quant": "nf4", "fla": true, "dtype": "bfloat16", "tok_s": 604.8, "peak_vram_gib": 4.05, "loss": 0.9566, "oom_steps": 0, "longest_tokens": 6144, "proj_e1_h": 51.9, "proj_e2_h": 20.2}
+- 2026-11-02 04:56:37 [laptop_train] rsn3_2b_r2bench_base chunk start (max_len 6144, 3 h, chat on)
+- 2026-11-02 05:11:05 [laptop_train] rsn3_2b_r2bench_base paused #1 (gpu 62C, ram 929 MB)
+- 2026-11-02 05:11:45 [laptop_train] rsn3_2b_r2bench_base paused #2 (gpu 62C, ram 712 MB)
+- 2026-11-02 05:12:48 [laptop_train] rsn3_2b_r2bench_base paused #3 (gpu 62C, ram 537 MB)
+- 2026-11-02 05:15:23 [laptop_train] rsn3_2b_r2bench_base paused #4 (gpu 53C, ram 511 MB)
+- 2026-11-02 05:32:43 [laptop_train] rsn3_2b_r2bench_base heartbeat: [05:30:23] step 10/3508 (e1) loss 0.9891 lr 1.05e-05 690 tok/s ETA epoch1 65.5 h scale 1
+- 2026-11-02 05:42:59 [laptop_train] rsn3_2b_r2bench_base chunk end rc=3: [05:42:28] EXIT (hours limit / STOP) at step 20
+- 2026-11-02 05:43:09 [laptop_train] waiting: Windows free RAM 754 MB < 1536 MB
+- 2026-11-02 05:44:11 [laptop_train] rsn3_2b_r2bench_mt6144 chunk start (max_len 6144, 3 h, chat on)
+- 2026-11-02 05:44:23 [laptop_train] rsn3_2b_r2bench_mt6144 paused #1 (gpu 63C, ram 862 MB)
+- 2026-11-02 05:45:29 [laptop_train] rsn3_2b_r2bench_mt6144 paused #2 (gpu 63C, ram 320 MB)
+- 2026-11-02 05:45:54 [laptop_train] rsn3_2b_r2bench_mt6144 paused #3 (gpu 63C, ram 210 MB)
+- 2026-11-02 05:47:47 [laptop_train] rsn3_2b_r2bench_mt6144 paused #4 (gpu 59C, ram 179 MB)
+- 2026-11-02 05:48:53 [laptop_train] rsn3_2b_r2bench_mt6144 paused #5 (gpu 56C, ram 824 MB)
+- 2026-11-02 05:52:59 [laptop_train] rsn3_2b_r2bench_mt6144 paused #6 (gpu 85C, ram 893 MB)
+- 2026-11-02 05:57:58 [laptop_train] rsn3_2b_r2bench_mt6144 chunk end rc=143: [05:52:15] DEV step 0 incident 1.1715 chat 0.9017
+- 2026-11-02 05:58:17 [laptop_chain r2] chain start (run r2, pid 38013)
+- 2026-11-02 06:03:35 [laptop_train r2] rsn3_2b_r2 probe len 6144: {"world": 1, "quant": "nf4", "fla": true, "dtype": "bfloat16", "tok_s": 609.9, "peak_vram_gib": 4.05, "loss": 0.9566, "oom_steps": 0, "longest_tokens": 6144, "proj_e1_h": 51.5, "proj_e2_h": 20.0}
+- 2026-11-02 06:03:35 [laptop_train r2] rsn3_2b_r2 chunk start (max_len 6144, 6 h, chat on)
+- 2026-11-02 06:12:10 [laptop_train r2] rsn3_2b_r2 paused #1 (gpu 54C, ram 503 MB)
+- 2026-11-02 06:37:51 [laptop_train r2] rsn3_2b_r2 heartbeat: [06:34:42] step 15/3508 (e1) loss 0.9042 lr 1.52e-05 622 tok/s ETA epoch1 74.2 h scale 1
+- 2026-11-02 06:52:45 [laptop_train r2] rsn3_2b_r2 paused #31 (gpu 87C, ram 3308 MB)
+- 2026-11-02 07:10:59 [laptop_train r2] rsn3_2b_r2 heartbeat: [07:10:34] step 45/3508 (e1) loss 0.5256 lr 4.38e-05 662 tok/s ETA epoch1 66.8 h scale 1
+- 2026-11-02 07:40:57 [laptop_train r2] rsn3_2b_r2 paused #61 (gpu 87C, ram 2458 MB)
+- 2026-11-02 07:44:04 [laptop_train r2] rsn3_2b_r2 heartbeat: [07:39:32] step 70/3508 (e1) loss 0.3151 lr 6.76e-05 672 tok/s ETA epoch1 64.6 h scale 1
+- 2026-11-02 07:57:22 [laptop_train r2] rsn3_2b_r2 paused #73 (gpu 87C, ram 963 MB)
+- 2026-11-02 07:58:31 [laptop_train r2] rsn3_2b_r2 paused #74 (gpu 87C, ram 1008 MB)
+- 2026-11-02 07:59:04 [laptop_train r2] rsn3_2b_r2 paused #75 (gpu 71C, ram 963 MB)
+- 2026-11-02 08:09:35 [laptop_train r2] rsn3_2b_r2 paused #83 (gpu 86C, ram 876 MB)
+- 2026-11-02 08:17:20 [laptop_train r2] rsn3_2b_r2 paused #90 (gpu 86C, ram 831 MB)
+- 2026-11-02 08:17:31 [laptop_train r2] rsn3_2b_r2 heartbeat: [08:12:40] step 95/3508 (e1) loss 0.1777 lr 9.13e-05 545 tok/s ETA epoch1 78.2 h scale 1
+- 2026-11-02 08:21:41 [laptop_train r2] rsn3_2b_r2 paused #91 (gpu 87C, ram 778 MB)
+- 2026-11-02 08:22:59 [laptop_train r2] rsn3_2b_r2 paused #92 (gpu 86C, ram 774 MB)
+- 2026-11-02 08:27:16 [laptop_train r2] rsn3_2b_r2 paused #95 (gpu 73C, ram 794 MB)
+- 2026-11-02 08:28:56 [laptop_train r2] rsn3_2b_r2 paused #97 (gpu 86C, ram 895 MB)
+- 2026-11-02 08:31:45 [laptop_train r2] rsn3_2b_r2 paused #100 (gpu 86C, ram 993 MB)
+- 2026-11-02 08:34:02 [laptop_train r2] rsn3_2b_r2 paused #101 (gpu 86C, ram 968 MB)
+- 2026-11-02 08:34:24 [laptop_train r2] rsn3_2b_r2 paused #102 (gpu 85C, ram 1002 MB)
+- 2026-11-02 08:37:55 [laptop_train r2] rsn3_2b_r2 paused #105 (gpu 86C, ram 987 MB)
+- 2026-11-02 08:43:05 [laptop_train r2] rsn3_2b_r2 paused #108 (gpu 86C, ram 1004 MB)
+- 2026-11-02 08:47:51 [laptop_train r2] rsn3_2b_r2 paused #111 (gpu 87C, ram 919 MB)
+- 2026-11-02 08:51:26 [laptop_train r2] rsn3_2b_r2 heartbeat: [08:47:00] step 115/3508 (e1) loss 0.1155 lr 9.98e-05 569 tok/s ETA epoch1 73.9 h scale 1
+- 2026-11-02 09:01:52 [laptop_train r2] rsn3_2b_r2 paused #121 (gpu 87C, ram 1363 MB)
+- 2026-11-02 09:04:15 [laptop_train r2] rsn3_2b_r2 paused #123 (gpu 86C, ram 896 MB)
+- 2026-11-02 09:09:26 [laptop_train r2] rsn3_2b_r2 paused #125 (gpu 86C, ram 1003 MB)
+- 2026-11-02 09:24:41 [laptop_train r2] rsn3_2b_r2 heartbeat: [09:18:46] step 140/3508 (e1) loss 0.1492 lr 9.96e-05 624 tok/s ETA epoch1 69.2 h scale 1
+- 2026-11-02 09:49:00 [laptop_train r2] rsn3_2b_r2 paused #144 (gpu 83C, ram 1013 MB)
+- 2026-11-02 09:50:16 [laptop_train r2] rsn3_2b_r2 paused #145 (gpu 77C, ram 861 MB)
+- 2026-11-02 09:53:57 [laptop_train r2] rsn3_2b_r2 paused #147 (gpu 86C, ram 664 MB)
+- 2026-11-02 09:58:13 [laptop_train r2] rsn3_2b_r2 heartbeat: [09:56:07] step 160/3508 (e1) loss 0.0952 lr 9.95e-05 534 tok/s ETA epoch1 82.3 h scale 1
+- 2026-11-02 09:59:19 [laptop_train r2] rsn3_2b_r2 paused #151 (gpu 87C, ram 1280 MB)
+- 2026-11-02 10:00:37 [laptop_train r2] rsn3_2b_r2 paused #153 (gpu 86C, ram 763 MB)
+- 2026-11-02 10:01:43 [laptop_train r2] rsn3_2b_r2 paused #154 (gpu 85C, ram 1020 MB)
+- 2026-11-02 10:02:37 [laptop_train r2] rsn3_2b_r2 paused #155 (gpu 83C, ram 922 MB)
+- 2026-11-02 10:31:19 [laptop_train r2] rsn3_2b_r2 heartbeat: [10:27:07] step 185/3508 (e1) loss 0.0898 lr 9.94e-05 669 tok/s ETA epoch1 61.7 h scale 1
+- 2026-11-02 10:40:42 [laptop_train r2] rsn3_2b_r2 paused #181 (gpu 87C, ram 2409 MB)
+- 2026-11-02 11:04:30 [laptop_train r2] rsn3_2b_r2 heartbeat: [10:47:58] DEV step 200 incident 0.1188 chat 0.1029
+- 2026-11-02 11:37:26 [laptop_train r2] rsn3_2b_r2 heartbeat: [11:35:40] checkpoint step 225
+- 2026-11-02 11:37:37 [laptop_train r2] rsn3_2b_r2 paused #211 (gpu 87C, ram 2261 MB)
+- 2026-11-02 12:10:23 [laptop_train r2] rsn3_2b_r2 heartbeat: [12:06:35] checkpoint step 250
+- 2026-11-02 12:14:25 [laptop_train r2] rsn3_2b_r2 chunk end rc=3: [12:14:06] EXIT (hours limit / STOP) at step 257
+- 2026-11-02 12:14:29 [laptop_train r2] rsn3_2b_r2 chunk start (max_len 6144, 6 h, chat on)
+- 2026-11-02 12:14:54 [laptop_train r2] rsn3_2b_r2 paused #1 (gpu 68C, ram 460 MB)
+- 2026-11-02 12:15:44 [laptop_train r2] rsn3_2b_r2 paused #2 (gpu 64C, ram 109 MB)
+- 2026-11-02 12:45:21 [laptop_train r2] rsn3_2b_r2 paused #31 (gpu 87C, ram 3550 MB)
+- 2026-11-02 12:47:33 [laptop_train r2] rsn3_2b_r2 heartbeat: [12:45:34] step 280/3508 (e1) loss 0.0895 lr 9.86e-05 619 tok/s ETA epoch1 65.9 h scale 1
+- 2026-11-02 13:20:38 [laptop_train r2] rsn3_2b_r2 heartbeat: [13:18:48] step 305/3508 (e1) loss 0.0794 lr 9.83e-05 449 tok/s ETA epoch1 87.7 h scale 1
+- 2026-11-02 13:30:46 [laptop_train r2] rsn3_2b_r2 paused #61 (gpu 87C, ram 3276 MB)
+- 2026-11-02 13:53:45 [laptop_train r2] rsn3_2b_r2 heartbeat: [13:50:01] step 330/3508 (e1) loss 0.0681 lr 9.80e-05 572 tok/s ETA epoch1 72.3 h scale 1
+- 2026-11-02 14:25:58 [laptop_train r2] rsn3_2b_r2 paused #91 (gpu 87C, ram 3007 MB)
+- 2026-11-02 14:26:53 [laptop_train r2] rsn3_2b_r2 heartbeat: [14:24:57] step 360/3508 (e1) loss 0.0701 lr 9.77e-05 615 tok/s ETA epoch1 64.1 h scale 1
+- 2026-11-02 14:57:28 [laptop_train r2] rsn3_2b_r2 paused #121 (gpu 87C, ram 3057 MB)
+- 2026-11-02 15:00:03 [laptop_train r2] rsn3_2b_r2 heartbeat: [14:57:20] step 385/3508 (e1) loss 0.0510 lr 9.74e-05 592 tok/s ETA epoch1 69.9 h scale 1
+- 2026-11-02 15:33:11 [laptop_train r2] rsn3_2b_r2 heartbeat: [15:18:58] DEV step 400 incident 0.0964 chat 0.0309
+- 2026-11-02 15:42:37 [laptop_train r2] rsn3_2b_r2 paused #151 (gpu 87C, ram 2467 MB)
+- 2026-11-02 16:06:26 [laptop_train r2] rsn3_2b_r2 heartbeat: [16:03:13] step 420/3508 (e1) loss 0.0511 lr 9.69e-05 614 tok/s ETA epoch1 63.0 h scale 1
+- 2026-11-02 16:18:45 [laptop_train r2] rsn3_2b_r2 paused #181 (gpu 87C, ram 2682 MB)
+- 2026-11-02 16:37:02 [laptop_train r2] rsn3_2b_r2 paused #199 (gpu 79C, ram 930 MB)
+- 2026-11-02 16:39:47 [laptop_train r2] rsn3_2b_r2 heartbeat: [16:34:21] step 445/3508 (e1) loss 0.0540 lr 9.65e-05 687 tok/s ETA epoch1 56.7 h scale 1
+- 2026-11-02 16:40:11 [laptop_train r2] rsn3_2b_r2 paused #200 (gpu 69C, ram 746 MB)
+- 2026-11-02 16:42:11 [laptop_train r2] rsn3_2b_r2 paused #201 (gpu 85C, ram 1011 MB)
+- 2026-11-02 16:42:57 [laptop_train r2] rsn3_2b_r2 paused #202 (gpu 84C, ram 980 MB)
+- 2026-11-02 16:46:06 [laptop_train r2] rsn3_2b_r2 paused #204 (gpu 87C, ram 919 MB)
+- 2026-11-02 16:48:18 [laptop_train r2] rsn3_2b_r2 paused #205 (gpu 75C, ram 957 MB)
+- 2026-11-02 16:49:57 [laptop_train r2] rsn3_2b_r2 paused #206 (gpu 73C, ram 860 MB)
+- 2026-11-02 16:52:54 [laptop_train r2] rsn3_2b_r2 paused #207 (gpu 87C, ram 923 MB)
+- 2026-11-02 16:55:12 [laptop_train r2] rsn3_2b_r2 paused #208 (gpu 81C, ram 970 MB)
+- 2026-11-02 16:55:56 [laptop_train r2] rsn3_2b_r2 paused #209 (gpu 72C, ram 1010 MB)
+- 2026-11-02 16:57:02 [laptop_train r2] rsn3_2b_r2 paused #210 (gpu 74C, ram 697 MB)
+- 2026-11-02 16:59:05 [laptop_train r2] rsn3_2b_r2 paused #211 (gpu 87C, ram 958 MB)
+- 2026-11-02 17:01:21 [laptop_train r2] rsn3_2b_r2 paused #213 (gpu 86C, ram 938 MB)
+- 2026-11-02 17:03:46 [laptop_train r2] rsn3_2b_r2 paused #215 (gpu 87C, ram 1020 MB)
+- 2026-11-02 17:04:31 [laptop_train r2] rsn3_2b_r2 paused #216 (gpu 87C, ram 689 MB)
+- 2026-11-02 17:05:07 [laptop_train r2] rsn3_2b_r2 paused #217 (gpu 85C, ram 771 MB)
+- 2026-11-02 17:13:28 [laptop_train r2] rsn3_2b_r2 heartbeat: [17:13:00] step 465/3508 (e1) loss 0.0650 lr 9.62e-05 562 tok/s ETA epoch1 68.9 h scale 1
+- 2026-11-02 17:18:17 [laptop_train r2] rsn3_2b_r2 paused #230 (gpu 86C, ram 757 MB)
+- 2026-11-02 17:20:43 [early_stop_r2] watching GEN evals: stop when step >= 1200, best >= 0.95, no gain for 2 evals
+- 2026-11-02 17:20:53 [laptop_train r2] rsn3_2b_r2 paused #232 (gpu 86C, ram 991 MB)
+- 2026-11-02 17:22:46 [laptop_train r2] rsn3_2b_r2 paused #235 (gpu 86C, ram 964 MB)
+- 2026-11-02 17:39:32 [laptop_train r2] rsn3_2b_r2 paused #237 (gpu 62C, ram 716 MB)
+- 2026-11-02 17:42:01 [laptop_train r2] rsn3_2b_r2 chunk end rc=3: [17:39:13] EXIT (hours limit / STOP) at step 474
+- 2026-11-02 17:42:01 [laptop_chain r2] STOP file: chain stops here (rm kaggle/chain/STOP and relaunch to continue)
+- 2026-11-02 18:54:48 [laptop_chain r2] chain start (run r2, pid 94981)
+- 2026-11-02 18:54:56 [laptop_train r2] rsn3_2b_r2 chunk start (max_len 6144, 6 h, chat on)
+- 2026-11-02 18:55:29 [laptop_train r2] rsn3_2b_r2 paused #1 (gpu 56C, ram 805 MB)
+- 2026-11-02 18:57:40 [laptop_train r2] rsn3_2b_r2 paused #2 (gpu 48C, ram 476 MB)
+- 2026-11-02 19:27:51 [laptop_train r2] rsn3_2b_r2 heartbeat: [19:23:26] step 495/3508 (e1) loss 0.0515 lr 9.57e-05 617 tok/s ETA epoch1 66.3 h scale 1
+- 2026-11-02 19:40:39 [laptop_train r2] rsn3_2b_r2 paused #31 (gpu 87C, ram 4724 MB)
+- 2026-11-02 20:00:54 [laptop_train r2] rsn3_2b_r2 heartbeat: [19:55:18] step 520/3508 (e1) loss 0.0743 lr 9.52e-05 674 tok/s ETA epoch1 54.0 h scale 1
+- 2026-11-02 20:19:39 [laptop_train r2] rsn3_2b_r2 paused #61 (gpu 87C, ram 4907 MB)
+- 2026-11-02 20:33:59 [laptop_train r2] rsn3_2b_r2 heartbeat: [20:32:10] checkpoint step 550
+- 2026-11-02 21:07:07 [laptop_train r2] rsn3_2b_r2 heartbeat: [21:02:00] checkpoint step 575
+- 2026-11-02 21:09:09 [laptop_train r2] rsn3_2b_r2 paused #91 (gpu 87C, ram 4561 MB)
+- 2026-11-02 21:40:19 [laptop_train r2] rsn3_2b_r2 heartbeat: [21:34:51] DEV step 600 incident 0.0962 chat 0.0381
+- 2026-11-02 21:54:27 [early_stop_r2] GEN step 600: best 0.9167, evals since best 1
+- 2026-11-02 22:04:52 [laptop_train r2] rsn3_2b_r2 paused #121 (gpu 87C, ram 4275 MB)
+- 2026-11-02 22:13:20 [laptop_train r2] rsn3_2b_r2 heartbeat: [22:10:31] step 615/3508 (e1) loss 0.0761 lr 9.33e-05 685 tok/s ETA epoch1 51.2 h scale 1
+- 2026-11-02 22:46:26 [laptop_train r2] rsn3_2b_r2 heartbeat: [22:40:45] step 640/3508 (e1) loss 0.0389 lr 9.28e-05 592 tok/s ETA epoch1 61.0 h scale 1
+- 2026-11-02 22:47:44 [laptop_train r2] rsn3_2b_r2 paused #151 (gpu 87C, ram 4274 MB)
+- 2026-11-02 23:19:34 [laptop_train r2] rsn3_2b_r2 heartbeat: [23:16:37] step 670/3508 (e1) loss 0.0521 lr 9.21e-05 640 tok/s ETA epoch1 54.8 h scale 1
+- 2026-11-02 23:32:39 [laptop_train r2] rsn3_2b_r2 paused #181 (gpu 88C, ram 4221 MB)
+- 2026-11-02 23:52:43 [laptop_train r2] rsn3_2b_r2 heartbeat: [23:51:07] checkpoint step 700
+- 2026-11-03 00:15:31 [laptop_train r2] rsn3_2b_r2 paused #211 (gpu 87C, ram 4058 MB)
+- 2026-11-03 00:25:51 [laptop_train r2] rsn3_2b_r2 heartbeat: [00:24:26] checkpoint step 725
+- 2026-11-03 00:57:24 [laptop_train r2] rsn3_2b_r2 paused #241 (gpu 87C, ram 3923 MB)
+- 2026-11-03 00:58:30 [laptop_train r2] rsn3_2b_r2 chunk end rc=3: [00:58:19] EXIT (hours limit / STOP) at step 753
+- 2026-11-03 00:58:35 [laptop_train r2] rsn3_2b_r2 chunk start (max_len 6144, 6 h, chat on)
+- 2026-11-03 00:59:10 [laptop_train r2] rsn3_2b_r2 paused #1 (gpu 67C, ram 484 MB)
+- 2026-11-03 00:59:33 [laptop_train r2] rsn3_2b_r2 paused #2 (gpu 62C, ram 309 MB)
+- 2026-11-03 01:31:47 [laptop_train r2] rsn3_2b_r2 heartbeat: [01:26:24] checkpoint step 775
+- 2026-11-03 01:36:23 [laptop_train r2] rsn3_2b_r2 paused #31 (gpu 87C, ram 4775 MB)
+- 2026-11-03 02:05:03 [laptop_train r2] rsn3_2b_r2 heartbeat: [01:58:56] DEV step 800 incident 0.0978 chat 0.0336
+- 2026-11-03 02:20:31 [early_stop_r2] GEN step 800: best 0.9292, evals since best 0
+- 2026-11-03 02:38:16 [laptop_train r2] rsn3_2b_r2 heartbeat: [02:36:55] step 815/3508 (e1) loss 0.0422 lr 8.85e-05 651 tok/s ETA epoch1 52.6 h scale 1
+- 2026-11-03 02:46:24 [laptop_train r2] rsn3_2b_r2 paused #61 (gpu 87C, ram 4641 MB)
+- 2026-11-03 03:11:27 [laptop_train r2] rsn3_2b_r2 heartbeat: [03:08:32] step 840/3508 (e1) loss 0.0300 lr 8.79e-05 631 tok/s ETA epoch1 53.5 h scale 1
+- 2026-11-03 03:18:17 [laptop_train r2] rsn3_2b_r2 paused #91 (gpu 87C, ram 4516 MB)
+- 2026-11-03 03:44:41 [laptop_train r2] rsn3_2b_r2 heartbeat: [03:38:54] step 865/3508 (e1) loss 0.0563 lr 8.72e-05 625 tok/s ETA epoch1 53.2 h scale 1
+- 2026-11-03 03:53:10 [laptop_train r2] rsn3_2b_r2 paused #121 (gpu 87C, ram 4504 MB)
+- 2026-11-03 04:17:54 [laptop_train r2] rsn3_2b_r2 heartbeat: [04:14:49] step 895/3508 (e1) loss 0.0676 lr 8.63e-05 663 tok/s ETA epoch1 49.8 h scale 1
+- 2026-11-03 04:35:03 [laptop_train r2] rsn3_2b_r2 paused #151 (gpu 87C, ram 4636 MB)
+- 2026-11-03 04:51:06 [laptop_train r2] rsn3_2b_r2 heartbeat: [04:47:15] step 920/3508 (e1) loss 0.0319 lr 8.56e-05 665 tok/s ETA epoch1 46.5 h scale 1
+- 2026-11-03 05:11:02 [laptop_train r2] rsn3_2b_r2 paused #181 (gpu 87C, ram 1558 MB)
+- 2026-11-03 05:24:14 [laptop_train r2] rsn3_2b_r2 heartbeat: [05:23:43] step 945/3508 (e1) loss 0.0487 lr 8.48e-05 444 tok/s ETA epoch1 75.0 h scale 1
+- 2026-11-03 05:57:21 [laptop_train r2] rsn3_2b_r2 heartbeat: [05:53:07] step 970/3508 (e1) loss 0.0492 lr 8.41e-05 651 tok/s ETA epoch1 50.6 h scale 1
+- 2026-11-03 06:03:03 [laptop_train r2] rsn3_2b_r2 paused #211 (gpu 87C, ram 3411 MB)
+- 2026-11-03 06:20:29 [laptop_train r2] rsn3_2b_r2 paused #221 (gpu 86C, ram 673 MB)
+- 2026-11-03 06:22:08 [laptop_train r2] rsn3_2b_r2 paused #222 (gpu 81C, ram 911 MB)
+- 2026-11-03 06:22:43 [laptop_train r2] rsn3_2b_r2 paused #223 (gpu 84C, ram 527 MB)
+- 2026-11-03 06:25:00 [laptop_train r2] rsn3_2b_r2 paused #225 (gpu 84C, ram 965 MB)
+- 2026-11-03 06:25:45 [laptop_train r2] rsn3_2b_r2 paused #226 (gpu 84C, ram 600 MB)
+- 2026-11-03 06:26:40 [laptop_train r2] rsn3_2b_r2 paused #227 (gpu 80C, ram 447 MB)
+- 2026-11-03 06:30:49 [laptop_train r2] rsn3_2b_r2 heartbeat: [06:26:36] step 995/3508 (e1) loss 0.0580 lr 8.33e-05 375 tok/s ETA epoch1 80.7 h scale 1
+- 2026-11-03 06:35:26 [laptop_train r2] rsn3_2b_r2 paused #230 (gpu 72C, ram 945 MB)
+- 2026-11-03 06:42:08 [laptop_train r2] rsn3_2b_r2 paused #231 (gpu 58C, ram 835 MB)
+- 2026-11-03 06:54:06 [laptop_train r2] rsn3_2b_r2 paused #232 (gpu 55C, ram 846 MB)
+- 2026-11-03 07:05:16 [laptop_train r2] rsn3_2b_r2 heartbeat: [06:59:40] DEV step 1000 incident 0.0955 chat 0.0264
+- 2026-11-03 07:20:14 [laptop_train r2] rsn3_2b_r2 paused #237 (gpu 65C, ram 561 MB)
+- 2026-11-03 07:32:11 [laptop_train r2] rsn3_2b_r2 chunk end rc=3: [07:31:47] EXIT (hours limit / STOP) at step 1000
+- 2026-11-03 07:32:18 [laptop_train r2] rsn3_2b_r2 chunk start (max_len 6144, 6 h, chat on)
+- 2026-11-03 07:32:42 [laptop_train r2] rsn3_2b_r2 paused #1 (gpu 66C, ram 730 MB)
+- 2026-11-03 07:33:08 [laptop_train r2] rsn3_2b_r2 paused #2 (gpu 66C, ram 563 MB)
+- 2026-11-03 07:33:34 [early_stop_r2] GEN step 1000: best 0.9625, evals since best 0
+- 2026-11-03 07:33:49 [laptop_train r2] rsn3_2b_r2 paused #3 (gpu 70C, ram 389 MB)
+- 2026-11-03 07:34:12 [laptop_train r2] rsn3_2b_r2 paused #4 (gpu 65C, ram 183 MB)
+- 2026-11-03 07:34:35 [laptop_train r2] rsn3_2b_r2 paused #5 (gpu 63C, ram 788 MB)
+- 2026-11-03 07:35:22 [laptop_train r2] rsn3_2b_r2 paused #6 (gpu 79C, ram 892 MB)
+- 2026-11-03 07:37:40 [laptop_train r2] rsn3_2b_r2 paused #7 (gpu 82C, ram 820 MB)
+- 2026-11-03 07:40:03 [laptop_train r2] rsn3_2b_r2 paused #8 (gpu 86C, ram 918 MB)
+- 2026-11-03 07:41:04 [laptop_train r2] rsn3_2b_r2 paused #10 (gpu 85C, ram 537 MB)
+- 2026-11-03 07:45:25 [laptop_train r2] rsn3_2b_r2 paused #11 (gpu 74C, ram 797 MB)
+- 2026-11-03 07:56:56 [laptop_train r2] rsn3_2b_r2 paused #14 (gpu 86C, ram 970 MB)
+- 2026-11-03 07:59:41 [laptop_train r2] rsn3_2b_r2 paused #17 (gpu 85C, ram 910 MB)
+- 2026-11-03 08:00:41 [laptop_train r2] rsn3_2b_r2 paused #18 (gpu 85C, ram 949 MB)
+- 2026-11-03 08:08:25 [laptop_train r2] rsn3_2b_r2 paused #20 (gpu 68C, ram 565 MB)
+- 2026-11-03 08:08:58 [laptop_train r2] rsn3_2b_r2 paused #21 (gpu 75C, ram 934 MB)
+- 2026-11-03 08:20:29 [laptop_train r2] rsn3_2b_r2 paused #23 (gpu 85C, ram 1009 MB)
+- 2026-11-03 08:21:16 [laptop_train r2] rsn3_2b_r2 paused #24 (gpu 86C, ram 996 MB)
+- 2026-11-03 08:25:21 [laptop_train r2] rsn3_2b_r2 paused #28 (gpu 83C, ram 794 MB)
+- 2026-11-03 08:26:31 [laptop_train r2] rsn3_2b_r2 paused #29 (gpu 87C, ram 451 MB)
+- 2026-11-03 08:28:43 [laptop_train r2] rsn3_2b_r2 heartbeat: [08:15:20] step 1010/3508 (e1) loss 0.0347 lr 8.28e-05 180 tok/s ETA epoch1 186.0 h scale 1
+- 2026-11-03 08:28:56 [laptop_train r2] rsn3_2b_r2 paused #30 (gpu 85C, ram 823 MB)
+- 2026-11-03 08:30:55 [laptop_train r2] rsn3_2b_r2 paused #31 (gpu 87C, ram 1860 MB)
+- 2026-11-03 08:37:20 [laptop_train r2] rsn3_2b_r2 paused #35 (gpu 87C, ram 955 MB)
+- 2026-11-03 08:38:37 [laptop_train r2] rsn3_2b_r2 paused #37 (gpu 88C, ram 977 MB)
+- 2026-11-03 08:40:00 [laptop_train r2] rsn3_2b_r2 paused #38 (gpu 86C, ram 789 MB)
+- 2026-11-03 08:51:33 [laptop_train r2] rsn3_2b_r2 paused #42 (gpu 86C, ram 473 MB)
+- 2026-11-03 08:54:10 [laptop_train r2] rsn3_2b_r2 paused #43 (gpu 83C, ram 497 MB)
+- 2026-11-03 08:54:57 [laptop_train r2] rsn3_2b_r2 paused #44 (gpu 81C, ram 527 MB)
+- 2026-11-03 08:55:44 [laptop_train r2] rsn3_2b_r2 paused #45 (gpu 85C, ram 838 MB)
+- 2026-11-03 08:57:00 [laptop_train r2] rsn3_2b_r2 paused #46 (gpu 85C, ram 980 MB)
+- 2026-11-03 09:04:44 [laptop_train r2] rsn3_2b_r2 heartbeat: [09:01:39] step 1030/3508 (e1) loss 0.0641 lr 8.22e-05 332 tok/s ETA epoch1 89.8 h scale 1
+- 2026-11-03 09:32:10 [laptop_train r2] rsn3_2b_r2 paused #57 (gpu 82C, ram 410 MB)
+- 2026-11-03 09:33:59 [laptop_train r2] rsn3_2b_r2 paused #58 (gpu 83C, ram 964 MB)
+- 2026-11-03 09:39:05 [laptop_train r2] rsn3_2b_r2 heartbeat: [09:33:10] step 1055/3508 (e1) loss 0.0479 lr 8.14e-05 527 tok/s ETA epoch1 56.8 h scale 1
+- 2026-11-03 09:39:41 [laptop_train r2] rsn3_2b_r2 paused #61 (gpu 87C, ram 1942 MB)
+- 2026-11-03 10:07:33 [laptop_train r2] rsn3_2b_r2 paused #75 (gpu 86C, ram 819 MB)
+- 2026-11-03 10:13:34 [laptop_train r2] rsn3_2b_r2 heartbeat: [10:06:36] checkpoint step 1075
+- 2026-11-03 10:47:04 [laptop_train r2] rsn3_2b_r2 heartbeat: [10:06:36] checkpoint step 1075
+- 2026-11-03 11:03:44 [laptop_train r2] rsn3_2b_r2 paused #78 (gpu 85C, ram 905 MB)
+- 2026-11-03 11:04:53 [laptop_train r2] rsn3_2b_r2 paused #79 (gpu 72C, ram 605 MB)
+- 2026-11-03 11:05:46 [laptop_train r2] rsn3_2b_r2 paused #80 (gpu 76C, ram 932 MB)
+- 2026-11-03 11:06:42 [laptop_train r2] rsn3_2b_r2 paused #81 (gpu 79C, ram 1021 MB)
+- 2026-11-03 11:09:19 [laptop_train r2] rsn3_2b_r2 paused #82 (gpu 76C, ram 746 MB)
+- 2026-11-03 11:23:05 [laptop_train r2] rsn3_2b_r2 heartbeat: [11:14:43] step 1080/3508 (e1) loss 0.0304 lr 8.05e-05 57 tok/s ETA epoch1 553.0 h scale 1
+- 2026-11-03 11:43:06 [laptop_train r2] rsn3_2b_r2 paused #91 (gpu 87C, ram 3142 MB)
+- 2026-11-03 11:56:18 [laptop_train r2] rsn3_2b_r2 heartbeat: [11:53:59] DEV step 1100 incident 0.0861 chat 0.0281
+- 2026-11-03 12:22:29 [laptop_train r2] rsn3_2b_r2 paused #121 (gpu 87C, ram 2838 MB)
+- 2026-11-03 12:29:40 [laptop_train r2] rsn3_2b_r2 heartbeat: [12:25:24] checkpoint step 1125
+- 2026-11-03 13:03:16 [laptop_train r2] rsn3_2b_r2 heartbeat: [13:01:28] step 1155/3508 (e1) loss 0.0251 lr 7.80e-05 646 tok/s ETA epoch1 47.3 h scale 1
+- 2026-11-03 13:15:21 [laptop_train r2] rsn3_2b_r2 paused #151 (gpu 87C, ram 2684 MB)
+- 2026-11-03 13:35:42 [laptop_train r2] rsn3_2b_r2 chunk end rc=3: [13:35:31] EXIT (hours limit / STOP) at step 1182
+- 2026-11-03 13:35:47 [laptop_train r2] rsn3_2b_r2 chunk start (max_len 6144, 6 h, chat on)
+- 2026-11-03 13:36:13 [laptop_train r2] rsn3_2b_r2 paused #1 (gpu 69C, ram 588 MB)
+- 2026-11-03 13:36:51 [laptop_train r2] rsn3_2b_r2 paused #2 (gpu 66C, ram 186 MB)
+- 2026-11-03 14:09:20 [laptop_train r2] rsn3_2b_r2 heartbeat: [14:01:20] DEV step 1200 incident 0.0928 chat 0.0274
+- 2026-11-03 14:20:59 [early_stop_r2] GEN step 1200: best 0.9625, evals since best 1
+- 2026-11-03 14:37:31 [laptop_train r2] rsn3_2b_r2 paused #31 (gpu 87C, ram 3588 MB)
+- 2026-11-03 14:42:41 [laptop_train r2] rsn3_2b_r2 heartbeat: [14:39:39] step 1215/3508 (e1) loss 0.0540 lr 7.59e-05 584 tok/s ETA epoch1 50.8 h scale 1
+- 2026-11-03 15:01:32 [cut_now_r2] eval tomorrow noon: stopping r2 at step step 1230/3508 -> export best + gate
+- 2026-11-03 15:02:33 [laptop_train r2] rsn3_2b_r2 chunk end rc=3: [15:02:22] EXIT (hours limit / STOP) at step 1234
+- 2026-11-03 15:02:33 [laptop_chain r2] STOP file: chain stops here (rm kaggle/chain/STOP and relaunch to continue)
+- 2026-11-03 15:02:35 [cut_now_r2] trainer stopped; best.json: {"top":[[0.9625,1000],[0.9292,1200],[0.9292,800]],"best":0.9
+- 2026-11-03 15:02:35 [laptop_chain r2] chain start (run r2, pid 193752)
+- 2026-11-03 15:02:35 [laptop_chain r2] 2B export from /home/hp_srthk4370/smartcity_runs/rsn3_2b_r2/ckpt_best_1000
+- 2026-11-03 15:02:43 [cut_now_r2] chain restarted -> export_2b + gate g2b_r2
+- 2026-11-03 15:03:23 [export_gguf r2] merged 186/186 LoRA modules (scale 2.00) -> /home/hp_srthk4370/smartcity_runs/reasoner_v1/gguf/rsn_v3_2b_r2/hf
+- 2026-11-03 15:05:09 [export_gguf r2] DONE /mnt/c/Users/hp/Desktop/qidk/Code/models_stage/rsn_v3_2b_r2_q4_0.gguf (1.2G, md5 0f890733bc2616e5d72dced7b5d59a3c)
+- 2026-11-03 15:05:21 [gate_eval g2b_r2] start: /mnt/c/Users/hp/Desktop/qidk/Code/models_stage/rsn_v3_2b_r2_q4_0.gguf vs rsn_v1 (ft612 results, /mnt/c/Users/hp/Desktop/qidk/Code/models_stage/rsn_v1_q4_0.gguf)
+- 2026-11-03 16:27:50 [gate_eval g2b_r2] report suites: rsn_v3_g2b_r2 rwh: 150 items in 1648 s;rsn_v3_g2b_r2 dev: 120 items in 1211 s;rsn_v3_g2b_r2 p0: -1 items in 2071 s;
+- 2026-11-03 17:07:45 [gate_eval g2b_r2] chat dev v3 done (v3 300, v1 300 items)
+- 2026-11-03 18:51:12 [gate_now_r2] scored early (test_r2 informational still running): rc=2
+- 2026-11-03 18:51:28 [gate_now_r2] scored early (test_r2 informational still running): rc=1
+- 2026-11-04 00:21:36 [owner eval] g2b_r2 gate FAIL (reports); informational test_r2 stopped; 4B stays live
+- 2026-11-03 18:51:44 [laptop_chain r2] step export_2b done
+- 2026-11-03 18:51:44 [laptop_chain r2] watching /mnt/c/Users/hp/Downloads for rsn_v3_adapter_{best,final,epoch1}*.zip (STOP: kaggle/chain/STOP)
+- 2026-11-06 05:40:51 [chain_4b r3] start (run rsn3_4b_r3, max_len {"max_len": 7424, "probe": "FIT.md r3 up)
+- 2026-11-06 05:40:52 [laptop_train] waiting: Windows free RAM 1414 MB < 1536 MB
+- 2026-11-06 05:46:14 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-06 05:46:25 [laptop_train] rsn3_4b_r3 paused #1 (gpu 5100C, ram 1786 MB)
+- 2026-11-06 05:47:14 [chain_4b r3] start (run rsn3_4b_r3, max_len {"max_len": 7424, "probe": "FIT.md r3 up)
+- 2026-11-06 05:47:17 [laptop_train] waiting: Windows free RAM 1327 MB < 1536 MB
+- 2026-11-06 05:48:28 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-06 05:56:26 [laptop_train] rsn3_4b_r3 paused #1 (gpu 87C, ram 1926 MB)
+- 2026-11-06 06:10:47 [baton] auto loop start (holder , step )
+- 2026-11-06 06:10:51 [baton] Kaggle GPU quota left 0.00 h < 2.0 h (refresh 2026-11-07T00:00:00Z): laptop keeps the baton
+- 2026-11-06 06:10:51 [baton] Kaggle quota used up: laptop trains; next Kaggle try 2026-11-07 00:00
+- 2026-11-06 06:22:58 [laptop_train] rsn3_4b_r3 heartbeat: [06:08:29] DEV step 0 incident 1.1129 chat 0.9636
+- 2026-11-06 06:32:41 [laptop_train] rsn3_4b_r3 chunk end rc=1: [06:28:37] OOM in a micro-batch at step 4: optimizer step skipped
+- 2026-11-06 06:32:41 [chain_4b r3] chunk failed rc=1 (#1):                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ RuntimeError: !handles_.at(i) INTERNAL ASSERT FAILED at "/pytorch/c10/cuda/CUDACachingAllocator.cpp":400, please re
+- 2026-11-06 06:43:02 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-06 06:45:53 [laptop_train] rsn3_4b_r3 paused #1 (gpu 58C, ram 966 MB)
+- 2026-11-06 06:55:32 [chain_4b r3] start (run rsn3_4b_r3, max_len {"max_len": 7424, "probe": "FIT.md r3 up)
+- 2026-11-06 06:55:33 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-06 06:58:46 [laptop_train] rsn3_4b_r3 paused #1 (gpu 87C, ram 2008 MB)
+- 2026-11-06 07:25:38 [baton] STOP file: loop stops (holder , step ); remove baton/STOP and relaunch to continue
+- 2026-11-06 07:25:39 [laptop_train] rsn3_4b_r3 chunk end rc=3: [07:25:19] EXIT (hours limit / STOP) at step 7
+- 2026-11-06 07:25:39 [chain_4b r3] STOP file: chain stops (ctl_4b.sh start resumes)
+- 2026-11-06 07:26:26 [chain_4b r3] start (run rsn3_4b_r3, max_len {"max_len": 7424, "probe": "FIT.md r3 up)
+- 2026-11-06 07:26:27 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-06 07:26:52 [baton] auto loop start (holder , step )
+- 2026-11-06 07:26:56 [baton] Kaggle GPU quota left 0.00 h < 2.0 h (refresh 2026-11-07T00:00:00Z): laptop keeps the baton
+- 2026-11-06 07:26:56 [baton] Kaggle quota used up: laptop trains; next Kaggle try 2026-11-07 00:00
+- 2026-11-06 07:27:25 [laptop_train] rsn3_4b_r3 paused #1 (gpu 58C, ram 966 MB)
+- 2026-11-06 08:00:37 [laptop_train] rsn3_4b_r3 heartbeat: [07:41:32] step 10/4297 (e1) loss 0.9789 lr 8.59e-06 248 tok/s ETA epoch1 305.2 h scale 1
+- 2026-11-06 08:06:59 [laptop_train] rsn3_4b_r3 paused #31 (gpu 87C, ram 3119 MB)
+- 2026-11-06 08:26:22 [baton] STOP file: loop stops (holder , step ); remove baton/STOP and relaunch to continue
+- 2026-11-06 08:28:31 [laptop_train] rsn3_4b_r3 chunk end rc=3: [08:28:13] EXIT (hours limit / STOP) at step 20
+- 2026-11-06 08:28:31 [chain_4b r3] STOP file: chain stops (ctl_4b.sh start resumes)
+- 2026-11-06 08:28:55 [chain_4b r3] start (run rsn3_4b_r3, max_len {"max_len": 7424, "probe": "FIT.md r3 up)
+- 2026-11-06 08:28:56 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-06 08:29:18 [baton] auto loop start (holder , step )
+- 2026-11-06 08:29:21 [baton] Kaggle GPU quota left 0.00 h < 2.0 h (refresh 2026-11-07T00:00:00Z): laptop keeps the baton
+- 2026-11-06 08:29:21 [baton] Kaggle quota used up: laptop trains; next Kaggle try 2026-11-07 00:00
+- 2026-11-06 08:59:38 [baton] STOP file: loop stops (holder , step ); remove baton/STOP and relaunch to continue
+- 2026-11-06 09:02:30 [laptop_train] rsn3_4b_r3 chunk end rc=3: [09:01:49] EXIT (hours limit / STOP) at step 28
+- 2026-11-06 09:02:30 [chain_4b r3] STOP file: chain stops (ctl_4b.sh start resumes)
+- 2026-11-06 09:03:01 [chain_4b r3] start (run rsn3_4b_r3, max_len {"max_len": 7424, "probe": "FIT.md r3 up)
+- 2026-11-06 09:03:02 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-06 09:03:23 [baton] auto loop start (holder , step )
+- 2026-11-06 09:03:27 [baton] Kaggle GPU quota left 0.00 h < 2.0 h (refresh 2026-11-07T00:00:00Z): laptop keeps the baton
+- 2026-11-06 09:03:27 [baton] Kaggle quota used up: laptop trains; next Kaggle try 2026-11-07 00:00
+- 2026-11-06 09:37:11 [laptop_train] rsn3_4b_r3 heartbeat: [09:29:46] step 35/4297 (e1) loss 0.5675 lr 2.81e-05 267 tok/s ETA epoch1 249.1 h scale 1
+- 2026-11-06 09:43:01 [laptop_train] rsn3_4b_r3 paused #1 (gpu 83C, ram 640 MB)
+- 2026-11-06 09:43:48 [laptop_train] rsn3_4b_r3 paused #2 (gpu 85C, ram 610 MB)
+- 2026-11-06 09:50:35 [laptop_train] rsn3_4b_r3 paused #3 (gpu 85C, ram 748 MB)
+- 2026-11-06 09:51:01 [laptop_train] rsn3_4b_r3 paused #4 (gpu 77C, ram 557 MB)
+- 2026-11-06 09:51:26 [laptop_train] rsn3_4b_r3 paused #5 (gpu 67C, ram 982 MB)
+- 2026-11-06 09:52:13 [laptop_train] rsn3_4b_r3 paused #6 (gpu 85C, ram 1003 MB)
+- 2026-11-06 09:52:37 [laptop_train] rsn3_4b_r3 paused #7 (gpu 82C, ram 1011 MB)
+- 2026-11-06 09:53:15 [laptop_train] rsn3_4b_r3 paused #8 (gpu 85C, ram 292 MB)
+- 2026-11-06 10:08:57 [baton] STOP file: loop stops (holder , step ); remove baton/STOP and relaunch to continue
+- 2026-11-06 10:09:57 [laptop_train] rsn3_4b_r3 chunk end rc=3: [10:09:05] EXIT (hours limit / STOP) at step 44
+- 2026-11-06 10:09:57 [chain_4b r3] STOP file: chain stops (ctl_4b.sh start resumes)
+- 2026-11-06 10:40:37 [chain_4b r3] start (run rsn3_4b_r3, max_len {"max_len": 7424, "probe": "FIT.md r3 up)
+- 2026-11-06 10:40:42 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-06 10:41:16 [baton] auto loop start (holder , step )
+- 2026-11-06 10:41:22 [baton] Kaggle GPU quota left 0.00 h < 2.0 h (refresh 2026-11-07T00:00:00Z): laptop keeps the baton
+- 2026-11-06 10:41:22 [baton] Kaggle quota used up: laptop trains; next Kaggle try 2026-11-07 00:00
+- 2026-11-06 10:41:49 [laptop_train] rsn3_4b_r3 paused #1 (gpu 72C, ram 922 MB)
+- 2026-11-06 10:43:30 [baton] STOP file: loop stops (holder , step ); remove baton/STOP and relaunch to continue
+- 2026-11-06 10:45:42 [laptop_train] rsn3_4b_r3 chunk end rc=3: [10:45:33] EXIT (hours limit / STOP) at step 45
+- 2026-11-06 10:45:42 [chain_4b r3] STOP file: chain stops (ctl_4b.sh start resumes)
+- 2026-11-06 10:56:28 [chain_4b r3] start (run rsn3_4b_r3, max_len {"max_len": 7424, "probe": "FIT.md r3 up)
+- 2026-11-06 10:56:31 [laptop_train] waiting: Windows free RAM 1317 MB < 1536 MB
+- 2026-11-06 10:56:46 [baton] auto loop start (holder , step )
+- 2026-11-06 10:56:50 [baton] Kaggle GPU quota left 0.00 h < 2.0 h (refresh 2026-11-07T00:00:00Z): laptop keeps the baton
+- 2026-11-06 10:56:50 [baton] Kaggle quota used up: laptop trains; next Kaggle try 2026-11-07 00:00
+- 2026-11-06 10:57:33 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-06 10:58:29 [laptop_train] rsn3_4b_r3 paused #1 (gpu 60C, ram 387 MB)
+- 2026-11-06 11:00:17 [laptop_train] rsn3_4b_r3 paused #2 (gpu 54C, ram 749 MB)
+- 2026-11-06 11:28:57 [post_4b] post chain start (pid 10205, run /home/hp_srthk4370/smartcity_runs/rsn3_4b_r3, steps done: )
+- 2026-11-06 11:28:57 [post_4b] waiting: training not finished (step 60)
+- 2026-11-06 11:30:14 [laptop_train] rsn3_4b_r3 heartbeat: [11:24:13] step 60/4297 (e1) loss 0.3655 lr 4.76e-05 699 tok/s ETA epoch1 101.1 h scale 1
+- 2026-11-06 12:02:46 [laptop_train] rsn3_4b_r3 heartbeat: [12:01:03] step 85/4297 (e1) loss 0.2612 lr 6.71e-05 644 tok/s ETA epoch1 107.3 h scale 1
+- 2026-11-06 12:35:15 [laptop_train] rsn3_4b_r3 heartbeat: [12:23:36] checkpoint step 100
+- 2026-11-06 12:40:53 [baton] STOP file: loop stops (holder , step ); remove baton/STOP and relaunch to continue
+- 2026-11-06 12:42:14 [laptop_train] rsn3_4b_r3 chunk end rc=3: [12:41:48] EXIT (hours limit / STOP) at step 101
+- 2026-11-06 12:42:14 [chain_4b r3] STOP file: chain stops (ctl_4b.sh start resumes)
+- 2026-11-06 12:42:19 [chain_4b r3] start (run rsn3_4b_r3, max_len {"max_len": 7424, "probe": "FIT.md r3 up)
+- 2026-11-06 12:42:20 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-06 12:42:59 [baton] auto loop start (holder , step )
+- 2026-11-06 12:43:03 [baton] Kaggle GPU quota left 0.00 h < 2.0 h (refresh 2026-11-07T00:00:00Z): laptop keeps the baton
+- 2026-11-06 12:43:03 [baton] Kaggle quota used up: laptop trains; next Kaggle try 2026-11-07 00:00
+- 2026-11-06 12:43:36 [laptop_train] rsn3_4b_r3 paused #1 (gpu 63C, ram 451 MB)
+- 2026-11-06 12:45:24 [laptop_train] rsn3_4b_r3 paused #2 (gpu 67C, ram 825 MB)
+- 2026-11-06 12:46:38 [laptop_train] rsn3_4b_r3 paused #3 (gpu 70C, ram 785 MB)
+- 2026-11-06 13:16:08 [laptop_train] rsn3_4b_r3 heartbeat: [13:10:10] step 115/4297 (e1) loss 0.1244 lr 9.05e-05 658 tok/s ETA epoch1 118.3 h scale 1
+- 2026-11-06 13:48:39 [laptop_train] rsn3_4b_r3 heartbeat: [13:41:15] step 135/4297 (e1) loss 0.1097 lr 9.98e-05 658 tok/s ETA epoch1 105.1 h scale 1
+- 2026-11-06 14:21:04 [laptop_train] rsn3_4b_r3 heartbeat: [14:19:27] step 160/4297 (e1) loss 0.1166 lr 9.97e-05 677 tok/s ETA epoch1 105.0 h scale 1
+- 2026-11-06 14:53:27 [laptop_train] rsn3_4b_r3 heartbeat: [14:50:01] step 180/4297 (e1) loss 0.0682 lr 9.96e-05 713 tok/s ETA epoch1 102.5 h scale 1
+- 2026-11-06 15:25:49 [laptop_train] rsn3_4b_r3 heartbeat: [15:19:35] checkpoint step 200
+- 2026-11-06 15:36:36 [laptop_train] rsn3_4b_r3 chunk end rc=1: [15:36:11] DEV step 200 incident 0.1097 chat 0.0394
+- 2026-11-06 15:36:36 [chain_4b r3] chunk failed rc=1 (#1):              ~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~ RuntimeError: !handles_.at(i) INTERNAL ASSERT FAILED at "/pytorch/c10/cuda/CUDACachingAllocator.cpp":400, please report a bug to PyTorch.  
+- 2026-11-06 15:46:37 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-06 15:54:07 [baton] STOP file: loop stops (holder , step ); remove baton/STOP and relaunch to continue
+- 2026-11-06 15:54:39 [laptop_train] rsn3_4b_r3 chunk end rc=3: [15:54:29] EXIT (hours limit / STOP) at step 205
+- 2026-11-06 15:54:39 [chain_4b r3] STOP file: chain stops (ctl_4b.sh start resumes)
+- 2026-11-06 15:54:51 [chain_4b r3] start (run rsn3_4b_r3, max_len {"max_len": 7424, "probe": "FIT.md r3 up)
+- 2026-11-06 15:54:52 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-06 15:55:10 [baton] auto loop start (holder , step )
+- 2026-11-06 15:55:14 [baton] Kaggle GPU quota left 0.00 h < 2.0 h (refresh 2026-11-07T00:00:00Z): laptop keeps the baton
+- 2026-11-06 15:55:14 [baton] Kaggle quota used up: laptop trains; next Kaggle try 2026-11-07 00:00
+- 2026-11-06 15:55:46 [laptop_train] rsn3_4b_r3 paused #1 (gpu 61C, ram 949 MB)
+- 2026-11-06 15:57:00 [laptop_train] rsn3_4b_r3 paused #2 (gpu 81C, ram 936 MB)
+- 2026-11-06 16:27:08 [laptop_train] rsn3_4b_r3 heartbeat: [16:24:36] checkpoint step 225
+- 2026-11-06 16:59:26 [laptop_train] rsn3_4b_r3 heartbeat: [16:52:47] step 245/4297 (e1) loss 0.0576 lr 9.93e-05 731 tok/s ETA epoch1 93.3 h scale 1
+- 2026-11-06 17:31:48 [laptop_train] rsn3_4b_r3 heartbeat: [17:29:10] step 270/4297 (e1) loss 0.0772 lr 9.91e-05 683 tok/s ETA epoch1 98.3 h scale 1
+- 2026-11-06 18:04:13 [laptop_train] rsn3_4b_r3 heartbeat: [17:59:02] step 290/4297 (e1) loss 0.0618 lr 9.90e-05 729 tok/s ETA epoch1 98.3 h scale 1
+- 2026-11-06 18:36:43 [laptop_train] rsn3_4b_r3 heartbeat: [18:34:52] step 315/4297 (e1) loss 0.0610 lr 9.88e-05 740 tok/s ETA epoch1 91.1 h scale 1
+- 2026-11-06 19:09:20 [laptop_train] rsn3_4b_r3 heartbeat: [19:03:26] step 335/4297 (e1) loss 0.0489 lr 9.87e-05 698 tok/s ETA epoch1 101.1 h scale 1
+- 2026-11-06 19:41:41 [laptop_train] rsn3_4b_r3 heartbeat: [19:37:39] step 360/4297 (e1) loss 0.0515 lr 9.85e-05 833 tok/s ETA epoch1 86.5 h scale 1
+- 2026-11-06 20:13:57 [laptop_train] rsn3_4b_r3 heartbeat: [20:11:34] step 385/4297 (e1) loss 0.0522 lr 9.82e-05 783 tok/s ETA epoch1 87.3 h scale 1
+- 2026-11-06 20:46:15 [laptop_train] rsn3_4b_r3 heartbeat: [20:34:54] DEV step 400 incident 0.0932 chat 0.0201
+- 2026-11-06 21:18:32 [laptop_train] rsn3_4b_r3 heartbeat: [20:34:54] DEV step 400 incident 0.0932 chat 0.0201
+- 2026-11-06 21:50:49 [laptop_train] rsn3_4b_r3 heartbeat: [21:50:16] step 405/4297 (e1) loss 0.0419 lr 9.80e-05 68 tok/s ETA epoch1 1024.8 h scale 1
+- 2026-11-06 21:57:40 [laptop_train] rsn3_4b_r3 chunk end rc=3: [21:57:21] EXIT (hours limit / STOP) at step 410
+- 2026-11-06 21:57:41 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-06 22:29:58 [laptop_train] rsn3_4b_r3 heartbeat: [22:26:06] step 430/4297 (e1) loss 0.0486 lr 9.78e-05 747 tok/s ETA epoch1 87.0 h scale 1
+- 2026-11-06 23:02:15 [laptop_train] rsn3_4b_r3 heartbeat: [23:00:12] step 455/4297 (e1) loss 0.0496 lr 9.75e-05 795 tok/s ETA epoch1 90.3 h scale 1
+- 2026-11-06 23:34:31 [laptop_train] rsn3_4b_r3 heartbeat: [23:34:16] step 480/4297 (e1) loss 0.0523 lr 9.73e-05 793 tok/s ETA epoch1 87.6 h scale 1
+- 2026-11-07 00:00:34 [baton] handover: stopping the laptop run (ctl_4b.sh stop)
+- 2026-11-07 00:01:57 [laptop_train] rsn3_4b_r3 chunk end rc=3: [00:01:43] EXIT (hours limit / STOP) at step 500
+- 2026-11-07 00:01:58 [chain_4b r3] STOP file: chain stops (ctl_4b.sh start resumes)
+- 2026-11-07 00:02:48 [baton] uploading r3 data dataset rsn3-r3-data (private, data id e7c5fab0045d0405082375bbfe01d433, 314 MB)
+- 2026-11-07 00:07:00 [baton] FAIL: data dataset upload failed (see /home/hp_srthk4370/smartcity_runs/baton_r3/logs/upload.log) 22
+- 2026-11-07 00:07:00 [baton] to_kaggle rc 22: laptop trains; next Kaggle try 2026-11-07 04:00
+- 2026-11-07 00:07:01 [baton] laptop holds the baton: ctl_4b.sh start
+- 2026-11-07 00:07:01 [chain_4b r3] start (run rsn3_4b_r3, max_len {"max_len": 7424, "probe": "FIT.md r3 up)
+- 2026-11-07 00:07:02 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-07 00:07:34 [laptop_train] rsn3_4b_r3 paused #1 (gpu 45C, ram 991 MB)
+- 2026-11-07 00:08:40 [laptop_train] rsn3_4b_r3 paused #2 (gpu 42C, ram 972 MB)
+- 2026-11-07 00:09:33 [laptop_train] rsn3_4b_r3 paused #3 (gpu 61C, ram 908 MB)
+- 2026-11-07 00:09:54 [laptop_train] rsn3_4b_r3 paused #4 (gpu 58C, ram 1004 MB)
+- 2026-11-07 00:10:15 [laptop_train] rsn3_4b_r3 paused #5 (gpu 66C, ram 880 MB)
+- 2026-11-07 00:11:30 [laptop_train] rsn3_4b_r3 paused #6 (gpu 67C, ram 992 MB)
+- 2026-11-07 00:24:09 [baton] STOP file: loop stops (holder , step ); remove baton/STOP and relaunch to continue
+- 2026-11-07 00:24:27 [baton] auto loop start (holder , step )
+- 2026-11-07 00:24:41 [baton] handover: stopping the laptop run (ctl_4b.sh stop)
+- 2026-11-07 00:26:00 [laptop_train] rsn3_4b_r3 chunk end rc=3: [00:25:46] EXIT (hours limit / STOP) at step 511
+- 2026-11-07 00:26:00 [chain_4b r3] STOP file: chain stops (ctl_4b.sh start resumes)
+- 2026-11-07 00:26:44 [baton] uploading baton seq 1 (step 511, 626 MB) to rsn3-r3-baton
+- 2026-11-07 00:36:02 [baton] baton -> Kaggle: seq 1, step 511, kernel version 1, budget 11.30 h; laptop GPU free
+- 2026-11-07 00:36:05 [baton] Kaggle session seq 1 running; laptop GPU free
+- 2026-11-07 11:39:45 [baton] kernel seq 1 ended: kernelworkerstatus.complete
+- 2026-11-07 11:44:08 [baton] baton -> laptop: seq 1 installed, step 511 -> 979 (tar, kaggle rc 1); backup /home/hp_srthk4370/smartcity_runs/rsn3_4b_r3.prev_step511
+- 2026-11-07 11:45:00 [baton] uploading baton seq 2 (step 979, 873 MB) to rsn3-r3-baton
+- 2026-11-07 11:48:35 [baton] baton -> Kaggle: seq 2, step 979, kernel version 2, budget 11.30 h; laptop GPU free
+- 2026-11-07 11:48:38 [baton] Kaggle session seq 2 running; laptop GPU free
+- 2026-11-07 11:55:38 [baton] STOP file: loop stops (holder kaggle, step 979); remove baton/STOP and relaunch to continue
+- 2026-11-07 11:55:44 [baton] kernel seq 2 ended: kernelworkerstatus.complete
+- 2026-11-07 11:55:46 [baton] baton -> laptop (nothing installed): seq 2 aborted on Kaggle: stale baton: dataset seq 1, kernel expects 2 (dataset version not processed yet)
+- 2026-11-07 11:55:54 [chain_4b r3] start (run rsn3_4b_r3, max_len {"max_len": 7424, "probe": "FIT.md r3 up)
+- 2026-11-07 11:55:58 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-07 11:56:42 [laptop_train] rsn3_4b_r3 paused #1 (gpu 47C, ram 166 MB)
+- 2026-11-07 11:57:25 [laptop_train] rsn3_4b_r3 paused #2 (gpu 45C, ram 907 MB)
+- 2026-11-07 11:57:57 [laptop_train] rsn3_4b_r3 paused #3 (gpu 45C, ram 746 MB)
+- 2026-11-07 11:59:01 [laptop_train] rsn3_4b_r3 paused #4 (gpu 64C, ram 699 MB)
+- 2026-11-07 12:00:15 [laptop_train] rsn3_4b_r3 paused #5 (gpu 58C, ram 475 MB)
+- 2026-11-07 12:05:28 [laptop_train] rsn3_4b_r3 paused #6 (gpu 60C, ram 504 MB)
+- 2026-11-07 12:13:35 [laptop_train] rsn3_4b_r3 paused #7 (gpu 61C, ram 704 MB)
+- 2026-11-07 12:24:01 [laptop_train] rsn3_4b_r3 paused #8 (gpu 55C, ram 886 MB)
+- 2026-11-07 12:28:35 [laptop_train] rsn3_4b_r3 heartbeat: [12:28:17] EXIT (hours limit / STOP) at step 980
+- 2026-11-07 12:28:41 [laptop_train] rsn3_4b_r3 chunk end rc=3: [12:28:17] EXIT (hours limit / STOP) at step 980
+- 2026-11-07 12:28:41 [chain_4b r3] STOP file: chain stops (ctl_4b.sh start resumes)
+- 2026-11-07 12:29:17 [chain_4b r3] start (run rsn3_4b_r3, max_len {"max_len": 7424, "probe": "FIT.md r3 up)
+- 2026-11-07 12:29:18 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-07 12:30:02 [laptop_train] rsn3_4b_r3 paused #1 (gpu 57C, ram 910 MB)
+- 2026-11-07 12:30:57 [laptop_train] rsn3_4b_r3 paused #2 (gpu 55C, ram 710 MB)
+- 2026-11-07 12:31:53 [laptop_train] rsn3_4b_r3 paused #3 (gpu 66C, ram 719 MB)
+- 2026-11-07 12:32:46 [laptop_train] rsn3_4b_r3 paused #4 (gpu 65C, ram 805 MB)
+- 2026-11-07 12:34:13 [laptop_train] rsn3_4b_r3 paused #5 (gpu 68C, ram 623 MB)
+- 2026-11-07 12:35:07 [laptop_train] rsn3_4b_r3 paused #6 (gpu 69C, ram 448 MB)
+- 2026-11-07 12:41:49 [laptop_train] rsn3_4b_r3 paused #7 (gpu 62C, ram 355 MB)
+- 2026-11-07 12:43:23 [laptop_train] rsn3_4b_r3 paused #8 (gpu 72C, ram 461 MB)
+- 2026-11-07 12:47:20 [laptop_train] rsn3_4b_r3 paused #9 (gpu 64C, ram 955 MB)
+- 2026-11-07 12:49:01 [laptop_train] rsn3_4b_r3 paused #10 (gpu 73C, ram 929 MB)
+- 2026-11-07 13:02:30 [laptop_train] rsn3_4b_r3 heartbeat: [13:01:44] step 520/4297 (e1) loss 0.0352 lr 9.68e-05 742 tok/s ETA epoch1 95.5 h scale 1
+- 2026-11-07 13:35:29 [laptop_train] rsn3_4b_r3 heartbeat: [13:31:39] step 540/4297 (e1) loss 0.0516 lr 9.65e-05 680 tok/s ETA epoch1 99.6 h scale 1
+- 2026-11-07 13:54:13 [laptop_train] rsn3_4b_r3 paused #11 (gpu 85C, ram 921 MB)
+- 2026-11-07 13:55:51 [laptop_train] rsn3_4b_r3 paused #12 (gpu 85C, ram 769 MB)
+- 2026-11-07 14:08:09 [laptop_train] rsn3_4b_r3 heartbeat: [14:01:57] step 560/4297 (e1) loss 0.0383 lr 9.63e-05 702 tok/s ETA epoch1 92.6 h scale 1
+- 2026-11-07 14:08:20 [laptop_train] rsn3_4b_r3 paused #13 (gpu 87C, ram 629 MB)
+- 2026-11-07 14:27:20 [laptop_train] rsn3_4b_r3 paused #14 (gpu 87C, ram 1002 MB)
+- 2026-11-07 14:29:22 [laptop_train] rsn3_4b_r3 chunk end rc=3: [14:29:12] EXIT (hours limit / STOP) at step 579
+- 2026-11-07 14:29:22 [chain_4b r3] STOP file: chain stops (ctl_4b.sh start resumes)
+- 2026-11-07 14:49:45 [baton] auto loop start (holder laptop, step 511)
+- 2026-11-07 14:50:35 [baton] uploading token caches to rsn3-r3-cache (private, 2103 MB; once)
+- 2026-11-07 14:59:17 [baton] uploading baton seq 3 (step 579, 626 MB) to rsn3-r3-baton
+- 2026-11-07 15:02:32 [baton] baton dataset seq 3 is live (checked 2 x)
+- 2026-11-07 15:02:36 [baton] baton -> Kaggle: seq 3, step 579, kernel version 3, budget 11.30 h; laptop GPU free
+- 2026-11-07 15:02:40 [baton] Kaggle session seq 3 running; laptop GPU free
+- 2026-11-07 16:53:21 [baton] kernel seq 3 ended: kernelworkerstatus.complete
+- 2026-11-07 16:56:24 [baton] kernel seq 3 ended: kernelworkerstatus.complete
+- 2026-11-07 16:56:25 [baton] baton -> laptop (nothing installed): seq 3: lineage.tar md5 check failed
+- 2026-11-07 16:56:25 [baton] STOP file: loop stops (holder laptop, step 579); remove baton/STOP and relaunch to continue
+- 2026-11-07 17:00:33 [baton] baton -> laptop: seq 3 installed, step 579 -> 633 (tar, kaggle rc 7); backup /home/hp_srthk4370/smartcity_runs/rsn3_4b_r3.prev_step579; OOM-skipped in the lineage so far: 1 steps / 16 rows
+- 2026-11-07 17:00:57 [chain_4b r3] start (run rsn3_4b_r3, max_len {"max_len": 7424, "probe": "FIT.md r3 up)
+- 2026-11-07 17:01:01 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-07 17:01:33 [laptop_train] rsn3_4b_r3 paused #1 (gpu 54C, ram 544 MB)
+- 2026-11-07 17:05:09 [laptop_train] rsn3_4b_r3 paused #2 (gpu 50C, ram 980 MB)
+- 2026-11-07 17:06:14 [laptop_train] rsn3_4b_r3 paused #3 (gpu 58C, ram 718 MB)
+- 2026-11-07 17:08:54 [laptop_train] rsn3_4b_r3 paused #4 (gpu 61C, ram 376 MB)
+- 2026-11-07 17:10:09 [laptop_train] rsn3_4b_r3 paused #5 (gpu 63C, ram 652 MB)
+- 2026-11-07 17:33:22 [laptop_train] rsn3_4b_r3 heartbeat: [17:28:04] step 645/4297 (e1) loss 0.0538 lr 9.51e-05 655 tok/s ETA epoch1 91.0 h scale 1
+- 2026-11-07 18:08:54 [laptop_train] rsn3_4b_r3 heartbeat: [17:56:00] step 660/4297 (e1) loss 0.0420 lr 9.49e-05 388 tok/s ETA epoch1 169.4 h scale 1
+- 2026-11-07 18:44:13 [laptop_train] rsn3_4b_r3 heartbeat: [18:43:55] checkpoint step 675
+- 2026-11-07 19:19:13 [laptop_train] rsn3_4b_r3 heartbeat: [19:10:05] step 685/4297 (e1) loss 0.0378 lr 9.45e-05 390 tok/s ETA epoch1 157.6 h scale 1
+- 2026-11-07 19:54:11 [laptop_train] rsn3_4b_r3 heartbeat: [19:51:09] checkpoint step 700
+- 2026-11-07 20:29:29 [laptop_train] rsn3_4b_r3 heartbeat: [20:29:25] step 715/4297 (e1) loss 0.0383 lr 9.40e-05 464 tok/s ETA epoch1 132.3 h scale 1
+- 2026-11-07 21:01:53 [laptop_train] rsn3_4b_r3 heartbeat: [20:58:53] step 735/4297 (e1) loss 0.0365 lr 9.37e-05 733 tok/s ETA epoch1 85.0 h scale 1
+- 2026-11-07 21:34:15 [laptop_train] rsn3_4b_r3 heartbeat: [21:27:34] step 755/4297 (e1) loss 0.0246 lr 9.33e-05 742 tok/s ETA epoch1 83.8 h scale 1
+- 2026-11-07 22:06:36 [laptop_train] rsn3_4b_r3 heartbeat: [22:03:18] step 780/4297 (e1) loss 0.0418 lr 9.29e-05 711 tok/s ETA epoch1 83.5 h scale 1
+- 2026-11-07 22:38:58 [laptop_train] rsn3_4b_r3 heartbeat: [22:36:27] DEV step 800 incident 0.0869 chat 0.0147
+- 2026-11-07 23:11:24 [laptop_train] rsn3_4b_r3 heartbeat: [22:36:27] DEV step 800 incident 0.0869 chat 0.0147
+- 2026-11-07 23:43:50 [laptop_train] rsn3_4b_r3 heartbeat: [22:36:27] DEV step 800 incident 0.0869 chat 0.0147
+- 2026-11-07 23:49:31 [laptop_train] rsn3_4b_r3 chunk end rc=3: [23:49:08] EXIT (hours limit / STOP) at step 800
+- 2026-11-07 23:49:32 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-08 00:21:53 [laptop_train] rsn3_4b_r3 heartbeat: [00:19:36] step 820/4297 (e1) loss 0.0376 lr 9.22e-05 747 tok/s ETA epoch1 87.3 h scale 1
+- 2026-11-08 00:54:16 [laptop_train] rsn3_4b_r3 heartbeat: [00:48:40] step 840/4297 (e1) loss 0.0329 lr 9.18e-05 691 tok/s ETA epoch1 85.6 h scale 1
+- 2026-11-08 01:26:39 [laptop_train] rsn3_4b_r3 heartbeat: [01:24:29] step 865/4297 (e1) loss 0.0299 lr 9.13e-05 756 tok/s ETA epoch1 80.4 h scale 1
+- 2026-11-08 01:59:02 [laptop_train] rsn3_4b_r3 heartbeat: [01:53:47] step 885/4297 (e1) loss 0.0510 lr 9.09e-05 708 tok/s ETA epoch1 86.4 h scale 1
+- 2026-11-08 02:31:25 [laptop_train] rsn3_4b_r3 heartbeat: [02:29:55] step 910/4297 (e1) loss 0.0394 lr 9.04e-05 714 tok/s ETA epoch1 81.9 h scale 1
+- 2026-11-08 03:03:47 [laptop_train] rsn3_4b_r3 heartbeat: [02:58:31] step 930/4297 (e1) loss 0.0246 lr 9.00e-05 742 tok/s ETA epoch1 82.6 h scale 1
+- 2026-11-08 03:36:07 [laptop_train] rsn3_4b_r3 heartbeat: [03:34:40] step 955/4297 (e1) loss 0.0266 lr 8.95e-05 675 tok/s ETA epoch1 78.3 h scale 1
+- 2026-11-08 04:08:29 [laptop_train] rsn3_4b_r3 heartbeat: [04:03:59] checkpoint step 975
+- 2026-11-08 04:40:51 [laptop_train] rsn3_4b_r3 heartbeat: [04:39:52] checkpoint step 1000
+- 2026-11-08 05:13:14 [laptop_train] rsn3_4b_r3 heartbeat: [05:12:24] step 1020/4297 (e1) loss 0.0268 lr 8.81e-05 766 tok/s ETA epoch1 76.9 h scale 1
+- 2026-11-08 05:46:02 [laptop_train] rsn3_4b_r3 heartbeat: [05:41:45] step 1040/4297 (e1) loss 0.0303 lr 8.76e-05 681 tok/s ETA epoch1 80.9 h scale 1
+- 2026-11-08 05:51:44 [laptop_train] rsn3_4b_r3 chunk end rc=3: [05:51:26] EXIT (hours limit / STOP) at step 1047
+- 2026-11-08 05:51:45 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-08 05:52:39 [laptop_train] rsn3_4b_r3 paused #1 (gpu 63C, ram 922 MB)
+- 2026-11-08 05:53:21 [laptop_train] rsn3_4b_r3 paused #2 (gpu 56C, ram 915 MB)
+- 2026-11-08 05:53:53 [laptop_train] rsn3_4b_r3 paused #3 (gpu 73C, ram 935 MB)
+- 2026-11-08 05:54:15 [laptop_train] rsn3_4b_r3 paused #4 (gpu 69C, ram 954 MB)
+- 2026-11-08 05:54:57 [laptop_train] rsn3_4b_r3 paused #5 (gpu 73C, ram 936 MB)
+- 2026-11-08 06:24:08 [laptop_train] rsn3_4b_r3 heartbeat: [06:20:28] step 1065/4297 (e1) loss 0.0361 lr 8.70e-05 699 tok/s ETA epoch1 77.8 h scale 1
+- 2026-11-08 06:56:35 [laptop_train] rsn3_4b_r3 heartbeat: [06:56:03] step 1090/4297 (e1) loss 0.0271 lr 8.65e-05 820 tok/s ETA epoch1 77.5 h scale 1
+- 2026-11-08 07:29:03 [laptop_train] rsn3_4b_r3 heartbeat: [07:25:18] step 1110/4297 (e1) loss 0.0267 lr 8.60e-05 686 tok/s ETA epoch1 78.1 h scale 1
+- 2026-11-08 08:01:35 [laptop_train] rsn3_4b_r3 heartbeat: [07:55:08] step 1130/4297 (e1) loss 0.0295 lr 8.55e-05 710 tok/s ETA epoch1 76.4 h scale 1
+- 2026-11-08 08:34:11 [laptop_train] rsn3_4b_r3 heartbeat: [08:31:03] step 1155/4297 (e1) loss 0.0405 lr 8.49e-05 727 tok/s ETA epoch1 74.8 h scale 1
+- 2026-11-08 09:06:41 [laptop_train] rsn3_4b_r3 heartbeat: [09:00:23] checkpoint step 1175
+- 2026-11-08 09:39:11 [laptop_train] rsn3_4b_r3 heartbeat: [09:36:58] checkpoint step 1200
+- 2026-11-08 10:11:44 [laptop_train] rsn3_4b_r3 heartbeat: [09:40:51] DEV step 1200 incident 0.0868 chat 0.0117
+- 2026-11-08 10:44:22 [laptop_train] rsn3_4b_r3 heartbeat: [09:40:51] DEV step 1200 incident 0.0868 chat 0.0117
+- 2026-11-08 11:16:51 [laptop_train] rsn3_4b_r3 heartbeat: [11:12:53] step 1210/4297 (e1) loss 0.0268 lr 8.35e-05 786 tok/s ETA epoch1 74.9 h scale 1
+- 2026-11-08 11:49:21 [laptop_train] rsn3_4b_r3 heartbeat: [11:42:40] step 1230/4297 (e1) loss 0.0247 lr 8.30e-05 725 tok/s ETA epoch1 76.0 h scale 1
+- 2026-11-08 11:54:56 [laptop_train] rsn3_4b_r3 chunk end rc=3: [11:54:37] EXIT (hours limit / STOP) at step 1238
+- 2026-11-08 11:54:57 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-08 11:55:50 [laptop_train] rsn3_4b_r3 paused #1 (gpu 61C, ram 990 MB)
+- 2026-11-08 11:56:12 [laptop_train] rsn3_4b_r3 paused #2 (gpu 69C, ram 976 MB)
+- 2026-11-08 11:57:15 [laptop_train] rsn3_4b_r3 paused #3 (gpu 67C, ram 999 MB)
+- 2026-11-08 11:57:47 [laptop_train] rsn3_4b_r3 paused #4 (gpu 68C, ram 1003 MB)
+- 2026-11-08 11:59:24 [laptop_train] rsn3_4b_r3 paused #5 (gpu 73C, ram 1021 MB)
+- 2026-11-08 12:27:17 [laptop_train] rsn3_4b_r3 heartbeat: [12:22:57] step 1255/4297 (e1) loss 0.0240 lr 8.23e-05 697 tok/s ETA epoch1 73.5 h scale 1
+- 2026-11-08 12:59:39 [laptop_train] rsn3_4b_r3 heartbeat: [12:57:15] step 1280/4297 (e1) loss 0.0354 lr 8.17e-05 747 tok/s ETA epoch1 67.8 h scale 1
+- 2026-11-08 13:32:00 [laptop_train] rsn3_4b_r3 heartbeat: [13:31:43] step 1305/4297 (e1) loss 0.0415 lr 8.10e-05 817 tok/s ETA epoch1 66.0 h scale 1
+- 2026-11-08 14:04:20 [laptop_train] rsn3_4b_r3 heartbeat: [13:59:52] checkpoint step 1325
+- 2026-11-08 14:36:40 [laptop_train] rsn3_4b_r3 heartbeat: [14:34:37] checkpoint step 1350
+- 2026-11-08 15:09:02 [laptop_train] rsn3_4b_r3 heartbeat: [15:02:02] step 1370/4297 (e1) loss 0.0220 lr 7.93e-05 765 tok/s ETA epoch1 70.7 h scale 1
+- 2026-11-08 15:41:24 [laptop_train] rsn3_4b_r3 heartbeat: [15:36:22] step 1395/4297 (e1) loss 0.0255 lr 7.86e-05 755 tok/s ETA epoch1 67.3 h scale 1
+- 2026-11-08 16:13:45 [laptop_train] rsn3_4b_r3 heartbeat: [16:07:50] step 1415/4297 (e1) loss 0.0229 lr 7.80e-05 736 tok/s ETA epoch1 64.3 h scale 1
+- 2026-11-08 16:46:07 [laptop_train] rsn3_4b_r3 heartbeat: [16:42:08] step 1440/4297 (e1) loss 0.0514 lr 7.73e-05 723 tok/s ETA epoch1 67.0 h scale 1
+- 2026-11-08 17:18:28 [laptop_train] rsn3_4b_r3 heartbeat: [17:16:58] step 1465/4297 (e1) loss 0.0290 lr 7.66e-05 766 tok/s ETA epoch1 65.1 h scale 1
+- 2026-11-08 17:50:50 [laptop_train] rsn3_4b_r3 heartbeat: [17:44:42] step 1485/4297 (e1) loss 0.0466 lr 7.60e-05 669 tok/s ETA epoch1 62.9 h scale 1
+- 2026-11-08 17:57:29 [laptop_train] rsn3_4b_r3 chunk end rc=3: [17:57:11] EXIT (hours limit / STOP) at step 1494
+- 2026-11-08 17:57:30 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-08 18:29:49 [laptop_train] rsn3_4b_r3 heartbeat: [18:27:20] step 1515/4297 (e1) loss 0.0306 lr 7.51e-05 784 tok/s ETA epoch1 63.2 h scale 1
+- 2026-11-08 19:02:11 [laptop_train] rsn3_4b_r3 heartbeat: [18:55:29] step 1535/4297 (e1) loss 0.0255 lr 7.45e-05 760 tok/s ETA epoch1 65.1 h scale 1
+- 2026-11-08 19:34:32 [laptop_train] rsn3_4b_r3 heartbeat: [19:30:39] step 1560/4297 (e1) loss 0.0320 lr 7.38e-05 705 tok/s ETA epoch1 65.3 h scale 1
+- 2026-11-08 19:45:15 [laptop_train] rsn3_4b_r3 chunk end rc=3: [19:44:58] EXIT (hours limit / STOP) at step 1570
+- 2026-11-08 19:45:15 [chain_4b r3] STOP file: chain stops (ctl_4b.sh start resumes)
+- 2026-11-08 19:45:22 [chain_4b r3] start (run rsn3_4b_r3, max_len {"max_len": 7424, "probe": "FIT.md r3 up)
+- 2026-11-08 19:45:23 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-08 19:46:17 [laptop_train] rsn3_4b_r3 paused #1 (gpu 60C, ram 973 MB)
+- 2026-11-08 19:47:10 [laptop_train] rsn3_4b_r3 chunk end rc=3: [19:47:08] EXIT (hours limit / STOP) at step 1570
+- 2026-11-08 19:47:10 [chain_4b r3] STOP file: chain stops (ctl_4b.sh start resumes)
+- 2026-11-08 19:47:14 [chain_4b r3] start (run rsn3_4b_r3, max_len {"max_len": 7424, "probe": "FIT.md r3 up)
+- 2026-11-08 19:47:14 [laptop_train] waiting: Windows free RAM 1145 MB < 1536 MB
+- 2026-11-08 19:48:15 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-08 19:48:58 [laptop_train] rsn3_4b_r3 paused #1 (gpu 69C, ram 1023 MB)
+- 2026-11-08 19:49:19 [laptop_train] rsn3_4b_r3 paused #2 (gpu 66C, ram 1021 MB)
+- 2026-11-08 19:50:02 [laptop_train] rsn3_4b_r3 paused #3 (gpu 73C, ram 1002 MB)
+- 2026-11-08 20:20:34 [laptop_train] rsn3_4b_r3 heartbeat: [20:17:34] step 1590/4297 (e1) loss 0.0567 lr 7.29e-05 730 tok/s ETA epoch1 63.1 h scale 1
+- 2026-11-08 20:52:59 [laptop_train] rsn3_4b_r3 heartbeat: [20:35:26] DEV step 1600 incident 0.0882 chat 0.0146
+- 2026-11-08 21:25:22 [laptop_train] rsn3_4b_r3 heartbeat: [20:35:26] DEV step 1600 incident 0.0882 chat 0.0146
+- 2026-11-08 21:57:46 [laptop_train] rsn3_4b_r3 heartbeat: [21:53:10] step 1605/4297 (e1) loss 0.0309 lr 7.24e-05 62 tok/s ETA epoch1 731.9 h scale 1
+- 2026-11-08 22:30:09 [laptop_train] rsn3_4b_r3 heartbeat: [22:28:20] step 1630/4297 (e1) loss 0.0432 lr 7.17e-05 741 tok/s ETA epoch1 62.7 h scale 1
+- 2026-11-08 23:02:32 [laptop_train] rsn3_4b_r3 heartbeat: [22:56:32] checkpoint step 1650
+- 2026-11-08 23:34:55 [laptop_train] rsn3_4b_r3 heartbeat: [23:33:01] checkpoint step 1675
+- 2026-11-09 00:07:19 [laptop_train] rsn3_4b_r3 heartbeat: [00:00:40] step 1695/4297 (e1) loss 0.0387 lr 6.96e-05 776 tok/s ETA epoch1 58.2 h scale 1
+- 2026-11-09 00:39:45 [laptop_train] rsn3_4b_r3 heartbeat: [00:36:36] step 1720/4297 (e1) loss 0.0251 lr 6.89e-05 622 tok/s ETA epoch1 65.5 h scale 1
+- 2026-11-09 01:12:14 [laptop_train] rsn3_4b_r3 heartbeat: [01:06:30] step 1740/4297 (e1) loss 0.0362 lr 6.82e-05 694 tok/s ETA epoch1 63.5 h scale 1
+- 2026-11-09 01:44:43 [laptop_train] rsn3_4b_r3 heartbeat: [01:44:13] step 1765/4297 (e1) loss 0.0296 lr 6.75e-05 658 tok/s ETA epoch1 65.8 h scale 1
+- 2026-11-09 01:49:13 [laptop_train] rsn3_4b_r3 chunk end rc=3: [01:48:51] EXIT (hours limit / STOP) at step 1768
+- 2026-11-09 01:49:14 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-09 02:21:47 [laptop_train] rsn3_4b_r3 heartbeat: [02:15:39] step 1785/4297 (e1) loss 0.0349 lr 6.68e-05 663 tok/s ETA epoch1 62.7 h scale 1
+- 2026-11-09 02:54:43 [laptop_train] rsn3_4b_r3 heartbeat: [02:50:19] step 1805/4297 (e1) loss 0.0345 lr 6.62e-05 471 tok/s ETA epoch1 99.6 h scale 1
+- 2026-11-09 03:27:41 [laptop_train] rsn3_4b_r3 heartbeat: [03:20:58] checkpoint step 1825
+- 2026-11-09 04:00:43 [laptop_train] rsn3_4b_r3 heartbeat: [03:58:59] checkpoint step 1850
+- 2026-11-09 04:33:44 [laptop_train] rsn3_4b_r3 heartbeat: [04:29:21] step 1870/4297 (e1) loss 0.0218 lr 6.41e-05 659 tok/s ETA epoch1 63.1 h scale 1
+- 2026-11-09 05:06:44 [laptop_train] rsn3_4b_r3 heartbeat: [05:06:32] step 1895/4297 (e1) loss 0.0247 lr 6.33e-05 711 tok/s ETA epoch1 59.2 h scale 1
+- 2026-11-09 05:39:45 [laptop_train] rsn3_4b_r3 heartbeat: [05:37:18] step 1915/4297 (e1) loss 0.0376 lr 6.26e-05 659 tok/s ETA epoch1 64.3 h scale 1
+- 2026-11-09 06:12:25 [laptop_train] rsn3_4b_r3 heartbeat: [06:08:02] step 1935/4297 (e1) loss 0.0296 lr 6.20e-05 771 tok/s ETA epoch1 60.9 h scale 1
+- 2026-11-09 06:45:24 [laptop_train] rsn3_4b_r3 heartbeat: [06:45:14] step 1960/4297 (e1) loss 0.0252 lr 6.12e-05 642 tok/s ETA epoch1 57.1 h scale 1
+- 2026-11-09 07:18:25 [laptop_train] rsn3_4b_r3 heartbeat: [07:14:50] step 1980/4297 (e1) loss 0.0205 lr 6.05e-05 701 tok/s ETA epoch1 56.8 h scale 1
+- 2026-11-09 07:51:25 [laptop_train] rsn3_4b_r3 heartbeat: [07:50:00] DEV step 2000 incident 0.0903 chat 0.0113
+- 2026-11-09 08:24:38 [laptop_train] rsn3_4b_r3 heartbeat: [07:50:00] DEV step 2000 incident 0.0903 chat 0.0113
+- 2026-11-09 08:57:47 [laptop_train] rsn3_4b_r3 heartbeat: [07:50:00] DEV step 2000 incident 0.0903 chat 0.0113
+- 2026-11-09 09:11:57 [laptop_train] rsn3_4b_r3 chunk end rc=3: [09:11:34] EXIT (hours limit / STOP) at step 2000
+- 2026-11-09 09:11:58 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-09 09:13:04 [laptop_train] rsn3_4b_r3 paused #1 (gpu 62C, ram 369 MB)
+- 2026-11-09 09:14:43 [laptop_train] rsn3_4b_r3 paused #2 (gpu 64C, ram 554 MB)
+- 2026-11-09 09:16:42 [laptop_train] rsn3_4b_r3 paused #3 (gpu 65C, ram 633 MB)
+- 2026-11-09 09:17:57 [laptop_train] rsn3_4b_r3 paused #4 (gpu 65C, ram 661 MB)
+- 2026-11-09 09:20:40 [laptop_train] rsn3_4b_r3 paused #5 (gpu 67C, ram 957 MB)
+- 2026-11-09 09:26:41 [mid_gate] start: stop training, export + core gate of ckpt_best_2000
+- 2026-11-09 09:27:08 [laptop_train] rsn3_4b_r3 chunk end rc=3: [09:26:51] EXIT (hours limit / STOP) at step 2004
+- 2026-11-09 09:27:08 [chain_4b r3] STOP file: chain stops (ctl_4b.sh start resumes)
+- 2026-11-09 09:27:13 [mid_gate] export rsn_v3_4b_r3_s2000 from /home/hp_srthk4370/smartcity_runs/rsn3_4b_r3_mid2000
+- 2026-11-09 09:27:14 [post_4b] export: waiting before merge: C: free 58836 MB (need 41241), Windows avail 891 MB (need 2000), WSL avail 6165 MB (need 2500)
+- 2026-11-09 09:28:17 [post_4b] export: merge /home/hp_srthk4370/smartcity_runs/rsn3_4b_r3_mid2000 into /home/hp_srthk4370/models/qwen3.5-4b -> /mnt/c/Users/hp/AppData/Local/Temp/post_4b_rsn_v3_4b_r3_s2000/hf (C: free 60116 MB)
+- 2026-11-09 09:30:41 [post_4b] export: merged 248/248 LoRA modules (scale 2.00) -> /mnt/c/Users/hp/AppData/Local/Temp/post_4b_rsn_v3_4b_r3_s2000/hf
+- 2026-11-09 09:30:42 [post_4b] export: waiting before convert: C: free 51211 MB (need 32352), Windows avail 1231 MB (need 2000), WSL avail 6237 MB (need 2500)
+- 2026-11-09 09:37:08 [post_4b] export: bf16 GGUF 8.1G
+- 2026-11-09 09:41:56 [post_4b] export: DONE /mnt/c/Users/hp/Desktop/qidk/Code/models_stage/rsn_v3_4b_r3_s2000_q4_0.gguf (2.5G, md5 8a50e9b317cd75f94f8c81928187e943, 14 min)
+- 2026-11-09 09:41:56 [mid_gate] gate (core) /mnt/c/Users/hp/Desktop/qidk/Code/models_stage/rsn_v3_4b_r3_s2000_q4_0.gguf -> /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-06_4b_local/post/gate_s2000
+- 2026-11-09 09:43:30 [post_4b] gate: start /mnt/c/Users/hp/Desktop/qidk/Code/models_stage/rsn_v3_4b_r3_s2000_q4_0.gguf vs rsn_v1 (ft612, /mnt/c/Users/hp/Desktop/qidk/Code/models_stage/rsn_v1_q4_0.gguf) -> /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-06_4b_local/post/gate_s2000
+- 2026-11-09 11:14:17 [post_4b] gate: rep done (rsn_v3_4b_s2000 p0: -1 items in 2405 s)
+- 2026-11-09 11:41:36 [post_4b] gate: rwh2 done (rsn_v3_4b_s2000 rwh2: 150 items)
+- 2026-11-09 12:03:49 [post_4b] gate: dev3 done (chat_r3 dev3: 300 new items -> /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-06_4b_local/post/gate_s2000/chatdev3_r3.jsonl)
+- 2026-11-09 12:03:59 [post_4b] gate: GATE PASS on the gate inputs (/mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-06_4b_local/post/gate_s2000/GATE.md); informational tests follow
+- 2026-11-09 12:34:04 [post_4b] gate: STOP file (resumes at the next launch)
+- 2026-11-09 12:34:09 [mid_gate] verdict: # 4B r3 gate: rsn_v3_4b_s2000 vs ft612 (rsn_v1) -> **PASS**
+- 2026-11-09 12:34:09 [chain_4b r3] start (run rsn3_4b_r3, max_len {"max_len": 7424, "probe": "FIT.md r3 up)
+- 2026-11-09 12:34:10 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-09 12:34:17 [mid_gate] resume training: STARTED 4B r3 (chain pid 467802); resumes from the last checkpoint
+- 2026-11-09 12:34:54 [laptop_train] rsn3_4b_r3 paused #1 (gpu 50C, ram 573 MB)
+- 2026-11-09 12:38:43 [laptop_train] rsn3_4b_r3 paused #2 (gpu 48C, ram 557 MB)
+- 2026-11-09 12:39:51 [laptop_train] rsn3_4b_r3 paused #3 (gpu 50C, ram 353 MB)
+- 2026-11-09 12:42:13 [laptop_train] rsn3_4b_r3 paused #4 (gpu 48C, ram 978 MB)
+- 2026-11-09 12:42:45 [laptop_train] rsn3_4b_r3 paused #5 (gpu 64C, ram 460 MB)
+- 2026-11-09 12:44:13 [laptop_train] rsn3_4b_r3 paused #6 (gpu 64C, ram 743 MB)
+- 2026-11-09 12:46:55 [laptop_train] rsn3_4b_r3 chunk end rc=3: [12:46:51] EXIT (hours limit / STOP) at step 2005
+- 2026-11-09 12:46:55 [chain_4b r3] STOP file: chain stops (ctl_4b.sh start resumes)
+- 2026-11-09 12:47:46 [chain_4b r3] start (run rsn3_4b_r3, max_len {"max_len": 7424, "probe": "FIT.md r3 up)
+- 2026-11-09 12:47:47 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-09 12:47:58 [post_4b] post chain start (pid 1043, run /home/hp_srthk4370/smartcity_runs/rsn3_4b_r3, steps done: )
+- 2026-11-09 12:47:58 [post_4b] waiting: training not finished (step 2005)
+- 2026-11-09 12:48:41 [laptop_train] rsn3_4b_r3 paused #1 (gpu 55C, ram 534 MB)
+- 2026-11-09 12:51:21 [laptop_train] rsn3_4b_r3 paused #2 (gpu 57C, ram 802 MB)
+- 2026-11-09 12:52:58 [laptop_train] rsn3_4b_r3 paused #3 (gpu 62C, ram 679 MB)
+- 2026-11-09 12:54:14 [laptop_train] rsn3_4b_r3 paused #4 (gpu 62C, ram 646 MB)
+- 2026-11-09 12:56:58 [laptop_train] rsn3_4b_r3 paused #5 (gpu 79C, ram 875 MB)
+- 2026-11-09 18:52:29 [laptop_train] rsn3_4b_r3 chunk end rc=3: [18:52:11] EXIT (hours limit / STOP) at step 2236
+- 2026-11-09 18:52:30 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-09 18:54:33 [laptop_train] rsn3_4b_r3 paused #1 (gpu 78C, ram 387 MB)
+- 2026-11-09 19:26:52 [laptop_train] rsn3_4b_r3 heartbeat: [19:22:03] step 2255/4297 (e1) loss 0.0398 lr 5.15e-05 657 tok/s ETA epoch1 50.2 h scale 1
+- 2026-11-09 19:53:04 [laptop_train] rsn3_4b_r3 chunk end rc=3: [19:52:41] EXIT (hours limit / STOP) at step 2276
+- 2026-11-09 19:53:04 [chain_4b r3] STOP file: chain stops (ctl_4b.sh start resumes)
+- 2026-11-09 19:53:06 [chain_4b r3] start (run rsn3_4b_r3, max_len {"max_len": 7424, "probe": "FIT.md r3 up)
+- 2026-11-09 19:53:07 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-09 20:29:21 [laptop_train] rsn3_4b_r3 heartbeat: [20:22:52] step 2295/4297 (e1) loss 0.0342 lr 5.02e-05 594 tok/s ETA epoch1 47.3 h scale 1
+- 2026-11-09 21:03:29 [laptop_train] rsn3_4b_r3 heartbeat: [21:00:30] step 2320/4297 (e1) loss 0.0205 lr 4.94e-05 711 tok/s ETA epoch1 47.9 h scale 1
+- 2026-11-09 21:36:36 [laptop_train] rsn3_4b_r3 heartbeat: [21:35:46] step 2345/4297 (e1) loss 0.0197 lr 4.86e-05 802 tok/s ETA epoch1 43.3 h scale 1
+- 2026-11-09 22:09:43 [laptop_train] rsn3_4b_r3 heartbeat: [22:03:48] step 2365/4297 (e1) loss 0.0296 lr 4.79e-05 746 tok/s ETA epoch1 46.4 h scale 1
+- 2026-11-09 22:42:48 [laptop_train] rsn3_4b_r3 heartbeat: [22:38:36] step 2390/4297 (e1) loss 0.0194 lr 4.71e-05 747 tok/s ETA epoch1 45.0 h scale 1
+- 2026-11-09 23:15:53 [laptop_train] rsn3_4b_r3 heartbeat: [22:56:38] DEV step 2400 incident 0.0901 chat 0.0109
+- 2026-11-09 23:48:57 [laptop_train] rsn3_4b_r3 heartbeat: [22:56:38] DEV step 2400 incident 0.0901 chat 0.0109
+- 2026-11-10 00:22:03 [laptop_train] rsn3_4b_r3 heartbeat: [00:21:32] step 2410/4297 (e1) loss 0.0270 lr 4.64e-05 768 tok/s ETA epoch1 42.1 h scale 1
+- 2026-11-10 00:32:37 [laptop_train] rsn3_4b_r3 paused #1 (gpu 79C, ram 264 MB)
+- 2026-11-10 00:34:27 [laptop_train] rsn3_4b_r3 paused #2 (gpu 81C, ram 380 MB)
+- 2026-11-10 00:36:04 [laptop_train] rsn3_4b_r3 paused #3 (gpu 69C, ram 201 MB)
+- 2026-11-10 00:55:02 [laptop_train] rsn3_4b_r3 heartbeat: [00:52:35] step 2430/4297 (e1) loss 0.0362 lr 4.58e-05 802 tok/s ETA epoch1 41.1 h scale 1
+- 2026-11-10 01:28:07 [laptop_train] rsn3_4b_r3 heartbeat: [01:26:43] step 2455/4297 (e1) loss 0.0323 lr 4.50e-05 714 tok/s ETA epoch1 43.0 h scale 1
+- 2026-11-10 01:55:03 [laptop_train] rsn3_4b_r3 chunk end rc=3: [01:54:42] EXIT (hours limit / STOP) at step 2474
+- 2026-11-10 01:55:04 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-10 02:28:14 [laptop_train] rsn3_4b_r3 heartbeat: [02:26:20] step 2495/4297 (e1) loss 0.0241 lr 4.37e-05 764 tok/s ETA epoch1 43.2 h scale 1
+- 2026-11-10 03:01:23 [laptop_train] rsn3_4b_r3 heartbeat: [02:55:21] step 2515/4297 (e1) loss 0.0201 lr 4.31e-05 747 tok/s ETA epoch1 43.8 h scale 1
+- 2026-11-10 03:34:36 [laptop_train] rsn3_4b_r3 heartbeat: [03:31:16] step 2540/4297 (e1) loss 0.0382 lr 4.23e-05 729 tok/s ETA epoch1 41.4 h scale 1
+- 2026-11-10 04:07:51 [laptop_train] rsn3_4b_r3 heartbeat: [04:00:33] step 2560/4297 (e1) loss 0.0338 lr 4.17e-05 643 tok/s ETA epoch1 42.6 h scale 1
+- 2026-11-10 04:41:07 [laptop_train] rsn3_4b_r3 heartbeat: [04:38:17] step 2585/4297 (e1) loss 0.0215 lr 4.09e-05 739 tok/s ETA epoch1 41.4 h scale 1
+- 2026-11-10 05:14:23 [laptop_train] rsn3_4b_r3 heartbeat: [05:11:32] step 2605/4297 (e1) loss 0.0267 lr 4.03e-05 461 tok/s ETA epoch1 64.2 h scale 1
+- 2026-11-10 05:47:40 [laptop_train] rsn3_4b_r3 heartbeat: [05:41:23] checkpoint step 2625
+- 2026-11-10 06:20:59 [laptop_train] rsn3_4b_r3 heartbeat: [06:18:15] checkpoint step 2650
+- 2026-11-10 06:54:19 [laptop_train] rsn3_4b_r3 heartbeat: [06:48:03] step 2670/4297 (e1) loss 0.0199 lr 3.83e-05 691 tok/s ETA epoch1 40.7 h scale 1
+- 2026-11-10 07:27:37 [laptop_train] rsn3_4b_r3 heartbeat: [07:25:14] step 2695/4297 (e1) loss 0.0161 lr 3.75e-05 775 tok/s ETA epoch1 40.1 h scale 1
+- 2026-11-10 07:57:00 [laptop_train] rsn3_4b_r3 chunk end rc=3: [07:56:43] EXIT (hours limit / STOP) at step 2716
+- 2026-11-10 07:57:01 [laptop_train] rsn3_4b_r3 chunk start (max_len 7424, 6 h, chat on)
+- 2026-11-10 08:34:15 [supervisor] supervisor start (pid 143252)
+- 2026-11-10 08:34:15 [supervisor] ALERT: OOM STOP in train.log
+- 2026-11-10 08:34:18 [laptop_train] rsn3_4b_r3 heartbeat: [08:26:25] step 2735/4297 (e1) loss 0.0314 lr 3.63e-05 573 tok/s ETA epoch1 40.7 h scale 1
+- 2026-11-10 09:09:01 [laptop_train] rsn3_4b_r3 heartbeat: [09:04:56] step 2760/4297 (e1) loss 0.0198 lr 3.55e-05 688 tok/s ETA epoch1 38.7 h scale 1
+- 2026-11-10 09:42:43 [laptop_train] rsn3_4b_r3 heartbeat: [09:35:29] step 2780/4297 (e1) loss 0.0211 lr 3.50e-05 660 tok/s ETA epoch1 37.3 h scale 1
+- 2026-11-10 10:11:45 [laptop_train] rsn3_4b_r3 paused #1 (gpu 71C, ram 307 MB)
+- 2026-11-10 10:17:45 [laptop_train] rsn3_4b_r3 heartbeat: [10:10:34] DEV step 2800 incident 0.0863 chat 0.0092
+- 2026-11-10 10:51:13 [laptop_train] rsn3_4b_r3 heartbeat: [10:10:34] DEV step 2800 incident 0.0863 chat 0.0092
+- 2026-11-10 11:24:48 [laptop_train] rsn3_4b_r3 heartbeat: [10:10:34] DEV step 2800 incident 0.0863 chat 0.0092
+- 2026-11-10 11:33:08 [laptop_train] rsn3_4b_r3 chunk end rc=6: [11:32:45] EARLY STOP at step 2800: dev generation score not better for 2 evals (best [[0.9917, 2800], [0.9917, 2000], [0.9667, 1200]])
+- 2026-11-10 11:33:08 [chain_4b r3] early stop (rc 6): best checkpoint in /home/hp_srthk4370/smartcity_runs/rsn3_4b_r3/best.json
+- 2026-11-10 11:37:30 [post_4b] step wait done: finished ("stopped": "early_stop" train.done)
+- 2026-11-10 11:37:32 [post_4b] step pick done: picked step 2800 score 0.9917 -> /home/hp_srthk4370/smartcity_runs/rsn3_4b_r3_post/ckpt_best_2800
+- 2026-11-10 11:37:33 [post_4b] export: merge /home/hp_srthk4370/smartcity_runs/rsn3_4b_r3_post/ckpt_best_2800 into /home/hp_srthk4370/models/qwen3.5-4b -> /mnt/c/Users/hp/AppData/Local/Temp/post_4b_rsn_v3_4b_r3/hf (C: free 61470 MB)
+- 2026-11-10 11:39:19 [post_4b] export: merged 248/248 LoRA modules (scale 2.00) -> /mnt/c/Users/hp/AppData/Local/Temp/post_4b_rsn_v3_4b_r3/hf
+- 2026-11-10 11:42:15 [post_4b] export: bf16 GGUF 8.1G
+- 2026-11-10 11:45:33 [post_4b] export: DONE /mnt/c/Users/hp/Desktop/qidk/Code/models_stage/rsn_v3_4b_r3_q4_0.gguf (2.5G, md5 931f9dd7fb99660c34e762feaf37208d, 8 min)
+- 2026-11-10 11:45:33 [post_4b] step export done: /mnt/c/Users/hp/Desktop/qidk/Code/models_stage/rsn_v3_4b_r3_q4_0.gguf md5 931f9dd7fb99660c34e762feaf37208d
+- 2026-11-10 11:46:43 [post_4b] gate: start /mnt/c/Users/hp/Desktop/qidk/Code/models_stage/rsn_v3_4b_r3_q4_0.gguf vs rsn_v1 (ft612, /mnt/c/Users/hp/Desktop/qidk/Code/models_stage/rsn_v1_q4_0.gguf) -> /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-06_4b_local/post/gate_r3
+- 2026-11-10 13:14:53 [post_4b] gate: rep done (rsn_v3_4b_r3 p0: -1 items in 2362 s)
+- 2026-11-10 13:42:14 [post_4b] gate: rwh2 done (rsn_v3_4b_r3 rwh2: 150 items)
+- 2026-11-10 14:00:25 [post_4b] gate: dev3 done (chat_r3 dev3: 300 new items -> /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-06_4b_local/post/gate_r3/chatdev3_r3.jsonl)
+- 2026-11-10 14:00:32 [post_4b] gate: GATE PASS on the gate inputs (/mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-06_4b_local/post/gate_r3/GATE.md); informational tests follow
+- 2026-11-10 14:59:46 [post_4b] gate: r3new done (chat_r3 r3test: 983 new items -> /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-06_4b_local/post/gate_r3/chat_test_r3_4b.js)
+- 2026-11-10 15:48:21 [post_4b] gate: r3v1 done (chat_r3 r3test: 983 new items -> /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-06_4b_local/post/gate_r3/chat_test_r3_v1.js)
+- 2026-11-10 20:15:44 [post_4b] gate: t2new done (rsn_v3_4b_r3 test_r2: 1368 items)
+- 2026-11-11 00:37:08 [post_4b] gate: t2v1 done (ft612 test_r2: 1368 items)
+- 2026-11-11 00:37:19 [post_4b] gate: final GATE PASS (/mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-06_4b_local/post/gate_r3/GATE.md)
+- 2026-11-11 00:37:19 [post_4b] step gate done: PASS -> /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-06_4b_local/post/gate_r3/GATE.md
+- 2026-11-11 00:37:19 [post_4b] post chain DONE: /mnt/c/Users/hp/Desktop/qidk/Code/models_stage/rsn_v3_4b_r3_q4_0.gguf (931f9dd7fb99660c34e762feaf37208d), gate PASS (/mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-06_4b_local/post/gate_r3/GATE.md). Board deployment: owner decides.
+- 2026-11-12 16:31:28 [supervisor_r4 r4topup] supervisor_r4 start (pid 912)
+- 2026-11-12 16:31:28 [supervisor_r4 r4topup] training not running and not finished: ctl_r4.sh start
+- 2026-11-12 16:31:30 [chain_r4 r4topup] start (run rsn3_4b_r4topup, NEW=/mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-12_topup_r4/data/final/train_new.jsonl REPLAY=/mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-12_topup_r4/data/final/replay.jsonl DEV4_INC=/mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-12_topup_r4/data/final/dev_gen_inc.jsonl DEV4_CHAT=/mnt/c/Users/hp/Deskto)
+- 2026-11-12 16:31:34 [topup_chunk r4topup] rsn3_4b_r4topup chunk start (6 h, max_len 7424)
+- 2026-11-12 16:31:37 [supervisor_r4 r4topup] keepalive rsn3_4b_r4topup restarted
+- 2026-11-12 16:52:27 [supervisor_r4 r4topup] SUP_STOP: supervisor_r4 exits
+- 2026-11-16 04:10:35 [ft_chain v3ft] start (run rsn3_4b_v3ft, base /mnt/c/Users/hp/qidk_models/r3_edit_C1, new 6133 replay 1857)
+- 2026-11-16 04:10:36 [ft_chunk v3ft] rsn3_4b_v3ft chunk start (6 h, max_len 7424)
+- 2026-11-16 04:42:18 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [04:13:53] scoring the START adapter (step 0)
+- 2026-11-16 05:14:00 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [04:13:53] scoring the START adapter (step 0)
+- 2026-11-16 05:45:47 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [04:13:53] scoring the START adapter (step 0)
+- 2026-11-16 06:17:33 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [06:08:22] step 5/512 loss 0.4231 lr 1.20e-05 506 tok/s ETA 17.2 h
+- 2026-11-16 06:49:15 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [06:48:32] checkpoint step 25
+- 2026-11-16 07:20:57 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [07:17:57] step 40/512 loss 0.1846 lr 2.96e-05 487 tok/s ETA 15.3 h
+- 2026-11-16 07:52:37 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [07:47:25] step 55/512 loss 0.1459 lr 2.92e-05 479 tok/s ETA 14.8 h
+- 2026-11-16 08:22:17 [ft_chunk v3ft] rsn3_4b_v3ft paused #1 (gpu 85C, ram 330 MB)
+- 2026-11-16 08:24:46 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [08:18:07] step 70/512 loss 0.1017 lr 2.88e-05 470 tok/s ETA 15.7 h
+- 2026-11-16 08:55:39 [ft_chunk v3ft] rsn3_4b_v3ft chunk end rc=3: [08:55:19] EXIT (hours limit / STOP / max-steps) at step 86
+- 2026-11-16 08:55:39 [ft_chain v3ft] STOP file: chain stops
+- 2026-11-16 09:47:23 [ft_chain v3ft] start (run rsn3_4b_v3ft, base /mnt/c/Users/hp/qidk_models/r3_edit_C1, new 6133 replay 1857)
+- 2026-11-16 09:47:26 [ft_chunk v3ft] rsn3_4b_v3ft chunk start (6 h, max_len 7424)
+- 2026-11-16 10:19:11 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [10:16:59] checkpoint step 100
+- 2026-11-16 10:23:25 [ft_chunk v3ft] rsn3_4b_v3ft chunk end rc=3: [10:23:15] EXIT (hours limit / STOP / max-steps) at step 103
+- 2026-11-16 10:23:25 [ft_chain v3ft] STOP file: chain stops
+- 2026-11-16 19:29:54 [ft_chain v3ft] start (run rsn3_4b_v3ft, base /mnt/c/Users/hp/qidk_models/r3_edit_C1, new 6133 replay 1857)
+- 2026-11-16 19:29:58 [ft_chunk v3ft] rsn3_4b_v3ft chunk start (6 h, max_len 7424)
+- 2026-11-16 19:32:19 [ft_chunk v3ft] rsn3_4b_v3ft chunk end rc=3: [19:32:16] EXIT (hours limit / STOP / max-steps) at step 103
+- 2026-11-16 19:32:19 [ft_chain v3ft] STOP file: chain stops
+- 2026-11-16 20:45:41 [ft_chain v3ft] start (run rsn3_4b_v3ft, base /mnt/c/Users/hp/qidk_models/r3_edit_C1, new 6133 replay 1857)
+- 2026-11-16 20:45:49 [ft_chunk v3ft] rsn3_4b_v3ft chunk start (6 h, max_len 7424)
+- 2026-11-16 21:21:24 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [21:21:23] step 120/512 loss 0.0334 lr 2.65e-05 458 tok/s ETA 13.6 h
+- 2026-11-16 21:57:29 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [21:50:54] step 135/512 loss 0.0394 lr 2.56e-05 504 tok/s ETA 12.2 h
+- 2026-11-16 22:32:46 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [22:30:10] step 155/512 loss 0.0479 lr 2.43e-05 519 tok/s ETA 11.9 h
+- 2026-11-16 23:08:33 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [22:59:00] step 170/512 loss 0.0275 lr 2.33e-05 482 tok/s ETA 11.0 h
+- 2026-11-16 23:44:43 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [23:38:34] step 190/512 loss 0.0256 lr 2.18e-05 434 tok/s ETA 10.4 h
+- 2026-11-17 00:20:53 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [23:57:52] checkpoint step 200
+- 2026-11-17 00:56:57 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [23:57:52] checkpoint step 200
+- 2026-11-17 01:33:10 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [23:57:52] checkpoint step 200
+- 2026-11-17 02:08:33 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [02:07:50] step 205/512 loss 0.0299 lr 2.07e-05 37 tok/s ETA 133.0 h
+- 2026-11-17 02:44:00 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [02:37:06] step 220/512 loss 0.0232 lr 1.95e-05 486 tok/s ETA 9.8 h
+- 2026-11-17 02:49:44 [ft_chunk v3ft] rsn3_4b_v3ft chunk end rc=3: [02:49:26] EXIT (hours limit / STOP / max-steps) at step 226
+- 2026-11-17 02:49:45 [ft_chunk v3ft] rsn3_4b_v3ft chunk start (6 h, max_len 7424)
+- 2026-11-17 03:25:05 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [03:19:29] step 240/512 loss 0.0213 lr 1.78e-05 485 tok/s ETA 9.0 h
+- 2026-11-17 04:00:25 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [03:58:38] step 260/512 loss 0.0234 lr 1.62e-05 480 tok/s ETA 8.4 h
+- 2026-11-17 04:35:47 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [04:28:38] checkpoint step 275
+- 2026-11-17 05:11:35 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [05:08:30] step 295/512 loss 0.0233 lr 1.33e-05 472 tok/s ETA 7.3 h
+- 2026-11-17 05:47:28 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [05:37:44] step 310/512 loss 0.0202 lr 1.21e-05 462 tok/s ETA 6.8 h
+- 2026-11-17 06:23:30 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [06:19:16] step 330/512 loss 0.0231 lr 1.06e-05 459 tok/s ETA 6.4 h
+- 2026-11-17 06:59:46 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [06:49:59] step 345/512 loss 0.0238 lr 9.49e-06 466 tok/s ETA 5.7 h
+- 2026-11-17 07:36:18 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [07:30:35] step 365/512 loss 0.0241 lr 8.13e-06 486 tok/s ETA 4.8 h
+- 2026-11-17 08:11:48 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [08:11:20] step 385/512 loss 0.0196 lr 6.90e-06 482 tok/s ETA 4.2 h
+- 2026-11-17 08:47:25 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [08:41:57] checkpoint step 400
+- 2026-11-17 09:23:34 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [08:41:57] checkpoint step 400
+- 2026-11-17 10:00:08 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [08:41:57] checkpoint step 400
+- 2026-11-17 10:36:17 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [08:41:57] checkpoint step 400
+- 2026-11-17 10:50:20 [ft_chunk v3ft] rsn3_4b_v3ft chunk end rc=3: [10:50:13] EXIT (hours limit / STOP / max-steps) at step 400
+- 2026-11-17 10:50:21 [ft_chunk v3ft] rsn3_4b_v3ft chunk start (6 h, max_len 7424)
+- 2026-11-17 11:26:06 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [11:21:43] step 415/512 loss 0.0173 lr 5.32e-06 488 tok/s ETA 3.2 h
+- 2026-11-17 12:01:10 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [12:01:03] step 435/512 loss 0.0247 lr 4.48e-06 534 tok/s ETA 2.4 h
+- 2026-11-17 12:35:02 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [12:30:13] checkpoint step 450
+- 2026-11-17 13:07:50 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [12:59:56] step 465/512 loss 0.0184 lr 3.56e-06 473 tok/s ETA 1.5 h
+- 2026-11-17 13:40:35 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [13:39:43] step 485/512 loss 0.0190 lr 3.18e-06 468 tok/s ETA 0.9 h
+- 2026-11-17 14:13:17 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [14:09:02] checkpoint step 500
+- 2026-11-17 14:45:56 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [14:28:04] step 510/512 loss 0.0183 lr 3.00e-06 516 tok/s ETA 0.1 h
+- 2026-11-17 15:18:44 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [14:28:04] step 510/512 loss 0.0183 lr 3.00e-06 516 tok/s ETA 0.1 h
+- 2026-11-17 15:32:48 [ft_chunk v3ft] rsn3_4b_v3ft chunk end rc=1: [14:28:04] step 510/512 loss 0.0183 lr 3.00e-06 516 tok/s ETA 0.1 h
+- 2026-11-17 15:32:48 [ft_chain v3ft] chunk failed rc=1 (#1):              ~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~ RuntimeError: !handles_.at(i) INTERNAL ASSERT FAILED at "/pytorch/c10/cuda/CUDACachingAllocator.cpp":400, please report a bug to PyTorch.  
+- 2026-11-17 15:42:56 [ft_chunk v3ft] rsn3_4b_v3ft chunk start (6 h, max_len 7424)
+- 2026-11-17 16:15:49 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [15:44:36] resumed at step 512/512
+- 2026-11-17 16:48:39 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [15:44:36] resumed at step 512/512
+- 2026-11-17 17:21:27 [ft_chunk v3ft] rsn3_4b_v3ft heartbeat: [15:44:36] resumed at step 512/512
+- 2026-11-17 17:38:02 [ft_chunk v3ft] rsn3_4b_v3ft chunk end rc=0: [17:37:47] TRAINING DONE step 512 (start 0.73135, top [[0.80255, 400], [0.80155, 512]])
+- 2026-11-17 17:38:02 [ft_chain v3ft] plan done (rc 0): best checkpoints in /home/hp_srthk4370/smartcity_runs/rsn3_4b_v3ft/best.json
+- 2026-11-18 23:10:47 [ft_chunk v3ft] rsn3_4b_v3ft_p2 chunk start (6 h, max_len 7424)
+- 2026-11-18 23:43:36 [ft_chunk v3ft] rsn3_4b_v3ft_p2 heartbeat: [23:15:08] scoring the START adapter (step 0)
+- 2026-11-19 00:16:26 [ft_chunk v3ft] rsn3_4b_v3ft_p2 heartbeat: [23:15:08] scoring the START adapter (step 0)
+- 2026-11-19 00:49:14 [ft_chunk v3ft] rsn3_4b_v3ft_p2 heartbeat: [23:15:08] scoring the START adapter (step 0)
+- 2026-11-19 01:22:04 [ft_chunk v3ft] rsn3_4b_v3ft_p2 heartbeat: [23:15:08] scoring the START adapter (step 0)
+- 2026-11-19 01:55:00 [ft_chunk v3ft] rsn3_4b_v3ft_p2 heartbeat: [01:48:29] step 10/512 loss 0.0179 lr 8.79e-06 519 tok/s ETA 15.4 h
+- 2026-11-19 02:55:17 [ft_chunk v3ft] rsn3_4b_v3ft_p2 chunk start (6 h, max_len 7424)
+- 2026-11-19 03:08:03 [ft_chunk v3ft] rsn3_4b_v3ft_p2 chunk start (6 h, max_len 7424)
+- 2026-11-19 03:41:04 [ft_chunk v3ft] rsn3_4b_v3ft_p2 heartbeat: [03:37:50] step 15/220 loss 0.0204 lr 1.98e-05 557 tok/s ETA 6.2 h
+- 2026-11-19 04:14:08 [ft_chunk v3ft] rsn3_4b_v3ft_p2 heartbeat: [04:05:20] step 30/220 loss 0.0218 lr 1.92e-05 516 tok/s ETA 5.7 h
+- 2026-11-19 04:47:15 [ft_chunk v3ft] rsn3_4b_v3ft_p2 heartbeat: [04:41:44] checkpoint step 50
+- 2026-11-19 05:20:20 [ft_chunk v3ft] rsn3_4b_v3ft_p2 heartbeat: [05:18:09] step 70/220 loss 0.0171 lr 1.59e-05 555 tok/s ETA 4.5 h
+- 2026-11-19 05:53:31 [ft_chunk v3ft] rsn3_4b_v3ft_p2 heartbeat: [05:45:27] step 85/220 loss 0.0186 lr 1.41e-05 552 tok/s ETA 4.0 h
+- 2026-11-19 06:26:37 [ft_chunk v3ft] rsn3_4b_v3ft_p2 heartbeat: [06:21:24] step 105/220 loss 0.0201 lr 1.16e-05 509 tok/s ETA 3.4 h
+- 2026-11-19 06:59:42 [ft_chunk v3ft] rsn3_4b_v3ft_p2 heartbeat: [06:57:27] checkpoint step 125
+- 2026-11-19 07:32:48 [ft_chunk v3ft] rsn3_4b_v3ft_p2 heartbeat: [07:24:38] step 140/220 loss 0.0170 lr 7.26e-06 530 tok/s ETA 2.4 h
+- 2026-11-19 08:05:58 [ft_chunk v3ft] rsn3_4b_v3ft_p2 heartbeat: [08:01:01] step 160/220 loss 0.0203 lr 5.11e-06 538 tok/s ETA 1.7 h
+- 2026-11-19 09:02:29 [ft_chunk v3ft] rsn3_4b_v3ft_p2 heartbeat: [09:01:14] step 180/220 loss 0.0168 lr 3.43e-06 153 tok/s ETA 4.3 h
+- 2026-11-19 09:11:33 [ft_chunk v3ft] rsn3_4b_v3ft_p2 chunk end rc=3: [09:11:10] EXIT (hours limit / STOP / max-steps) at step 185
+- 2026-11-19 09:11:34 [ft_chunk v3ft] rsn3_4b_v3ft_p2 chunk start (6 h, max_len 7424)
+- 2026-11-19 09:44:56 [ft_chunk v3ft] rsn3_4b_v3ft_p2 heartbeat: [09:43:38] checkpoint step 200
+- 2026-11-19 10:18:22 [ft_chunk v3ft] rsn3_4b_v3ft_p2 heartbeat: [10:13:13] step 215/220 loss 0.0208 lr 2.02e-06 478 tok/s ETA 0.2 h
+- 2026-11-19 11:10:53 [ft_chunk v3ft] rsn3_4b_v3ft_p2 heartbeat: [10:22:59] step 220/220 loss 0.0163 lr 2.00e-06 485 tok/s ETA 0.0 h
+- 2026-11-19 11:44:06 [ft_chunk v3ft] rsn3_4b_v3ft_p2 heartbeat: [10:22:59] step 220/220 loss 0.0163 lr 2.00e-06 485 tok/s ETA 0.0 h

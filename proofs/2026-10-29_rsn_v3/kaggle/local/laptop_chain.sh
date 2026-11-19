@@ -18,11 +18,24 @@ SCRIPT=laptop_chain; source "$(dirname "$0")/guard.sh"
 RUN_ID=${RUN_ID:-r1}; export RUN_ID
 L=$KG/local; C=$KG/chain; B=$KG/build/$RUN_ID; DLD=$V3/distill_laptop; DL=/mnt/c/Users/hp/Downloads; LOCK=$V3/GPU_LOCK
 mkdir -p "$C"
+# r2 and later (2026-11-02, proofs/2026-11-02_2b_r2): prebuilt data in that proofs dir (data/final), own step markers
+# kaggle/chain/<RUN_ID>/<step>.done, own GGUF rsn_v3_2b_<RUN_ID>_q4_0.gguf, tools_r2.json, GEN eval on the r2 test slices.
+# r1 keeps its old markers (kaggle/chain/<step>.done) and file names.
+CM=$C; GGUF_NAME=rsn_v3_2b
+if [ "$RUN_ID" != r1 ]; then
+  CM=$C/$RUN_ID; GGUF_NAME=rsn_v3_2b_$RUN_ID; R2D=$QIDK/proofs/2026-11-02_2b_r2/data/final
+  mkdir -p "$CM"
+  for f in incidents_train.jsonl chat_train.jsonl dev_mix3.jsonl gen_inc_r2.jsonl gen_chat_r2.jsonl tools_r2.json; do
+    [ -s "$R2D/$f" ] || die "missing r2 data file $R2D/$f" 2
+  done
+  for s in data_a distill replay bundle_b mix base_2b; do [ -e "$CM/$s.done" ] || echo "prebuilt ($R2D)" > "$CM/$s.done"; done
+  [ -s "$HOME/models/qwen3.5-2b/config.json" ] || rm -f "$CM/base_2b.done"
+fi
 if [ -s "$C/chain.pid" ] && kill -0 "$(cat "$C/chain.pid")" 2>/dev/null; then die "laptop_chain already running (pid $(cat "$C/chain.pid"))" 8; fi
 echo $$ > "$C/chain.pid"; trap 'rm -f "$C/chain.pid"' EXIT
 stopchk() { [ -e "$C/STOP" ] && { status "STOP file: chain stops here (rm kaggle/chain/STOP and relaunch to continue)"; exit 0; }; }
-done_() { touch "$C/$1.done"; status "step $1 done"; }
-isdone() { [ -e "$C/$1.done" ]; }
+done_() { touch "$CM/$1.done"; status "step $1 done"; }
+isdone() { [ -e "$CM/$1.done" ]; }
 take_lock() { until [ ! -e "$LOCK" ] || grep -q "^laptop_chain $1 " "$LOCK"; do stopchk; sleep 300; done; echo "laptop_chain $1 $(date -Is) pid=$$" > "$LOCK"; }
 drop_lock() { grep -q "^laptop_chain $1 " "$LOCK" 2>/dev/null && rm -f "$LOCK"; }
 status "chain start (run $RUN_ID, pid $$)"
@@ -122,8 +135,15 @@ if ! isdone train_2b; then
   fails=0
   while true; do
     stopchk; check_4b
-    RUN=rsn3_2b_$RUN_ID BASE=$M2 INC=$INC CHAT=$MX/chat_mix3.jsonl DEV=$MX/dev_mix3.jsonl GEN_INC=$B/data/incidents_dev60.jsonl \
-      GEN_CHAT=$V3/data/chat3_dev.jsonl GEN_TRAIN_CHAT=$V3/data/chat3_train.jsonl CHUNK_H=${CHUNK_H:-3} bash "$L/laptop_train.sh"; rc=$?
+    if [ "$RUN_ID" = r1 ]; then
+      RUN=rsn3_2b_$RUN_ID BASE=$M2 INC=$INC CHAT=$MX/chat_mix3.jsonl DEV=$MX/dev_mix3.jsonl GEN_INC=$B/data/incidents_dev60.jsonl \
+        GEN_CHAT=$V3/data/chat3_dev.jsonl GEN_TRAIN_CHAT=$V3/data/chat3_train.jsonl CHUNK_H=${CHUNK_H:-6} bash "$L/laptop_train.sh"; rc=$?
+    else
+      RSN3_SEG_TOKENIZE=1 RUN=rsn3_2b_$RUN_ID BASE=$M2 TOOLS=$R2D/tools_r2.json INC=$R2D/incidents_train.jsonl CHAT=$R2D/chat_train.jsonl \
+        DEV=$R2D/dev_mix3.jsonl GEN_INC=$R2D/gen_inc_r2.jsonl GEN_CHAT=$R2D/gen_chat_r2.jsonl \
+        GEN_TRAIN_CHAT=$QIDK/proofs/2026-11-02_2b_r2/data/chat_gen/chat3_train.jsonl EXTRA="${R2_EXTRA:---micro-tokens 6144}" \
+        CHUNK_H=${CHUNK_H:-6} bash "$L/laptop_train.sh"; rc=$?
+    fi
     case $rc in
       0|5|6) status "2B training finished (rc $rc)"; break;;
       3) fails=0;;
@@ -141,9 +161,11 @@ if ! isdone export_2b; then
   [ -d "$BEST" ] || BEST=$O2/ckpt_epoch1
   [ -d "$BEST" ] || BEST=$O2/ckpt_latest
   status "2B export from $BEST"
-  [ -s "$QIDK/Code/models_stage/rsn_v3_2b_q4_0.gguf" ] || bash "$L/export_gguf.sh" "$M2" "$BEST" rsn_v3_2b || die "2B export failed"
-  [ -s "$KG/gate/g2b_$RUN_ID/gate.json" ] || RUN_ID=g2b_$RUN_ID bash "$L/gate_eval.sh" "$QIDK/Code/models_stage/rsn_v3_2b_q4_0.gguf"
-  echo "$QIDK/Code/models_stage/rsn_v3_2b_q4_0.gguf" > "$KG/gate/g2b_$RUN_ID/gguf.txt"
+  GG=$QIDK/Code/models_stage/${GGUF_NAME}_q4_0.gguf
+  [ -s "$GG" ] || EXPORT_RAM_MB=${EXPORT_RAM_MB:-1500} bash "$L/export_gguf.sh" "$M2" "$BEST" "$GGUF_NAME" || die "2B export failed"
+  # gate chat suite = chat3_eval.py with the tools_v4 15-tool chat header (what the app sends to rsn_v3 from r2 on)
+  [ -s "$KG/gate/g2b_$RUN_ID/gate.json" ] || TEST_R2=${R2D:-} RUN_ID=g2b_$RUN_ID bash "$L/gate_eval.sh" "$GG"
+  echo "$GG" > "$KG/gate/g2b_$RUN_ID/gguf.txt"
   done_ export_2b
   compare
 fi

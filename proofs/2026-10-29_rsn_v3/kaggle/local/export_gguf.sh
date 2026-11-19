@@ -7,7 +7,7 @@ B=${1:?base dir}; A=${2:?adapter dir}; NAME=${3:?name}
 D=$QIDK/Code/models_stage; G=$D/${NAME}_q4_0.gguf
 [ -e "$G" ] && die "$G exists: refusing to overwrite (use another name)" 6
 E=~/smartcity_runs/reasoner_v1/gguf/$NAME; LC=~/gpu_work/llama.cpp
-need_ram 4096 120
+need_ram ${EXPORT_RAM_MB:-4096} 120   # 2B export streams; EXPORT_RAM_MB=2000 used 2026-11-01
 need_disk ~ 15000
 mkdir -p "$E"; rm -rf "$E/hf"
 export PYTHONPATH=$LC/gguf-py OMP_NUM_THREADS=4

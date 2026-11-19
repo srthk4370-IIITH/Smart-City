@@ -46,7 +46,7 @@ serve_run() {   # serve_run <gguf> <log> <cmd...>
   local sp=$! main=$$
   ( hot=0; while sleep 20; do kill -0 $sp 2>/dev/null || exit 0
       [ -e "$PAUSE" ] && { kill -CONT $sp; kill $sp; exit 0; }
-      t=$(nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits | tr -dc 0-9); f=$(free_mb)
+      t=$(nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits | head -1 | cut -d. -f1 | tr -dc 0-9); f=$(free_mb)
       { { [ -n "$t" ] && [ "$t" -ge 80 ]; } || { [ -n "$f" ] && [ "$f" -lt 1536 ]; }; } && hot=1
       [ $hot = 1 ] && kill -STOP $sp
       if [ $hot = 1 ] && [ -n "$t" ] && [ "$t" -le 72 ] && { [ -z "$f" ] || [ "$f" -ge 2560 ]; }; then kill -CONT $sp; hot=0; fi
@@ -73,6 +73,16 @@ if [ "$(wc -l < "$CB" 2>/dev/null || echo 0)" -lt "$(wc -l < "$V3/data/chat3_dev
     > "$OUT/chatdev3_v1.log" 2>&1 || die "chat dev v3 (rsn_v1) failed: $(tail -n 2 "$OUT/chatdev3_v1.log")"
 fi
 status "chat dev v3 done (v3 $(wc -l < "$OUT/chatdev3_v3.jsonl"), v1 $(wc -l < "$CB") items)"
+
+# ---- 2b. (r2+, informational) the full r2 TEST set at the end: incidents_test_r2 (1,368, per slice) + chat_test_r2 (581),
+#          15-tool chat header; set TEST_R2=<proofs/2026-11-02_2b_r2/data/final>
+if [ -n "${TEST_R2:-}" ] && [ -s "$TEST_R2/incidents_test_r2.jsonl" ]; then
+  serve_run "$G" "$OUT/server_v3_test_r2.log" python3 "$KG/local/run_suite.py" --tag "$TAG" --port $PORT --suite test_r2 \
+    --file "$TEST_R2/incidents_test_r2.jsonl" > "$OUT/test_r2_inc.log" 2>&1 || status "WARN: test_r2 incidents failed: $(tail -n 2 "$OUT/test_r2_inc.log")"
+  serve_run "$G" "$OUT/server_v3_test_r2_chat.log" $PY "$KG/local/chat3_eval.py" --port $PORT --think 1 --records "$TEST_R2/chat_test_r2.jsonl" \
+    --out "$OUT/chat_test_r2_v3.jsonl" > "$OUT/test_r2_chat.log" 2>&1 || status "WARN: test_r2 chat failed: $(tail -n 2 "$OUT/test_r2_chat.log")"
+  status "test_r2 done: incidents $(wc -l < "$R1/eval/results/$TAG/test_r2.jsonl" 2>/dev/null), chat $(wc -l < "$OUT/chat_test_r2_v3.jsonl" 2>/dev/null)"
+fi
 
 # ---- 3. P0 (informational) + gate
 (cd "$R1/eval" && python3 p0_score.py "$TAG" "$BASE_TAG" 2>&1 | tail -2) > "$OUT/p0.txt"

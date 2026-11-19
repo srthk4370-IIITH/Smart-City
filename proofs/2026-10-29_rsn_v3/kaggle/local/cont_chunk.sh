@@ -32,7 +32,7 @@ nice -n 10 $PY "$KG/local/cont_train.py" $ARGS --out "$O" --hours "$CHUNK_H" >> 
 TP=$!
 ( hot=0; n=0; np=0; while sleep 10; do kill -0 $TP 2>/dev/null || exit 0
     stopped && touch "$O/STOP"
-    t=$(nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits | tr -dc 0-9); f=$(free_mb)
+    t=$(nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits | head -1 | cut -d. -f1 | tr -dc 0-9); f=$(free_mb)
     if [ $hot = 0 ] && { { [ -n "$t" ] && [ "$t" -ge 84 ]; } || { [ -n "$f" ] && [ "$f" -lt 1536 ]; }; }; then kill -STOP $TP; hot=1; np=$((np + 1)); { [ $((np % 30)) = 1 ] || [ "${f:-9999}" -lt 1536 ]; } && status "$RUN paused #$np (gpu ${t}C, ram ${f} MB)"; fi
     if [ $hot = 1 ] && [ -n "$t" ] && [ "$t" -le 79 ] && { [ -z "$f" ] || [ "$f" -ge 2048 ]; }; then kill -CONT $TP; hot=0; fi
     n=$((n + 1)); [ $((n % 180)) = 0 ] && status "$RUN heartbeat: $(tail -n 1 "$O/train.log" 2>/dev/null | cut -c1-140)"

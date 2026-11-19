@@ -1,0 +1,26 @@
+# GPU chat stage 1 (02:30 IST)
+- before: 
+- pushed /data/local/tmp/chatgpu/llama-server (1d54e7fe721337ae7a406852bf86c8ef)
+- pushed /data/local/tmp/chatgpu/lib/libc++_shared.so (7cedaf421aec8eabfd220abcdcb3d0c8)
+- pushed /data/local/tmp/chatgpu/lib/libggml-base.so (65fb868f0a83e0dd09fabbdfb584af3c)
+- pushed /data/local/tmp/chatgpu/lib/libggml-cpu.so (077597a68deb81bc159354d5bab670a1)
+- pushed /data/local/tmp/chatgpu/lib/libggml-opencl.so (41465ce116f7571ea367c97089169349)
+- pushed /data/local/tmp/chatgpu/lib/libggml.so (83553263ab16018271f67960b5043ecd)
+- pushed /data/local/tmp/chatgpu/lib/libllama-common.so (03c1bc83c0f8c23447737edbcbe9af83)
+- pushed /data/local/tmp/chatgpu/lib/libllama-server-impl.so (57c580c8ef2c3348dd8687c5aba311de)
+- pushed /data/local/tmp/chatgpu/lib/libllama.so (22bf2a57b5809a1ce75377e1e30c9806)
+- pushed /data/local/tmp/chatgpu/lib/libmtmd.so (7f35918ccd9e7a6ef3cb0024a1b732a3)
+- pushed /data/local/tmp/gpu/rsn_v3_2b_r2_q4_0.gguf (0f890733bc2616e5d72dced7b5d59a3c)
+- pushed /data/local/tmp/chatgpu/chat_gpu.sh (1fbbe3a26cdc5559d89916ad8f7f0945)
+- app up, agents model resident: 
+- chat_gpu up=1 after 20 s: 
+    10:09:09 server start pid 5752 (avail 4693 MB, t 52 C)
+- chat cold: 13.99 s | pp 2865 tok 330 t/s, gen 36 tok 8.0 t/s |  </think>  <tool_call> <function=faulty_sensors> <parameter=time> {"preset": "to
+- chat warm: 6.545 s | pp 520 tok 244 t/s, gen 38 tok 8.1 t/s |  </think>  <tool_call> <function=count_incidents> <parameter=time> {"preset": "l
+- after chats: 
+- during incident: 
+- chat during incident: 6.735 s | pp 516 tok 228 t/s, gen 42 tok 8.8 t/s |  </think>  <tool_call> <function=current_levels> <parameter=metric> co2 </parame
+- fastcheck with 2B resident on GPU: {"fast_incident": "INC-0685", "fast_s": 5.8, "ai_update_s": 28.0, "final_model": "qwen3.5-4b (htpd)", "valid": true, "severity": "sensor_fault", "title": "KH building, level 03: CO2 sensor fault: stepped up", "pass": true}rc=0
+- after incident: ; server: server up pid 5752
+- guard kills: 0
+- stage 1 done (server left running; stop: adb shell sh /data/local/tmp/chatgpu/chat_gpu.sh stop)

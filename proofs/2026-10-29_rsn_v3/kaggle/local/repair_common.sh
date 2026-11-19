@@ -45,7 +45,7 @@ serve_run() {   # serve_run <gguf> <log> <cmd...>; returns the client's rc (130 
   local cp=$!
   ( hot=0; while sleep 20; do kill -0 $cp 2>/dev/null || exit 0
       if [ -e "$PAUSE" ] || stopped; then kill $cp; kill -CONT $sp; exit 0; fi       # client first: no error rows recorded
-      t=$(nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits | tr -dc 0-9); f=$(free_mb)
+      t=$(nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits | head -1 | cut -d. -f1 | tr -dc 0-9); f=$(free_mb)
       { { [ -n "$t" ] && [ "$t" -ge 80 ]; } || { [ -n "$f" ] && [ "$f" -lt 1536 ]; }; } && hot=1
       [ $hot = 1 ] && kill -STOP $sp
       if [ $hot = 1 ] && [ -n "$t" ] && [ "$t" -le 72 ] && { [ -z "$f" ] || [ "$f" -ge 2560 ]; }; then kill -CONT $sp; hot=0; fi

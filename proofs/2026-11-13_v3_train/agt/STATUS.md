@@ -1,0 +1,109 @@
+# agt_v3 training status (append-only)
+
+- 2026-11-12 22:17:17 [runner] runner start (holder , step )
+- 2026-11-12 22:17:17 [runner] owner approval found: /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-13_v3_data/APPROVED_AGENTS (2026-11-12 22:17:15)
+- 2026-11-12 22:21:00 [push] uploading data dataset agt3-data (private, id 82e5cc6d0735d5209bda03d4e5912163, 375 MB)
+- 2026-11-12 22:23:18 [push] uploading run seq 1 (step 0, 1 MB) to agt3-run
+- 2026-11-12 22:23:50 [push] -> Kaggle: seq 1, step 0, kernel v1, budget 11.30 h (used so far 0 h of 18)
+- 2026-11-12 22:23:53 [runner] Kaggle session seq 1 running
+- 2026-11-13 07:26:36 [pull] kernel status unreadable: Traceback (most recent call last):   File "/home/hp_srthk4370/venvs/kaggle/lib/python3.12/site-packages/urllib3/connection.py", line 239, in _new_conn     sock = connection.create_connection(         
+- 2026-11-13 09:33:27 [pull] kernel seq 1 ended: kernelworkerstatus.complete
+- 2026-11-13 09:37:37 [pull] <- Kaggle: seq 1 installed, step 0 -> 1207, rc 3, snaps: snap_0250 snap_0500 snap_0750 snap_1000 ; Kaggle hours used 11.06
+- 2026-11-13 09:37:38 [select] selection: exporting snap_0250 (merged Q4_0, shared imatrix)
+- 2026-11-13 10:27:16 [push] uploading run seq 2 (step 1207, 284 MB) to agt3-run
+- 2026-11-13 10:29:22 [push] -> Kaggle: seq 2, step 1207, kernel v2, budget 5.86 h (used so far 11.06 h of 18)
+- 2026-11-13 10:29:25 [runner] Kaggle session seq 2 running
+- 2026-11-13 10:29:25 [select] selection: exporting snap_0250 (merged Q4_0, shared imatrix)
+- 2026-11-13 10:40:06 [pull] kernel seq 2 ended: kernelworkerstatus.complete
+- 2026-11-13 10:40:11 [pull] -> laptop (nothing installed): seq 2 aborted on Kaggle: lineage.tar missing in the run dataset
+- 2026-11-13 10:41:14 [push] uploading run seq 3 (step 1207, 284 MB) to agt3-run
+- 2026-11-13 10:43:15 [push] -> Kaggle: seq 3, step 1207, kernel v3, budget 5.86 h (used so far 11.06 h of 18)
+- 2026-11-13 10:43:18 [runner] Kaggle session seq 3 running
+- 2026-11-13 10:43:18 [select] selection: exporting snap_0250 (merged Q4_0, shared imatrix)
+- 2026-11-13 10:53:57 [pull] kernel seq 3 ended: kernelworkerstatus.complete
+- 2026-11-13 10:54:02 [pull] -> laptop (nothing installed): seq 3 aborted on Kaggle: lineage.tar missing in the run dataset
+- 2026-11-13 10:54:36 [push] uploading run seq 4 (step 1207, 284 MB) to agt3-run
+- 2026-11-13 10:56:42 [push] -> Kaggle: seq 4, step 1207, kernel v4, budget 5.86 h (used so far 11.06 h of 18)
+- 2026-11-13 10:56:45 [runner] Kaggle session seq 4 running
+- 2026-11-13 10:56:45 [select] selection: exporting snap_0250 (merged Q4_0, shared imatrix)
+- 2026-11-13 10:57:49 [runner] STOP file: runner exits (holder kaggle, step 1207)
+- 2026-11-13 10:58:14 [runner] runner start (holder kaggle, step 1207)
+- 2026-11-13 10:58:14 [runner] owner approval found: /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-13_v3_data/APPROVED_AGENTS (2026-11-12 22:17:15)
+- 2026-11-13 10:58:19 [pull] kernel seq 4 ended: kernelworkerstatus.complete
+- 2026-11-13 10:58:24 [pull] -> laptop (nothing installed): seq 4 aborted on Kaggle: lineage.tar missing in the run dataset
+- 2026-11-13 11:33:24 [runner] STOP file: runner exits (holder laptop, step 1207)
+- 2026-11-13 11:33:29 [runner] runner start (holder laptop, step 1207)
+- 2026-11-13 11:33:29 [runner] owner approval found: /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-13_v3_data/APPROVED_AGENTS (2026-11-12 22:17:15)
+- 2026-11-13 11:34:15 [push] uploading run seq 5 (step 1207, 284 MB) to agt3-run
+- 2026-11-13 11:36:19 [push] -> Kaggle: seq 5, step 1207, kernel v5, budget 5.85 h (used so far 11.06 h of 18)
+- 2026-11-13 11:36:23 [runner] Kaggle session seq 5 running
+- 2026-11-13 11:36:23 [select] selection: exporting snap_0250 (merged Q4_0, shared imatrix)
+- 2026-11-13 11:47:04 [select] selection: exporting snap_0250 (merged Q4_0, shared imatrix)
+- 2026-11-13 11:57:43 [select] selection: exporting snap_0250 (merged Q4_0, shared imatrix)
+- 2026-11-13 12:08:21 [select] selection: exporting snap_0250 (merged Q4_0, shared imatrix)
+- 2026-11-13 12:18:47 [select] selection: exporting snap_0250 (merged Q4_0, shared imatrix)
+- 2026-11-13 12:28:53 [select] selection: exporting snap_0250 (merged Q4_0, shared imatrix)
+- 2026-11-13 12:38:56 [select] selection: exporting snap_0250 (merged Q4_0, shared imatrix)
+- 2026-11-13 12:49:00 [select] selection: exporting snap_0250 (merged Q4_0, shared imatrix)
+- 2026-11-13 12:59:05 [select] selection: exporting snap_0250 (merged Q4_0, shared imatrix)
+- 2026-11-13 13:09:07 [select] selection: exporting snap_0250 (merged Q4_0, shared imatrix)
+- 2026-11-13 13:19:10 [select] selection: exporting snap_0250 (merged Q4_0, shared imatrix)
+- 2026-11-13 13:29:13 [select] selection: exporting snap_0250 (merged Q4_0, shared imatrix)
+- 2026-11-13 13:39:16 [select] selection: exporting snap_0250 (merged Q4_0, shared imatrix)
+- 2026-11-13 13:49:22 [select] selection: exporting snap_0250 (merged Q4_0, shared imatrix)
+- 2026-11-13 13:59:26 [select] selection: exporting snap_0250 (merged Q4_0, shared imatrix)
+- 2026-11-13 14:09:29 [select] selection: exporting snap_0250 (merged Q4_0, shared imatrix)
+- 2026-11-13 14:19:33 [select] selection: exporting snap_0250 (merged Q4_0, shared imatrix)
+- 2026-11-13 14:29:36 [select] selection: exporting snap_0250 (merged Q4_0, shared imatrix)
+- 2026-11-13 14:39:39 [select] selection: exporting snap_0250 (merged Q4_0, shared imatrix)
+- 2026-11-13 14:49:42 [pull] kernel seq 5 ended: kernelworkerstatus.complete
+- 2026-11-13 14:52:14 [pull] <- Kaggle: seq 5 installed, step 1207 -> 1500, rc 6, snaps: snap_0250 snap_0500 snap_0750 snap_1000 snap_1250 snap_1500 ; Kaggle hours used 14.16
+- 2026-11-13 14:52:14 [select] selection: exporting snap_0250 (merged Q4_0, shared imatrix)
+- 2026-11-13 15:06:08 [select] selection: snap_0250 dev score 0.69571 {'status': 0.7025, 'pattern': 0.6202, 'dq': 0.8739, 'json': 1.0}
+- 2026-11-13 15:06:08 [select] selection: exporting snap_0500 (merged Q4_0, shared imatrix)
+- 2026-11-13 15:34:05 [select] selection: snap_0500 dev score 0.76109 {'status': 0.7462, 'pattern': 0.7092, 'dq': 0.9227, 'json': 1.0}
+- 2026-11-13 15:34:05 [select] selection: exporting snap_0750 (merged Q4_0, shared imatrix)
+- 2026-11-13 16:00:33 [select] selection: snap_0750 dev score 0.85 {'status': 0.8387, 'pattern': 0.842, 'dq': 0.9277, 'json': 1.0}
+- 2026-11-13 16:00:33 [select] selection: exporting snap_1000 (merged Q4_0, shared imatrix)
+- 2026-11-13 16:29:47 [select] selection: snap_1000 dev score 0.85571 {'status': 0.8454, 'pattern': 0.8437, 'dq': 0.9395, 'json': 1.0}
+- 2026-11-13 16:29:47 [select] selection: exporting snap_1250 (merged Q4_0, shared imatrix)
+- 2026-11-13 16:54:02 [select] selection: snap_1250 dev score 0.87025 {'status': 0.8471, 'pattern': 0.8773, 'dq': 0.9395, 'json': 1.0}
+- 2026-11-13 16:54:02 [select] selection: exporting snap_1500 (merged Q4_0, shared imatrix)
+- 2026-11-13 17:15:34 [select] selection: snap_1500 dev score 0.88412 {'status': 0.8975, 'pattern': 0.842, 'dq': 0.9513, 'json': 1.0}
+- 2026-11-13 17:15:34 [runner] trainer finished: early_stop step 1500 3 gen-dev evals without gain (best 0.9343 at step 750)
+- 2026-11-13 17:15:34 [gate] gate: final export of snap_1500 (own imatrix)
+- 2026-11-13 17:17:30 [push] uploading run seq 6 (step 1500, 285 MB) to agt3-run
+- 2026-11-13 17:19:45 [push] -> Kaggle: seq 6, step 1500, kernel v6, budget 2.75 h (used so far 14.16 h of 18)
+- 2026-11-13 17:59:42 [gate] waiting for the laptop GPU (lock / busy)
+- 2026-11-13 18:19:43 [runner] runner done: gate rc 2 ()
+- 2026-11-13 22:32:25 [pull] kernel seq 6 ended: kernelworkerstatus.complete
+- 2026-11-13 22:34:44 [pull] <- Kaggle: seq 6 installed, step 1500 -> 1783, rc 3, snaps: snap_0250 snap_0500 snap_0750 snap_1000 snap_1250 snap_1500 snap_1750 ; Kaggle hours used 16.67
+- 2026-11-13 22:34:44 [select] selection: exporting snap_1750 (merged Q4_0, shared imatrix)
+- 2026-11-13 22:53:41 [select] selection: snap_1750 dev score 0.90193 {'status': 0.8941, 'pattern': 0.8924, 'dq': 0.9613, 'json': 1.0}
+- 2026-11-15 16:06:03 [gate] gate: final export of snap_1750 (own imatrix)
+- 2026-11-15 16:55:29 [gate] waiting for the laptop GPU (lock / busy)
+- 2026-11-15 17:42:26 [gate] gate: final export of snap_1750 (own imatrix)
+- 2026-11-15 17:43:28 [gate] gate: dev_paired/v3 on agt3_final_snap_1750_q4_0.gguf
+- 2026-11-15 18:32:46 [gate] gate: dev_paired/b50 on ft_B50_q4_0.gguf
+- 2026-11-15 19:07:43 [gate] gate: e1/v3 on agt3_final_snap_1750_q4_0.gguf
+- 2026-11-15 19:12:31 [gate] gate: e1/b50 on ft_B50_q4_0.gguf
+- 2026-11-15 19:16:28 [gate] gate: rename/v3 on agt3_final_snap_1750_q4_0.gguf
+- 2026-11-15 19:31:24 [gate] gate: unseen_metric/v3 on agt3_final_snap_1750_q4_0.gguf
+- 2026-11-15 19:38:46 [gate] gate: unseen_layout/v3 on agt3_final_snap_1750_q4_0.gguf
+- 2026-11-15 19:53:44 [gate] gate: unseen_layout/b50 on ft_B50_q4_0.gguf
+- 2026-11-15 20:03:15 [gate] gate: campus/v3 on agt3_final_snap_1750_q4_0.gguf
+- 2026-11-15 20:17:53 [gate] gate: campus/b50 on ft_B50_q4_0.gguf
+- 2026-11-15 20:26:58 [gate] gate: calm_fault/v3 on agt3_final_snap_1750_q4_0.gguf
+- 2026-11-15 20:35:20 [gate] gate: # GATE_agt: agt_v3 snap_1750 (f3afe12603174cfd139aa9f5f168c302) vs B50 -> **FAIL**
+- 2026-11-15 20:46:03 [gate] gate: dev_paired/v3 on agt3_final_snap_1750_q4_0.gguf
+- 2026-11-15 20:46:04 [gate] gate: dev_paired/b50 on ft_B50_q4_0.gguf
+- 2026-11-15 20:46:04 [gate] gate: e1/v3 on agt3_final_snap_1750_q4_0.gguf
+- 2026-11-15 20:46:05 [gate] gate: e1/b50 on ft_B50_q4_0.gguf
+- 2026-11-15 20:46:06 [gate] gate: rename/v3 on agt3_final_snap_1750_q4_0.gguf
+- 2026-11-15 20:46:06 [gate] gate: unseen_metric/v3 on agt3_final_snap_1750_q4_0.gguf
+- 2026-11-15 20:46:07 [gate] gate: unseen_layout/v3 on agt3_final_snap_1750_q4_0.gguf
+- 2026-11-15 20:46:08 [gate] gate: unseen_layout/b50 on ft_B50_q4_0.gguf
+- 2026-11-15 20:46:08 [gate] gate: campus/v3 on agt3_final_snap_1750_q4_0.gguf
+- 2026-11-15 20:46:09 [gate] gate: campus/b50 on ft_B50_q4_0.gguf
+- 2026-11-15 20:46:10 [gate] gate: calm_fault/v3 on agt3_final_snap_1750_q4_0.gguf
+- 2026-11-15 20:46:14 [gate] gate: # GATE_agt: agt_v3 snap_1750 (f3afe12603174cfd139aa9f5f168c302) vs B50 -> **FAIL**
