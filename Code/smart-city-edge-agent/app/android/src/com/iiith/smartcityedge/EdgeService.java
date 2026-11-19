@@ -177,6 +177,9 @@ public class EdgeService extends Service {
     private String backendStart(File ext, String lib, long now) {
         return "D=/data/local/tmp/smart_city_edge; L=" + lib + "; X=" + ext.getAbsolutePath() + "; "
                 + "mkdir -p $D/state $D/data $D/web; "
+                // the backend persists the network-synced offset (clocknet.go); prefer it when newer than the saved one, only on an unsynced (<2025) RTC
+                + "NOW=" + now + "; P=$D/state/clock_offset_s; S=" + getFilesDir().getAbsolutePath() + "/clock_offset_s; "
+                + "if [ \"$(date +%Y)\" -lt 2025 ] && [ -s $P ] && { [ ! -f $S ] || [ $P -nt $S ]; }; then O=$(cat $P); case $O in \"\"|*[!0-9]*) ;; *) NOW=$(( $(date +%s) + O ));; esac; fi; "
                 + "cmp -s $L/libedgeagent.so $D/edge-agent || { cp $L/libedgeagent.so $D/edge-agent.new && mv $D/edge-agent.new $D/edge-agent; }; "
                 + "chmod 755 $D/edge-agent; cp -r $X/web/. $D/web/; cp $X/data/*.json $D/data/; "
                 // genied (persistent Genie dialog) ships in the APK too; edge-agent launches and
@@ -186,7 +189,7 @@ public class EdgeService extends Service {
                 // append (rotated at 4 MB): the log from before a board reset used to be overwritten here
                 + "cd $D && { [ \"$(stat -c %s state/agent.log 2>/dev/null || echo 0)\" -gt 4194304 ] && mv -f state/agent.log state/agent.log.1; true; } && "
                 + "(setsid nohup ./edge-agent --dir $D --genie /data/local/tmp/genie_bundle --mode 3 "
-                + "--clock-unix " + now + " >> state/agent.log 2>&1 < /dev/null &); "
+                + "--clock-unix $NOW >> state/agent.log 2>&1 < /dev/null &); "
                 + "sleep 2; pgrep -x edge-agent >/dev/null && echo STARTED || echo FAILED";
     }
 

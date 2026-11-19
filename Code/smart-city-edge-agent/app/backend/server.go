@@ -767,6 +767,7 @@ func (s *Server) routes() http.Handler {
 		}
 		for _, sc := range Scenarios {
 			if sc.ID == body.Scenario {
+				orig := sc.Targets
 				sc.Targets = s.eng.PickTargets(sc.Targets)
 				for _, t := range sc.Targets {
 					if _, ok := s.eng.states[key(t.Node, t.Metric)]; !ok {
@@ -776,7 +777,11 @@ func (s *Server) routes() http.Handler {
 				}
 				inj := s.eng.Inject(sc)
 				s.hub.Publish("inject", map[string]any{"scenario": sc.ID, "title": sc.Title})
-				writeJSON(w, map[string]any{"ok": true, "injections": inj})
+				used := make([]map[string]any, 0, len(sc.Targets))
+				for i, t := range sc.Targets {
+					used = append(used, map[string]any{"node": t.Node, "metric": t.Metric, "kind": t.Kind, "requested": orig[i].Node, "remapped": orig[i].Node != t.Node})
+				}
+				writeJSON(w, map[string]any{"ok": true, "injections": inj, "targets": used})
 				return
 			}
 		}
@@ -820,7 +825,8 @@ func (s *Server) routes() http.Handler {
 		w.Header().Set("Cache-Control", "no-store")
 		writeJSON(w, s.hub.Streams(r.URL.Query().Get("incident")))
 	})
-	s.chatRoutes(mux) // operator chat (chat.go), frontend web/chat/
+	s.chatRoutes(mux)   // operator chat (chat.go), frontend web/chat/
+	s.phase1Routes(mux) // site, health, export, daily, campus (phase1.go, site.go)
 	web := http.FileServer(http.Dir(filepath.Join(s.dir, "web")))
 	// Always revalidate the dashboard files. Without this the WebView judged freshness from
 	// Last-Modified, which is meaningless here: the board's clock resets to 2023 on every boot while
@@ -830,6 +836,7 @@ func (s *Server) routes() http.Handler {
 		w.Header().Set("Cache-Control", "no-cache")
 		web.ServeHTTP(w, r)
 	}))
+	s.prodRoutes(mux) // /api/prod/* (prod.go): 404 while every production feature is off
 	return s.guard(mux)
 }
 

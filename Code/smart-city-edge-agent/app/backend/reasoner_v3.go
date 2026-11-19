@@ -31,6 +31,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -92,6 +93,7 @@ type V3Sensor struct {
 	Rule                               [2]string
 	Ev                                 [][2]string // all evidence lines (id, text); related sensors are filtered here
 	ClaimLines                         []string    // reasoner_claimflags=prompt only
+	Card                               *Card       // v4 only: the sensor's card (nil = today's card)
 }
 
 type V3Input struct {
@@ -107,6 +109,7 @@ type V3Input struct {
 	MemoryKnown bool // false: no MEMORY block at all (lib: memory None)
 	Notes       []string
 	Ask         string
+	AskSet      bool // v4 fixtures: an explicitly empty ask stays empty
 }
 
 // v3Holidays mirrors pipeline/lib.HOLIDAYS.
@@ -282,11 +285,54 @@ type v3Turn struct {
 // reasonerPromptV3: static prefix (tools + frozen system) + user + tool turns, ending at the assistant
 // generation prompt. The prefix up to the user text is identical for every incident (htpd prefix cache).
 func reasonerPromptV3(user string, turns []v3Turn) string {
+	return reasonerPromptV3Mode(user, turns, false)
+}
+
+// reasonerThinkAdaptive: profile key reasoner_think (or SCE_REASONER_THINK) = "adaptive" (rsn_v3 r4, proofs/2026-11-12_topup_r4):
+// the report prompt opens a think block ("<|im_start|>assistant\n<think>\n", thinking on) and the model writes a short
+// reasoning for multi-domain incidents or closes the block at once, then the JSON. Default off = the trained thinking-off
+// format (v3AssistantOpen), byte-identical prompts.
+func reasonerThinkAdaptive() bool {
+	return reasonerProfile("reasoner_think", "SCE_REASONER_THINK") == "adaptive"
+}
+
+// v3ThinkClose closes an open think block empty (= the empty-think rendering "<think>\n\n</think>\n\n").
+const v3ThinkClose = "\n</think>\n\n"
+
+// splitReportThink: (reasoning, answer) of a report generation. opened = the prompt opened the think block, so everything
+// before the first "</think>" is reasoning (an unclosed block = all reasoning, no answer). Otherwise only an explicit
+// leading "<think>...</think>" is split off; text without it is returned unchanged (default path).
+func splitReportThink(text string, opened bool) (string, string) {
+	t := strings.TrimLeft(text, " \t\r\n")
+	explicit := strings.HasPrefix(t, "<think>")
+	if !opened && !explicit {
+		return "", text
+	}
+	if explicit {
+		t = t[len("<think>"):]
+	} else {
+		t = text
+	}
+	i := strings.Index(t, "</think>")
+	if i < 0 {
+		return strings.TrimSpace(t), ""
+	}
+	return strings.TrimSpace(t[:i]), strings.TrimLeft(t[i+len("</think>"):], " \t\r\n")
+}
+
+func reasonerPromptV3Mode(user string, turns []v3Turn, adaptive bool) string {
+	open := v3AssistantOpen
+	if adaptive {
+		open = chatAssistantOpenAdaptive
+	}
 	var b strings.Builder
 	b.WriteString(v3StaticPrefix())
 	b.WriteString(user)
-	b.WriteString("<|im_end|>\n" + v3AssistantOpen)
+	b.WriteString("<|im_end|>\n" + open)
 	for _, t := range turns {
+		if adaptive {
+			b.WriteString(strings.TrimSpace(t.Think) + v3ThinkClose)
+		}
 		for i, c := range t.Calls {
 			if i > 0 {
 				b.WriteString("\n")
@@ -304,12 +350,17 @@ func reasonerPromptV3(user string, turns []v3Turn) string {
 			}
 			b.WriteString("<tool_response>\n" + r + "\n</tool_response>")
 		}
-		b.WriteString("<|im_end|>\n" + v3AssistantOpen)
+		b.WriteString("<|im_end|>\n" + open)
 	}
 	return b.String()
 }
 
-func v3StaticPrefix() string { return v3Header + v3System + "<|im_end|>\n<|im_start|>user\n" }
+func v3StaticPrefix() string {
+	if reasonerPromptV4() {
+		return v4Header() + SystemV4(v3System) + "<|im_end|>\n<|im_start|>user\n"
+	}
+	return v3Header + v3System + "<|im_end|>\n<|im_start|>user\n"
+}
 
 var (
 	v3CallRe  = regexp.MustCompile(`(?s)<tool_call>\s*<function=([^>\n]+)>\s*(.*?)</function>\s*</tool_call>`)
@@ -424,6 +475,7 @@ func checkReportV3(text, knownText string) (*reportV3Raw, []string, []string) {
 // (outdoor) sensor, which relaxes only the critical first-action floor (v3ActionFloor).
 func checkReportV3For(text, knownText string, weatherOnly bool) (*reportV3Raw, []string, []string) {
 	var errs, repairs []string
+	_, text = splitReportThink(text, false) // r4 adaptive thinking: a leading <think>...</think> is not part of the report
 	js, ok := extractJSON(text)
 	if !ok {
 		t := strings.TrimSpace(text)
@@ -790,7 +842,22 @@ func (l *llamaServerLLM) Complete(ctx context.Context, prompt string, maxNew int
 // other kind as a synthesizer prompt) would answer a Qwen prompt with the agents' Llama model, so it is refused.
 type htpdReasonLLM struct{ Force bool }
 
-func (htpdReasonLLM) Name() string { return "qwen3.5-4b (htpd)" }
+func (htpdReasonLLM) Name() string { return reasonerModelLabel() + " (htpd)" }
+
+// reasonerModelLabel: the reasoner model the profile runs, for the report and chat source badges (was a fixed
+// "qwen3.5-4b"): the 2B rsn_v3 model when the reasoner_model GGUF path names a 2B model, the 4B one otherwise.
+// chat_think (the chat format switch) does not change it: the 2B chat model runs on the GPU (chat_url, chat_gpu.go)
+// while reports stay on the 4B.
+func reasonerModelLabel() string {
+	p := strings.ToLower(filepath.Base(reasonerProfile("reasoner_model", "SCE_REASONER_MODEL")))
+	if strings.Contains(p, "2b") { // rsn_v3_2b_q4_0.gguf, q2b_base_q4_0.gguf
+		return "qwen3.5-2b rsn_v3"
+	}
+	if strings.Contains(p, "rsn_v3_4b") { // rsn_v3_4b_r3_q4_0.gguf (proofs/2026-11-06_4b_local/board); live rsn_v1 path unchanged
+		return "qwen3.5-4b rsn_v3"
+	}
+	return "qwen3.5-4b"
+}
 
 var errHtpdNoReasoner = errors.New("htpd has no reasoner slot (needs htpd v8 started with --reasoner-model; htpd_profile reasoner_model=)")
 
@@ -902,10 +969,14 @@ func reasonerHtpdModel() string {
 	return reasonerProfile("reasoner_model", "SCE_REASONER_MODEL")
 }
 
+// reasonerLLMHook replaces the engine in tests (nil = the profile's engine).
+var reasonerLLMHook v3LLM
+
 func reasonerLLM() v3LLM {
 	if reasonerProfile("reasoner_engine", "SCE_REASONER_ENGINE") == "htpd" {
 		f := reasonerProfile("reasoner_force", "SCE_REASONER_FORCE")
-		return htpdReasonLLM{Force: f != "0" && f != "off"}
+		// the forced-token schema starts at the JSON; with reasoner_think=adaptive the model writes its think block first
+		return htpdReasonLLM{Force: f != "0" && f != "off" && !reasonerThinkAdaptive()}
 	}
 	u := reasonerProfile("reasoner_url", "SCE_REASONER_URL")
 	if u == "" {
@@ -922,7 +993,8 @@ type v3Tools interface {
 }
 
 type V3Run struct {
-	Text      string // final answer text (with the forced prefix when the cap forced it)
+	Text      string // final answer text (with the forced prefix when the cap forced it; without a think block)
+	Think     string // reasoning before the final answer (reasoner_think=adaptive; "" otherwise or when the block was empty)
 	Prompt    string // full prompt of the final call
 	Calls     []V3Call
 	Results   []string
@@ -940,11 +1012,16 @@ func runV3Loop(ctx context.Context, llm v3LLM, tools v3Tools, user string, maxCa
 	t0 := time.Now()
 	var turns []v3Turn
 	used := 0
+	adaptive := reasonerThinkAdaptive()
+	forceTail := v3AnswerPrefix // adaptive: the prompt ends inside an open think block, close it empty first
+	if adaptive {
+		forceTail = v3ThinkClose + v3AnswerPrefix
+	}
 	for {
-		prompt := reasonerPromptV3(user, turns)
+		prompt := reasonerPromptV3Mode(user, turns, adaptive)
 		force := used >= maxCalls && len(turns) > 0
 		if force {
-			prompt += v3AnswerPrefix
+			prompt += forceTail
 		}
 		text, m, err := llm.Complete(ctx, prompt, maxNew, onPiece)
 		run.LLMCalls++
@@ -960,15 +1037,32 @@ func runV3Loop(ctx context.Context, llm v3LLM, tools v3Tools, user string, maxCa
 		if force {
 			text = v3AnswerPrefix + text
 		}
+		think := ""
+		if adaptive && !force {
+			if !strings.Contains(text, "</think>") { // the reasoning ran out of max_new: close it and force the answer
+				prompt += strings.TrimSpace(text) + v3ThinkClose + v3AnswerPrefix
+				think = strings.TrimSpace(text)
+				text, m, err = llm.Complete(ctx, prompt, maxNew, onPiece)
+				run.LLMCalls++
+				run.Metrics.GenTokens += m.GenTokens
+				if err != nil {
+					run.LatencyMs = float64(time.Since(t0).Milliseconds())
+					return run, err
+				}
+				run.Text, run.Prompt, run.Forced, run.Think = v3AnswerPrefix+text, prompt, true, think
+				break
+			}
+			think, text = splitReportThink(text, true)
+		}
 		calls := parseV3Calls(text)
 		if force || len(calls) == 0 {
-			run.Text, run.Prompt, run.Forced = text, prompt, force
+			run.Text, run.Prompt, run.Forced, run.Think = text, prompt, force, think
 			break
 		}
 		run.Wanted += len(calls)
 		if used >= maxCalls { // maxCalls == 0: never run a tool, answer directly
 			run.Forced = true
-			prompt += v3AnswerPrefix
+			prompt += forceTail // adaptive: the refused round's reasoning and calls stay out of the prompt
 			text, m, err = llm.Complete(ctx, prompt, maxNew, onPiece)
 			run.LLMCalls++
 			run.Metrics.GenTokens += m.GenTokens
@@ -981,7 +1075,7 @@ func runV3Loop(ctx context.Context, llm v3LLM, tools v3Tools, user string, maxCa
 		if room := maxCalls - used; len(calls) > room {
 			calls = calls[:room]
 		}
-		t := v3Turn{Calls: calls}
+		t := v3Turn{Calls: calls, Think: think}
 		for _, c := range calls {
 			res := `{"error": "tools unavailable"}`
 			if tools != nil {
@@ -1196,7 +1290,13 @@ func (r *Reasoner) reasonV3(ctx context.Context, inc *Incident, findings []Agent
 func (r *Reasoner) reasonV3Fallback(ctx context.Context, inc *Incident, findings []AgentCall, fb func() *ReportCall) *ReportCall {
 	in := r.buildV3Input(inc, findings)
 	user := RenderV3User(in)
+	if reasonerPromptV4() { // Phase 2 switch (reasoner_v4.go); default r3
+		user = RenderV4User(in, r.buildV4Ctx(inc, in))
+	}
 	llm := reasonerLLM()
+	if reasonerLLMHook != nil {
+		llm = reasonerLLMHook
+	}
 	maxNew := 700
 	if v, err := strconv.Atoi(reasonerProfile("reasoner_max_new", "SCE_REASONER_MAX_NEW")); err == nil && v > 0 {
 		maxNew = v
@@ -1230,12 +1330,14 @@ func (r *Reasoner) reasonV3Fallback(ctx context.Context, inc *Incident, findings
 			r.log(inc, "Reasoner severity (provisional): "+sv)
 		}
 	}
-	run, err := runV3Loop(ctx, llm, incidentTools{r, inc}, user, maxCalls, maxNew, onPiece)
-	inc.NPUCalls += run.LLMCalls
-	rc := &ReportCall{Model: llm.Name(), LatencyMs: run.LatencyMs, Raw: run.Text, Prompt: run.Prompt, CallMetrics: run.Metrics}
-	if err != nil {
-		rc.Errors = []string{"reasoner engine: " + err.Error()}
-	} else {
+	// judge turns one generation into the report call; ok = the gate accepted it
+	judge := func(run V3Run, err error) (*ReportCall, bool, V3Run) {
+		inc.NPUCalls += run.LLMCalls
+		rc := &ReportCall{Model: llm.Name(), LatencyMs: run.LatencyMs, Raw: run.Text, Prompt: run.Prompt, CallMetrics: run.Metrics, Think: run.Think}
+		if err != nil {
+			rc.Errors = []string{"reasoner engine: " + err.Error()}
+			return rc, false, run
+		}
 		known := run.Prompt + "\n" + strings.Join(run.Results, "\n")
 		parsed, errs, repairs := checkReportV3For(run.Text, known, weatherOnlyIncident(inc))
 		rc.Errors, rc.Repairs = errs, repairs
@@ -1246,18 +1348,59 @@ func (r *Reasoner) reasonV3Fallback(ctx context.Context, inc *Incident, findings
 			}
 			parsed.AgentChecks = mergeClaimFlags(parsed.AgentChecks, refs, findings)
 			rep := parsed.toReport("device:" + llm.Name())
+			if phFixReport(&rep, inc.Sensors) {
+				rc.Repairs = append(rc.Repairs, "pH wording set to the readings: "+phDirWord(phDirection(inc.Sensors)))
+			}
 			r.severityGuard(inc, &rep)
 			rep.Escalation = v3Escalation(true, run.Wanted, maxCalls, run.Results, parsed.NeedsDeeper)
 			rc.Parsed, rc.Valid = &rep, true
 			r.log(inc, fmt.Sprintf("Reasoner v3 report in %.1fs (%d completion(s), %d tool call(s)%s), policy ok",
 				run.LatencyMs/1000, run.LLMCalls, len(run.Calls), map[bool]string{true: ", answer forced at the cap", false: ""}[run.Forced]))
+			return rc, true, run
+		}
+		return rc, false, run
+	}
+	run, err := runV3Loop(ctx, llm, incidentTools{r, inc}, user, maxCalls, maxNew, onPiece)
+	rc, ok, run := judge(run, err)
+	if ok {
+		// cohesive coverage (coverage.go): every alerting sensor must be in the report; one retry, then the deterministic report
+		miss := coverageMissing(inc, findings, rc.Parsed)
+		if len(miss) == 0 {
 			return rc
 		}
+		r.log(inc, "Coverage check: the report does not mention "+coverageRefs(miss)+"; reasoner asked once more")
+		run2, err2 := runV3Loop(ctx, llm, incidentTools{r, inc}, user+coverageInstruction(miss), maxCalls, maxNew, r.tokenSink(inc, "final"))
+		rc2, ok2, run2 := judge(run2, err2)
+		if ok2 {
+			if miss2 := coverageMissing(inc, findings, rc2.Parsed); len(miss2) == 0 {
+				r.log(inc, "Coverage check: the retry covers every alerting sensor")
+				return rc2
+			}
+			run = run2
+		}
+		r.log(inc, "Coverage check: still missing after the retry; deterministic report with a line per missing sensor")
+		var d *ReportCall
+		if fb != nil {
+			d = fb()
+		}
+		if d == nil || d.Parsed == nil {
+			d = fallbackReport(inc.Sensors, findings, rc)
+		}
+		if d != nil && d.Parsed != nil {
+			d.Raw, d.Prompt, d.LatencyMs, d.CallMetrics = rc.Raw, rc.Prompt, rc.LatencyMs, rc.CallMetrics
+			d.Valid = true
+			d.Parsed.Source = "device:rules (reasoner report missed alerting sensors)"
+			d.Parsed.Escalation = v3Escalation(false, run.Wanted, maxCalls, run.Results, false)
+			coverageAddLines(inc, findings, d.Parsed)
+			return d
+		}
+		return rc
 	}
 	rejected := strings.Join(rc.Errors, "; ")
 	if fb != nil {
 		if d := fb(); d != nil && d.Parsed != nil {
 			d.Raw, d.Prompt, d.Errors, d.Repairs, d.LatencyMs, d.CallMetrics = rc.Raw, rc.Prompt, rc.Errors, rc.Repairs, rc.LatencyMs, rc.CallMetrics
+			d.Think = rc.Think
 			rc = d
 		} else {
 			rc = fallbackReport(inc.Sensors, findings, rc)

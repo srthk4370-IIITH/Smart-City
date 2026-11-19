@@ -180,6 +180,11 @@ func retDocOf(inc *Incident) (retDoc, bool) {
 		d.Sev = normSeverity(inc.Severity)
 	}
 	d.Label, d.Action, d.RootCause = p.Label, p.Action, p.RootCause
+	// owner 2026-11-17: an unconfirmed sensor_fault report must not become evidence for the next one
+	// (same sensor called faulty again and again from its own history). Only an operator-confirmed fault counts.
+	if d.Sev == "sensor_fault" && inc.Outcome != "sensor_replaced" && inc.Outcome != "sensor_repaired" {
+		return d, false
+	}
 	return d, true
 }
 
@@ -392,6 +397,7 @@ func (r *Reasoner) retrievalPreliminary(inc *Incident) *ReportCall {
 	var lab, act, root string
 	if best != nil {
 		lab, act, root = best.Label, best.Action, stripNumbers(best.RootCause)
+		root = phFixText(root, phDirection(inc.Sensors)) // the seed has low-pH cases only: a high-pH match says alkaline
 	}
 	r.ret.mu.RUnlock()
 	p := rc.Parsed

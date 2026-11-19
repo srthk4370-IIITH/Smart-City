@@ -62,7 +62,7 @@ type postChange struct{ rule, field, from, to string }
 
 // applyPostRules corrects f in place with the enabled rules; xs = the prompt's window (oldest first).
 func applyPostRules(on map[string]bool, role, metric, node string, end int64, xs []float64, f *Finding, prompt ...string) []postChange {
-	m, ok := Metrics[role+"/"+metric]
+	m, ok := effectiveMetricOK(role, metric, node)
 	if len(on) == 0 || !ok || len(xs) < 12 || role == "hvac" || role == "occupancy" {
 		return nil
 	}
@@ -134,7 +134,7 @@ func postRule(name string, c *postCtx, f *Finding) [][2]string {
 		if !isEventStatus(f.Status) || f.Pattern == "flatline" || f.Pattern == "erratic" {
 			return nil
 		}
-		if s := StatusOf(c.role, c.metric, f.Pattern, c.st, c.base); s != f.Status && isEventStatus(s) {
+		if s := StatusOfM(c.m, c.role, c.metric, f.Pattern, c.st, c.base); s != f.Status && isEventStatus(s) {
 			return [][2]string{{"status", s}}
 		}
 	case "quality_cause":
@@ -157,7 +157,7 @@ func postRule(name string, c *postCtx, f *Finding) [][2]string {
 		if !isEventStatus(f.Status) || f.Pattern == "flatline" || postKeepLeak(c, f) {
 			return nil
 		}
-		s := StatusOf(c.role, c.metric, f.Pattern, c.st, c.base)
+		s := StatusOfM(c.m, c.role, c.metric, f.Pattern, c.st, c.base)
 		if rs, _, ok := routineV2(c, f.Pattern); ok {
 			s = rs
 		}
@@ -269,7 +269,7 @@ func ruleGlitch(c *postCtx, f *Finding) [][2]string {
 	if (f.Pattern == "spike" && c.st.MaxIdx != i) || (f.Pattern == "dip" && c.st.MinIdx != i) {
 		return nil
 	}
-	if StatusOf(c.role, c.metric, "stable", ComputeStats(ys, c.m.Dec), mean(ys[:12])) != "normal" {
+	if StatusOfM(c.m, c.role, c.metric, "stable", ComputeStats(ys, c.m.Dec), mean(ys[:12])) != "normal" {
 		return nil
 	}
 	key, v := c.role+"/"+c.metric, c.xs[i]

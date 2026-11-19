@@ -417,6 +417,7 @@ func BuildAgentPromptV2(role, node, location, metric string, xs []float64, end i
 		}
 		lines = append(lines, "STATES (1=occupied): "+sb.String())
 	} else {
+		m.Dec = effDec(xs, m.Dec) // owner 2026-11-17: tiny readings (3 W room meter = 0.003 kW) keep their resolution
 		st = ComputeStats(xs, m.Dec)
 		ds := downsampleK(xs, n/2)
 		parts := make([]string, len(ds))

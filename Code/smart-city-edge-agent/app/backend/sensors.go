@@ -129,13 +129,22 @@ var clockOffset time.Duration
 // The QIDK's RTC comes up in 2023 after a reboot and is fixed by NTP once Wi-Fi connects; a correction
 // that stacks on an already-synced clock pushed the sensor clock 3 years ahead. A large offset is only
 // applied while the device clock is still unsynced (before 2025); after an NTP jump it is dropped.
-func needClockFix() bool { return time.Now().Year() < 2025 }
+func needClockFix() bool { return devClock().Year() < 2025 }
+
+// devClock is the device clock (time.Now); the time-sync tests replace it with an RTC stuck in 2023.
+var devClock = time.Now
 
 func nowTime() time.Time {
-	if clockOffset != 0 && (clockOffset > 24*time.Hour || clockOffset < -24*time.Hour) && !needClockFix() {
-		return time.Now()
+	if netClock.set.Load() { // network clock sync (clocknet.go): true time from an HTTP Date header
+		return netNow()
 	}
-	return time.Now().Add(clockOffset)
+	if d := timeSyncOffset(); d != 0 { // time_sync (prod_time.go); 0 unless that feature fixed the clock
+		return devClock().Add(d)
+	}
+	if clockOffset != 0 && (clockOffset > 24*time.Hour || clockOffset < -24*time.Hour) && !needClockFix() {
+		return devClock()
+	}
+	return devClock().Add(clockOffset)
 }
 
 func newRNG() *rand.Rand { return rand.New(rand.NewSource(time.Now().UnixNano())) }

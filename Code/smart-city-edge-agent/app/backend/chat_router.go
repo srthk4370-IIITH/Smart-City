@@ -18,6 +18,8 @@ import (
 type chatRoute struct {
 	Tool string
 	Args map[string]any
+	Act  string // answer variant: refuse | health | maint | about | realfault | do (deploy23); span | summary | top (deploy24)
+	When string // deploy24: the period in words with its from/to (chatPrepV24)
 }
 
 var (
@@ -31,6 +33,8 @@ var (
 		re     *regexp.Regexp
 		preset string
 	}{
+		{chatAajRe, "today"},     // deploy24: Hindi
+		{chatKalRe, "yesterday"}, // deploy24: Hindi, past verb
 		{regexp.MustCompile(`(?i)\byesterday\b`), "yesterday"},
 		{regexp.MustCompile(`(?i)\b24\s*h(ours|rs)?\b|\blast day\b|\bpast day\b`), "last_24h"},
 		{regexp.MustCompile(`(?i)\b30\s*days\b|\bpast month\b`), "last_30d"},
@@ -54,7 +58,7 @@ var (
 		{regexp.MustCompile(`(?i)\bweather\b|\boutdoors?\b|\boutside\b`), "weather"},
 	}
 
-	chatCurrentRe = regexp.MustCompile(`(?i)\bhow\s+(are|is)\b|\bhow's\b|\bcurrent(ly)?\b|\bright\s+now\b|\bat\s+(the\s+)?moment\b|\bnow\b|\blevels\b`)
+	chatCurrentRe = regexp.MustCompile(`(?i)\bkya\s+hai\b|\babhi\b|\bhow\s+(are|is)\b|\bhow's\b|\bcurrent(ly)?\b|\bright\s+now\b|\bat\s+(the\s+)?moment\b|\bnow\b|\blevels\b`)
 	// a bare follow-up ("and right now?", "how are the levels?") takes the metric of the previous question
 	chatFollowNowRe = regexp.MustCompile(`(?i)^\s*(and|so|ok|okay)?\s*(what|how)?\s*(about|are|is)?\s*(it|they|them|the)?\s*` +
 		`(levels?|readings?|values?)?\s*((right\s+)?now|currently|at\s+the\s+moment|today)?\s*\??\s*$`)
@@ -62,7 +66,7 @@ var (
 
 	chatRecentRe   = regexp.MustCompile(`(?i)\b(recent|latest|newest|last|most recent)\b`)
 	chatListRe     = regexp.MustCompile(`(?i)\b(list|show)\b(\s+me)?(\s+(all|the))?(\s+\w+)?\s+(incidents|alerts|alarms)\b`)
-	chatLimitRe    = regexp.MustCompile(`(?i)\b(?:last|latest|recent|newest|top|show(?:\s+me)?|list)\s+(\d{1,2})\b`)
+	chatLimitRe    = regexp.MustCompile(`(?i)\b(?:last|latest|recent|newest|top|show(?:\s+me)?|list)\s+(?:the\s+)?(\d{1,2})\b|\b(\d{1,2})\s+(?:most\s+recent|latest|newest|last|recent)\b`)
 	chatSingularRe = regexp.MustCompile(`(?i)\b(the\s+)?(latest|last|newest|most recent)\s+(\w+\s+)?(incident|alert|alarm)\b`)
 
 	chatOpenRe = regexp.MustCompile(`(?i)\b(open|pending|unresolved|outstanding|unreviewed|awaiting|waiting|unapproved|undecided)\b|` +
@@ -179,10 +183,16 @@ func chatSeverities(q string) []any {
 // chatRouteQuestion: the tool and arguments for a question the router answers itself; ok false = the model answers.
 // buildings: the building codes of the device's sensors (location words).
 func chatRouteQuestion(q string, history []ChatMsg, buildings []string) (chatRoute, bool) {
-	if chatIDRe.MatchString(q) {
-		return chatRoute{}, false // about one incident: get_incident / the model
-	}
 	preset, periodOK := chatPeriod(q)
+	if r, ok := chatRouteOps(q, history, preset, periodOK); ok {
+		return r, true
+	}
+	if chatIDRe.MatchString(q) {
+		return chatRoute{}, false // several incidents named: the model
+	}
+	if r, ok := chatRouteV24(q, history, buildings, 0); ok {
+		return r, true
+	}
 	loc := chatLocationOf(q, buildings)
 	dom := chatDomainOf(q)
 	inc := chatIncWordRe.MatchString(q)
@@ -197,13 +207,35 @@ func chatRouteQuestion(q string, history []ChatMsg, buildings []string) (chatRou
 			return chatRoute{}, false // a what-if the router could not parse: leave it to the model, not another intent
 		}
 	}
+	// deploy24: what-if with a target value ("rises to 42 C"): change_abs from the driver's latest reading (chatPrepV24)
+	if chatWhatIfRe.MatchString(q) {
+		if m := chatToValRe.FindStringSubmatchIndex(q); m != nil {
+			driver := ""
+			for _, mm := range chatMetricMentions(q) {
+				if mm.at < m[0] {
+					driver = mm.metric
+				}
+			}
+			// occupancy is a 0/1 presence fraction: "goes to 80" (people? percent?) stays with the model
+			if to, err := strconv.ParseFloat(q[m[2]:m[3]], 64); err == nil && driver != "" && driver != "occ" {
+				args := map[string]any{"driver": driver, "_to": to}
+				if loc != "" {
+					args["location"] = loc
+				}
+				if dom == "weather" || dom == "hvac" || dom == "air_quality" {
+					args["_domain"] = dom
+				}
+				return chatRoute{Tool: "what_if", Args: args}, true
+			}
+		}
+	}
 	// faulty_sensors: which sensors look faulty (not counts, replacements or one named sensor)
-	if chatFaultyRe.MatchString(q) && !count && !chatFaultyNoRe.MatchString(q) && dom == "" && loc == "" && len(chatMetricMentions(q)) == 0 && periodOK {
+	if (chatFaultyRe.MatchString(q) || chatFaultyHiRe.MatchString(q)) && !count && !chatFaultyNoRe.MatchString(q) && dom == "" && loc == "" && len(chatMetricMentions(q)) == 0 && periodOK {
 		args := map[string]any{}
 		if preset != "" {
 			args["time"] = map[string]any{"preset": preset}
 		}
-		return chatRoute{"faulty_sensors", args}, true
+		return chatRoute{Tool: "faulty_sensors", Args: args}, true
 	}
 	// open_incidents: what still waits for a decision (it has no period)
 	if chatOpenRe.MatchString(q) && chatOpenObjRe.MatchString(q) && preset == "" && periodOK {
@@ -211,13 +243,13 @@ func chatRouteQuestion(q string, history []ChatMsg, buildings []string) (chatRou
 		if dom != "" {
 			args["domain"] = dom
 		}
-		return chatRoute{"open_incidents", args}, true
+		return chatRoute{Tool: "open_incidents", Args: args}, true
 	}
 	// recent_incidents: the newest incidents of any day (a period goes to find_incidents via the model)
 	if inc && !count && preset == "" && periodOK && (chatRecentRe.MatchString(q) || chatListRe.MatchString(q)) {
 		args := map[string]any{}
 		if m := chatLimitRe.FindStringSubmatch(q); m != nil {
-			n, _ := strconv.Atoi(m[1])
+			n, _ := strconv.Atoi(m[1] + m[2])
 			args["limit"] = float64(n)
 		} else if chatSingularRe.MatchString(q) {
 			args["limit"] = float64(1)
@@ -231,7 +263,7 @@ func chatRouteQuestion(q string, history []ChatMsg, buildings []string) (chatRou
 		if m := chatPeakMetric(q); m != "" {
 			args["metric"] = m
 		}
-		return chatRoute{"recent_incidents", args}, true
+		return chatRoute{Tool: "recent_incidents", Args: args}, true
 	}
 	if inc || count {
 		return chatRoute{}, false
@@ -251,10 +283,12 @@ func chatRouteQuestion(q string, history []ChatMsg, buildings []string) (chatRou
 		if dom == "weather" && (metric == "temp" || metric == "rh") {
 			args["domain"] = "weather" // outdoor temperature / humidity, not the indoor sensors
 		}
-		return chatRoute{"rank_readings", args}, true
+		return chatRoute{Tool: "rank_readings", Args: args}, true
 	}
 	// current_levels: "how are CO2 levels", "current temperature in KH"
-	if chatCurrentRe.MatchString(q) && !chatNotNowRe.MatchString(q) && periodOK && (preset == "" || preset == "today") {
+	// deploy24: a state question about a metric without "now" ("wind speed on the roof?", "is the tank about to overflow")
+	stateLike := chatPeakMetric(q) != "" && (chatStateRe.MatchString(q) || len(strings.Fields(q)) <= 5) && !chatStateNoRe.MatchString(q)
+	if (chatCurrentRe.MatchString(q) || stateLike) && !chatNotNowRe.MatchString(q) && periodOK && (preset == "" || preset == "today") {
 		args := map[string]any{}
 		metric := chatPeakMetric(q)
 		if metric != "" {
@@ -272,7 +306,7 @@ func chatRouteQuestion(q string, history []ChatMsg, buildings []string) (chatRou
 			}
 		}
 		if len(args) > 0 {
-			return chatRoute{"current_levels", args}, true
+			return chatRoute{Tool: "current_levels", Args: args}, true
 		}
 	}
 	return chatRoute{}, false
@@ -355,7 +389,7 @@ func chatWhatIf(q, loc string) (chatRoute, bool) {
 	if loc != "" {
 		args["location"] = loc
 	}
-	return chatRoute{"what_if", args}, true
+	return chatRoute{Tool: "what_if", Args: args}, true
 }
 
 // ---------------------------------------------------------------- answers
@@ -381,11 +415,28 @@ func (t chatTools) chatRouted(q string, history []ChatMsg) (text string, tool Ch
 	if !ok {
 		return "", ChatTool{}, false
 	}
-	res, err := t.run(rt.Tool, rt.Args)
-	if err != nil {
+	if !t.chatPrepV24(&rt) {
 		return "", ChatTool{}, false
 	}
+	var res map[string]any
+	var err error
+	if rt.Act == "summary" {
+		res, err = t.chatSummary(rt.Args)
+	} else {
+		res, err = t.run(rt.Tool, rt.Args)
+	}
+	if err != nil && rt.Tool != "rank_readings" {
+		return "", ChatTool{}, false
+	}
+	if res == nil {
+		res = map[string]any{"error": err.Error()}
+	} else {
+		t.chatAugment(rt, res)
+	}
 	text = chatSay(rt, res, len(q)%2)
+	if text == "" && rt.Tool == "rank_readings" {
+		text = t.chatSaySilentRank(rt) // no reading in the period: say so instead of handing the model an empty ranking
+	}
 	if text == "" {
 		return "", ChatTool{}, false
 	}
@@ -439,6 +490,15 @@ func plural(n int, one, many string) string {
 
 // chatSay builds the routed answer from the tool result; v picks between two wordings. "" = nothing to say.
 func chatSay(rt chatRoute, res map[string]any, v int) string {
+	if s := chatSayV24(rt, res, v); s != "" {
+		return s
+	}
+	if s := chatSayOps(rt, res, v); s != "" {
+		return s
+	}
+	if _, bad := res["error"]; bad {
+		return ""
+	}
 	switch rt.Tool {
 	case "rank_readings":
 		items, _ := res["items"].([]map[string]any)
@@ -481,7 +541,17 @@ func chatSay(rt chatRoute, res map[string]any, v int) string {
 				name = strings.ToUpper(name[:1]) + name[1:]
 			}
 			s := name + " at " + it["location"].(string) + ": "
-			if it["last"] == nil {
+			if why, silent := it["_silent"]; silent {
+				if it["last"] == nil {
+					s += "no reading yet (sensor silent)"
+				} else {
+					s += "no new reading (sensor silent"
+					if w, _ := why.(string); w != "" {
+						s += ": " + w
+					}
+					s += "); last value " + chatNum(it["last"], unit)
+				}
+			} else if it["last"] == nil {
 				s += "no reading yet"
 			} else {
 				s += chatNum(it["last"], unit) + " (" + chatSevName(it["status"].(string)) + ")"
@@ -587,7 +657,14 @@ func chatSay(rt chatRoute, res map[string]any, v int) string {
 				map[int]string{0: strings.ToUpper(when[:1]) + when[1:], 1: when}[v], strings.Join(ps, "; "))
 		}
 		n, _ := res["count_distinct"].(int)
-		return text + fmt.Sprintf(" (%s in all.)", plural(n, "distinct sensor", "distinct sensors"))
+		text += fmt.Sprintf(" (%s in all.)", plural(n, "distinct sensor", "distinct sensors"))
+		if pf, _ := res["_pending_fault"].([]string); len(pf) > 0 {
+			text += " Sensor-fault incidents still waiting for your decision: " + strings.Join(pf, "; ") + "."
+		}
+		if ss, _ := res["_silent"].([]string); rt.Act == "maint" && len(ss) > 0 {
+			text += fmt.Sprintf(" %s no new readings (silent): %s.", plural(len(ss), "sensor sends", "sensors send"), chatSilentList(ss, 4))
+		}
+		return text
 	case "what_if":
 		return chatSayWhatIf(rt, res, v)
 	}

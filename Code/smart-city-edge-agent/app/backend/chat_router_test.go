@@ -46,8 +46,8 @@ func TestChatRouteQuestion(t *testing.T) {
 		{"list incidents", nil, "recent_incidents", map[string]any{}},
 		{"latest incidents today", nil, "", nil},
 		{"incidents in the last 7 days", nil, "", nil},
-		{"How many incidents were there today?", co2, "", nil},
-		{"Tell me more about INC-0441", nil, "", nil},
+		{"How many incidents were there today?", co2, "count_incidents", map[string]any{"time": map[string]any{"preset": "today"}}}, // deploy24: routed count
+		{"Tell me more about INC-0441", nil, "get_incident", map[string]any{"id": "INC-0441"}}, // deploy23
 		// open_incidents
 		{"Which domains have open incidents?", nil, "open_incidents", map[string]any{}},
 		{"What still needs attention?", nil, "open_incidents", map[string]any{}},

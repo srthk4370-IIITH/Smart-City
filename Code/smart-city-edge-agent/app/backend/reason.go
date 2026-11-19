@@ -10,6 +10,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -23,6 +24,14 @@ import (
 var ReportLabels = []string{"ventilation_issue", "hvac_or_thermal_issue", "occupancy_driven_load", "air_pollution_event",
 	"water_leak_or_overuse", "water_supply_issue", "water_quality_issue", "power_load_anomaly", "power_quality_issue",
 	"weather_driven", "sensor_fault", "normal_operation", "unknown"}
+
+// SuspectVerdict: rsn_v4 suspect_node (confirmed | rejected | undecided).
+type SuspectVerdict struct {
+	Node    string   `json:"node"`
+	Verdict string   `json:"verdict"`
+	Why     string   `json:"why,omitempty"`
+	Src     []string `json:"src,omitempty"`
+}
 
 type Report struct {
 	RootCause       string   `json:"root_cause"`
@@ -51,6 +60,9 @@ type Report struct {
 	Source        string         `json:"source,omitempty"`
 	Escalation    *V3Escalation  `json:"escalation,omitempty"`     // deterministic offer only; nothing is sent
 	SeverityBasis *SeverityBasis `json:"severity_basis,omitempty"` // reasoner v3: rule anchor vs reasoner (severityGuard)
+	// rsn_v4 (reasoner_prompt=v4, V3_DESIGN §2.4): the site node of the incident and the suspect-parent verdict
+	Scope       string          `json:"scope,omitempty"`
+	SuspectNode *SuspectVerdict `json:"suspect_node,omitempty"`
 }
 
 type SensorRef struct {
@@ -65,6 +77,7 @@ type SensorRef struct {
 	Evidence []Evidence `json:"evidence"`
 	GlobalEv []string   `json:"global_evidence_ids"`
 	Rule     Finding    `json:"rule_finding"`
+	ExtraEv  []string   `json:"-"`       // related-sensor E-lines added to the agent prompt on a more-data round (agent_more.go)
 	Context  bool       `json:"context"` // pulled in by the cross-domain orchestrator (not flagged itself)
 	Why      string     `json:"why,omitempty"`
 	// 12 h checks for what the 4 h agent misses (longrange.go): flagged sensors only, cited as E9/E10
@@ -99,6 +112,9 @@ type AgentCall struct {
 	Errors    []string `json:"errors"`
 	Repairs   []string `json:"repairs,omitempty"`
 	Prompt    string   `json:"prompt"`
+	// NPUNotRun: the NPU was unavailable or crashed, so no AI judgement exists for this sensor (the rule finding
+	// stands alone; never counted as agreement with it)
+	NPUNotRun bool `json:"npu_not_run,omitempty"`
 	// claim verifier (claimcheck.go): observation claims that contradict the window's own facts. Flags only - the
 	// observation text is never changed; the reasoner owns operator-facing wording.
 	ClaimFlags []ClaimFlag `json:"claim_flags,omitempty"`
@@ -114,6 +130,8 @@ type ReportCall struct {
 	Repairs   []string `json:"repairs,omitempty"`
 	Errors    []string `json:"errors"`
 	Prompt    string   `json:"prompt"`
+	// reasoning before the report JSON (reasoner_think=adaptive, multi-domain incidents; empty otherwise)
+	Think string `json:"think,omitempty"`
 	// two-stage report (owner, 2026-10-27): the instant deterministic report shown while the reasoner writes;
 	// replaced by the reasoner's report (or its fallback) when the analysis completes
 	Preliminary bool `json:"preliminary,omitempty"`
@@ -153,14 +171,25 @@ type Incident struct {
 	RefineStage   string     `json:"refine_stage,omitempty"`    // early | 1.5h | 3h: the analysis shown now
 	NextRefineSim int64      `json:"next_refine_sim,omitempty"` // sensor time the next refinement is due (0 = none)
 	RefineNote    string     `json:"refine_note,omitempty"`     // why a refinement was skipped, if one was
+	DataStatus    string     `json:"data_status,omitempty"`     // needs_more_data: no new readings, the AI cannot run (watchdog.go)
 	SimEpoch      int64      `json:"sim_epoch,omitempty"`       // engine history epoch the windows came from
 	SimShift      int64      `json:"sim_shift,omitempty"`       // engine clock shift NextRefineSim is expressed in
 	Revisions     []Revision `json:"revisions,omitempty"`       // every analysis of this incident, oldest first
 	// Approval lifecycle, checklist and append-only event log (workflow.go), serialised inline
 	WorkflowState
 
-	quiet   bool        // a refinement's working copy: no SSE, no token stream (refine.go)
-	preempt func() bool // checked between NPU calls; true = stop, more urgent work is waiting
+	ClockUnsure bool `json:"clock_uncertain,omitempty"` // created while the clock was invalid (time_sync, prod_time.go)
+
+	// site model (phase1.go): the incident's site node, its group root and linked incidents
+	Scope     string   `json:"scope,omitempty"`
+	SiteGroup string   `json:"site_group,omitempty"`
+	Related   []string `json:"related_incidents,omitempty"`
+	GroupWhy  string   `json:"group_why,omitempty"`
+
+	promoSim int64       // sensor time of the last promotion re-run (promote.go)
+	openedAt time.Time   // wall clock the incident was created in this process (watchdog.go)
+	quiet    bool        // a refinement's working copy: no SSE, no token stream (refine.go)
+	preempt  func() bool // checked between NPU calls; true = stop, more urgent work is waiting
 }
 
 type Reasoner struct {
@@ -185,6 +214,9 @@ type Reasoner struct {
 	fastInc map[string]*Incident
 	early   []earlyJob // provisional early AI runs (earlyai.go), after alerts and jobs, before refinements
 	ret     retIndex   // finished AI reports for the retrieval preliminary (retrieval.go)
+	// promotion of context sensors that turn abnormal inside an open incident (promote.go)
+	promos map[string]*promoJob
+	promoQ []string
 }
 
 func NewReasoner(g *GenieRunner, e *Engine, dir string, notify func(string, any)) *Reasoner {
@@ -261,7 +293,7 @@ func (r *Reasoner) Busy() bool {
 // so the NPU never builds a backlog and the user's most recent sensor change is always analysed.
 // The thermal guard defers LLM analysis while the device is hot (rules keep running).
 func (r *Reasoner) HandleCandidates(cands []Candidate) {
-	if cands = r.splitFast(cands); len(cands) == 0 {
+	if cands = r.promoteOpen(r.splitFast(cands)); len(cands) == 0 {
 		return
 	}
 	r.mu.Lock()
@@ -350,10 +382,11 @@ func (r *Reasoner) Submit(cands []Candidate, mode int) bool {
 
 // work is one unit for the NPU queue: an analysis of candidates, or the refinement of an incident.
 type work struct {
-	cands  []Candidate
-	mode   int
-	refine string    // incident ID (refine.go); cands and mode unused
-	early  *earlyJob // provisional early AI run (earlyai.go)
+	cands   []Candidate
+	mode    int
+	refine  string    // incident ID (refine.go); cands and mode unused
+	promote string    // incident ID (promote.go)
+	early   *earlyJob // provisional early AI run (earlyai.go)
 }
 
 // next takes the next unit of work: a pending event-gate alert first, then requested jobs in order,
@@ -369,6 +402,11 @@ func (r *Reasoner) next() (w work, ok bool) {
 		j := r.jobs[0]
 		r.jobs = r.jobs[1:]
 		return work{cands: j.cands, mode: j.mode}, true
+	}
+	if len(r.promoQ) > 0 {
+		id := r.promoQ[0]
+		r.promoQ = r.promoQ[1:]
+		return work{promote: id}, true
 	}
 	if len(r.early) > 0 {
 		j := r.early[0]
@@ -416,6 +454,8 @@ func (r *Reasoner) loop(w work) {
 	for {
 		if w.early != nil {
 			r.runEarly(*w.early)
+		} else if w.promote != "" {
+			r.runPromote(w.promote)
 		} else if w.refine != "" {
 			r.runRefine(w.refine)
 		} else {
@@ -484,6 +524,10 @@ func (r *Reasoner) newIncident(cands []Candidate, mode int) *Incident {
 	r.mu.Lock()
 	r.seq++
 	inc.ID = fmt.Sprintf("INC-%04d", r.seq)
+	if g := r.siteGroupLocked(inc); g != "" { // phase1.go: site-linked co-occurring flags form one group
+		inc.Timeline = append(inc.Timeline, TimelineItem{T: time.Now().Format("15:04:05"), Msg: "Site grouping: " + inc.GroupWhy})
+	}
+	inc.openedAt = time.Now()
 	r.incidents = append(r.incidents, inc)
 	r.mu.Unlock()
 	return inc
@@ -510,7 +554,10 @@ func (r *Reasoner) buildIncident(cands []Candidate, mode int) *Incident {
 	ctxPicks := r.eng.ContextFor(flagged, 4)
 	r.mu.Lock()
 	inc := &Incident{Mode: mode, State: "running", CreatedSim: cands[0].End,
-		CreatedWall: nowTime().In(IST).Format("2006-01-02 15:04:05"), Approval: "pending"}
+		CreatedWall: incidentWall(), Approval: "pending"}
+	if inc.CreatedWall == "" { // time_sync on and the clock invalid (prod_time.go)
+		clockPendingAdd(inc)
+	}
 	for _, c := range flagged {
 		inc.Sensors = append(inc.Sensors, r.sensorRef(fmt.Sprintf("S%d", len(inc.Sensors)+1), c, ""))
 		inc.Roles = appendUnique(inc.Roles, c.Role)
@@ -715,7 +762,8 @@ func (r *Reasoner) analyse(ctx context.Context, inc *Incident, mode int, t0 time
 		// the end of the batch, when the HTP has had time to recover; its slot in inc.Agents is replaced.
 		var npuDown, badOut []int
 		slot := map[int]int{}
-		solo := map[int]bool{} // agents re-run alone after an invalid batched answer
+		solo := map[int]bool{}  // agents re-run alone after an invalid batched answer
+		reruns := map[int]int{} // NPU-unavailable re-runs done per agent (at most maxNPURerun per incident)
 		runAgent := func(i int, again bool) {
 			s := inc.Sensors[i]
 			ai, okPrompt := r.agentPrompt(s) // v1, or v2 at s.WinN readings (agentversion.go)
@@ -732,17 +780,31 @@ func (r *Reasoner) analyse(ctx context.Context, inc *Incident, mode int, t0 time
 			if solo[i] {
 				verb = "re-running alone (its batched answer was invalid)"
 				r.genie.Forget(am, ai.Prompt+AgentPrefill)
+				r.genie.Forget(am, ai.Prompt+AgentToolPrefill)
 			} else if again {
 				verb = "re-running (NPU was unavailable)"
 			}
 			r.log(inc, fmt.Sprintf("%s agent %s %s %s on NPU (%s)", title(s.Role), verb, s.Node, s.Metric, shortModel(am)))
-			res := r.genie.Run(ctx, am, ai.Prompt+AgentPrefill, AgentPrefill, 90*time.Second, r.tokenSink(inc, s.Ref))
-			res.Text = AgentPrefill + res.Text
+			var res GenieResult
+			agPrompt := ai.Prompt + AgentPrefill
+			if agentTools() { // htpd_profile agent_tools=1: tool-call protocol (agent_tools.go), default off
+				res, agPrompt = r.runAgentTools(ctx, inc, s, am, ai, solo[i] || again, true)
+			} else {
+				res = r.genie.Run(ctx, am, ai.Prompt+AgentPrefill, AgentPrefill, 90*time.Second, r.tokenSink(inc, s.Ref))
+				res.Text = AgentPrefill + res.Text
+			}
 			if !res.Cached {
 				inc.NPUCalls++
 			}
-			call := checkAgentWin(s, res, ai.Prompt+AgentPrefill, ai.Xs, ai.HVRule) // ai.Xs: post-rules (htpd_profile post_rules=)
+			call := checkAgentWin(s, res, agPrompt, ai.Xs, ai.HVRule) // ai.Xs: post-rules (htpd_profile post_rules=)
 			call.CallMetrics = metricsOf(res)
+			npuErr := res.Error != "" && strings.HasPrefix(res.Error, "NPU unavailable")
+			if npuErr {
+				call.NPUNotRun, call.Parsed, call.Valid = true, nil, false
+				if again {
+					reruns[i]++
+				}
+			}
 			applyConfidenceRecal(&call, s.End, ai.Prompt) // D4: the confidence shown is the calibrated one (v2 only)
 			if solo[i] && !call.Valid {
 				r.log(inc, fmt.Sprintf("%s agent: solo re-run also invalid - first answer kept", title(s.Role)))
@@ -768,12 +830,20 @@ func (r *Reasoner) analyse(ctx context.Context, inc *Incident, mode int, t0 time
 				inc.Agents = append(inc.Agents, call)
 			}
 			r.mu.Unlock()
-			if res.Error != "" && strings.HasPrefix(res.Error, "NPU unavailable") {
-				if !again {
+			if npuErr {
+				if !again || reruns[i] < maxNPURerun {
 					npuDown = append(npuDown, i)
-					r.log(inc, fmt.Sprintf("%s agent: NPU temporarily unavailable (hardware, not a model or safety failure) - will re-run at the end", title(s.Role)))
+					r.log(inc, fmt.Sprintf("%s agent: NPU temporarily unavailable (hardware or htpd crash, not a model or safety failure) - will re-run at the end", title(s.Role)))
 				} else {
-					r.log(inc, fmt.Sprintf("%s agent: NPU still unavailable - rule finding kept for this sensor, no AI output to check", title(s.Role)))
+					log.Printf("reason: NPU crashed - agent not run (%s %s %s): %s", inc.ID, s.Node, s.Metric, res.Error)
+					r.log(inc, fmt.Sprintf("%s agent: NPU crashed - agent not run (no AI judgement for %s %s; rule finding kept, not counted as agent agreement)", title(s.Role), s.Node, s.Metric))
+					call.Errors = append(call.Errors, "NPU crashed - agent not run")
+					findings[i] = call
+					r.mu.Lock()
+					if k, ok := slot[i]; ok {
+						inc.Agents[k] = call
+					}
+					r.mu.Unlock()
 				}
 				return
 			}
@@ -789,6 +859,19 @@ func (r *Reasoner) analyse(ctx context.Context, inc *Incident, mode int, t0 time
 				src += fmt.Sprintf(", after %d NPU retr%s", res.Retries, map[bool]string{true: "y", false: "ies"}[res.Retries == 1])
 			}
 			r.log(inc, fmt.Sprintf("%s agent done %s: %s (policy %s)", title(s.Role), src, pat, okStr(call.Valid)))
+			// agentic data request (agent_more.go): an unsure answer is re-asked with a longer window, then with
+			// related-sensor lines; the most confident valid answer is kept
+			if call.Valid && call.Parsed != nil && !solo[i] {
+				if better, s2, ch := r.askMoreData(ctx, inc, i, am, call); ch {
+					findings[i] = better
+					r.mu.Lock()
+					inc.Sensors[i] = s2
+					if k, ok := slot[i]; ok {
+						inc.Agents[k] = better
+					}
+					r.mu.Unlock()
+				}
+			}
 		}
 		// Optional (SCE_GENIE_BATCH=1): answer every agent's prompt in ONE NPU process first and
 		// park the answers in the prompt cache, so each runAgent below finds its own already done.
@@ -802,7 +885,7 @@ func (r *Reasoner) analyse(ctx context.Context, inc *Incident, mode int, t0 time
 		if inc.preempted() {
 			return false
 		}
-		if batchEnabled() && len(llm) > 1 && !daemonUp() {
+		if batchEnabled() && len(llm) > 1 && !daemonUp() && !agentTools() {
 			prompts := make([]string, len(llm))
 			for k, i := range llm {
 				s := inc.Sensors[i]
@@ -828,11 +911,20 @@ func (r *Reasoner) analyse(ctx context.Context, inc *Incident, mode int, t0 time
 			}
 			runAgent(i, false)
 		}
-		for _, i := range npuDown {
-			if inc.preempted() {
-				return false
+		for round := 0; round < maxNPURerun && len(npuDown) > 0; round++ {
+			todo := npuDown
+			npuDown = nil
+			if htpdEnabled() { // re-run only once the supervisor reports htpd warmed up again (bounded)
+				if !htpdWaitReady(ctx, htpdReadyWait) {
+					r.log(inc, "Orchestrator: htpd not ready again after the wait - re-running the affected agents anyway")
+				}
 			}
-			runAgent(i, true)
+			for _, i := range todo {
+				if inc.preempted() {
+					return false
+				}
+				runAgent(i, true)
+			}
 		}
 		for k, i := range badOut {
 			if inc.preempted() {

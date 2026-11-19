@@ -37,6 +37,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -110,7 +112,7 @@ func newHtpdStream(n int, prefill string, emit func(k int, s string)) *htpdStrea
 	for k := range h.scans {
 		k := k
 		a := newAnswerScanner(prefill, func(s string) { emit(k, s) })
-		if a.ts == nil && prefill == AgentPrefill {
+		if a.ts == nil && isAgentPrefill(prefill) {
 			// htpd always trims agent answers at "action"; hold back the same way even when the
 			// app-side trim is switched off, so the stream never shows text the result drops
 			a.ts = newTrailScanner()
@@ -157,6 +159,15 @@ func htpdCallStream(ctx context.Context, kind string, prompts []string, timeout 
 
 // htpdCallOpts is htpdCallStream with extra request keys (htpd v8 "reason": keep, prefix, schema, max_new).
 func htpdCallOpts(ctx context.Context, kind string, prompts []string, timeout time.Duration, extra map[string]any, onPiece func(k int, piece string)) (*htpdResp, error) {
+	// a real request never meets a cold or restarting htpd: wait (bounded) for the warm-up gate
+	if !htpdWaitReady(ctx, htpdReadyWait) {
+		trace("htpd not ready after %v - calling it as it is", htpdReadyWait)
+	}
+	return htpdCallRaw(ctx, kind, prompts, timeout, extra, onPiece)
+}
+
+// htpdCallRaw is the call itself, without the readiness gate (the gate's own warm-up request uses it).
+func htpdCallRaw(ctx context.Context, kind string, prompts []string, timeout time.Duration, extra map[string]any, onPiece func(k int, piece string)) (*htpdResp, error) {
 	c, err := net.DialTimeout("tcp", htpdAddr(), time.Second)
 	if err != nil {
 		return nil, err
@@ -232,7 +243,7 @@ func (g *GenieRunner) execViaHtpd(ctx context.Context, prompt, prefill string, t
 	onToken func(string)) (string, streamStats, error) {
 	var st streamStats
 	kind := "synth"
-	if prefill == AgentPrefill {
+	if isAgentPrefill(prefill) {
 		kind = "agents" // the agent context applies the action trim
 	}
 	var hs *htpdStream
@@ -243,10 +254,20 @@ func (g *GenieRunner) execViaHtpd(ctx context.Context, prompt, prefill string, t
 	}
 	r, err := htpdCallStream(ctx, kind, []string{prompt}, timeout, onPiece)
 	if err != nil {
+		htpdMarkDown()
 		htpdKill("call failed: " + err.Error())
+		if htpdTransportErr(err) {
+			// same class as a failed HTP context: reason.go re-runs the agent at the end, after htpd is back
+			return "", st, fmt.Errorf("NPU unavailable (htpd crashed during the request, agent not run: %v)", err)
+		}
 		return "", st, fmt.Errorf("htpd: %w", err)
 	}
 	o := r.Outputs[0]
+	if htpdEmptyOut(o) {
+		htpdMarkDown()
+		htpdKill("empty reply: 0 tokens, no stop reason")
+		return "", st, fmt.Errorf("NPU unavailable (htpd crashed: 0 tokens and no stop reason, agent not run)")
+	}
 	st.tokens, st.ttftMs = o.Tokens, o.TTFTMs
 	st.genSec = (o.Ms - o.TTFTMs) / 1000
 	st.early = o.Stop == "json" || o.Stop == "action"
@@ -280,14 +301,19 @@ func (g *GenieRunner) prefetchViaHtpd(ctx context.Context, b ModelBundle, todo [
 		}
 		r, err := htpdCallStream(ctx, "agents", todo[start:end], 150*time.Second, onPiece)
 		if err != nil {
+			htpdMarkDown()
 			htpdKill("batch failed: " + err.Error())
 			trace("Prefetch(htpd): batch failed, prompts fall back to per-call htpd: %v", err)
 			return
 		}
 		wall := float64(time.Since(t0).Microseconds()) / 1000
+		empty := 0
 		for k, o := range r.Outputs {
 			text := strings.TrimSpace(o.Text)
 			if text == "" {
+				if htpdEmptyOut(o) {
+					empty++
+				}
 				continue
 			}
 			if hs != nil {
@@ -305,6 +331,11 @@ func (g *GenieRunner) prefetchViaHtpd(ctx context.Context, b ModelBundle, todo [
 		}
 		g.lastMs.Store(int64(wall))
 		trace("Prefetch(htpd): %d agents in one batch, %.0f ms (prefill %.0f ms)", end-start, wall, r.PrefillMs)
+		if empty == len(r.Outputs) { // nothing generated at all: the process is dying, not answering
+			htpdMarkDown()
+			htpdKill("batch returned 0 tokens for every stream")
+			return
+		}
 	}
 }
 
@@ -333,6 +364,9 @@ func superviseHtpd(g *GenieRunner, workDir string) {
 	}
 	if rm := reasonerHtpdModel(); rm != "" { // htpd v8 reasoner slot (reasoner=v3, reasoner_engine=htpd only)
 		want += " reasoner=" + rm
+		if c := htpdReasonCtx(); c > 0 {
+			want += fmt.Sprintf(" --reason-ctx %d", c)
+		}
 	}
 	argsFile := filepath.Join(workDir, "state", "htpd_args")
 	if prev, err := os.ReadFile(argsFile); htpdUp() && (err != nil || strings.TrimSpace(string(prev)) != want) {
@@ -345,7 +379,11 @@ func superviseHtpd(g *GenieRunner, workDir string) {
 		}
 	}
 	var startedAt time.Time
-	start := func() {
+	var exitedAt atomic.Int64 // unix ns of the last exit of an htpd this backend started
+	var startMu sync.Mutex    // the tick and the bring-up gate both start htpd: never two launches at once
+	var startRaw func()
+	start := func() { startMu.Lock(); defer startMu.Unlock(); startRaw() }
+	startRaw = func() {
 		if htpdUp() {
 			return
 		}
@@ -377,6 +415,24 @@ func superviseHtpd(g *GenieRunner, workDir string) {
 			if n := reasonerStreams(); n > 1 {
 				args = append(args, "--reason-streams", fmt.Sprint(n)) // htpd v8x split decoding
 			}
+			if c := htpdReasonCtx(); c > 0 {
+				args = append(args, "--reason-ctx", fmt.Sprint(c)) // r3 chat: ~5,060-token prefix, rows up to ~7,200
+			}
+		}
+		// the previous htpd must be fully gone and its NPU/fastrpc memory released before the next one maps its own
+		// (the crash-on-first-decode pairs of starts ~30 s apart: new process mapping while the old still held it)
+		for i := 0; i < 80 && len(htpdPids()) > 0; i++ {
+			time.Sleep(250 * time.Millisecond)
+		}
+		if p := htpdPids(); len(p) > 0 {
+			log.Printf("htpd: previous htpd %v still running - not starting another", p)
+			return
+		}
+		if e := exitedAt.Load(); e != 0 {
+			if w := htpdSettle - time.Since(time.Unix(0, e)); w > 0 {
+				log.Printf("htpd: previous process exited; settling %v before the next start", w.Round(100*time.Millisecond))
+				time.Sleep(w)
+			}
 		}
 		cmd := exec.Command(bin, args...)
 		cmd.Env = append(os.Environ(), "LD_LIBRARY_PATH="+lib, "ADSP_LIBRARY_PATH="+lib,
@@ -405,7 +461,7 @@ func superviseHtpd(g *GenieRunner, workDir string) {
 			log.Printf("htpd: start failed: %v", err)
 			return
 		}
-		go cmd.Wait()
+		go func() { cmd.Wait(); exitedAt.Store(time.Now().UnixNano()) }()
 		startedAt = time.Now()
 		// the kernel kills htpd before any system process if memory runs out (the eval script did this; the
 		// app path did not)
@@ -415,15 +471,36 @@ func superviseHtpd(g *GenieRunner, workDir string) {
 		}
 		up := htpdUp()
 		log.Printf("htpd: started (pid %d), up=%v", cmd.Process.Pid, up)
-		if up {
-			go htpdWarmup(g, workDir)
+	}
+	// the warm-up gate: ready only after one tiny agent request returned tokens; the optional htpd_warmup.jsonl pass
+	// (htpdWarmup, unchanged) runs right after, as before
+	bring := &htpdBring{start: start, up: htpdUp, pids: htpdPids, kill: htpdKill, warm: htpdWarmNoDecode, // owner 2026-11-17: a tiny warm-up decode crashed htpd every time on the board (fastrpc_mmap); port up + settle = ready
+
+		sleep: time.Sleep, after: func() { htpdWarmup(g, workDir) }}
+	hook := bring.run
+	htpdBringHook.Store(&hook)
+	htpdGateOn.Store(true)
+	var bringing atomic.Bool
+	kick := func() {
+		if bringing.CompareAndSwap(false, true) {
+			go func() { defer bringing.Store(false); bring.run() }()
 		}
 	}
 	start()
+	kick()
 	go func() {
 		for range time.Tick(15 * time.Second) {
-			if htpdEnabled() && !g.busy.Load() {
+			if !htpdEnabled() {
+				continue
+			}
+			if !htpdUp() {
+				htpdMarkDown()
+			}
+			if !g.busy.Load() {
 				start()
+			}
+			if !htpdReady.Load() {
+				kick()
 			}
 		}
 	}()
@@ -516,4 +593,15 @@ func htpdKill(why string) {
 		log.Printf("htpd: pids %v still present after kill", left)
 	}
 	time.Sleep(10 * time.Second)
+}
+
+// htpdReasonCtx: htpd_profile reason_ctx = KV cells per reasoner stream (htpd --reason-ctx). Unset (0) = htpd's default
+// 4096, as before. The r3 chat prompt (chat_prompt=r3: 21-tool header + system ~5,060 tokens; training rows p99 6,377,
+// max 7,229) does not fit 4096: set reason_ctx=8192 with it (proofs/2026-11-06_4b_local/board/DEPLOY_R3.md).
+func htpdReasonCtx() int {
+	n := htpdProfileInt("reason_ctx")
+	if n < 1024 || n > 32768 {
+		return 0
+	}
+	return n
 }

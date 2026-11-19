@@ -2,6 +2,7 @@ package main
 
 import (
 	"math"
+	"math/rand"
 	"testing"
 )
 
@@ -176,7 +177,8 @@ func TestDQGlitchFilterGateOnly(t *testing.T) {
 
 	// through the engine: a one-reading 4800 ppm glitch never reaches the AI
 	e := dqEngine(t)
-	e.NoiseScale = 1 // real jitter (exact values would read as a flatline sensor fault)
+	e.NoiseScale = 1                    // real jitter (exact values would read as a flatline sensor fault)
+	e.rng = rand.New(rand.NewSource(7)) // fixed jitter: a time-seeded draw made this test flaky (2026-11-17)
 	var got []Candidate
 	e.onEvent = func(c []Candidate) { got = append(got, c...) }
 	e.SetSensor(dqNode, dqMetric, 4800, "slider")

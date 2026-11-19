@@ -119,7 +119,7 @@ func recoveredSince(s SensorRef, xs []float64, onset string) (string, bool) {
 	sd = math.Sqrt(sd / float64(len(base)))
 	tol := math.Max(3*sd, 0.1*math.Abs(mb))
 	for _, x := range last {
-		if valueAbnormal(s.Role, s.Metric, x) || math.Abs(x-mb) > tol {
+		if valueAbnormalNode(s.Role, s.Metric, s.Node, x) || math.Abs(x-mb) > tol {
 			return "", false
 		}
 	}
@@ -152,7 +152,7 @@ func visibleNow(s SensorRef) bool {
 		return true
 	}
 	for k := len(s.Xs) - 6; k < len(s.Xs); k++ {
-		if k >= 0 && valueAbnormal(s.Role, s.Metric, s.Xs[k]) {
+		if k >= 0 && valueAbnormalNode(s.Role, s.Metric, s.Node, s.Xs[k]) {
 			return true
 		}
 	}
@@ -182,7 +182,7 @@ func keepStatus(sh *Incident, findings []AgentCall, i int, st string) {
 func endedBy(s SensorRef) string {
 	t := s.End
 	for k := len(s.Xs) - 1; k >= 0; k-- {
-		if valueAbnormal(s.Role, s.Metric, s.Xs[k]) {
+		if valueAbnormalNode(s.Role, s.Metric, s.Node, s.Xs[k]) {
 			if k < len(s.Xs)-1 {
 				t = s.End - int64(len(s.Xs)-2-k)*bucketSec
 			}
@@ -254,6 +254,7 @@ func (r *Reasoner) RefineTick(sim int64) {
 	if r.eng == nil {
 		return
 	}
+	r.releasePromos(sim) // context sensors promoted inside open incidents (promote.go)
 	epoch, shift, _ := r.eng.SimBase()
 	var stale []*Incident
 	r.mu.Lock()

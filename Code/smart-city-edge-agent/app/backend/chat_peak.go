@@ -19,6 +19,7 @@ var (
 	}{
 		{regexp.MustCompile(`(?i)\bpower\s*factor\b|\bpf\b`), "pf"},
 		{regexp.MustCompile(`(?i)\broom\s*temp\w*`), "room_temp"},
+		{regexp.MustCompile(`(?i)\bset\s*-?points?\b`), "setpoint"},
 		{regexp.MustCompile(`(?i)\bco2\b|\bcarbon\b`), "co2"},
 		{regexp.MustCompile(`(?i)\bpm\s*2\.?5\b`), "pm25"},
 		{regexp.MustCompile(`(?i)\bpm\s*10\b`), "pm10"},
@@ -80,7 +81,7 @@ func chatPeakQuestion(q string, history []ChatMsg) (metric, preset string, low, 
 func chatMetricName(m string) string {
 	if n, ok := map[string]string{"co2": "CO2", "temp": "temperature", "room_temp": "room temperature", "rh": "humidity", "pm25": "PM2.5",
 		"pm10": "PM10", "level": "water level", "flow": "water flow", "tds": "TDS", "ph": "pH", "power_kw": "power",
-		"pf": "power factor", "occ": "occupancy", "wind": "wind", "ac_units_on": "AC units on", "ac_on": "AC on", "setpoint": "setpoint"}[m]; ok {
+		"pf": "power factor", "occ": "occupancy", "wind": "wind", "ac_units_on": "AC units on", "ac_on": "AC on", "setpoint": "setpoint", "wq": "water quality", "aq": "air quality"}[m]; ok {
 		return n
 	}
 	return m
