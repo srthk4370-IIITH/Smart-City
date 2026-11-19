@@ -1,0 +1,9 @@
+- 10-30 20:04 host job: start (d561f89d)
+- 10-31 01:42 IST lab window live_ab started (w1.sh)
+- 10-31 01:45 IST live_ab produced no data (request files lacked the trailing newline; htpd reads one line); fixed, rerun as live_ab2
+- 10-30 20:21 host job: off done
+- 10-31 02:05 IST live_ab2 done (real corpus 11.83->9.98 s, +live 9.61 s, sev+label 8/8); window klong_ab started (w3.sh)
+- 10-30 20:43 host job: live done
+- 10-31 02:35 IST klong_ab: rl 9.58 s, k12 9.29, KLONG16 8.89 (sev+label 8/8 all). Host: live vs off byte-identical 6/6 (CPU). deploy19 started (KLONG16 ROWS48 + live corpus + corpus_real_all)
+- 10-30 21:05 host job: livek16 done
+- 10-30 21:05 host job: DONE

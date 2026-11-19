@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"net/http"
 	"os"
@@ -29,22 +30,95 @@ import (
 //go:embed chat_header.txt
 var chatHeader string
 
+// chatHeader15: the 15-tool chat header the rsn_v3 models were trained with (tools_r2.json["chat"] = tools_v4 chat:
+// the 9 tools above + rank_readings, current_levels, recent_incidents, open_incidents, faulty_sensors, what_if),
+// rendered by the Qwen3.5 HF chat template (proofs/2026-11-02_2b_r2/tools/render_chat_header15.py); byte-identical to
+// proofs/2026-11-02_2b_r2/tools/chat_header15.txt (TestChatHeader15MatchesTraining). Sent when chat_think=adaptive
+// (rsn_v3); rsn_v1 (thinking off) keeps the 9-tool chat_header.txt it was trained on.
+//
+//go:embed chat_header15.txt
+var chatHeader15 string
+
+// chatHeaderFor: the tools block for the chat model in use.
+func chatHeaderFor(adaptive bool) string {
+	if adaptive && chatPromptR3() {
+		return chatHeaderR3
+	}
+	if adaptive {
+		return chatHeader15
+	}
+	return chatHeader
+}
+
 //go:embed chat_system.txt
 var chatSystem string
+
+// r3 (rsn_v3 4B local, proofs/2026-11-06_4b_local): the 21-tool chat header (tools_r3.json["chat"], rendered by the Qwen3.5
+// HF template, byte-identical to tools/chat_header_r3.txt there) and the system rules with the fog lines. Profile key
+// chat_prompt=r3 (with chat_think=adaptive) switches them on; the models trained before keep their prompts.
+//
+//go:embed chat_header_r3.txt
+var chatHeaderR3 string
+
+//go:embed chat_system_r3.txt
+var chatSystemR3 string
+
+func chatPromptR3() bool { return reasonerProfile("chat_prompt", "SCE_CHAT_PROMPT") == "r3" }
 
 const chatMaxCalls, chatMaxNew, chatKeepTurns = 5, 220, 2
 
 // chatStaticPrefix: tools + system up to the user turn. The device time is rounded to the hour so htpd's
 // whole-state prefix cache is reused within the hour.
-func chatStaticPrefix(now time.Time) string {
+func chatStaticPrefix(now time.Time) string { return chatStaticPrefixMode(now, chatThinkAdaptive()) }
+
+func chatStaticPrefixMode(now time.Time, adaptive bool) string {
 	t := now.In(IST).Truncate(time.Hour)
+	if adaptive && chatPromptR3() { // r3: 21-tool header, live fog sentence, fog rules (chat_fog.go)
+		// the hour in IST (Truncate(time.Hour) works on UTC and gives IST half hours: 12:07 -> 11:30)
+		l := now.In(IST)
+		t := time.Date(l.Year(), l.Month(), l.Day(), l.Hour(), 0, 0, 0, IST)
+		first := fmt.Sprintf("You are the operator assistant of a smart-campus edge monitor (IIIT Hyderabad) on a Qualcomm QIDK. "+
+			"Device time: %s IST (%s). %s Full incident records on the device since %s.\n", t.Format("2006-01-02 15:04"), t.Weekday(),
+			chatFogLine(), chatDeviceSince(now))
+		if chatSiteV4() { // chat r5: + 4 site tools, SITE_RULE (chat_site.go; Phase 2)
+			return chatHeaderR5 + first + chatSystemR5 + "<|im_end|>\n<|im_start|>user\n"
+		}
+		return chatHeaderR3 + first + chatSystemR3 + "<|im_end|>\n<|im_start|>user\n"
+	}
 	first := fmt.Sprintf("You are the operator assistant of a smart-campus edge monitor (IIIT Hyderabad) on a Qualcomm QIDK. "+
 		"Device time: %s IST (%s). The device is offline: the fog server is unreachable.\n", t.Format("2006-01-02 15:04"), t.Weekday())
-	return chatHeader + first + chatSystem + "<|im_end|>\n<|im_start|>user\n"
+	return chatHeaderFor(adaptive) + first + chatSystem + "<|im_end|>\n<|im_start|>user\n"
+}
+
+// Chat prompt = the Qwen3.5 HF chat template (models/qwen3.5-4b/chat_template.jinja) as training renders it:
+//   - earlier exchanges (before the last user question): the template drops reasoning from them, so a history answer
+//     is "<|im_start|>assistant\n" + trim(answer) + "<|im_end|>\n" - no <think> block at all (thinking on or off);
+//   - the user text is trimmed; tool results are "<|im_start|>user\n<tool_response>\n...\n</tool_response>" joined by "\n";
+//   - assistant rounds of the current question keep their reasoning: "<|im_start|>assistant\n<think>\n" + reasoning +
+//     "\n</think>\n\n" + calls; the generation prompt is chatAssistantOpen().
+//
+// chatThinkAdaptive selects the current-turn opening: false (rsn_v1, trained with enable_thinking=False) = the empty
+// think block v3AssistantOpen; true (rsn_v3, adaptive thinking: trained with thinking on, the target either reasons
+// or closes the block at once) = "<|im_start|>assistant\n<think>\n", the template's add_generation_prompt with
+// thinking enabled, and the model writes the (possibly empty) reasoning and "</think>" itself. Profile key chat_think
+// (or SCE_CHAT_THINK) = "adaptive" switches it on.
+func chatThinkAdaptive() bool { return reasonerProfile("chat_think", "SCE_CHAT_THINK") == "adaptive" }
+
+const chatAssistantOpenAdaptive = "<|im_start|>assistant\n<think>\n"
+
+func chatAssistantOpen(adaptive bool) string {
+	if adaptive {
+		return chatAssistantOpenAdaptive
+	}
+	return v3AssistantOpen
 }
 
 // chatPrompt: prefix + up to chatKeepTurns earlier exchanges + the question + this question's tool rounds.
 func chatPrompt(prefix string, history []ChatMsg, question string, turns []v3Turn) string {
+	return chatPromptMode(prefix, history, question, turns, chatThinkAdaptive())
+}
+
+func chatPromptMode(prefix string, history []ChatMsg, question string, turns []v3Turn, adaptive bool) string {
 	var b strings.Builder
 	b.WriteString(prefix)
 	var pairs [][2]string
@@ -57,10 +131,14 @@ func chatPrompt(prefix string, history []ChatMsg, question string, turns []v3Tur
 		pairs = pairs[len(pairs)-chatKeepTurns:]
 	}
 	for _, p := range pairs {
-		b.WriteString(p[0] + "<|im_end|>\n" + v3AssistantOpen + p[1] + "<|im_end|>\n<|im_start|>user\n")
+		b.WriteString(strings.TrimSpace(p[0]) + "<|im_end|>\n<|im_start|>assistant\n" + strings.TrimSpace(chatClean(p[1])) + "<|im_end|>\n<|im_start|>user\n")
 	}
-	b.WriteString(question + "<|im_end|>\n" + v3AssistantOpen)
+	open := chatAssistantOpen(adaptive)
+	b.WriteString(strings.TrimSpace(question) + "<|im_end|>\n" + open)
 	for _, t := range turns {
+		if adaptive {
+			b.WriteString(strings.TrimSpace(t.Think) + "\n</think>\n\n")
+		}
 		for i, c := range t.Calls {
 			if i > 0 {
 				b.WriteString("\n")
@@ -78,18 +156,33 @@ func chatPrompt(prefix string, history []ChatMsg, question string, turns []v3Tur
 			}
 			b.WriteString("<tool_response>\n" + r + "\n</tool_response>")
 		}
-		b.WriteString("<|im_end|>\n" + v3AssistantOpen)
+		b.WriteString("<|im_end|>\n" + open)
 	}
 	return b.String()
 }
 
+// chatThinkOf: the reasoning of one generated round (adaptive mode: the text before "</think>"; the prompt already
+// opened the block).
+func chatThinkOf(text string) string {
+	if i := strings.Index(text, "</think>"); i >= 0 {
+		return strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(text[:i]), "<think>"))
+	}
+	return ""
+}
+
 // htpdChatLLM: the reasoner slot without the report schema (free text, stops at EOG), with the chat prefix.
 // chatLLM: the engine for chat (tests point it at a host llama-server).
-var chatLLM = func(prefix string) v3LLM { return htpdChatLLM{prefix: prefix} }
+// With chat_url set (chat_gpu.go) chat runs on the board GPU's llama-server and falls back to htpd on any error.
+var chatLLM = func(prefix string) v3LLM {
+	if u := chatURL(); u != "" {
+		return &chatGPULLM{url: u, prefix: prefix}
+	}
+	return htpdChatLLM{prefix: prefix}
+}
 
 type htpdChatLLM struct{ prefix string }
 
-func (htpdChatLLM) Name() string { return "qwen3.5-4b chat (htpd)" }
+func (htpdChatLLM) Name() string { return reasonerModelLabel() + " chat (htpd)" }
 
 func (l htpdChatLLM) Complete(ctx context.Context, prompt string, maxNew int, onPiece func(string)) (string, CallMetrics, error) {
 	if err := htpdReasonCaps(ctx); err != nil {
@@ -124,6 +217,7 @@ type ChatMsg struct {
 	Queued int64      `json:"queued_ms,omitempty"` // time spent waiting for the NPU before answering
 	Busy   bool       `json:"busy,omitempty"`      // "the NPU is analysing an incident" (not kept as context)
 	Error  bool       `json:"error,omitempty"`     // the engine failed
+	Model  string     `json:"model,omitempty"`     // engine that answered (only with chat_url: GPU or the htpd fallback)
 }
 
 type ChatSession struct {
@@ -147,6 +241,7 @@ type chatStore struct {
 
 func newChatStore(dir string) *chatStore {
 	c := &chatStore{path: filepath.Join(dir, "state", "chats.json"), S: map[string]*ChatSession{}}
+	fogInit(dir)
 	if b, err := os.ReadFile(c.path); err == nil {
 		var list []*ChatSession
 		if json.Unmarshal(b, &list) == nil {
@@ -192,6 +287,7 @@ const chatWarmFor = 60 * time.Second
 // HTPD_REASON_IDLE_MS (3 s), so a 1-token call every 2 s holds it. Never while an incident is analysed or a question
 // runs; an alert's agents request still takes the NPU back at once (htpd swaps on demand, ~2.6 s).
 func (c *chatStore) Warm(r *Reasoner) {
+	chatFogRef.Store(r)
 	c.mu.Lock()
 	c.active = time.Now().Add(chatWarmFor)
 	if c.warming {
@@ -202,6 +298,13 @@ func (c *chatStore) Warm(r *Reasoner) {
 	c.mu.Unlock()
 	go func() {
 		defer func() { c.mu.Lock(); c.warming = false; c.mu.Unlock() }()
+		// GPU chat (chat_url): the model stays resident; a ping only keeps a llama-server context checkpoint inside the
+		// static tool header. Qwen3.5 is hybrid (recurrent layers), so the cache can only resume from a checkpoint, and
+		// llama-server places one ~1 micro-batch (-ub 128) before each prompt's end. The prompt's hourly time line
+		// (sim clock, changes often) comes right after the header, so without a header-only prompt every question
+		// re-prefilled the whole ~3100 tokens (board: 11.8-14 s). The ping is the header alone, GPU only (never the
+		// NPU), every chatGPUWarmGap; each costs ~128 tokens of prefill.
+		var lastGPU time.Time
 		for {
 			c.mu.Lock()
 			until := c.active
@@ -209,7 +312,27 @@ func (c *chatStore) Warm(r *Reasoner) {
 			if time.Now().After(until) {
 				return
 			}
-			if r.analysingIncident() == "" && c.run.TryLock() {
+			gpu := chatGPUUp()
+			if gpu && time.Since(lastGPU) < chatGPUWarmGap {
+				time.Sleep(2 * time.Second)
+				continue
+			}
+			if gpu && c.run.TryLock() {
+				lastGPU = time.Now()
+				ctx, cancel := context.WithTimeout(context.Background(), chatGPUTimeout)
+				// then the whole hour's prefix (header + time line + system): a checkpoint ~128 tokens before the
+				// user turn, so a follow-up (history after the prefix) also resumes there. Board: header ping ~0.6 s,
+				// prefix ~1.3 s once the header checkpoint exists.
+				g := &chatGPULLM{url: chatURL()}
+				for _, p := range []string{chatHeaderFor(chatThinkAdaptive()), chatStaticPrefix(chatNowOf(r))} {
+					if _, _, err := g.gpu(ctx, p, 1); err != nil {
+						log.Printf("chat: GPU keep-warm failed: %v", err)
+						break
+					}
+				}
+				cancel()
+				c.run.Unlock()
+			} else if !gpu && r.analysingIncident() == "" && c.run.TryLock() {
 				now := time.Now()
 				if r.eng != nil {
 					if sim, _, _ := r.eng.Snapshot(); sim > 0 {
@@ -267,8 +390,21 @@ func (c *chatStore) Ask(ctx context.Context, r *Reasoner, id, question string) (
 }
 
 func (c *chatStore) answer(ctx context.Context, r *Reasoner, history []ChatMsg, question string) ChatMsg {
+	chatFogRef.Store(r)
 	t0 := time.Now()
 	msg := ChatMsg{Role: "assistant", At: time.Now().Unix()}
+	question = chatWithNode(r, chatNormalize(question)) // deploy24: "KH level 2 AC unit 24" -> its node id; deploy25: typos
+	// deploy25: question types (readings, sensor health, incidents over any span, follow-ups, refusals) first
+	if v, ok := (chatTools{r: r, now: chatNowOf(r)}).chatRouteV25(question, history); ok && v.Text != "" {
+		msg.Text, msg.Tools, msg.Ms = v.Text, v.Tools, time.Since(t0).Milliseconds()
+		return msg
+	}
+	// a routed question (peak, current levels, recent / open incidents, faulty sensors, what-if) needs no NPU
+	// (chat_router.go): answered at once from one tool, never queued behind an incident analysis
+	if text, tool, ok := (chatTools{r: r, now: chatNowOf(r)}).chatRouted(question, history); ok {
+		msg.Text, msg.Tools, msg.Ms = text, []ChatTool{tool}, time.Since(t0).Milliseconds()
+		return msg
+	}
 	// Queue, don't refuse (owner 2026-10-29): wait for the chat ahead and for any incident analysis (alerts first),
 	// then answer. The UI polls /api/chat/status to show what the question is waiting for. Give up after 5 min.
 	c.setWait("another question")
@@ -282,18 +418,28 @@ func (c *chatStore) answer(ctx context.Context, r *Reasoner, history []ChatMsg, 
 		time.Sleep(time.Second)
 	}
 	defer c.run.Unlock()
-	for {
-		busy := r.analysingIncident()
-		if busy == "" {
-			break
+	// waitNPU: wait for any incident analysis (alerts first); returns the incident still running at the deadline.
+	waitNPU := func(ctx context.Context) string {
+		for {
+			busy := r.analysingIncident()
+			if busy == "" {
+				c.setWait("")
+				return ""
+			}
+			c.setWait(busy)
+			if time.Now().After(deadline) || ctx.Err() != nil {
+				c.setWait("")
+				return busy
+			}
+			time.Sleep(2 * time.Second)
 		}
-		c.setWait(busy)
-		if time.Now().After(deadline) || ctx.Err() != nil {
-			c.setWait("")
+	}
+	// chat on the GPU (chat_url) does not wait for the NPU; its htpd fallback does (beforeNPU below)
+	if !chatGPUUp() {
+		if busy := waitNPU(ctx); busy != "" {
 			msg.Text, msg.Busy = fmt.Sprintf("The AI was analysing [%s] for over 5 minutes (alerts come first), so I stopped waiting. Please ask again.", busy), true
 			return msg
 		}
-		time.Sleep(2 * time.Second)
 	}
 	c.setWait("")
 	msg.Queued = time.Since(t0).Milliseconds()
@@ -305,11 +451,25 @@ func (c *chatStore) answer(ctx context.Context, r *Reasoner, history []ChatMsg, 
 	}
 	prefix := chatStaticPrefix(now)
 	llm := chatLLM(prefix)
+	gpu, _ := llm.(*chatGPULLM)
+	if gpu != nil {
+		gpu.beforeNPU = func(ctx context.Context) error {
+			if busy := waitNPU(ctx); busy != "" {
+				return fmt.Errorf("the AI was analysing [%s] for over 5 minutes", busy)
+			}
+			return nil
+		}
+	}
 	tools := chatTools{r: r, now: now}
+	// deploy25: the period and sensors the question names, read here, go to the model as a hint, and its tool calls
+	// are held to them (chatValidateCall); its answer is checked against the tool results (chatCheckAnswer)
+	guard := tools.chatGuardOf(question, history)
+	modelQ := question + guard.Hint
 	var turns []v3Turn
 	used := 0
+	seen := map[string]bool{} // tool calls made for this question (name + arguments as the model wrote them)
 	for {
-		prompt := chatPrompt(prefix, history, question, turns)
+		prompt := chatPrompt(prefix, history, modelQ, turns)
 		text, _, err := llm.Complete(ctx, prompt, chatMaxNew, nil)
 		if err != nil {
 			msg.Text, msg.Error = "The assistant could not run on the NPU ("+err.Error()+"). Please try again.", true
@@ -323,11 +483,23 @@ func (c *chatStore) answer(ctx context.Context, r *Reasoner, history []ChatMsg, 
 		if room := chatMaxCalls - used; len(calls) > room {
 			calls = calls[:room]
 		}
-		t := v3Turn{Calls: calls}
+		// a call the model already made in this question returns the same result again: drop it, and when a round
+		// is only repeats, stop (board 2026-11-04, blind2 Q "pm25 sensr ... kharab hai kya?": the 2B repeated one
+		// faulty_sensors call 3 times and ran out of calls after 63 s, with the same "could not find" answer)
+		calls = chatNewCalls(calls, seen)
+		if len(calls) == 0 {
+			break
+		}
+		t := v3Turn{Calls: calls, Think: chatThinkOf(text)}
 		for _, call := range calls {
-			res := tools.Exec(ctx, call.Name, call.Args())
+			args := call.Args()
+			res := guard.Validate(tools, call.Name, args)
+			if res == "" {
+				res = tools.Exec(ctx, call.Name, args)
+			}
+			guard.Saw(call.Name, res)
 			t.Results = append(t.Results, res)
-			a, _ := json.Marshal(call.Args())
+			a, _ := json.Marshal(args)
 			msg.Tools = append(msg.Tools, ChatTool{Name: call.Name, Args: string(a), Result: res})
 		}
 		used += len(calls)
@@ -336,14 +508,37 @@ func (c *chatStore) answer(ctx context.Context, r *Reasoner, history []ChatMsg, 
 	if msg.Text == "" && !msg.Error {
 		msg.Text = "I could not find an answer to that on the device."
 	}
+	if !msg.Error {
+		msg.Text = guard.Check(msg.Text, msg.Tools)
+	}
 	msg.Ms = time.Since(t0).Milliseconds()
+	if gpu != nil {
+		msg.Model = gpu.used
+	}
 	c.Warm(r) // a follow-up usually comes within a minute
 	return msg
+}
+
+// chatNewCalls: the calls not made before in this question (name + arguments, as the model wrote them); records them.
+func chatNewCalls(calls []V3Call, seen map[string]bool) []V3Call {
+	var out []V3Call
+	for _, c := range calls {
+		a, _ := json.Marshal(c.Args()) // map keys marshal sorted
+		k := c.Name + " " + string(a)
+		if !seen[k] {
+			seen[k] = true
+			out = append(out, c)
+		}
+	}
+	return out
 }
 
 var chatCallRe = regexp.MustCompile(`(?s)<tool_call>.*?(</tool_call>|$)|<think>.*?</think>`)
 
 func chatClean(s string) string {
+	if i := strings.LastIndex(s, "</think>"); i >= 0 { // adaptive thinking: the prompt opened the block
+		s = s[i+len("</think>"):]
+	}
 	s = chatCallRe.ReplaceAllString(s, "")
 	s = strings.ReplaceAll(s, "<|im_end|>", "")
 	return strings.TrimSpace(s)
@@ -420,7 +615,10 @@ func (t chatTools) span(v any, required bool) (time.Time, time.Time, error) {
 		case "all":
 			return time.Date(2000, 1, 1, 0, 0, 0, 0, IST), now, nil
 		}
-		return now, now, fmt.Errorf("unknown preset %q", p)
+		if a, b, ok := chatPresetSpan(p, now); ok { // deploy25: "last_14d", "last_12h" ... as written
+			return a, b, nil
+		}
+		return now, now, fmt.Errorf("unknown preset %q (use today, yesterday, last_24h, last_7d, this_week, last_30d, this_month, last_month, this_year, all, last_<N>h, last_<N>d, or from/to)", p)
 	}
 	parse := func(s string) (time.Time, error) {
 		s = strings.Replace(strings.TrimSpace(s), " ", "T", 1)
@@ -453,8 +651,12 @@ func chatCoverage(a, b, now time.Time) map[string]any {
 	if b.After(now) {
 		b = now
 	}
+	note := "device store, fog offline"
+	if _, ok, _ := fogC.State(); ok {
+		note = "device store"
+	}
 	return map[string]any{"source": "device", "complete": true, "from": a.In(IST).Format("2006-01-02"),
-		"to": b.In(IST).Format("2006-01-02 15:04"), "note": "device store, fog offline"}
+		"to": b.In(IST).Format("2006-01-02 15:04"), "note": note}
 }
 
 // incident facts used by the filters
@@ -468,14 +670,34 @@ type chatInc struct {
 	patterns map[string]string // ref -> pattern
 	status   map[string]string // ref -> status
 	faults   map[string]string // ref -> fault kind
+	archived bool              // an index row only (archived out of the 1000 full records; chat_fog.go)
 }
 
 func (t chatTools) incidents() []chatInc {
+	var arch []*Incident
+	if chatPromptR3() { // r3 only: the all-time index, counts stay exact after archiving (chat_fog.go); default = deploy32
+		arch = t.r.chatArchived()
+	}
 	t.r.mu.RLock()
 	defer t.r.mu.RUnlock()
-	out := make([]chatInc, 0, len(t.r.incidents))
+	out := make([]chatInc, 0, len(t.r.incidents)+len(arch))
+	live := make(map[string]bool, len(t.r.incidents))
 	for _, p := range t.r.incidents {
-		ci := chatInc{inc: p, at: time.Unix(p.CreatedSim, 0), patterns: map[string]string{}, status: map[string]string{}, faults: map[string]string{}}
+		live[p.ID] = true
+	}
+	all := t.r.incidents
+	if len(arch) > 0 {
+		all = make([]*Incident, 0, len(arch)+len(t.r.incidents))
+		for _, p := range arch {
+			if !live[p.ID] {
+				all = append(all, p)
+			}
+		}
+		all = append(all, t.r.incidents...)
+	}
+	for _, p := range all {
+		ci := chatInc{inc: p, at: time.Unix(p.CreatedSim, 0), patterns: map[string]string{}, status: map[string]string{}, faults: map[string]string{},
+			archived: !live[p.ID]}
 		if p.Final != nil && p.Final.Parsed != nil && !p.Final.Preliminary {
 			ci.label, ci.root = p.Final.Parsed.Label, p.Final.Parsed.RootCause
 		}
@@ -547,6 +769,9 @@ func (t chatTools) filter(args map[string]any, requireTime bool) ([]chatInc, tim
 		if approval != "" && p.Approval != approval {
 			continue
 		}
+		if wf := strArg(args, "workflow"); wf != "" && wfOf(p) != wf { // deploy24: needs_decision etc. (router follow-ups)
+			continue
+		}
 		if dom != "" || metric != "" || node != "" || pattern != "" {
 			ok := false
 			for _, s := range ci.sensors {
@@ -605,6 +830,8 @@ func (t chatTools) run(name string, args map[string]any) (map[string]any, error)
 				keys[normSeverity(ci.inc.Severity)] = true
 			case "label":
 				keys[ci.label] = true
+			case "approval": // router only (dismissed and approved counts in one answer)
+				keys[map[bool]string{true: "none", false: ci.inc.Approval}[ci.inc.Approval == ""]] = true
 			case "domain", "metric", "node", "pattern":
 				for _, s := range ci.sensors {
 					keys[map[string]string{"domain": s.Role, "metric": s.Metric, "node": s.Node, "pattern": ci.patterns[s.Ref]}[g]] = true
@@ -643,7 +870,7 @@ func (t chatTools) run(name string, args map[string]any) (map[string]any, error)
 				break
 			}
 			items = append(items, map[string]any{"id": ci.inc.ID, "time": ts(ci.at), "title": ci.inc.Title, "severity": normSeverity(ci.inc.Severity),
-				"label": ci.label, "domains": ci.domains, "approval": ci.inc.Approval, "outcome": ci.inc.Outcome})
+				"label": chatNull(ci.label), "domains": ci.domains, "approval": ci.inc.Approval, "outcome": chatNull(ci.inc.Outcome)})
 		}
 		return map[string]any{"items": items, "total": len(incs), "coverage": chatCoverage(a, b, t.now)}, nil
 	case "get_incident":
@@ -659,8 +886,12 @@ func (t chatTools) run(name string, args map[string]any) (map[string]any, error)
 			sens := []map[string]any{}
 			t.r.mu.RLock()
 			for _, s := range p.Sensors {
+				pat, st := ci.patterns[s.Ref], ci.status[s.Ref]
+				if s.Context && pat == "" && st == "" { // context sensors: the rule finding (as the training store's incident_sensor rows)
+					pat, st = s.Rule.Pattern, s.Rule.Status
+				}
 				m := map[string]any{"ref": s.Ref, "node": s.Node, "metric": s.Metric, "domain": s.Role, "flagged": !s.Context,
-					"pattern": ci.patterns[s.Ref], "status": ci.status[s.Ref]}
+					"pattern": pat, "status": st}
 				if f := ci.faults[s.Ref]; f != "" {
 					m["fault_kind"] = f
 				}
@@ -670,10 +901,13 @@ func (t chatTools) run(name string, args map[string]any) (map[string]any, error)
 			for _, st := range p.Steps {
 				steps = append(steps, map[string]any{"action": st.Action, "state": st.State, "by": st.By})
 			}
-			out := map[string]any{"id": p.ID, "time": ts(ci.at), "title": p.Title, "severity": normSeverity(p.Severity), "label": ci.label,
-				"root_cause": ci.root, "sensors": sens, "approval": p.Approval, "workflow": wfOf(p), "outcome": p.Outcome, "steps": steps,
+			out := map[string]any{"id": p.ID, "time": ts(ci.at), "title": p.Title, "severity": normSeverity(p.Severity), "label": chatNull(ci.label),
+				"root_cause": chatNull(ci.root), "sensors": sens, "approval": p.Approval, "workflow": wfOf(p), "outcome": chatNull(p.Outcome), "steps": steps,
 				"injected": p.Injected, "refine_stage": p.RefineStage}
 			t.r.mu.RUnlock()
+			if ci.archived { // index row only: the full record is on the fog (chat_fog.go)
+				return t.archivedIncident(context.Background(), args, out), nil
+			}
 			return out, nil
 		}
 		return map[string]any{"error": "no incident " + id + " on this device"}, nil
@@ -850,17 +1084,18 @@ func (t chatTools) run(name string, args map[string]any) (map[string]any, error)
 		out := []map[string]any{}
 		if t.r.eng != nil {
 			_, states, _ := t.r.eng.Snapshot()
+			faults := t.chatFaultsNow(t.incidents())
 			for _, s := range states {
 				if (dom != "" && s.Role != dom) || (loc != "" && !strings.Contains(strings.ToLower(s.Node+" "+s.Location), loc)) {
 					continue
 				}
-				st := normSeverity(s.Status)
+				st := chatLiveStatus(s, faults) // the chat tools' live status (chat_tools_v3.go), as in training
 				if status != "" && st != status {
 					continue
 				}
 				var last any
 				if s.Last != nil {
-					last = strings.TrimSpace(strconv.FormatFloat(*s.Last, 'f', -1, 64) + " " + s.Unit)
+					last = strings.TrimSpace(strconv.FormatFloat(chatRound(s.Metric, *s.Last), 'f', -1, 64) + " " + s.Unit)
 				}
 				out = append(out, map[string]any{"node": s.Node, "metric": s.Metric, "domain": s.Role, "location": s.Location, "status": st, "last": last})
 			}
@@ -939,9 +1174,26 @@ func (t chatTools) run(name string, args map[string]any) (map[string]any, error)
 		}
 		return map[string]any{"outcome_counts": counts, "maintenance_counts": map[string]int{}, "maintenance": []any{},
 			"items": items, "coverage": chatCoverage(a, b, t.now)}, nil
+	case "rank_readings", "current_levels", "recent_incidents", "open_incidents", "faulty_sensors", "what_if":
+		return t.runV3(name, args) // chat_tools_v3.go
+	case "get_site_tree", "nodes_under", "linked_equipment", "site_status":
+		return liveSiteTools(t.r).Call(name, args) // chat_site.go
 	case "search_knowledge":
-		return map[string]any{"available": false, "passages": []any{},
-			"note": "search_knowledge runs on the fog server, which is unreachable (device offline). No documents are available."}, nil
+		if !chatPromptR3() { // default (no chat_prompt=r3) = deploy32: the stub the 9/15-tool models were trained on
+			return map[string]any{"available": false, "passages": []any{},
+				"note": "search_knowledge runs on the fog server, which is unreachable (device offline). No documents are available."}, nil
+		}
+		return t.fogTool(context.Background(), name, args) // fog first, device fallback (chat_fog.go)
+	}
+	if chatPromptR3() { // the r3 tools exist only with chat_prompt=r3 (21-tool header)
+		switch name {
+		case "fog_search_history", "fog_analytics": // fog first, device fallback (chat_fog.go)
+			return t.fogTool(context.Background(), name, args)
+		case "fog_status":
+			return t.fogStatus(context.Background()), nil
+		case "co_occurring_incidents", "recurring_issues", "compare_periods":
+			return t.runLocalR3(name, args)
+		}
 	}
 	return nil, fmt.Errorf("unknown tool %q", name)
 }
@@ -950,6 +1202,7 @@ func (t chatTools) run(name string, args map[string]any) (map[string]any, error)
 
 func (s *Server) chatRoutes(mux *http.ServeMux) {
 	cs := newChatStore(s.dir)
+	chatMain = cs
 	mux.HandleFunc("/api/chat/warm", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "POST", 405)

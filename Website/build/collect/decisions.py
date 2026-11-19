@@ -422,6 +422,49 @@ DEC = [
       "bcrypt-checked password, AES-256-GCM per file, ECharts vendored, deck kept in memory", [R("Cloudflare Access login (HANDBOOK 2.36 plan)", "replaced by password-only with client-side encryption (SPEC, 2026-10-19)", "tl_milestones"),
                                                                                               R("Plots in the deck", "all plots live on the site", "tl_milestones")],
       "Answers 'show us the data' with charts, n and CIs one click from the source.", ["tl_milestones", "tl_proofs"], "2.36 G; Website/SPEC.md", topic="timeline"),
+    # ---------------------------------------------------------------- after 29 Oct (added 2026-11-04, recent.py datasets)
+    D("D126", "2026-10-23", "Cross-domain reasoner: Qwen3.5-4B, picked after the P0 benchmark",
+      "Qwen3.5-4B, QLoRA r32 (about 21 h on the laptop), swapped onto the NPU per incident",
+      [R("Qwen3.5-2B as the reasoner", "P0 total score 0.16 lower [0.12, 0.19]; later rsn_v3 2B r2 also lost on reports", "acc_reasoner_split"),
+       R("A reasoner LoRA on the 3B agents' model", "P0 total 0.42 lower than the 4B", None)],
+      "Best P0 total; one model reads every agent's finding and checks their claims.", ["acc_reasoner_split"], "2.44; P0 RESULTS.md", topic="accuracy"),
+    D("D127", "2026-10-29", "Reject rsn_v2: accuracy before latency",
+      "Keep rsn_v1 as the report model", [R("rsn_v2 (about 10% faster)", "severity 87.6% vs 94.7% on the same 106 incidents; invented a title location on the board", "acc_rsn_v1_v2")],
+      "Severity is what operators act on.", ["acc_rsn_v1_v2"], "2.59", topic="accuracy"),
+    D("D128", "2026-10-27", "Split decoding for the reasoner: head once, then 3 field groups in parallel",
+      "reasoner_split=3 with OPPOLL; severity and label decided before the fork",
+      [R("Split 4", "+1% only", None), R("Split 6", "6 streams x 4096 ctx do not fit the NPU session", None), R("Split 3r (fork after the label)", "22.2 vs 22.2 s", None)],
+      "27.8 -> 21.6 s per report with the gate at 100%.", ["lat_app_ai_update"], "2.53; 2.56b; 2.59", topic="latency"),
+    D("D129", "2026-10-30", "Verified speculative drafts inside split decoding (htpd v9 to v9f)",
+      "Drafts from the prompt and a corpus of past outputs (reports, agents, chat), verified greedily; the corpus grows from the app",
+      [R("Single-stream MTP / n-gram speculation", "slower: the 1-row step is only 66 ms and verify rows cost more", "lat_rejected_ideas"),
+       R("Decode row padding (htpd v8x4)", "+11-15% slower, same answers", None)],
+      "Reasoner 23.3 -> 9.1 s (lab); app AI update 52.6 -> 21.7-28 s.", ["lat_reasoner_spec", "lat_app_ai_update"], "2.63; 2.64; 2.65; 2.66", topic="latency"),
+    D("D130", "2026-10-28", "Critical fast path; accept the 8-reading gate for everything else",
+      "2 fresh readings past a critical limit open the incident at once; the AI updates the same incident at 8 readings",
+      [R("Run the AI on 2-4 readings", "young events are read badly (42% at 40 min after onset)", "ad_placement_curve")],
+      "A critical breach is an incident in about 5.6 s (2.6 s after a silent gap); early AI stays off until proven.", ["lat_app_ai_update", "ad_placement_curve"], "2.55; 2.67", topic="latency"),
+    D("D131", "2026-10-29", "The reasoner stays on the NPU",
+      "One htpd, one model on the NPU at a time, reasoner swapped in (model load 2.8 s after the parallel repack)",
+      [R("Reasoner on the Adreno 750 GPU", "7.35 / 8.44 / 8.35 tok/s, about 2.5x slower than the NPU split", "hw_gpu_batched")],
+      "The NPU is faster at every size we measured.", ["hw_gpu_batched"], "2.59; 2.62", topic="hardware"),
+    D("D132", "2026-11-01", "Campus Assistant: a Go router before the model, read-only tools",
+      "Question-type layer (intent classes, span parser, referents, Hinglish), refusals for actions, a guard against invented ids",
+      [R("Send every question to the model", "27/40 at a median of 9.7 s; action requests not refused", "ux_chat_sweeps"),
+       R("Patch phrases per failed question", "a blind set scored 20/40: fixes must be general", "ux_chat_sweeps")],
+      "39/40 on two sets; 142 of 160 answers in under 1 s.", ["ux_chat_sweeps", "ux_chat_timing"], "2.68; 2.69; 2.70", topic="app_ux"),
+    D("D133", "2026-11-04", "Evaluation-day split: 2B chat on the CPU, 4B reports on the NPU",
+      "rsn_v3 r2 (Qwen3.5-2B) in llama-server on 5 CPU cores for chat, falling back to the 4B; reports and agents unchanged on the NPU",
+      [R("The 2B for chat and reports", "RWH severity 0.793 vs 0.919, check recall 0.405 vs 0.848", "acc_reasoner_split"),
+       R("The 4B for chat", "chat dev v3 pass rate 0.477 vs 0.737", "acc_reasoner_split"),
+       R("Swap the chat model in htpd per request (v9g)", "parked: the owner chose a separate chat server", None),
+       R("The 2B on the Adreno GPU (deploy28/29)", "8-10 tok/s vs ~25 on the CPU with identical text: Qwen3.5 recurrent layers run on the CPU, so every layer synced GPU and CPU", None)],
+      "Each model where it scores best, for the evaluation only; the 4B is trained further to be the one general model.", ["acc_reasoner_split"],
+      "proofs/2026-11-04_split/README.md; gpu/tune/TUNE.md", topic="accuracy"),
+    D("D134", "2026-10-29", "Fix forward with automatic rollback on every deploy",
+      "Snapshot the known-good APK and profile, deploy, run chaos 2 + a critical-breach fastcheck through the app, roll back on failure",
+      [R("Manual deploys", "the scripts caught their own slips: a ready check that missed a rotated log rolled back deploy22 r2 and deploy23 r1 automatically", None)],
+      "Twenty-plus deploys in a week with the board always on a checked build.", ["lat_app_ai_update"], "2.67; 2.68", topic="ops"),
 ]
 
 
@@ -429,7 +472,7 @@ def main():
     ids = {p.stem for p in DATA.glob("*/*.json")}
     missing = []
     for d in DEC:
-        for e in d["evidence_ids"] + [r["evidence_id"] for r in d["rejected"]]:
+        for e in d["evidence_ids"] + [r["evidence_id"] for r in d["rejected"] if r["evidence_id"]]:
             if e not in ids:
                 missing.append((d["id"], e))
     assert not missing, f"decisions reference missing datasets: {missing}"

@@ -1,0 +1,19 @@
+# Deploy 31: split6 APK + chat server pre-warm; chat 2B on the CPU, reports 4B on the NPU (04:43 IST)
+- snapshot: APK 7427684d, new APK 0957f89f
+- chat_gpu.sh 812b3c1b5d6175b31845d661d013da26 pushed, device=cpu
+- warm.json f100a1da610f8711be4129c3f14674e5 pushed
+- split APK alone (chat_url unset): chaos rc=0 fastcheck rc=0 {"fast_incident": "INC-0707", "fast_s": 5.7, "ai_update_s": 28.0, "final_model": "qwen3.5-4b (htpd)", "valid": true, "severity": "sensor_fault", "title": "KH building, level 03: Suspect CO2 readings", "pass": true}
+- before GPU: avail=6519MB t=88C
+- split on: GPU up after 15 s; profile: chat_think=adaptive chat_url=http://127.0.0.1:8090 chat_device=cpu 
+- GPU resident: avail=3389MB t=67C
+- chat during the incident: 52 s | model qwen3.5-2b rsn_v3 (cpu) | tools ['domain_health'] | busy False | error False | Are there any HVAC problems I should worry about? -> 15 incidents in
+- fastcheck with 2B on CPU: rc=0 {"fast_incident": "INC-0709", "fast_s": 5.6, "ai_update_s": 27.7, "final_model": "qwen3.5-4b (htpd)", "valid": true, "severity": "sensor_fault", "title": "KH building, level 03: Suspect CO2 readings", "pass": true} | avail=4655MB t=85C
+- chat: 0 s | model - | tools ['open_incidents'] | busy False | error False | Which domains have open incidents right now? -> 50 incidents are waiting for an operator decision. By domain: air quality 36 (2 critical, 34 sensor fault; oldest from 2026-10-14 10:25); HVAC 8 (8 warning; oldest from 2026-10-18 00:40); weather 5 (2
+- chat: 0 s | model - | tools ['current_levels'] | busy False | error False | CO2 theek hai KH level 3 pe? -> CO2 at KH building, level 03, indoor air sensor 03 (SR-AQ-KH03-03): 449.7 ppm (reading of 2026-10-14 10:15), but this sensor is flagged as faulty, so the value may not be real (alert limits: above 100
+- chat: 0 s | model - | tools ['open_incidents'] | busy False | error False | Close all open incidents. -> I can't do that: my tools only read the device's data, so I cannot change a device, a setpoint, a threshold or an incident. An operator has to do it. 50 incidents are waiting for a decision; open each
+- chat: 36 s | model qwen3.5-2b rsn_v3 (cpu) | tools ['get_sensor_history', 'get_sensor_history', 'get_sensor_history'] | busy False | error False | Has the KH level 2 AC unit 24 had repeated problems? -> SR-AC-KH02-24 room temperature in the last 24 hours: mean 25.3 C, max 25.5 C, trend +0.1 C/day. SR-AC-KH02-24 setpoint in the last 24 hours: mean 26.0 C, max 26.0 C, trend +0.0 C/day. SR-AC-KH02-24 AC
+- chat: 0 s | model - | tools ['current_levels'] | busy False | error False | Compare air quality and water incidents this week. -> There is no air quality sensor at KH building, level 2. The device measures it here: PM2.5 at KN building, outdoor air station (AQ-KN00-00): 27.1 ug/m3 (reading of 2026-10-14 13:20), but this sensor i
+- chat: 15 s | model qwen3.5-2b rsn_v3 (cpu) | tools ['domain_health'] | busy False | error False | Give me a quick status of the whole campus in two lines. -> Air quality: 48 open incidents, worst critical. Water: 1 open incident, worst critical. Power: 0 open incidents.
+- after chat: avail=3131MB t=78C; guard kills: 0
+- DEPLOYED: APK 0957f89f (split6), 2B chat on CPU ON; chaos 2 rc=0; fastchecks ok
+- board now: APK 0957f89f; reasoner_model=/data/local/tmp/gpu/qwen35_reasoner_q4_0.gguf chat_think=adaptive chat_url=http://127.0.0.1:8090 chat_device=cpu ; llama-server 13184

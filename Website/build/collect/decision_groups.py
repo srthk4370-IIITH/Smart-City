@@ -157,6 +157,30 @@ GROUPS = [
       [R("Publish datasets", "room occupancy reveals people's presence", "uc_coverage"),
        R("Cloudflare Access login", "replaced by password + client-side encryption", "tl_milestones")],
       ["uc_coverage", "tl_milestones"], ["D001", "D069", "D125"], "2.36; SPEC", "timeline"),
+    G("G31", 31, "A cross-domain reasoner on the same NPU, accuracy first", "rsn_v1 kept: severity 94.7% vs 87.6% for the faster rsn_v2",
+      "Qwen3.5-4B (rsn_v1) after the P0 benchmark; every later candidate gated against it",
+      [R("A faster but less accurate reasoner", "rsn_v2 lost 7 points of severity on the same 106 incidents", "acc_rsn_v1_v2")],
+      ["acc_rsn_v1_v2", "acc_reasoner_split"], ["D126", "D127"], "2.44; 2.59", "accuracy"),
+    G("G32", 32, "Make the reports fast without changing their answers", "Reasoner 23.3 s -> 9.1 s; AI report on the incident 55 s -> 22-28 s",
+      "Split decoding, then verified drafts from past outputs; the NPU stays the only engine for the reasoner",
+      [R("Speed-ups that change answers or do not pay", "LADE, single-stream speculation, row padding, more split groups, the GPU", "lat_rejected_ideas")],
+      ["lat_reasoner_spec", "lat_app_ai_update"], ["D128", "D129", "D131"], "2.53; 2.63", "latency"),
+    G("G33", 33, "Critical fast path; honest about sensor time", "A critical breach is an incident in about 5.6 s; other events wait 8 readings",
+      "Fast incident from 2 critical readings, AI on the same incident at 8 readings; early AI built but off",
+      [R("Early AI on young windows", "42% pattern accuracy at 40 min after onset", "ad_placement_curve")],
+      ["lat_app_ai_update", "ad_placement_curve"], ["D130"], "2.55; 2.67", "latency"),
+    G("G34", 34, "Campus Assistant: router first, model for the rest, read-only", "39/40 on two board sweeps; 142 of 160 answers in under 1 s",
+      "Go question-type layer with read-only tools; the model only for what the router cannot answer; actions refused",
+      [R("Model for every question", "27/40 at a median of 9.7 s", "ux_chat_sweeps")],
+      ["ux_chat_sweeps", "ux_chat_timing"], ["D132"], "2.68; 2.70", "app_ux"),
+    G("G35", 35, "Evaluation day: each model where it scores best", "2B chat 0.737 vs 0.477; 4B reports severity 0.919 vs 0.793",
+      "Chat on the 2B (CPU), reports on the 4B (NPU), for the evaluation only; the 4B is trained further as the single model",
+      [R("One model for both today", "either chat or reports would be worse", "acc_reasoner_split")],
+      ["acc_reasoner_split"], ["D133"], "proofs/2026-11-04_split/apk/README.md", "accuracy"),
+    G("G36", 36, "Fix forward with automatic rollback", "Every deploy checked through the app before it stays live",
+      "Snapshot, deploy, chaos 2 + fastcheck, roll back on failure",
+      [R("Manual deploys", "slips are caught only by a person", None)],
+      ["lat_app_ai_update"], ["D134"], "2.67; 2.68", "ops"),
 ]
 
 
@@ -171,13 +195,13 @@ def main():
         for cid in g["children"]:
             d = dict(byid[cid])
             d["evidence_ids"] = list(dict.fromkeys(canon(e) for e in d["evidence_ids"]))
-            d["rejected"] = [dict(r, evidence_id=canon(r["evidence_id"])) for r in d["rejected"]]
+            d["rejected"] = [dict(r, evidence_id=canon(r["evidence_id"]) if r["evidence_id"] else None) for r in d["rejected"]]
             kids.append(d)
         st = {k["status"] for k in kids}
         g = dict(g, status="pending" if "pending" in st else "kept", date=min(k["date"] for k in kids),
                  rejected_count=len(g["rejected"]) + sum(len(k["rejected"]) for k in kids), children=kids)
-        refs = g["evidence_ids"] + [r["evidence_id"] for r in g["rejected"]] + \
-            [e for k in kids for e in k["evidence_ids"] + [r["evidence_id"] for r in k["rejected"]]]
+        refs = g["evidence_ids"] + [r["evidence_id"] for r in g["rejected"] if r["evidence_id"]] + \
+            [e for k in kids for e in k["evidence_ids"] + [r["evidence_id"] for r in k["rejected"] if r["evidence_id"]]]
         missing += [(g["id"], e) for e in refs if e not in ids]
         groups.append(g)
     assert not missing, f"decisions reference missing datasets: {missing}"

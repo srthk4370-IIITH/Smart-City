@@ -37,7 +37,7 @@ func earlyAIConfig() (int, map[string]bool) {
 	}
 	p := htpdProfile()
 	k, _ := strconv.Atoi(strings.TrimSpace(p["ai_early_k"]))
-	if k < 0 || k >= persistReadings {
+	if k < 0 || k >= trigRules().PersistReadings {
 		k = 0
 	}
 	sh := map[string]bool{}
@@ -110,7 +110,7 @@ func (r *Reasoner) queueEarly(cands []Candidate) {
 		r.persist(inc)
 	}
 	r.log(inc, fmt.Sprintf("Provisional AI queued: %s abnormal on a young window (shape %s); the full analysis follows at %d readings",
-		cands[0].Node+" "+cands[0].Metric, shapeOf(cands[0].Finding), persistReadings))
+		cands[0].Node+" "+cands[0].Metric, shapeOf(cands[0].Finding), trigRules().PersistReadings))
 	r.mu.Lock()
 	r.early = append(r.early, earlyJob{inc, cands})
 	var w work

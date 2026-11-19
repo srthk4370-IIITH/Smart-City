@@ -191,6 +191,14 @@ func promptEvidenceIDs(prompt string) map[string]bool {
 // model's training), or with the v2 agent the v2 prompt at s.WinN readings (0 = the 4 h alert window)
 // with its 12 h history. ok is false when no prompt can be built (an HVAC unit without a window).
 func (r *Reasoner) agentPrompt(s SensorRef) (AgentInput, bool) {
+	ai, ok := r.agentPromptBase(s)
+	if ok && len(s.ExtraEv) > 0 {
+		ai = withExtraEvidence(ai, s.ExtraEv)
+	}
+	return ai, ok
+}
+
+func (r *Reasoner) agentPromptBase(s SensorRef) (AgentInput, bool) {
 	if !agentV2() {
 		return BuildAgentPrompt(s.Role, s.Node, s.Location, s.Metric, s.Xs, s.End), true
 	}
@@ -204,7 +212,13 @@ func (r *Reasoner) agentPrompt(s SensorRef) (AgentInput, bool) {
 		}
 		for ; n >= v2MinN; n -= v2StepN { // the longest ladder window the history holds
 			if xs, c, hist, ok := r.eng.HVACAt(s.Node, s.End, n); ok {
-				ai := BuildHVACPromptV2(s.Node, s.Location, xs, c, hist).AgentInput
+				v2 := BuildHVACPromptV2(s.Node, s.Location, xs, c, hist)
+				if agentV3() {
+					if cd, place, ok := sensorCard(s.Role, s.Metric, s.Node, s.Location); ok {
+						v2 = AgentPromptV3FromV2(cd, s.Node, s.Location, place, v2)
+					}
+				}
+				ai := v2.AgentInput
 				hf := HVACRuleFinding(xs, c)
 				ai.HVRule = &hf
 				return ai, true
@@ -220,6 +234,11 @@ func (r *Reasoner) agentPrompt(s SensorRef) (AgentInput, bool) {
 		hist = s.Xs
 	}
 	n = ValidV2N(n, len(hist))
+	if agentV3() {
+		if cd, place, ok := sensorCard(s.Role, s.Metric, s.Node, s.Location); ok {
+			return BuildAgentPromptV3Gaps(cd, s.Node, s.Location, place, hist, n, s.End, nil, r.agentGaps(s, len(hist), n)).AgentInput, true
+		}
+	}
 	return BuildAgentPromptV2(s.Role, s.Node, s.Location, s.Metric, hist[len(hist)-n:], s.End, hist).AgentInput, true
 }
 

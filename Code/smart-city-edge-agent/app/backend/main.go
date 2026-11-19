@@ -25,6 +25,7 @@ func main() {
 	speed := flag.Int("speed", 1, "readings (5-minute buckets) taken per poll")
 	poll := flag.Int("poll-ms", 2000, "poll interval in ms")
 	clockUnix := flag.Int64("clock-unix", 0, "correct wall clock: current unix time (device clocks can be wrong)")
+	fogAddr := flag.String("fog-addr", "", "laptop/fog box only: also serve the fog side (/v1/tool, /v1/status, /v1/ingest) on this address")
 	flag.Parse()
 	if *clockUnix > 0 {
 		clockOffset = time.Unix(*clockUnix, 0).Sub(time.Now())
@@ -36,6 +37,7 @@ func main() {
 		}
 	}
 
+	setNetClockDir(*dir)
 	initThermal()
 	initAgentVersion(*dir) // v1 (default) or v2 agent: agentversion.go
 	eng, err := NewEngine(*dir)
@@ -57,6 +59,7 @@ func main() {
 	rsn.Mode = *mode
 	health := NewHealthTracker()
 	eng.onEvent = rsn.HandleCandidates
+	eng.onRise = rsn.HandleRises
 	eng.onTick = func(sim int64) {
 		rsn.RefineTick(sim) // re-analyses due at 1.5 h / 3 h of sensor time (refine.go)
 		hub.Publish("tick", map[string]any{"sim_time": sim, "sim_time_ist": time.Unix(sim, 0).In(IST).Format("Mon 02 Jan 15:04"), "npu": genie.Status()})
@@ -68,7 +71,7 @@ func main() {
 			live = append(live, map[string]any{"node": st.Node, "metric": st.Metric, "role": st.Role, "last": st.Last,
 				"sma_1h": st.SMA1h, "ema_1h": st.EMA1h, "slope_per_h": st.SlopePerH, "pattern": st.Pattern,
 				"status": st.Status, "injected": st.Injected, "data_ok": st.DataOK, "updated": st.Updated,
-				"abnormal_for": st.AbnormalFor, "reported": st.Reported, "persist_readings": persistReadings,
+				"abnormal_for": st.AbnormalFor, "reported": st.Reported, "persist_readings": trigRules().PersistReadings,
 				"quality": st.Quality, "quality_reason": st.QualityWhy, "maint_until": st.MaintUntil})
 		}
 		hub.Publish("live", map[string]any{"sim_time": sim, "sensors": live})
@@ -86,11 +89,18 @@ func main() {
 			eng.Tick()
 		}
 	}()
+	rsn.StartWatchdog()
 	srv := &Server{eng: eng, rsn: rsn, genie: genie, hub: hub, health: health, dir: *dir, start: time.Now()}
 	log.Printf("edge-agent: %d live sensors (sliders / %s), clock from %s, agent model: %s (available=%v, agent %s), listening on %s",
 		len(eng.states), "/api/ingest", eng.Meta.StartIST, genie.AgentModel().Name, genie.AgentModel().Available, agentVer, *port)
 	// header and idle timeouts stop slow or abandoned clients holding connections open; no write
 	// timeout, because /api/events is a long-lived stream
+	clockSync.onSynced = rsn.restampClock
+	startPhase1(srv) // campus API input, daily summary (phase1.go)
+	startProd(srv)   // production features (prod.go): each off unless its htpd_profile key is set
+	if *fogAddr != "" {
+		go serveFog(*fogAddr, rsn, *dir)
+	}
 	hsrv := &http.Server{Addr: *port, Handler: srv.routes(), ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout: 120 * time.Second, MaxHeaderBytes: 64 << 10}
 	log.Fatal(hsrv.ListenAndServe())

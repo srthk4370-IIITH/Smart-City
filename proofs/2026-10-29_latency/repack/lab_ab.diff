@@ -1,0 +1,18 @@
+4a5
+> # extra env may override LD_LIBRARY_PATH/ADSP_LIBRARY_PATH (later env assignments win) to test a lib dir; "a" in REQS = agents request (swap sample)
+28c29
+< am force-stop com.iiith.smartcityedge; pkill -x edge-agent; for p in $(pidof htpd_v8x3 htpd_v8x4 htpd); do kill -TERM $p; done
+---
+> am force-stop com.iiith.smartcityedge; pkill -x edge-agent; for p in $(pidof htpd_v8x5 htpd_v8x5p htpd_v8x3 htpd_v8x4 htpd); do kill -TERM $p; done
+47a49,55
+>     if [ "$r" = a ]; then  # "a" in REQS (repack study): an agents request = reasoner down + agents' model back (a swap sample)
+>       [ -e $ABORT ] && finish abort
+>       nc -q 300 -W 300 127.0.0.1 8091 < $W/lab/agents10.json > $OUT/${name}_agentsR_$k.json
+>       log "  $name agents#$k: $(grep -o '"swap_ms":[0-9.]*' $OUT/${name}_agentsR_$k.json | tail -1) $(grep -o '"total_ms":[0-9.]*' $OUT/${name}_agentsR_$k.json | tail -1) t $(tmax)"
+>       kill -0 $hp 2>/dev/null || { log "ABORT: htpd $name died on agents"; hp=""; finish dead; }
+>       k=$((k+1)); continue
+>     fi
+56c64
+<   log "  $name stopped: $(grep -E 'pruned lm_head|load phases|step profile' $OUT/htpd_$name.log | tail -3 | tr '\n' ' ')"
+---
+>   log "  $name stopped: $(grep -E 'pruned lm_head|load phases|step profile|repack stats' $OUT/htpd_$name.log | tail -4 | tr '\n' ' ')"

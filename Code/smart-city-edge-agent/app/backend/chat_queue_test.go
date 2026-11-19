@@ -30,7 +30,7 @@ func TestChatQueuesBehindIncident(t *testing.T) {
 		inc.State = "done"
 		r.mu.Unlock()
 	}()
-	s, err := cs.Ask(context.Background(), r, "", "How many incidents today?")
+	s, err := cs.Ask(context.Background(), r, "", "Explain how incidents are scored.")
 	if err != nil {
 		t.Fatal(err)
 	}

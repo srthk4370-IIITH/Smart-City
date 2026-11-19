@@ -1,48 +1,120 @@
 <section class="section">
   <span class="label" data-slot="asof">Today</span>
-  <p class="statement">What runs on the board for the evaluation, as it is.</p>
-  <div class="td-banner" data-slot="banner" role="status"></div>
+  <p class="statement">Evaluation day, 4 November: what runs on the board.</p>
+  <div class="td-banner is-pending" role="status">
+    <span class="label">Evaluation-day split (deploy32 live)</span>
+    <p>For the evaluation only, the Campus Assistant's model runs on the board's CPU (rsn_v3 r2, Qwen3.5-2B, 5 cores) while reports and domain agents stay on the NPU (rsn_v1 Qwen3.5-4B and ft_B50 Llama 3.2 3B). If that chat server fails, chat falls back to the 4B on the NPU. We first put it on the Adreno GPU and measured ~9-10 tokens/s; Qwen3.5 is a hybrid model whose recurrent layers run on the CPU anyway, so on the CPU alone it decodes ~25 tokens/s with the same answers. The 4B is being trained further to become the one general model on the device. Live as deploy32 (chaos and fastcheck passed on every deploy; incident reports unchanged with chat running: 5.6 s alert, 27.9 s AI report, and a chat question asked during the incident answered in 6 s; each answer shows the engine that produced it). Model-answered chat questions took 7-14 s in fresh sessions (up to ~28 s for a long list), against 10-42 s on the GPU.</p>
+  </div>
 </section>
 
 <section class="section">
-  <span class="label">On the board</span>
-  <p class="lead">Qualcomm QIDK (Snapdragon 8 Gen 3, SM8650), Hexagon V75 NPU, Android 14. Everything below runs on the board alone, offline. Two models share the NPU through one daemon, one model at a time, which swaps between them.</p>
-  <div class="ptable td-table" data-slot="parts"></div>
-  <p class="muted td-note" data-slot="parts-note"></p>
+  <span class="label">On the board today</span>
+  <p class="lead">Qualcomm QIDK (Snapdragon 8 Gen 3, SM8650), Hexagon V75 NPU, Adreno 750 GPU, Android 14. Everything runs on the board alone, offline. One model on the NPU at a time; the NPU daemon (htpd) swaps the agents' model and the reasoner.</p>
+  <div class="ptable td-table"><table>
+    <thead><tr><th>Part</th><th>What</th><th>Where</th><th>Evidence</th></tr></thead>
+    <tbody>
+      <tr><td>Backend</td><td>Go edge-agent: rules, data-quality gates, event gate, critical fast path, retrieval preliminary report, validator, approval workflow, chat router</td><td>CPU</td><td>HANDBOOK 2.55-2.70</td></tr>
+      <tr><td>Domain agents</td><td>ft_B50: fine-tuned Llama 3.2 3B, six roles, one agent per abnormal sensor, all in one batch; post-rules after the model</td><td>NPU, resident</td><td>gate2: severity-weighted +61, safety 16/16</td></tr>
+      <tr><td>Reasoner</td><td>rsn_v1: fine-tuned Qwen3.5-4B, split decoding with verified drafts</td><td>NPU, swapped in per incident (load 2.8 s)</td><td>severity 91.9%, label 87.8% on 150 held-out incidents</td></tr>
+      <tr><td>NPU daemon</td><td>htpd_v9f: our llama.cpp Hexagon server (batching, split streams, draft corpora for reports, agents and chat, 150 s guard)</td><td>CPU + NPU</td><td>HANDBOOK 2.63-2.66</td></tr>
+      <tr><td>Chat model (eval only)</td><td>rsn_v3 r2: fine-tuned Qwen3.5-2B, llama.cpp llama-server; killed first under memory pressure</td><td>CPU, 5 threads (GPU measured 2.7x slower)</td><td>chat dev v3 pass 0.737 vs 0.477</td></tr>
+      <tr><td>Apps</td><td>Smart City Edge (dashboard) and Campus Assistant (chat): two launcher icons on one backend</td><td>Phone UI</td><td>HANDBOOK 2.49, 2.60</td></tr>
+    </tbody>
+  </table></div>
+  <p class="muted td-note">Sources: proofs/2026-11-03_deploy27/apk/STATUS.md (live 4B build before the split), proofs/2026-11-04_split/apk/README.md and deploy28_split.sh (the split), proofs/2026-10-29_rsn_v3/kaggle/gate/g2b_r2/GATE.md (model choice).</p>
 </section>
 
 <section class="section">
   <span class="label">How an incident flows today</span>
-  <ol class="td-flow" data-slot="flow">
-    <li><b>Sensor readings</b> arrive every 5 min (the demo replays real campus data, 1 reading every 2 s). The rules watch every sensor.</li>
-    <li data-fast><b>Critical fast path:</b> 2 readings in a row past a critical limit open the incident at once, with a rules-only report.</li>
-    <li><b>Event gate:</b> 8 abnormal readings start the AI: one domain agent per flagged sensor, all decoded together on the NPU.</li>
-    <li><b>Preliminary report</b> in the same second the incident opens: rules computed from the live values, worded like the most similar past report (retrieval). Its checklist is live at once: the operator can acknowledge and tick steps while the AI writes.</li>
-    <li><b>Reasoner report</b> (Qwen3.5-4B, rsn_v1) replaces it: title and severity first, then the full report. The checklist merges: ticked steps stay done, dropped open steps are withdrawn, new ones are marked new.</li>
-    <li><b>Re-checks</b> at 1.5 h and 3 h re-read the sensors with a longer window and can raise or lower the severity. The operator approves every action.</li>
+  <ol class="td-flow">
+    <li><b>Sensor readings</b> arrive every 5 min (the demo replays real campus data, one reading every 2 s). Late, duplicate and missing readings are handled; silent sensors are reported as silent, never filled in.</li>
+    <li><b>Critical fast path:</b> 2 fresh readings past a critical limit open the incident at once (about 5.6 s; 2.6 s after a silent gap), severity critical, no AI wait.</li>
+    <li><b>Preliminary report</b> in the same second: rules from the live values, worded like the most similar past AI report (retrieval). Its checklist is live at once: the operator can acknowledge and tick steps while the AI writes.</li>
+    <li><b>Event gate:</b> 8 abnormal readings in a 4 h window start the AI: one domain agent per flagged sensor, all decoded together on the NPU.</li>
+    <li><b>Reasoner report</b> (rsn_v1) replaces the preliminary on the same incident, about 28 s after the fast incident in the latest check. "AI so far" shows its title and severity while it writes. The validator checks every field; a failing report falls back to a deterministic one.</li>
+    <li><b>Re-checks</b> at 1.5 h and 3 h, plus 12 h drift and level-shift checks, can raise, lower or resolve the incident. The operator approves every action.</li>
   </ol>
 </section>
 
 <section class="section">
-  <span class="label" data-topic="latency">Latency</span>
-  <p class="statement">Seconds on the NPU; minutes of sensor time before it.</p>
+  <span class="label" data-topic="latency">Latency today</span>
+  <p class="statement">Compute is seconds; sensor time is minutes.</p>
+  <div class="ptable td-table"><table>
+    <thead><tr><th>Stage</th><th>Time</th><th>Source</th></tr></thead>
+    <tbody>
+      <tr><td>Non-critical event to AI start</td><td>8 readings = 40 to 55 min of sensor time</td><td>HANDBOOK 2.55</td></tr>
+      <tr><td>Critical breach to incident open</td><td>5.6 s (2.6 s after a silent gap)</td><td>deploy27 STATUS.md; validator/gap_r3.txt</td></tr>
+      <tr><td>Incident to preliminary report</td><td>same second (&lt; 5 ms CPU)</td><td>HANDBOOK 2.57</td></tr>
+      <tr><td>One domain agent request</td><td>2.06 s (lab, 24 real requests)</td><td>2026-10-31_agents_latency/VERDICT.md</td></tr>
+      <tr><td>Reasoner model load (swap)</td><td>2.80 s (was 3.67 s)</td><td>2026-10-29_latency/repack/VERDICT.md</td></tr>
+      <tr><td>Reasoner report</td><td>8.9 to 9.1 s (lab; was 23.3 s)</td><td>HANDBOOK 2.63, 2.64</td></tr>
+      <tr><td>Fast incident to AI report on it</td><td>28.0 s and 32.7 s (two runs)</td><td>deploy27 STATUS.md</td></tr>
+      <tr><td>Chat answered by the router</td><td>median 0.2 s; 142 of 160 under 1 s</td><td>2026-11-01_chat sweeps d27</td></tr>
+      <tr><td>Chat answered by the model (4B, NPU)</td><td>8.8 to 17.2 s; about 5 s when kept warm</td><td>sweeps d27; HANDBOOK 2.61</td></tr>
+      <tr><td>Chat answered by the model (2B, CPU, eval day)</td><td>7.0 / 11.6 / 13.8 s fresh; ~28 s for a long list (GPU: 10-42 s)</td><td>deploy30 STATUS.md, gpu/tune/TUNE.md</td></tr>
+    </tbody>
+  </table></div>
+  <p class="muted td-note">Why it is this fast and not faster: decode reads every weight per token and sits at the memory-bandwidth roof (about 52 GB/s over 2.6 GB for the 4B), so we cut sequential steps (batching, split streams, verified drafts) rather than per-step cost; and a second model resident on the NPU rebooted the board, so the reasoner is swapped in. Real-world time is dominated by the 8-reading gate, which the critical fast path bypasses.</p>
+  <div class="grid" data-slot="eval-latency"></div>
+</section>
+
+<section class="section">
+  <span class="label" data-topic="accuracy">Models today</span>
+  <p class="lead">The 2B chats better; the 4B writes better reports. That is why the evaluation-day split exists, and why the 4B is the one being trained further.</p>
+  <div class="grid" data-slot="eval-models"></div>
+</section>
+
+<section class="section">
+  <span class="label">Campus Assistant</span>
+  <ul class="td-list">
+    <li><b>Router first.</b> A Go question-type layer answers most questions straight from read-only tools: counts, lists, current levels, faulty sensors, rankings, what-if against limits, period summaries, and follow-ups such as "which ones?".</li>
+    <li><b>Model for the rest</b>, with up to 5 read-only tool calls, shown under "How I found this". On evaluation day the model is the 2B on the CPU, so chat no longer waits behind an incident analysis.</li>
+    <li><b>Hinglish and typos:</b> kitne, aaj, kal, kharab, theek hai, ghante, din. "CO2 theek hai KH level 3 pe?" was answered from current_levels in under a second on the board.</li>
+    <li><b>Refusals:</b> close, approve, dismiss, delete or reset requests and prompt injections are refused; invented incident ids and sensors are rejected by a guard.</li>
+    <li><b>Evaluation-day sweep:</b> deploy30 (2B on the CPU), same 160 questions as deploy27: 160/160 answered, 0 errors, 0 busy; router 143/160 (median 0.2 s, as before); 17 model answers: mean 8.4-13.4 s per set vs 9.2-12.4 s on the 4B, except one 63 s loop (the 2B repeated a tool call; repeats are now dropped, deploy31). Read side by side (not yet graded against ground truth): the 2B is better on about 6 of 17 (e.g. &quot;show me critical alerts&quot;: it lists them, the 4B said &quot;no critical incidents&quot;), worse on 1-2 (power spike), the rest equal or weak for both. Source: proofs/2026-11-04_split/CMP_d27_d30.md.</li>
+  </ul>
+  <div class="grid" data-slot="eval-chat"></div>
+</section>
+
+<section class="section">
+  <span class="label">Decisions since 29 October</span>
+  <ul class="td-list">
+    <li><b>Verified drafts inside split decoding</b> (htpd v9 to v9f): reasoner 23.3 → 9.1 s in the lab with severity and label unchanged; app AI update 52.6 → 21.7-28 s.</li>
+    <li><b>Critical readings after a silence</b> open the fast incident (2.6 s instead of 44-46 s); the AI still waits for real coverage.</li>
+    <li><b>Weather-aware validator floor:</b> only an all-weather critical report may start with "monitor".</li>
+    <li><b>Router before the model</b> for chat, built from graded board sweeps and checked on blind sets.</li>
+    <li><b>rsn_v3 2B rolled back for reports</b> (false critical and a contradictory pH report on the board); round 2 kept for chat only.</li>
+    <li><b>Evaluation-day split</b>, fix-forward deploys with automatic rollback, and accuracy before latency throughout. See <a href="#/decisions">Decisions</a> G31 to G36.</li>
+  </ul>
+</section>
+
+<section class="section">
+  <span class="label">History · the 29 October evaluation build</span>
+  <p class="lead">The build that ran at the 29 October evaluation, read from the proof files of that night and morning. Everything above supersedes it.</p>
+  <div class="td-banner" data-slot="banner" role="status"></div>
+  <div class="ptable td-table" data-slot="parts" style="margin-top:18px"></div>
+  <p class="muted td-note" data-slot="parts-note"></p>
+</section>
+
+<section class="section">
+  <span class="label" data-topic="latency">Latency on 28 to 29 October</span>
   <div class="grid" data-slot="latency"></div>
 </section>
 
 <section class="section">
-  <span class="label" data-topic="accuracy">Accuracy</span>
+  <span class="label" data-topic="accuracy">Accuracy (29 October build)</span>
   <div class="grid" data-slot="accuracy"></div>
 </section>
 
 <section class="section">
-  <span class="label">This morning (29 Oct)</span>
-  <p class="lead">What changed on the morning of the evaluation, what was tried and rejected, and why. Each card names its proof file.</p>
+  <span class="label">Morning of 29 October</span>
+  <p class="lead">What changed on the morning of the first evaluation, what was tried and rejected, and why. Each card names its proof file.</p>
   <div class="grid" data-slot="morning"></div>
 </section>
 
 <section class="section">
-  <span class="label">Overnight run (28 to 29 Oct)</span>
-  <p class="lead">The final overnight deploy and its checks, read from the proof files when the site was built. This morning's builds sit on top of it.</p>
+  <span class="label">Overnight run (28 to 29 October)</span>
+  <p class="lead">The final overnight deploy and its checks, read from the proof files when the site was built.</p>
   <div class="grid" data-slot="tonight"></div>
 </section>
 
@@ -50,11 +122,12 @@
   <span class="label">Known limits</span>
   <ul class="td-list">
     <li><b>Sensor time dominates.</b> A non-critical event reaches the AI after 8 readings, 40 to 55 min of real sensor time. Only sensors with a critical limit have the fast path; power, tank level and flow have no fixed limits.</li>
-    <li><b>Heat.</b> Back-to-back heavy incidents push the board to 90 to 94 °C and the thermal guard trips. The board needs a heatsink or fan in the field.</li>
-    <li><b>The NPU is not bit-for-bit repeatable.</b> The same prompt can give a different answer near a decision boundary: severity agrees 97% of the time across repeats (100% with the guard).</li>
+    <li><b>Heat.</b> Normal NPU work reaches 84 to 97 °C on the hottest zone, and back-to-back heavy incidents trip the thermal guard. The board needs a heatsink or fan in the field.</li>
+    <li><b>The NPU is not bit-for-bit repeatable.</b> The same prompt can change wording near a decision boundary: severity agrees 97% of the time across repeats (100% with the guard).</li>
     <li><b>Known model weaknesses.</b> Recurring small spikes, pump cycling, and erratic or exponential shapes at 3 h are still often misnamed. Hourly sensors (such as TDS) have too few points and stay rules-only.</li>
-    <li><b>One NPU, two models.</b> Only one model fits on the NPU at a time (two resident models rebooted the board), so each incident pays a model swap of a few seconds; bursts queue.</li>
-    <li><b>The GPU is not a shortcut.</b> Measured this morning: the reasoner on the Adreno 750 GPU alone runs about 2.5x slower than on the NPU.</li>
+    <li><b>One NPU, two models.</b> Two resident models rebooted the board, so each incident pays a model swap; bursts queue. On evaluation day the CPU carries the chat model so chat does not queue.</li>
+    <li><b>Two models for one job on evaluation day.</b> The 2B is better at chat and worse at reports; until the 4B is better at both, the split stays an evaluation-only arrangement.</li>
+    <li><b>Chat.</b> Blind questions still expose gaps; the "after" scores reuse the questions the fixes were designed from, which is why blind sets are written before each round.</li>
     <li><b>Data.</b> All models were trained and tested on one campus's sensors (test months held out, about 15% of sensors held out completely).</li>
   </ul>
 </section>
@@ -62,11 +135,21 @@
 <section class="section">
   <span class="label">What's next</span>
   <ul class="td-list" data-slot="next-list">
-    <li><b>Campus Assistant, next.</b> The chat is live (see This morning). Next: streaming answers, chat about the open incident, the 100-question chat set on the board, an open-only filter and maintenance tools.</li>
-    <li><b>Reasoner speed.</b> Force fully determined text (for example the sensor id after "S1 (") in the htpd forcer; group rebalancing is exhausted.</li>
-    <li><b>Younger events.</b> Young-window training (data ready, paused) to shorten the 8-reading gate; the early provisional AI is built but off.</li>
-    <li><b>GPU for bursts.</b> Run a second incident's agents on the GPU while the NPU reasoner writes; needs a memory-safety check first.</li>
-    <li><b>rsn_v3.</b> Fix rsn_v2's severity regressions before another training round.</li>
+    <li><b>One general model.</b> rsn_v3 4B (training on Kaggle) must beat rsn_v1 on reports and the 2B on chat; then the evaluation-day split goes away.</li>
+    <li><b>Younger events.</b> Young-window training to shorten the 8-reading gate; the early provisional AI is built and off until 2 to 4 readings are proven.</li>
+    <li><b>Chat.</b> A fresh blind set after every fix, streaming answers, and chat about the open incident.</li>
+    <li><b>Fog layer.</b> Derived data to a free Supabase project with the board as the only writer; raw readings stay on the board.</li>
+  </ul>
+</section>
+
+<section class="section">
+  <span class="label">Prototype → production</span>
+  <p class="lead">What a real deployment still needs. Security hardening is documented as a production to-do and is not implemented in the prototype; the other items are being built now and are not finished.</p>
+  <ul class="td-list">
+    <li><b>Security (documented, not built).</b> The app reaches the NPU through the board's own debug bridge on 127.0.0.1:5555, which has no authentication. The app's HTTP API is plaintext and its reads, including per-room occupancy, are open on the local network. Production needs no debug bridge, authentication and TLS on every read, per-device keys, signed updates and an isolated network.</li>
+    <li><b>In progress.</b> Real sensor ingestion over MQTT, time sync (the board's clock resets at boot), alerts that leave the board with escalation, a heartbeat with a dead-man alert, the fog uploader, early provisional AI with automatic warm-up, and over-the-air updates with automatic rollback.</li>
+    <li><b>Hardware.</b> A DC supply with a small UPS, a heatsink and ventilated enclosure, and a soak test at 40 °C ambient.</li>
+    <li><b>Rollout.</b> Two to four weeks in shadow mode (rules and the critical fast path alert people; AI reports are logged, not paged), one canary board, then a one-floor pilot with real sensors.</li>
   </ul>
 </section>
 

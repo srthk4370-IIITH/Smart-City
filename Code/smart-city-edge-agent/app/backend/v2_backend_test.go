@@ -129,6 +129,9 @@ func TestV2PolicyWaterCauses(t *testing.T) {
 
 // The refinement ladder: alert 4 h, then the window grows with severity (warning 8 h, critical 12 h).
 func TestV2RefineLadder(t *testing.T) {
+	old := agentMoreOff
+	agentMoreOff = true
+	t.Cleanup(func() { agentMoreOff = old })
 	withAgentVersion(t, "v2")
 	rg := newRefineRig(t)
 	var mu sync.Mutex

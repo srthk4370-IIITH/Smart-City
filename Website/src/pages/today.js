@@ -16,6 +16,10 @@ export default async function mount(ctx) {
   const $ = (s) => root.querySelector(`[data-slot="${s}"]`);
   $('next').append(ui.next('today', 'route'));
 
+  // Evaluation day (4 Nov): datasets from build/collect/recent.py; drawn even when today.json is missing
+  const evalCards = { 'eval-latency': ['lat_app_ai_update', 'lat_reasoner_spec'], 'eval-models': ['acc_reasoner_split', 'acc_rsn_v1_v2'], 'eval-chat': ['ux_chat_timing', 'ux_chat_sweeps'] };
+  for (const [slot, ids] of Object.entries(evalCards)) { const el = $(slot); if (el) ids.forEach((id) => el.append(ui.card({ id, span: 6 }))); }
+
   let t;
   try { t = await data.json('today.json'); } catch (e) {
     $('banner').append(h('p.td-pending', { text: 'The status file is not in this build.' }));
@@ -23,7 +27,7 @@ export default async function mount(ctx) {
   }
   const d = t.decisions || {}, f = t.final || {}, sp = t.split_post || {}, md5s = t.models_md5 || {};
   const built = String((t.meta && t.meta.generated_at) || '').replace('T', ' ').slice(0, 16);
-  $('asof').textContent = `Today · read from the proof files at ${built} IST`;
+  $('asof').textContent = `Today · 4 Nov 2026 · history read from the proof files at ${built} IST`;
 
   // ------------------------------------------------------------ state
   const pending = !f.present;
@@ -60,7 +64,7 @@ export default async function mount(ctx) {
   if (ml) {
     bn.classList.add('is-pass');
     const fc = ml.fastcheck || {};
-    bn.append(h('span.label', { text: `Live now: edge-agent ${ml.edge_agent} · deployed ${String(ml.updated || '').replace('T', ' ').slice(5, 16)} IST` }),
+    bn.append(h('span.label', { text: `29 Oct evaluation build: edge-agent ${ml.edge_agent} · deployed${String(ml.updated || '').replace('T', ' ').slice(5, 16)} IST` }),
       h('p', { text: `Domain agents B50, reasoner rsn_v1, ${ml.bin}, split ${ml.split}, retrieval library of 254 reference reports, and the Campus Assistant chat app. Checked through the app after the deploy: 2 chaos scenarios passed; a critical breach opened its incident by the fast path in ${fc.fast_s ?? '—'} s and the AI report landed on the same incident at ${fc.ai_update_s ?? '—'} s. Everything runs on the board, offline.` }));
   } else if (pending) {
     bn.classList.add('is-pending');
@@ -83,16 +87,16 @@ export default async function mount(ctx) {
     ['Domain agents', `${am.name}: ${am.what}`, md5Of(agentsFile), d.agents_why ? plainWhy(d.agents_why) : 'Accuracy first: the newer candidate lost head to head.'],
     ['Reasoner', `${rm.name}: ${rm.what}`, md5Of(reasonerFile), reasonerWhy(d, pending, newLive, rm.name, retry)],
     ['NPU daemon', `${binName} on llama.cpp 620d222 (our Hexagon patches); polling for NPU completions; reasoner leaves the NPU after 3 s idle`, lineMd5(binName) || (binName === 'htpd_v8x2' ? '22ec1278 (prefix)' : null), binName === 'htpd_v8x2' ? 'The Hexagon SDK route gave no net gain.' : '150 s wall-clock guard per report, bounded token picking, heartbeat stall log; overnight watchdog: 0 stalls.'],
-    ['Split decoding', `${ml ? ml.split : split} parallel field groups after the headline`, null, splitWhy(sp, spRes, split) + (mo.split3r ? ` Split 3r (fork after the label) gave no gain this morning: ${mo.split3r.split3_s} vs ${mo.split3r.split3r_s} s.` : '')],
+    ['Split decoding', `${ml ? ml.split : split} parallel field groups after the headline`, null, splitWhy(sp, spRes, split) + (mo.split3r ? ` Split 3r (fork after the label) gave no gain on 29 Oct morning: ${mo.split3r.split3_s} vs ${mo.split3r.split3r_s} s.` : '')],
     ['Contract repairs', "Post-checks on the reasoner's answer: normal + needs_more_data becomes label unknown; a title location not in the input is replaced by one from the input", null, 'Replay on 386 board answers: label 83.2% → 87.6%, 0 new errors.'],
-    ['App', `${app.label}; APK ${app.apk}`, ea || app.ea, ml ? 'Deployed this morning and checked through the app (chaos + fast-path check).' : newLive ? 'Deployed tonight and checked through the app.' : pending ? 'Running before the final deploy.' : 'Restored by the automatic rollback.'],
+    ['App', `${app.label}; APK ${app.apk}`, ea || app.ea, ml ? 'Deployed on the morning of 29 Oct and checked through the app (chaos + fast-path check).' : newLive ? 'Deployed tonight and checked through the app.' : pending ? 'Running before the final deploy.' : 'Restored by the automatic rollback.'],
     ['Preliminary report', ragState.live ? 'Rules from the live values, worded like the most similar past report (254 seed reports + every live AI report); the checklist starts here' : 'Rules + the agents\' findings, then replaced by the reasoner', null, ragState.live ? 'Severity = the higher of rules and the retrieved report, so it never under-alerts; numbers never come from old reports.' : ragState.note],
     ['Critical fast path', newLive ? 'On' : 'Off (not in this build)', null, newLive ? '2 readings past a critical limit open the incident at once.' : 'Built and tested; it comes with the fast_early app.'],
     ['Early provisional AI', earlyK ? `On at ${earlyK} readings for: ${earlyShapes}` : 'Off', null, earlyK ? 'Cleared by the gate study.' : 'Built, off by default until the gate study clears shapes.'],
   ];
   $('parts').append(table(h, ['Part', 'What runs', 'md5', 'Why'], rows.map((r) => [r[0], r[1], r[2] ? h('code', { text: r[2] }) : '—', r[3]])));
   $('parts-note').textContent = ml
-    ? `The edge-agent md5 is from the board after this morning's deploy (${ml.file}); model md5 values are the staged files pushed to the board.`
+    ? `The edge-agent md5 is from the board after the 29 Oct morning deploy (${ml.file}); model md5 values are the staged files pushed to the board.`
     : pending
     ? 'md5 values are the staged files pushed to the board; the board-side check is in the final status once written.'
     : 'Board md5 values are from the board after the run (FINAL_STATUS.md); model md5 values are the staged files pushed to the board.';
@@ -203,10 +207,10 @@ function morningCards(ui, h, el, mo) {
   if (deps.length) {
     // improve4: the deploy script's readiness check failed falsely (htpd.log rotated); the board went back to the chat build, healthy
     const ok = (d) => d.failed ? (d.name === 'improve4' ? 'not kept: deploy-script false failure (log rotation), board back on the chat build; retried' : 'failed, rolled back') : d.deployed ? (d.fastcheck && d.fastcheck.pass ? 'pass' : 'deployed') : 'in progress';
-    el.append(ui.card({ span: 12, claim: `${deps.length} deploys this morning, each checked through the app`, body: table(h, ['Build', 'APK', 'edge-agent', 'Fast path', 'AI report, same incident', 'Check'],
+    el.append(ui.card({ span: 12, claim: `${deps.length} deploys on the morning of 29 Oct, each checked through the app`, body: table(h, ['Build', 'APK', 'edge-agent', 'Fast path', 'AI report, same incident', 'Check'],
       deps.map((d) => [String(d.heading || '').replace(/\s*\(.*\)$/, ''), d.apk ? h('code', { text: d.apk }) : '—', d.deployed ? h('code', { text: d.deployed }) : '—',
         d.fastcheck ? `${d.fastcheck.fast_s} s` : '—', d.fastcheck ? `${d.fastcheck.ai_update_s} s` : '—', ok(d)])),
-      why: `Every deploy runs 2 chaos scenarios and a critical-breach check through the real app; the previous build stays ready to roll back. Live now: edge-agent ${mo.live ? mo.live.edge_agent : '—'} with the Campus Assistant.`, source: { files: deps.map((d) => d.file) } }));
+      why: `Every deploy runs 2 chaos scenarios and a critical-breach check through the real app; the previous build stays ready to roll back. Live on 29 Oct: edge-agent ${mo.live ? mo.live.edge_agent : '—'} with the Campus Assistant.`, source: { files: deps.map((d) => d.file) } }));
   } else el.append(pendingCard(ui, h, 'Deploys this morning', 'proofs/2026-10-28_master/improve2/STATUS.md', 12, 'not in this build'));
   el.append(ui.card({ span: 6, claim: 'Contract repairs: label 83.2% → 87.6%', body: bullets(h, [
     'A severity of normal with needs_more_data now gets the label unknown (the gold rule holds on 151 of 151 cases).',
@@ -292,21 +296,21 @@ function plainWhy(s) {
   return String(s).replace(/\s*\(.*?\)/g, '').replace(/;.*$/, '').replace(/gate2/g, 'the paired test').replace(/, owner rule accuracy first/, '; accuracy first') + '.';
 }
 function reasonerWhy(d, pending, newLive, name, retry) {
-  if (retry && retry.md && !retry.live) return 'rsn_v1 kept: rsn_v2 lost on the same 106 held-out incidents (severity 94.7% vs 87.6%) and made errors on the board (see This morning).';
-  if (retry && retry.md) return retry.live ? "rsn_v2 passed the retry gates on the board (see Tonight's run)." : 'rsn_v1 kept: ' + short(retry.result || 'rsn_v2 retry did not pass');
+  if (retry && retry.md && !retry.live) return 'rsn_v1 kept: rsn_v2 lost on the same 106 held-out incidents (severity 94.7% vs 87.6%) and made errors on the board (see Morning of 29 October).';
+  if (retry && retry.md) return retry.live ? "rsn_v2 passed the retry gates on the board (see Overnight run)." : 'rsn_v1 kept: ' + short(retry.result || 'rsn_v2 retry did not pass');
   if (name === 'rsn_v2' && d.reasoner_why) return 'rsn_v2 passed the board accuracy gate and the 92% severity-consistency gate.';
   if (d.reasoner_why && /accuracy FAIL/.test(d.reasoner_why)) return 'Kept: the second-round reasoner (rsn_v2) failed tonight\'s board accuracy gate.';
   if (d.reasoner_why) return short(String(d.reasoner_why).replace(/\s*\{.*$/, ''));
   return 'Deployed 27 Oct; a second round (rsn_v2) is gated on the board tonight.';
 }
 function splitWhy(sp, res, split) {
-  if (res) return /fail/i.test(res) ? "Split 3 stays: the split-4/6 A/B after the deploy did not switch (see Tonight's run)." : `Set by the split-4/6 A/B after the deploy (split ${split}).`;
+  if (res) return /fail/i.test(res) ? "Split 3 stays: the split-4/6 A/B after the deploy did not switch (see Overnight run)." : `Set by the split-4/6 A/B after the deploy (split ${split}).`;
   if (sp.done) return 'The split-4/6 A/B after the deploy kept 3.';
   return 'Split-3 adopted 28 Oct; a split-4/6 A/B runs after the final deploy.';
 }
 function ragStatus(rag) {
   if (!rag || !rag.md) return { live: false, note: 'Retrieval of similar past incidents is built and waits for its deploy window.' };
-  return { live: !!rag.live, note: rag.live ? "Retrieval preliminary deployed and checked through the app (see Tonight's run)." : `Retrieval preliminary not live: ${short(rag.result || "see Tonight's run")}` };
+  return { live: !!rag.live, note: rag.live ? "Retrieval preliminary deployed and checked through the app (see Overnight run)." : `Retrieval preliminary not live: ${short(rag.result || "see Tonight's run")}` };
 }
 function pendingCard(ui, h, claim, file, span = 12, msg) {
   return ui.card({ span, claim, body: h('p.td-pending', { text: msg || 'pending: the file is written later tonight' }), source: { files: [file] } });

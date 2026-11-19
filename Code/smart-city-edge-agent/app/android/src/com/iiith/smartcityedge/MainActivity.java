@@ -14,6 +14,8 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.JavascriptInterface;
+import android.provider.Settings;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -53,6 +55,19 @@ public class MainActivity extends Activity {
                 if (r.isForMainFrame()) waitAndLoad();
             }
         });
+        // Phase 1: the "No network" page opens the Wi-Fi settings (window.SCE.wifi()).
+        web.addJavascriptInterface(new Object() {
+            @JavascriptInterface
+            public void wifi() {
+                runOnUiThread(() -> {
+                    try {
+                        startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                    } catch (Exception ignored) {
+                        startActivity(new Intent(Settings.ACTION_WIRELESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                    }
+                });
+            }
+        }, "SCE");
         setContentView(web);
         hideBars();
         web.loadData("<html><body style='background:#000;color:#ccc;font:20px sans-serif;display:flex;"

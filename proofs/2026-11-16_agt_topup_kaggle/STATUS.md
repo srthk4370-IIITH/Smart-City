@@ -1,0 +1,30 @@
+# agt_v3 training status (append-only)
+
+- 2026-11-16 05:16:11 [push_topup] uploading data dataset agt3-topup-data (private, REAL rows, id a68d2e370db378ccae5bd7ee00bd3851, 56 MB)
+- 2026-11-16 05:17:30 [push_topup] uploading run seq 1 (step 0, 186 MB) to agt3-topup-run
+- 2026-11-16 05:20:04 [push_topup] -> Kaggle: seq 1, step 0, kernel v1, budget 6.00 h (used so far 0 h of 8)
+- 2026-11-16 08:44:53 [pull] kernel seq 1 ended: kernelworkerstatus.complete
+- 2026-11-16 08:54:11 [pull] <- Kaggle: seq 1 installed, step 0 -> 312, rc 0, snaps: snap_0050 snap_0100 snap_0150 snap_0200 snap_0250 snap_0300 snap_0312 ; Kaggle hours used 3.37
+- 2026-11-16 08:58:36 [select_topup] top-up selection: exporting s0050 (merged Q4_0, shared imatrix)
+- 2026-11-16 09:25:46 [select_topup] top-up selection: s0050 {"step": 50, "val": {"json": 1.0, "status": 0.7025, "pattern": 0.6775, "cause": 0.6825, "dq": 0.9175, "score": 0.72425, "n": 400}, "syn": {"json": 1.0, "status": 0.8417, "pattern": 0.875, "cause": 0.8333, "dq": 0.925, "score": 0.86292, "n": 120}, "unk": {"json
+- 2026-11-16 09:25:46 [select_topup] top-up selection: exporting s0100 (merged Q4_0, shared imatrix)
+- 2026-11-16 09:47:20 [select_topup] top-up selection: s0100 {"step": 100, "val": {"json": 1.0, "status": 0.74, "pattern": 0.725, "cause": 0.7175, "dq": 0.9175, "score": 0.75875, "n": 400}, "syn": {"json": 1.0, "status": 0.8417, "pattern": 0.8417, "cause": 0.8333, "dq": 0.9167, "score": 0.85167, "n": 120}, "unk": {"json
+- 2026-11-16 09:47:20 [select_topup] top-up selection: exporting s0150 (merged Q4_0, shared imatrix)
+- 2026-11-16 09:47:20 [export] FAIL: C: has 20338 MB free < 20480 MB (WSL vhdx is on C:)
+- 2026-11-16 09:47:20 [select_topup] export of s0150 failed (see /home/hp_srthk4370/smartcity_runs/agt_topup_k/post/s0150/export.log)
+- 2026-11-16 10:24:20 [select_topup] top-up selection: exporting s0150 (merged Q4_0, shared imatrix)
+- 2026-11-16 10:45:44 [select_topup] top-up selection: s0150 {"step": 150, "val": {"json": 1.0, "status": 0.7675, "pattern": 0.7225, "cause": 0.7325, "dq": 0.95, "score": 0.77613, "n": 400}, "syn": {"json": 1.0, "status": 0.8, "pattern": 0.825, "cause": 0.8083, "dq": 0.8917, "score": 0.8225, "n": 120}, "unk": {"json": 1
+- 2026-11-16 10:45:44 [select_topup] top-up selection: exporting s0200 (merged Q4_0, shared imatrix)
+- 2026-11-16 11:12:59 [select_topup] top-up selection: s0200 {"step": 200, "val": {"json": 1.0, "status": 0.785, "pattern": 0.775, "cause": 0.7675, "dq": 0.94, "score": 0.80263, "n": 400}, "syn": {"json": 1.0, "status": 0.875, "pattern": 0.8833, "cause": 0.8833, "dq": 0.9417, "score": 0.88875, "n": 120}, "unk": {"json":
+- 2026-11-16 11:12:59 [select_topup] top-up selection: exporting s0250 (merged Q4_0, shared imatrix)
+- 2026-11-16 11:42:28 [select_topup] top-up selection: exporting s0250 (merged Q4_0, shared imatrix)
+- 2026-11-16 11:42:28 [select_topup] waiting for the laptop GPU (lock / busy)
+- 2026-11-16 19:29:46 [select_topup] top-up selection: exporting s0250 (merged Q4_0, shared imatrix)
+- 2026-11-16 19:29:51 [select_topup] eval val of s0250 failed:     raise JSONDecodeError("Expecting value", s, err.value) from None json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0) 
+- 2026-11-16 19:32:54 [select_topup] top-up selection: exporting s0250 (merged Q4_0, shared imatrix)
+- 2026-11-16 19:46:50 [select_topup] top-up selection: s0250 {"step": 250, "val": {"json": 1.0, "status": 0.7925, "pattern": 0.7725, "cause": 0.7675, "dq": 0.9525, "score": 0.80675, "n": 400}, "syn": {"json": 1.0, "status": 0.8583, "pattern": 0.8667, "cause": 0.8667, "dq": 0.925, "score": 0.87208, "n": 120}, "unk": {"js
+- 2026-11-16 19:46:50 [select_topup] top-up selection: exporting s0300 (merged Q4_0, shared imatrix)
+- 2026-11-16 20:25:19 [select_topup] top-up selection: s0300 {"step": 300, "val": {"json": 1.0, "status": 0.7975, "pattern": 0.765, "cause": 0.77, "dq": 0.9575, "score": 0.80762, "n": 400}, "syn": {"json": 1.0, "status": 0.8583, "pattern": 0.8833, "cause": 0.8667, "dq": 0.9167, "score": 0.87583, "n": 120}, "unk": {"json
+- 2026-11-16 20:25:19 [select_topup] top-up selection: exporting s0312 (merged Q4_0, shared imatrix)
+- 2026-11-16 20:45:37 [select_topup] top-up selection: s0312 {"step": 312, "val": {"json": 1.0, "status": 0.79, "pattern": 0.765, "cause": 0.7675, "dq": 0.9575, "score": 0.80425, "n": 400}, "syn": {"json": 1.0, "status": 0.8667, "pattern": 0.8667, "cause": 0.85, "dq": 0.9167, "score": 0.87167, "n": 120}, "unk": {"json":
+- 2026-11-16 20:45:37 [select_topup] top-up selection result (rc 0): WINNER step 300 -> /home/hp_srthk4370/smartcity_runs/agt_topup/FINAL_K

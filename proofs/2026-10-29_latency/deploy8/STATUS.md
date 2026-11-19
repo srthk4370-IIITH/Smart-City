@@ -1,0 +1,12 @@
+# Deploy 8: pruned head + v8x5 + AI-so-far UI (15:14 IST)
+- chat: 9 s | tools [] | busy False | error True | How many incidents were there today? -> The assistant could not run on the NPU (read tcp 127.0.0.1:48154->127.0.0.1:8091: i/o timeout). Please try again.
+- chat: 23 s | tools ['sensor_faults', 'sensor_faults', 'sensor_faults', 'sensor_faults', 'sensor_faults'] | busy False | error False | Which sensors look faulty right now? -> I could not find an answer to that on the device.
+- chat: 7 s | tools [] | busy False | error False | What should I check first in the server room? -> I can't do that; I only answer questions about this campus monitoring system.
+- DEPLOYED: APK ab4e857e, bin htpd_v8x5p, reasoner rsn_v1_q4_0_keep; chaos 2 rc=0; fastcheck {"fast_incident": "INC-0473", "fast_s": 5.5, "ai_update_s": 42.5, "final_model": "qwen3.5-4b (htpd)", "valid": true, "severity": "sensor_fault", "title": "KH building, level 03: Suspect CO2 readings", "pass": true}
+- htpd: htpd: reason step profile: 39 steps, rows 1.00/step (max 1); ms/step build 0.00 decode 65.42 pick 0.02 handle 0.00 flush 0.01
+- htpd: htpd: reason step profile: 39 steps, rows 1.00/step (max 1); ms/step build 0.00 decode 65.24 pick 0.02 handle 0.00 flush 0.01
+- htpd: htpd: reason step profile: 39 steps, rows 1.00/step (max 1); ms/step build 0.00 decode 65.51 pick 0.02 handle 0.00 flush 0.01
+- htpd: htpd: reason step profile: 39 steps, rows 1.00/step (max 1); ms/step build 0.00 decode 65.36 pick 0.02 handle 0.00 flush 0.01
+- htpd: htpd: reason step profile: 39 steps, rows 1.00/step (max 1); ms/step build 0.00 decode 68.02 pick 0.03 handle 0.00 flush 0.01
+- htpd: htpd: reason step profile: 16 steps, rows 1.00/step (max 1); ms/step build 0.00 decode 76.67 pick 0.03 handle 0.00 flush 0.01
+- board now: reasoner_split=3 bin=/data/local/tmp/llama.cpp/bin/htpd_v8x5p reasoner_model=/data/local/tmp/gpu/rsn_v1_q4_0_keep.gguf 

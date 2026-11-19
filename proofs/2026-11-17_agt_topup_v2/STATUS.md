@@ -1,0 +1,52 @@
+# agt_v3 training status (append-only)
+
+- 2026-11-17 06:43:50 [push_v2] uploading data dataset agt3-topup2-data (private, REAL rows, id 9f53810ed68d34775f09df6835a61273, 52 MB)
+- 2026-11-17 06:45:20 [push_v2] uploading run seq 1 (step 0, 186 MB) to agt3-topup2-run
+- 2026-11-17 06:48:49 [push_v2] -> Kaggle: seq 1, step 0, kernel v1, budget 6.00 h (used so far 0 h of 8)
+- 2026-11-17 08:49:12 [pull] kernel seq 1 ended: kernelworkerstatus.complete
+- 2026-11-17 08:52:46 [pull] <- Kaggle: seq 1 installed, step 0 -> 200, rc 6, snaps: snap_0050 snap_0100 snap_0150 snap_0200 ; Kaggle hours used 1.98
+- 2026-11-17 09:11:37 [ke_run] STAGE K (r1): uploading eval pack to private agt3-topup2-run (930 MB, nonce 86a562a1294734c9)
+- 2026-11-17 09:11:56 [ke_run] STAGE K (r1): eval kernel srthk4370/agt3-topup2-eval pushed (private, T4x2, budget 45 min of eval after ~8 min setup)
+- 2026-11-17 09:14:08 [ke_run] STAGE K (r1): eval kernel ended: kernelworkerstatus.complete
+- 2026-11-17 09:14:17 [ke_run] STAGE K (r1): eval pulled to /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-17_agt_topup_v2/data/kaggle_eval: {"ok":true,"rc":[1,1],"done":[],"minutes":1.5,"nonce":"86a562a1294734c9"}
+- 2026-11-17 09:25:22 [ke_run] STAGE K (r1): uploading eval pack to private agt3-topup2-run (930 MB, nonce f2b30cf7851dd51e)
+- 2026-11-17 09:25:46 [ke_run] STAGE K (r1): eval kernel srthk4370/agt3-topup2-eval pushed (private, T4x2, budget 45 min of eval after ~8 min setup)
+- 2026-11-17 09:28:03 [ke_run] STAGE K (r1): eval kernel ended: kernelworkerstatus.complete
+- 2026-11-17 09:28:06 [ke_run] STAGE K (r1): eval pulled to /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-17_agt_topup_v2/data/kaggle_eval: {"ok":true,"rc":[1,1],"done":[],"minutes":1.8,"nonce":"f2b30cf7851dd51e"}
+- 2026-11-17 09:56:52 [ke_run] STAGE K (r1): uploading eval pack to private agt3-topup2-run (930 MB, nonce 5df6923d85ef123c)
+- 2026-11-17 10:28:04 [ke_run] STAGE K (r1): eval kernel srthk4370/agt3-topup2-eval pushed (private, T4x2, budget 45 min of eval after ~8 min setup)
+- 2026-11-17 10:39:21 [ke_run] STAGE K (r1): eval kernel ended: kernelworkerstatus.complete
+- 2026-11-17 10:39:29 [ke_run] STAGE K (r1): eval pulled to /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-17_agt_topup_v2/data/kaggle_eval: {"ok":true,"rc":[1,1],"done":[],"minutes":1.7,"nonce":"5df6923d85ef123c"}
+- 2026-11-17 10:40:30 [ke_run] STAGE K (r1): uploading eval pack to private agt3-topup2-run (930 MB, nonce 5df6923d85ef123c)
+- 2026-11-17 10:40:42 [ke_run] STAGE K (r1): eval kernel srthk4370/agt3-topup2-eval pushed (private, T4x2, budget 45 min of eval after ~8 min setup)
+- 2026-11-17 11:29:55 [ke_run] STAGE K (r1): eval kernel ended: kernelworkerstatus.complete
+- 2026-11-17 11:30:38 [ke_run] STAGE K (r1): eval pulled to /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-17_agt_topup_v2/data/kaggle_eval: {"ok":true,"rc":[0,0],"done":["s0050/hard.jsonl.done","s0050/t1.jsonl.done","s0050/t2.jsonl.done","s0050/val.jsonl.done","s0100/hard.jsonl.done","s0100/t1.jsonl.done","s0100/t2.jsonl.done","s0100/val.jsonl.done","s0150/hard.jsonl.done","s0150/t1.json
+- 2026-11-17 11:44:40 [push_v2b] FAIL: data check: REFUSED: train/gendev md5 differs from the approved ones: the exception does not apply
+- 2026-11-17 11:49:12 [push_v2b] FAIL: token check: ==> /home/hp_srthk4370/smartcity_runs/agt_topup_k2b/work/tokfp_86c5bc8235fd97b9f3a29318a0d5594c.json.part <==  ==> /home/hp_srthk4370/smartcity_runs/agt_topup_k2b/work/tokfp.err <== Traceback (most recent call last):   File "/mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-17_agt_topup_v2/train_agt3b.py", line 33, in <module>     import rows as RW  # noqa: E402     ^^^^^^^^^^^^^^^^^ ModuleNotFoundError: No module named 'rows' 
+- 2026-11-17 11:51:32 [push_v2b] uploading data dataset agt3-topup2-data (private, REAL rows, id 099e8b109073135b05a712e76c4997ac, 55 MB)
+- 2026-11-17 11:52:35 [push_v2b] uploading run seq 1 (step 0, 186 MB) to agt3-topup2-run
+- 2026-11-17 11:59:40 [push_v2b] -> Kaggle: seq 1, step 0, kernel v2, budget 6.00 h (used so far 0 h of 8)
+- 2026-11-17 12:10:29 [pull] kernel seq 1 ended: kernelworkerstatus.error
+- 2026-11-17 12:10:34 [pull] -> laptop (nothing installed): seq 1: no lineage.tar in the output
+- 2026-11-17 12:10:35 [ke_run] STAGE K (r2): uploading eval pack to private agt3-topup2-run (2 MB, nonce 97767b67c4eac6e3)
+- 2026-11-17 12:10:59 [ke_run] STAGE K (r2): eval kernel srthk4370/agt3-topup2-eval pushed (private, T4x2, budget 45 min of eval after ~8 min setup)
+- 2026-11-17 13:22:55 [ke_run] STAGE K (r2): eval kernel ended: kernelworkerstatus.complete
+- 2026-11-17 13:22:57 [ke_run] STAGE K (r2): eval pulled to /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-17_agt_topup_v2/data/kaggle_eval_r2: {"ok":true,"rc":[],"done":[],"minutes":0.8,"nonce":"97767b67c4eac6e3"}
+- 2026-11-18 07:46:37 [push_v2b] uploading run seq 2 (step 0, 186 MB) to agt3-topup2-run
+- 2026-11-18 07:50:04 [push_v2b] -> Kaggle: seq 2, step 0, kernel v3, budget 6.00 h (used so far 0.18 h of 8)
+- 2026-11-18 13:51:25 [pull] kernel seq 2 ended: kernelworkerstatus.complete
+- 2026-11-18 14:39:17 [pull] <- Kaggle: seq 2 installed, step 0 -> 611, rc 3, snaps: snap_0050 snap_0100 snap_0150 snap_0200 snap_0250 snap_0300 snap_0350 snap_0400 snap_0450 snap_0500 snap_0550 snap_0600 ; Kaggle hours used 5.94
+- 2026-11-18 14:39:59 [push_v2b] uploading run seq 3 (step 611, 282 MB) to agt3-topup2-run
+- 2026-11-18 14:48:42 [push_v2b] -> Kaggle: seq 3, step 611, kernel v4, budget 2.06 h (used so far 5.94 h of 8)
+- 2026-11-18 15:08:51 [pull] kernel seq 3 ended: kernelworkerstatus.complete
+- 2026-11-18 15:13:22 [pull] <- Kaggle: seq 3 installed, step 611 -> 634, rc 0, snaps: snap_0050 snap_0100 snap_0150 snap_0200 snap_0250 snap_0300 snap_0350 snap_0400 snap_0450 snap_0500 snap_0550 snap_0600 snap_0634 ; Kaggle hours used 6.17
+- 2026-11-18 15:14:44 [ke_run] STAGE K (r2): uploading eval pack to private agt3-topup2-run (2415 MB, nonce 7e1465f890700465)
+- 2026-11-18 15:51:06 [ke_run] STAGE K (r2): eval kernel srthk4370/agt3-topup2-eval pushed (private, T4x2, budget 45 min of eval after ~8 min setup)
+- 2026-11-18 17:32:22 [select_v2] top-up v2 selection: reference eval hard on s0300
+- 2026-11-18 17:38:53 [select_v2] top-up v2 selection: reference eval t2 on s0300
+- 2026-11-18 17:40:19 [select_v2] top-up v2 selection: reference eval t1 on s0300
+- 2026-11-18 17:42:35 [select_v2] top-up v2 selection: exporting s0450 (merged Q4_0, shared imatrix)
+- 2026-11-18 18:17:52 [select_v2] top-up v2 selection: s0450 {"step": 450, "val": {"json": 1.0, "status": 0.8025, "pattern": 0.7725, "cause": 0.7775, "dq": 0.96, "score": 0.81337, "n": 400}, "syn": {"json": 1.0, "status": 0.8583, "pattern": 0.8583, "cause": 0.85, "dq": 0.9333, "score": 0.86833, "n": 120}, "unk": {"json": 1.0, "status": 0.93, "pattern": 0.88, 
+- 2026-11-18 18:17:52 [select_v2] top-up v2 selection: exporting s0634 (merged Q4_0, shared imatrix)
+- 2026-11-18 18:49:22 [select_v2] top-up v2 selection: s0634 {"step": 634, "val": {"json": 0.9975, "status": 0.79, "pattern": 0.7675, "cause": 0.7725, "dq": 0.9575, "score": 0.80575, "n": 400}, "syn": {"json": 1.0, "status": 0.8833, "pattern": 0.875, "cause": 0.875, "dq": 0.9333, "score": 0.88708, "n": 120}, "unk": {"json": 1.0, "status": 0.93, "pattern": 0.8
+- 2026-11-18 18:49:23 [select_v2] top-up v2 selection result (rc 0): WINNER step 450 -> /home/hp_srthk4370/smartcity_runs/agt_topup_k2b/FINAL_K2

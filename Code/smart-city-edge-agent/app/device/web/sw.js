@@ -1,6 +1,6 @@
 /* Service worker: caches the static shell only. /api/* is never cached. */
-const CACHE = 'sce-shell-v37';
-const SHELL = ['/', '/index.html', '/app.js', '/styles.css', '/manifest.json', '/icon.svg', '/icon-192.png'];
+const CACHE = 'sce-shell-v43-phase1e';
+const SHELL = ['/', '/index.html', '/app.js', '/phase1.js', '/phase1.css', '/styles.css', '/manifest.json', '/icon.svg', '/icon-192.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));

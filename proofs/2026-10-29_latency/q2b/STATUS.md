@@ -1,0 +1,17 @@
+- 10-29 22:51 q2b: job start (pid 16439, log ~/detached/q2b.log)
+- 10-29 22:51 q2b: step 1: downloading Qwen/Qwen3.5-2B -> /home/hp_srthk4370/models/qwen3.5-2b
+- 10-29 22:57 q2b: 2B weights at /home/hp_srthk4370/models/qwen3.5-2b (4.3G)
+- 10-29 22:57 q2b: step 1: convert to bf16 GGUF (CPU)
+- 10-29 22:58 q2b: waiting: Windows free RAM 273 MB < 1024
+- 10-29 22:59 q2b: step 1: quantize Q4_0 (llama-quantize ... Q4_0 4, no imatrix)
+- 10-29 22:59 q2b: Q4_0 ready: 1236741088 bytes, md5 5d7b7d4bcc499aa3612dac0e18f499f2
+- 10-29 23:00 q2b: waiting for the board: BOARD_LOCK (ndk29)
+- 10-29 23:15 q2b: waiting for the board: BOARD_LOCK (ndk29)
+- 10-29 23:20 q2b: BOARD_LOCK q2b taken
+- 10-29 23:20 q2b: step 2: stopping the app for the push (board free 16078 MB)
+- 10-29 23:21 q2b: pushed /data/local/tmp/gpu/q2b_base_q4_0.gguf md5 5d7b7d4bcc499aa3612dac0e18f499f2 ok
+- 10-29 23:21 q2b: step 3: lab window q2b_ab (4b then 2b, REQS 10 10 11 12 13 14 15; app stopped ~20-30 min)
+- 10-29 23:35 q2b: lab window ended: 08:18:31 === lab ab done (ok)
+- 10-29 23:35 q2b: step 4: **Does the 2B run on the NPU through htpd? YES** | **Decode ms/step: 2B 37.6 vs 4B 127.8 (x0.29)**; prefill 516 vs 1052 ms; mean total 26.8 s vs 23.2 s (2B steps/request 699 vs 4B 172)
+- 10-29 23:35 q2b: app now: edge-agent htpd_v8x5 
+- 10-29 23:35 q2b: job done -> q2b/VERDICT.md

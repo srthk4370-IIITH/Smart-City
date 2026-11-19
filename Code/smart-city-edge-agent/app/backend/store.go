@@ -102,6 +102,9 @@ func (r *Reasoner) persist(inc *Incident) {
 	}
 	lines := r.storeLines
 	storeMu.Unlock()
+	if h := persistHook.Load(); h != nil { // production features (prod.go); nil = off
+		(*h)(r, b)
+	}
 	// rewrite once the file holds well over one line per incident, or retention is exceeded
 	r.mu.RLock()
 	n := len(r.incidents)

@@ -75,6 +75,7 @@ const IC = {
   incidents: '<path d="M6 9a6 6 0 0 1 12 0c0 6 2 7 2 7H4s2-1 2-7"/><path d="M10 20a2 2 0 0 0 4 0"/>',
   sensors: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
   map: '<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/>',
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
   about: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   moon: '<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/>',
@@ -117,7 +118,7 @@ const PI = { // 16px pattern glyphs
 };
 const patIcon = (p) => `<svg class="pi" viewBox="0 0 16 16" aria-hidden="true">${PI[p] || '<circle cx="8" cy="8" r="2"/>'}</svg>`;
 function tabIcons() {
-  const labels = { sensors: 'Sensors', live: 'Live', incidents: 'Incidents', map: 'Map', about: 'About' };
+  const labels = { live: 'Home', sensors: 'Sensors', incidents: 'Incidents', map: 'Map' };
   $$('#rail a').forEach((a) => {
     const v = a.dataset.view;
     a.append(icon(v), h('span', { text: labels[v] }));
@@ -128,7 +129,7 @@ function tabIcons() {
 /* ============================== state ============================== */
 const S = {
   status: null, live: null, topo: null, incs: [], incId: null, incText: '', inc: null,
-  view: 'sensors', sensorMap: new Map(), drawer: null, open: new Set(), draft: {}, sse: false,
+  view: 'live', sensorMap: new Map(), drawer: null, open: new Set(), draft: {}, sse: false,
   pendingNewest: null, lastLiveEv: 0, lastLive: 0, lastStatus: 0, lastDrawer: 0, lastIncList: 0,
   filter: 'all', incFilter: 'all', stream: {}, cardStream: {}, autoOpened: {}, trkPct: {}, modeTimer: 0, fold: {},
   health: null, simNow: 0, lastHealth: 0, eng: false,
@@ -1392,6 +1393,12 @@ function paintStreams() {
     const el = $('#inc-detail [data-' + (refine ? 'rs' : 's') + '="' + ref + '"]');
     if (!el) { missing = true; continue; }
     paintPre(el, (refine ? S.rstream : S.stream)[k] || '');
+    if (!refine && ref === 'final') {
+      for (const box of $$('#inc-detail [data-aisf="final"]')) {
+        const nb = aiSoFarBox(S.stream[k]);
+        if (box.textContent !== nb.textContent) box.replaceWith(nb);
+      }
+    }
     if (!refine) {
       // rebuild the pill only when its words change (a rebuilt spinner restarts its animation)
       const pill = $('#inc-detail [data-sp="' + ref + '"]'), p = pill && streamPill(S.incId, ref);
@@ -1431,6 +1438,26 @@ function streamPill(incId, ref) {
   const spin = h('span', { class: 'spin', style: 'width:12px;height:12px;border-width:2px' });
   if (tx) return h('span', { class: 'pill orange' }, spin, 'Generating' + (b && f > 0 ? ' · first token ' + ((f - b.at) / 1000).toFixed(1) + ' s' : ''));
   return h('span', { class: 'pill orange' }, spin, b && b.refs.has(ref) ? 'Reading the readings' : 'On the NPU');
+}
+// "AI so far": the reasoner's head fields (title, severity, label, root cause, causal chain) as soon as each one
+// is complete in the live stream, ~10 s before the full report; not yet checked by the policy gate
+const AISF_KEYS = [['root_cause', 'Root cause'], ['causal_chain', 'How it happened'], ['label', 'Diagnosis'], ['severity', 'Severity'], ['title', 'Title']];
+function aiSoFar(text) {
+  const i = (text || '').lastIndexOf('{"title": "');
+  if (i < 0) return null;
+  const s = text.slice(i), o = {};
+  for (const [k] of AISF_KEYS) {
+    const m = s.match(new RegExp('"' + k + '": "((?:[^"\\\\]|\\\\.)*)"'));
+    if (m) try { o[k] = JSON.parse('"' + m[1] + '"'); } catch (e) { /* half an escape: next token */ }
+  }
+  return Object.keys(o).length ? o : null;
+}
+function aiSoFarBox(text) {
+  const o = aiSoFar(text);
+  if (!o) return h('div', { class: 'aisf', 'data-aisf': 'final' });
+  return h('div', { class: 'aisf', 'data-aisf': 'final' },
+    h('div', { class: 'muted', style: 'font-size:13px;margin-bottom:6px', text: 'AI so far (still writing; not yet checked by the safety gate)' }),
+    h('dl', { class: 'kv' }, AISF_KEYS.filter(([k]) => o[k]).flatMap(([k, t]) => [h('dt', { text: t }), h('dd', { style: k === 'root_cause' ? 'font-weight:700' : '', text: k === 'label' || k === 'severity' ? nice(o[k]) : o[k] })])));
 }
 function liveCard(incId, ref, role, text, note) {
   return h('div', { class: 'card agent st-none' },
@@ -1597,7 +1624,11 @@ function renderSensorSheet(force) {
   if (p) {
     const cw = confWord(p.confidence);
     sec.append(h('div', { class: 'rep-h', style: 'margin-top:8px' }, pill(p.status), patChip(p)), earlyNote(inc, s, p) || '',
-      kv([['Likely cause', causePlain(p.likely_cause)], ['Confidence', cw.w + (S.eng ? ' (' + pct(p.confidence) + ')' : '')], ['Suggested action', actionText(p.action)]]),
+      kv([['Likely cause', causePlain(p.likely_cause)], ['Confidence', cw.w + (S.eng ? ' (' + pct(p.confidence) + ')' : '')], ['Suggested action', actionText(p.action)]]
+        // agt_v3 fields (Phase 1): data quality, the card rule behind the severity, cited evidence ids
+        .concat(p.data_quality ? [['Data quality', p.data_quality.verdict + (p.data_quality.why ? ' - ' + p.data_quality.why : '') + (S.eng && (p.data_quality.src || []).length ? ' [' + p.data_quality.src.join(',') + ']' : '')]] : [])
+        .concat(p.severity_reason ? [['Why this severity', p.severity_reason]] : [])
+        .concat(S.eng && (p.evidence || []).length ? [['Evidence', p.evidence.join(', ')]] : [])),
       obs(p.observations));
     if (!ctxA && S.eng) sec.append(h('div', { style: 'margin-top:10px' }, gate(a.valid, a.errors)), statChips(a));
   } else if (a) sec.append(S.eng ? h('div', { style: 'margin-top:8px' }, gate(a.valid, a.errors)) : '', h('p', { class: 'muted', style: 'margin-top:8px', text: 'The AI answer for this sensor failed the safety check, so the automatic rule result below is used.' }));
@@ -1707,6 +1738,7 @@ function reasonerCard(inc) {
   } else if (running && pre) {
     const tx = S.stream[streamKeyOf(inc.id, 'final')];
     card.append(h('div', { class: 'banner', style: 'margin-bottom:12px' }, icon('clock'), h('span', { text: pre.note ? pre.note.replace(/ - /g, ' — ') + '. The AI report will replace this one.' : 'Preliminary report from the rules and the agent findings. The AI reasoner is writing the full report and will replace this one.' })));
+    card.append(aiSoFarBox(tx));
     if (pre.parsed) card.append(h('div', { style: 'margin-top:12px;opacity:.85' }, reportBody(inc, pre.parsed)));
     card.append(h('pre', { class: 'stream live', 'data-s': 'final', text: tx || '' }), h('div', { class: 'muted', style: 'font-size:13px;margin-top:6px', text: 'Reasoner typing live …' }));
   } else if (running) {
@@ -1714,7 +1746,7 @@ function reasonerCard(inc) {
     const tx = S.stream[streamKeyOf(inc.id, 'final')];
     const npu = (inc.sensors || []).filter((s) => !s.context).length, got = (inc.agents || []).filter((a) => !isCtxAgent(a)).length;
     const allAgents = inc.mode === 2 || got >= npu;
-    if (tx || allAgents) card.append(h('pre', { class: 'stream live', 'data-s': 'final', text: tx || '' }),
+    if (tx || allAgents) card.append(aiSoFarBox(tx), h('pre', { class: 'stream live', 'data-s': 'final', text: tx || '' }),
       h('div', { class: 'muted', style: 'font-size:13px;margin-top:6px', text: inc.mode === 2 ? 'One model call reads every sensor and writes the report, typing live …' : 'Combining the agent findings, typing live …' }));
     else card.append(wait('Waiting for agents …', got + ' of ' + npu + ' flagged sensor' + (npu === 1 ? '' : 's') + ' answered. The reasoner then decides root cause, severity and action across domains.'));
   } else card.append(h('div', { class: 'muted', text: 'No cross-domain report was produced.' }));
@@ -1848,7 +1880,10 @@ function renderIncDetail() {
   setText($('#isheet-t'), inc.id + (doms.length ? ' · ' + doms.join(', ') : ''));
   const sensors = inc.sensors || [];
   const flagged = sensors.filter((s) => !s.context), related = sensors.filter((s) => s.context);
-  const main = running ? null : mainReport(inc);
+  // while the AI works, the preliminary report (retrieval + rules) is shown as the report itself: actionable now,
+  // replaced when the AI report arrives (owner 2026-10-29)
+  const prelim = running && prelimOpen(inc);
+  const main = running && !prelim ? null : mainReport(inc);
   // 1. headline: severity + decision state + plain title (the rules' title and the timing stay under Technical details)
   parts.push(h('div', { class: 'op-head' },
     h('div', { class: 'rep-h', style: 'margin-bottom:8px' }, sevTag(inc),
@@ -1859,6 +1894,12 @@ function renderIncDetail() {
     wfOfI(inc) !== 'closed' && etaEl(inc) ? h('p', { class: 'op-meta' }, etaEl(inc)) : null));
   const bn = wfBanner(inc); if (bn) parts.push(bn);
   // 2. while the AI works: the progress steps (plain), its live text is under Technical details (open)
+  if (prelim) {
+    parts.push(h('div', { class: 'banner op-prelim', role: 'note' }, icon('clock'), h('span', { text: 'Preliminary report from past similar incidents and the rules. ' +
+      'The AI is writing the full report now and will replace this one. You can already work through the steps below.' })));
+    parts.push(aiSoFarBox(S.stream[streamKeyOf(inc.id, 'final')]));
+    parts.push(...opSummary(inc, main, flagged));
+  }
   if (running) parts.push(trackCard(inc));
   else if (inc.state === 'failed') parts.push(doneLine(inc));
   // 3. what is happening / why / what to do / how sure / what changed
@@ -2305,6 +2346,7 @@ function snReflect(resp, force) {
 }
 function snSetRowValue(r, v) {
   const s = r.s;
+  if (!r.inp && !r.sw) return; // Phase 1: no sliders, the live value is shown in the row's Live line
   if (s.metric === 'occ') {
     const on = v >= 0.5; r.sw.setAttribute('aria-checked', on ? 'true' : 'false');
     r.val.replaceChildren(snFmt(s, v));
@@ -2330,28 +2372,8 @@ function snMakeRow(s) {
   r.live = h('b', { class: 'sn-last', text: '-' });
   r.stc = h('span', { class: 'pill stp' }); r.pat = h('span', { class: 'chip' });
   r.spark = h('svg', { class: 'sn-spark', viewBox: '0 0 80 24', preserveAspectRatio: 'none', 'aria-hidden': 'true' });
-  let ctl;
-  if (s.metric === 'occ') {
-    r.sw = h('button', { type: 'button', class: 'sn-sw', role: 'switch', 'aria-checked': 'false', 'aria-label': s.label + ': occupied' }, h('i'));
-    r.sw.onclick = () => {
-      const on = r.sw.getAttribute('aria-checked') !== 'true'; SN.local.set(k, Date.now());
-      snSetRowValue(r, on ? 1 : 0); snSend(s, on ? 1 : 0).then(snLater);
-    };
-    ctl = h('div', { class: 'sn-ctl' }, r.sw, h('span', { class: 'muted', text: 'Tap to toggle occupied / vacant' }));
-  } else {
-    r.inp = h('input', { type: 'range', class: 'sn-range', min: s.min, max: s.max, step: s.step, value: s.value, 'aria-label': s.label });
-    const send = () => { clearTimeout(SN.timers.get(k)); SN.timers.delete(k); SN.local.set(k, Date.now()); return snSend(s, +r.inp.value); };
-    r.inp.addEventListener('input', () => {
-      SN.touch.add(k); SN.local.set(k, Date.now()); snFill(r);
-      r.val.replaceChildren(snFmt(s, +r.inp.value), h('small', { text: s.unit || '' }));
-      clearTimeout(SN.timers.get(k)); SN.timers.set(k, setTimeout(send, 150));
-    });
-    r.inp.addEventListener('change', () => { send().then(snLater); });
-    const down = () => SN.touch.add(k), up = () => setTimeout(() => SN.touch.delete(k), 600);
-    r.inp.addEventListener('pointerdown', down); r.inp.addEventListener('touchstart', down, { passive: true });
-    r.inp.addEventListener('pointerup', up); r.inp.addEventListener('pointercancel', up); r.inp.addEventListener('touchend', up); r.inp.addEventListener('blur', up);
-    ctl = h('div', { class: 'sn-ctl' }, h('span', { class: 'sn-lim', text: s.min }), r.inp, h('span', { class: 'sn-lim', text: s.max }));
-  }
+  // Phase 1 (owner 2026-11-16): sliders removed - every reading comes from the campus API (or MQTT)
+  const ctl = h('div', { class: 'sn-ctl' }, h('span', { class: 'muted', text: 'Range ' + s.min + ' - ' + s.max + ' ' + (s.unit || '') + ' · live input' }));
   r.ai = h('span', { class: 'chip aichip', hidden: true });
   r.root = h('div', { class: 'sn-row', 'data-k': k },
     h('div', { class: 'sn-top' }, h('div', { class: 'sn-nm' }, h('b', { text: s.label }), h('span', { class: 'loc', text: s.location }), r.badge), r.val),
@@ -2363,39 +2385,12 @@ function snMakeRow(s) {
 function snBuild() {
   SN.built = true;
   const d = SN.data, box = $('#sens');
-  const noiseInp = h('input', { type: 'range', class: 'sn-range', min: 0, max: 3, step: 0.1, value: 1, 'aria-label': 'Sensor jitter' });
-  SN.noiseInp = noiseInp; SN.noiseVal = h('b', { class: 'sn-val', text: '1.0×' });
-  const sendNoise = () => post('/api/sensors', { noise_scale: +noiseInp.value }).catch((e) => toast(e.message, true));
-  let nt = 0;
-  noiseInp.addEventListener('input', () => { SN.noiseTouch = true; snSetNoise(+noiseInp.value); clearTimeout(nt); nt = setTimeout(sendNoise, 150); });
-  noiseInp.addEventListener('change', () => { clearTimeout(nt); sendNoise(); setTimeout(() => { SN.noiseTouch = false; }, 1500); });
-  SN.pollSeg = makeSeg([[500, '0.5 s'], [1000, '1 s'], [2000, '2 s'], [5000, '5 s']].map(([v, t]) => ({ v, t })), async (v) => {
-    try { const r = await post('/api/replay', { poll_ms: v }); SN.pollMs = r.poll_ms || v; setSeg(SN.pollSeg, SN.pollMs); } catch (e) { toast('Poll: ' + e.message, true); }
-  }, 'Poll interval');
-  setSeg(SN.pollSeg, SN.pollMs);
-  const reset = h('button', { class: 'btn', type: 'button', onclick: async () => {
-    try { const r = await post('/api/sensors', { reset_values: true }); snReflect(r, true); toast('All sensors back to normal values'); } catch (e) { toast('Reset: ' + e.message, true); }
-  } }, icon('restart'), 'Reset to normal values');
-  const restart = h('button', { class: 'btn', type: 'button', onclick: async () => {
-    try { await post('/api/replay', { restart: true }); toast('Clock restarted: 4 h window refilled at current values'); await Promise.all([refreshStatus(), refreshLive()]); } catch (e) { toast('Restart: ' + e.message, true); }
-  } }, icon('play'), 'Restart clock');
   const ids = d.sensors.map((s) => s.node + '  ' + s.metric + '  (' + s.label + ', ' + s.location + ')').join('\n');
-  const host = /^(localhost|127\.|\[)/.test(location.hostname) ? '<qidk-ip>' : location.hostname;
-  const curl = 'curl -X POST http://' + host + ":8000/api/ingest -H 'Content-Type: application/json' -d '{\"node\":\"SR-AQ-KH03-03\",\"metric\":\"co2\",\"value\":850}'";
   const ctl = h('div', { class: 'card sn-top-card' },
-    h('div', { class: 'sn-banner' }, icon('info'), h('p', { text: 'You are the sensor: every poll the app reads these values as the next 5-minute reading. Only warning, critical or stuck readings call the AI, after they last 8 readings; everything alarming at the same time becomes one incident.' })),
-    h('div', { class: 'sn-set' }, h('div', { class: 'sn-top' }, h('div', { class: 'sn-nm' }, h('b', { text: 'Sensor jitter' }), h('span', { class: 'loc', text: '0 = exact values. A perfectly constant value eventually looks like a stuck sensor, which the app flags.' })), SN.noiseVal),
-      h('div', { class: 'sn-ctl' }, h('span', { class: 'sn-lim', text: '0' }), noiseInp, h('span', { class: 'sn-lim', text: '3' }))),
-    h('div', { class: 'sn-set' }, h('div', { class: 'sn-nm' }, h('b', { text: 'Poll interval' }), h('span', { class: 'loc', text: 'How often a new reading is taken' })), SN.pollSeg),
-    h('div', { class: 'sn-set' }, h('div', { class: 'sn-nm' }, h('b', { text: 'Sensor time of day' }),
-      h('span', { class: 'loc', text: 'Each reading is 5 sensor-minutes, so the clock runs fast. Occupancy at 22:00-06:00 counts as off-hours. Changing it keeps all readings.' })),
-      makeSeg([['09:00', 'Morning'], ['14:00', 'Afternoon'], ['19:00', 'Evening'], ['23:00', 'Night']].map(([v, t]) => ({ v, t })), async (v) => {
-        try { const r = await post('/api/replay', { clock: v }); toast('Sensor time set to ' + (r.sensor_time_ist || v)); await refreshStatus(); } catch (e) { toast('Clock: ' + e.message, true); }
-      }, 'Sensor time of day')),
-    h('div', { class: 'sn-btns' }, reset, restart));
-  const conn = h('details', { class: 'card sn-conn' }, h('summary', { text: 'Connect a real sensor' }),
-    h('p', { class: 'muted', text: 'A real device (ESP32, curl) can set any of these values with the same call the sliders use:' }),
-    h('pre', { class: 'sn-pre', text: curl }), h('p', { class: 'muted', text: 'Sensor ids (node, metric):' }), h('pre', { class: 'sn-pre', text: ids }));
+    h('div', { class: 'sn-banner' }, icon('info'), h('p', { text: 'Live input: the campus smart-city API is read every 5 s (only changed readings) and the last 12 h are loaded at start, so every agent window is full at once. Only warning, critical or stuck readings call the AI, after they last 8 readings; site-linked alarms become one incident group.' })),
+    h('div', { class: 'sn-btns' }, h('a', { class: 'btn', href: '#sensors' }, icon('info'), 'Data health'), h('a', { class: 'btn', href: '#map' }, icon('map'), 'Site map and cards')));
+  const conn = h('details', { class: 'card sn-conn' }, h('summary', { text: 'Sensor ids' }),
+    h('p', { class: 'muted', text: 'MQTT (sce/#) and POST /api/ingest with a device timestamp use the same ids (node, metric):' }), h('pre', { class: 'sn-pre', text: ids }));
   const groups = h('div', { class: 'sn-grid' });
   for (const role of ROLE_ORDER) {
     const list = d.sensors.filter((s) => s.role === role); if (!list.length) continue;
@@ -2515,19 +2510,37 @@ function renderAboutModel() {
   if (e.dataset.h !== html) { e.dataset.h = html; e.innerHTML = html; }
 }
 
+/* ============================== settings menu ============================== */
+function bindGear() {
+  const b = $('#gear'), m = $('#gear-menu'); if (!b || !m) return;
+  b.append(icon('settings'));
+  const set = (on) => { m.hidden = !on; b.setAttribute('aria-expanded', on ? 'true' : 'false'); };
+  b.onclick = (e) => { e.stopPropagation(); const on = m.hidden; set(on); if (on) { const f = m.querySelector('a'); if (f) f.focus(); } };
+  m.addEventListener('click', () => set(false));
+  m.addEventListener('keydown', (e) => {
+    const it = [...m.querySelectorAll('a')], i = it.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') { e.preventDefault(); it[(i + 1) % it.length].focus(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); it[(i - 1 + it.length) % it.length].focus(); }
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !m.hidden) { set(false); b.focus(); } });
+  document.addEventListener('click', (e) => { if (!m.hidden && !m.contains(e.target) && e.target !== b) set(false); });
+}
+
 /* ============================== navigation ============================== */
 function setView(v) {
   const deep = /^incident\/(INC-\d+)$/.exec(v || '');
   if (deep) { setView('incidents'); selectIncident(deep[1]); try { history.replaceState(null, '', '#incidents'); } catch (e) { /* ignore */ } return; }
-  if (!['sensors', 'live', 'incidents', 'map', 'about'].includes(v)) v = 'sensors';
+  if (v === 'site' || v === 'health') { const nv = v === 'site' ? 'map' : 'sensors'; try { history.replaceState(null, '', '#' + nv); } catch (e) { /* ignore */ } v = nv; }
+  if (!['live', 'sensors', 'incidents', 'map', 'about', 'cards'].includes(v)) v = 'live';
   S.view = v;
   $$('.view').forEach((x) => x.classList.toggle('on', x.id === 'view-' + v));
   $$('#rail a').forEach((a) => { const on = a.dataset.view === v; a.classList.toggle('on', on); if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   window.scrollTo(0, 0);
   if (v === 'incidents') refreshIncidents();
-  if (v === 'sensors') { snFetch().then(() => snLiveAll()); refreshStatus(); if (!S.live) refreshLive(); }
-  if (v === 'map') { (S.topo ? Promise.resolve() : api('/api/topology').then((t) => { S.topo = t; }).catch(() => {})).then(() => { renderMap(); refreshLive(); }); }
+  if (v === 'sensors') { snFetch().then(() => snLiveAll()); refreshStatus(); if (!S.live) refreshLive(); if (window.P1) window.P1.show('health'); }
+  if (v === 'map') { if (window.P1) window.P1.show('site'); (S.topo ? Promise.resolve() : api('/api/topology').then((t) => { S.topo = t; }).catch(() => {})).then(() => { renderMap(); refreshLive(); }); }
   if (v === 'live') refreshLive();
+  if (v === 'cards') window.P1 && window.P1.show && window.P1.show('cards');
 }
 
 /* ============================== SSE ============================== */
@@ -2606,7 +2619,8 @@ function boot() {
   document.addEventListener('click', (e) => { if (!e.target.closest || !e.target.closest('.chip.ev')) hidePop(true); });
   $('#sheet-bd').addEventListener('scroll', () => hidePop(true), { passive: true });
   $('#inc-detail').addEventListener('scroll', () => hidePop(true), { passive: true });
-  setView(location.hash.slice(1) || 'sensors');
+  setView(location.hash.slice(1) || 'live');
+  bindGear();
   refreshStatus(); refreshLive(); refreshIncidents(); refreshHealth();
   connect();
   setInterval(sparkLoop, 1000); // each tick measures every tile (layout); 1 Hz is plenty for 10 s refreshes
@@ -2629,6 +2643,7 @@ function boot() {
   }, 3000);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 }
+window.SCE_H = { h, api, post, toast, icon }; // phase1.js runs outside this closure
 boot();
 })();
 

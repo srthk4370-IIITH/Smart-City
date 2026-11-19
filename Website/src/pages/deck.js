@@ -8,10 +8,12 @@ export default async function mount(ctx) {
   // Anchor: the two headline results, read from their datasets (not typed in), each labelled with where it was measured.
   const pick = (ds, role, x) => ((ds.series.find((s) => s.role === role) || {}).points || []).find((p) => p.x === x);
   const pct = (v) => `${Math.trunc(v * 100 + 1e-9)} %`; // same rounding as the dataset claim (42 %, 88 %)
-  Promise.all([data.dataset('lat_chaos_genie_vs_htpd'), data.dataset('ad_placement_curve')]).then(([lat, pl]) => {
+  Promise.all([data.dataset('lat_chaos_genie_vs_htpd'), data.dataset('ad_placement_curve'), data.dataset('lat_app_ai_update').catch(() => null)]).then(([lat, pl, upd]) => {
     const g = pick(lat, 'alt', '12 agents + synth'), o = pick(lat, 'ours', '12 agents + synth');
     const a40 = pick(pl, 'ours', '40 min'), a3 = pick(pl, 'ours', '3 h');
     const list = [];
+    const up = upd && ((upd.series[0] || {}).points || []);
+    if (up && up.length > 1) list.push({ before: `${up[0].y} s`, after: `${up[up.length - 1].y} s`, label: 'Critical breach → AI report on the same incident, through the app on the QIDK.', meta: `${up[0].x} → ${up[up.length - 1].x} · fastcheck after each deploy` });
     if (g && o) list.push({ before: `≈ ${g.y} s`, after: `${o.y} s`, label: '12-agent incident report on the QIDK: Genie → htpd.', meta: '16 Oct · Genie 46–48 s (logged range) · htpd measured' });
     if (a40 && a3) list.push({ before: pct(a40.y), after: pct(a3.y), label: 'Agent pattern accuracy: alert at 40 min → refined at 3 h (QIDK NPU).', meta: `v1 agents, 16 Oct · n = ${a3.n} events · v2 later lifted 40 min to 74 %` });
     if (list.length) $('anchor').replaceChildren(ui.anchors(list));
@@ -27,14 +29,15 @@ export default async function mount(ctx) {
     const ml = (t.morning || {}).live || null;
     const reasoner = ((ml && /rsn_v2/.test(ml.reasoner_model || '')) || (!ml && live && /rsn_v2/.test(d.reasoner || ''))) ? 'Qwen3.5-4B rsn_v2' : 'Qwen3.5-4B rsn_v1';
     const ch = t.chaos_tonight && t.chaos_tonight.summary;
+    // Evaluation day (4 Nov): the split is fixed by deploy28 (proofs/2026-11-04_split); numbers from deploy27 STATUS.md
     const strip = ctx.h('div.status', { role: 'status' },
-      item('Agents', 'B50 · Llama 3.2 3B'), item('Reasoner', reasoner),
-      item('Event → full report', ch && ch.done_min ? `${ch.done_min}–${ch.done_max} s` : '28–39 s'),
-      ml ? item('Live build', `edge-agent ${ml.edge_agent}`) : item('Final deploy', deploy),
+      item('Agents', 'B50 · Llama 3.2 3B · NPU'), item('Reports', 'Qwen3.5-4B rsn_v1 · NPU'),
+      item('Chat (eval day)', 'Qwen3.5-2B rsn_v3 r2 · GPU'),
+      item('Critical breach → AI report', '5.6 s → +28 s'),
       item('As of', String((t.meta && t.meta.generated_at) || '').replace('T', ' ').slice(0, 16)));
     $('status').append(strip, ctx.h('p.deck-trlink', { style: 'margin:12px 0 0;display:flex;gap:8px;flex-wrap:wrap' },
       ctx.h('a.chip.chip--ours', { href: '#/today' }, 'Today: what runs on the board →'),
-      ctx.h('a.chip', { href: '#/journey' }, 'Journey: eleven steps to here →')));
+      ctx.h('a.chip', { href: '#/journey' }, 'Journey: sixteen steps to here →')));
   }).catch(() => { /* no today.json in this build: the strip is simply absent */ });
 
   const intro = [...root.querySelectorAll('[data-intro]')];

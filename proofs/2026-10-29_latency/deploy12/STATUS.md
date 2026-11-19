@@ -1,0 +1,16 @@
+# Deploy 12 (chat router + 6 device tools): full head back + v8x5 + AI-so-far UI + chat peak fix (18:40 IST)
+- chat: 0 s | tools ['current_levels'] | busy False | error False | How are co2 levels looking today -> Current readings: CO2 at KH building, level 03, indoor air sensor 03: 451.8 ppm (fine), today 442.5 to 2017.7 ppm, mean 1798.9; alert limits: warning above 1000, critical above 1500.
+- chat: 0 s | tools ['rank_readings'] | busy False | error False | Highest spike today -> Highest CO2 today: 2017.7 ppm at KH building, level 03, indoor air sensor 03 (SR-AQ-KH03-03), 01:15 - this sensor is flagged as faulty, so the value may not be real. (1 CO2 sensor checked, device readings every 5 min.)
+- chat: 0 s | tools ['open_incidents'] | busy False | error False | Which domains have open incidents right now? -> 171 incidents are waiting for an operator decision. By domain: air quality 84 (41 critical, 14 warning, 29 sensor fault; oldest from 2026-10-13 09:55); water 60 (38 critical, 15 warning, 7 sensor fault; oldest from 2026-
+- chat: 0 s | tools ['faulty_sensors'] | busy False | error False | Which sensors look faulty right now? -> No sensor reports a sensor fault right now. In the last 7 days the AI diagnosed these as faulty: SR-AC-KH02-24 room temperature (12 incidents, last 2026-10-13 11:15, looks like bias); SR-AC-KH95-02 room temperature (12 i
+- chat: 0 s | tools ['what_if'] | busy False | error False | What if occupancy increases by 50%, impact on other domains -> An estimate fitted from recent device data (in the last 7 days): it shows an association, not a guarantee. If occupancy at KH changes +50% (0 to 0), the recent data shows no clear link to the other readings there. No cle
+- chat: 0 s | tools ['recent_incidents'] | busy False | error False | List the incidents -> The 5 most recent incidents, newest first: INC-0178 Normal operation: Tank level critical, Power warning, PM10 warning (+5 more) (critical, 2026-10-13 11:15); INC-0006 Normal operation: Flow critical, Tank level critical
+- chat: 11 s | tools ['count_incidents'] | busy False | error False | How many incidents were there today? -> 53 incidents were recorded today.
+- DEPLOYED: APK 9625c050, bin htpd_v8x5, reasoner qwen35_reasoner (full head); chaos 2 rc=0; fastcheck {"fast_incident": "INC-0490", "fast_s": 5.4, "ai_update_s": 52.0, "final_model": "qwen3.5-4b (htpd)", "valid": true, "severity": "sensor_fault", "title": "KH building, level 03: Suspect CO2 readings", "pass": true}
+- htpd: htpd: reasoner load phases: model 3597 ms, context 76 ms, pieces 0 ms
+- htpd: htpd: reason step profile: 206 steps, rows 2.12/step (max 14); ms/step build 0.00 decode 130.50 pick 0.05 handle 0.29 flush 0.01
+- htpd: htpd: reason 3 streams, 206 decode steps, prefill 4783 ms, cache saved (1317 tokens, 2247 ms)
+- htpd: htpd: reasoner load phases: model 3743 ms, context 65 ms, pieces 0 ms
+- htpd: htpd: reason step profile: 30 steps, rows 1.00/step (max 1); ms/step build 0.00 decode 88.23 pick 0.03 handle 0.00 flush 0.01
+- htpd: htpd: reason step profile: 7 steps, rows 1.00/step (max 1); ms/step build 0.00 decode 88.24 pick 0.04 handle 0.00 flush 0.01
+- board now: reasoner_split=3 bin=/data/local/tmp/llama.cpp/bin/htpd_v8x5 reasoner_model=/data/local/tmp/gpu/qwen35_reasoner_q4_0.gguf 

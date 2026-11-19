@@ -1,0 +1,12 @@
+# Deploy 16 (htpd_v9b: split-spec drafts on split requests only; chat back on the plain path) (16:32 IST)
+- chat: 1 s | tools ['what_if'] | busy False | error False | What if occupancy increases by 50%, impact on other domains -> The occupancy sensor at KH reported 0 in every hour in the last 7 days, so the device's data cannot estimate what a change of +50% would do. Ask again once it has recorded the building in use.
+- chat: 2 s | tools ['recent_incidents'] | busy False | error False | List the incidents -> The 5 most recent incidents, newest first: INC-0519 KH building, level 03: Suspect CO2 readings (critical, 2026-10-14 13:05); INC-0518 KH building, level 03: Suspect CO2 readings (sensor fault, 2026-10-14 12:10); INC-051
+- chat: 33 s | tools ['count_incidents'] | busy False | error False | How many incidents were there today? -> 108 incidents today.
+- DEPLOYED: APK 458cffb5, bin htpd_v9b split-spec K=8 (split only) + lib_rp29; chaos 2 rc=0; fastcheck {"fast_incident": "INC-0518", "fast_s": 8.0, "ai_update_s": 59.1, "final_model": "qwen3.5-4b (htpd)", "valid": true, "severity": "sensor_fault", "title": "KH building, level 03: Suspect CO2 readings", "pass": true}
+- htpd: htpd: v9 split-spec reasoner context: 6 sequences, n_ctx 12544, kv unified
+- htpd: htpd: reasoner load phases: model 2961 ms, context 102 ms, pieces 0 ms
+- htpd: htpd: reason step profile: 182 steps, rows 2.26/step (max 14); ms/step build 0.00 decode 127.03 pick 0.05 handle 0.36 flush 0.01
+- htpd: htpd: reason 3 streams, 182 decode steps, prefill 2744 ms, cache disk (1317 tokens, 163 ms)
+- htpd: htpd: reason step profile: 30 steps, rows 1.00/step (max 1); ms/step build 0.00 decode 92.07 pick 0.03 handle 0.00 flush 0.01
+- htpd: htpd: reason step profile: 6 steps, rows 1.00/step (max 1); ms/step build 0.00 decode 92.41 pick 0.04 handle 0.00 flush 0.01
+- board now: reasoner_split=3 reasoner_model=/data/local/tmp/gpu/qwen35_reasoner_q4_0.gguf bin=/data/local/tmp/llama.cpp/bin/htpd_v9b env=HTPD_AGENT_MAX_NEW=160 HTPD_JSON_ABORT=2 HTPD_SYNTH_PREFIX_CACHE=1 GGML_HEXAGON_OPPOLL=1 HTPD_REASON_IDLE_MS=3000 LD_LIBRARY_PATH=/data/local/tmp/llama.cpp/lib_rp29 ADSP_LIBRARY_PATH=/data/local/tmp/llama.cpp/lib_rp29 GGML_HEXAGON_REPACK_THREADS=8 GGML_HEXAGON_REPACK_STATS=1 HTPD_REASON_SPLIT_SPEC=8 HTPD_REASON_SPEC_MIN=2 HTPD_REASON_CORPUS=/data/local/tmp/smart_city_edge/reason_corpus.jsonl 

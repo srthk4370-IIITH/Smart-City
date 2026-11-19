@@ -39,7 +39,7 @@ func newAnswerScanner(prefill string, onToken func(string)) *answerScanner {
 	// Mode 2 report, where the model's action is the real output. Trimming there would hand the
 	// policy gate an empty action and fail the report ("action '' not whitelisted"). The agent
 	// prefill is the discriminator.
-	if trimAction() && prefill == AgentPrefill {
+	if trimAction() && isAgentPrefill(prefill) {
 		a.ts = newTrailScanner()
 		a.ts.feed(prefill, trimStopKey) // prime depth and key state with the prefilled part
 	}

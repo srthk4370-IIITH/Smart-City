@@ -1,0 +1,12 @@
+# Deploy 10 (caps timeout fix): full head back + v8x5 + AI-so-far UI + chat peak fix (15:42 IST)
+- chat: 32 s | tools ['count_incidents'] | busy False | error False | How many incidents were there today? -> 52 incidents were recorded today.
+- chat: 66 s | tools ['list_sensors'] | busy False | error False | Which sensors look faulty right now? -> No sensors are faulted right now.
+- chat: 30 s | tools ['rank_readings (device scan)'] | busy False | error False | What was the highest CO2 today? -> Highest CO2 today: 2016.9 ppm at KH building, level 03, indoor air sensor 03 (SR-AQ-KH03-03), 10:00. (1 CO2 sensor, device readings every 5 min.)
+- DEPLOYED: APK d7625347, bin htpd_v8x5, reasoner qwen35_reasoner (full head); chaos 2 rc=0; fastcheck {"fast_incident": "INC-0484", "fast_s": 5.5, "ai_update_s": 47.4, "final_model": "qwen3.5-4b (htpd)", "valid": true, "severity": "sensor_fault", "title": "KH building, level 03: Suspect CO2 readings", "pass": true}
+- htpd: htpd: reasoner load phases: model 3956 ms, context 84 ms, pieces 0 ms
+- htpd: htpd: reason step profile: 216 steps, rows 2.59/step (max 14); ms/step build 0.00 decode 131.66 pick 0.06 handle 0.29 flush 0.01
+- htpd: htpd: reason 3 streams, 216 decode steps, prefill 5118 ms, cache saved (1317 tokens, 2412 ms)
+- htpd: htpd: reason step profile: 26 steps, rows 1.00/step (max 1); ms/step build 0.00 decode 77.48 pick 0.03 handle 0.00 flush 0.01
+- htpd: htpd: reasoner load phases: model 3919 ms, context 83 ms, pieces 0 ms
+- htpd: htpd: reason step profile: 8 steps, rows 1.00/step (max 1); ms/step build 0.00 decode 83.51 pick 0.03 handle 0.00 flush 0.01
+- board now: reasoner_split=3 bin=/data/local/tmp/llama.cpp/bin/htpd_v8x5 reasoner_model=/data/local/tmp/gpu/qwen35_reasoner_q4_0.gguf 

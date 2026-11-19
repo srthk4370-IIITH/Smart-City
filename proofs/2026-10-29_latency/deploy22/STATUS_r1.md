@@ -1,0 +1,7 @@
+# Deploy 22 (APK: weather-only validator rule + critical skips the coverage gate) (13:49 IST)
+- snapshot: APK 458cffb5, new APK 730a21df
+- chat: 0 s | tools ['open_incidents'] | busy False | error False | Which domains have open incidents right now? -> 2 incidents are waiting for an operator decision. By domain: air quality 2 (2 sensor fault; oldest from 2026-10-15 10:35).
+- chat: 11 s | tools ['sensor_faults'] | busy False | error False | How many sensor faults were there this week? -> 12 sensor faults were detected this week.
+- chat: 0 s | tools ['what_if'] | busy False | error False | What if occupancy increases by 50%, impact on other domains -> The occupancy sensor at KH reported 0 in every hour in the last 7 days, so the device's data cannot estimate what a change of +50% would do. Ask again once it has recorded the building in use.
+- DEPLOYED: APK 730a21df (edge-agent: weather-only validator rule + critical gap bypass), htpd/profile unchanged; chaos 2 rc=0; fastcheck {"fast_incident": "INC-0573", "fast_s": 5.6, "ai_update_s": 26.8, "final_model": "qwen3.5-4b (htpd)", "valid": true, "severity": "sensor_fault", "title": "KH building, level 03: Suspect CO2 readings", "pass": true}; fastcheck2 {"fast_incident": "INC-0575", "fast_s": 5.7, "ai_update_s": 27.0, "final_model": "qwen3.5-4b (htpd)", "valid": true, "severity": "sensor_fault", "title": "KH building, level 03: Suspect CO2 readings", "pass": true}
+- board now: APK 730a21df; reasoner_model=/data/local/tmp/gpu/qwen35_reasoner_q4_0.gguf bin=/data/local/tmp/llama.cpp/bin/htpd_v9f 

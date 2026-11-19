@@ -4,7 +4,7 @@
 G=$1; TAG=$2; SUITES=${3:-rw6,rwh,dev,chatdev,p0}; PORT=18096; LC=~/llama-cuda-b11815
 HB=~/smartcity_runs/reasoner_v1/HEARTBEAT; E=/mnt/c/Users/hp/Desktop/qidk/proofs/2026-10-25_reasoner_final/eval
 u=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits | tr -dc 0-9); [ "$u" -gt 800 ] && { echo "GPU busy ($u MiB)"; exit 2; }
-LD_LIBRARY_PATH=$LC/bin nice -n 10 $LC/bin/llama-server -m $G -ngl 99 ${LORA:+--lora $LORA} -c 8192 -np 1 --jinja -t 2 -tb 2 --host 127.0.0.1 --port $PORT --no-webui > $E/results/server_$TAG.log 2>&1 &
+LD_LIBRARY_PATH=$LC/bin nice -n 10 $LC/bin/llama-server -m $G -ngl 99 -cram 256 ${LORA:+--lora $LORA} -c 8192 -np 1 --jinja -t 2 -tb 2 --host 127.0.0.1 --port $PORT --no-webui > $E/results/server_$TAG.log 2>&1 &
 SP=$!; MAIN=$$
 # watchdog (2026-10-28): stale HEARTBEAT or PAUSE_GPU -> stop; GPU >= 80 C or Windows Available < 1.5 GB -> SIGSTOP the
 # server (re-applied every pass), resume at <= 72 C and >= 2.5 GB

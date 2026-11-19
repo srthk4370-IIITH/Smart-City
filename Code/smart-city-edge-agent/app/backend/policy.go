@@ -229,6 +229,11 @@ func checkAgentWin(s SensorRef, res GenieResult, prompt string, win []float64, h
 	call.ClaimFlags = claimFlags(s.Role, s.End, prompt, f.Observations)
 	call.Parsed = &f
 	pats, causes := agentPatterns(s.Role), agentCauses(s.Role) // v1 or v2 whitelists (agentversion.go)
+	if agentV3() { // agt_v3: the card's own pattern / cause lists (features_v3.go)
+		if cd, _, ok := sensorCard(s.Role, s.Metric, s.Node, s.Location); ok {
+			pats, causes = CardPatterns(cd), cd.Causes
+		}
+	}
 	if !contains(pats, f.Pattern) {
 		call.Errors = append(call.Errors, "unknown pattern '"+f.Pattern+"'")
 	}
@@ -271,8 +276,15 @@ func checkAgentWin(s SensorRef, res GenieResult, prompt string, win []float64, h
 	for id := range promptEvidenceIDs(prompt) { // v2 prompts also show E9/E10
 		valid[id] = true
 	}
+	tools := toolPromptIDs(prompt) // agent_tools: H* / N* of a tool result, GAPS
+	for id := range tools {
+		valid[id] = true
+	}
 	for _, o := range f.Observations {
 		ids := idRe.FindAllString(o, -1)
+		if len(tools) > 0 {
+			ids = idReTools.FindAllString(o, -1)
+		}
 		if len(ids) == 0 {
 			call.Errors = append(call.Errors, "observation without evidence: "+trunc(o, 60))
 		}
@@ -284,6 +296,9 @@ func checkAgentWin(s SensorRef, res GenieResult, prompt string, win []float64, h
 		if blocksActuation(o) {
 			call.Errors = append(call.Errors, "actuation language blocked")
 		}
+	}
+	if agentV3() {
+		call.Repairs = append(call.Repairs, checkAgentV3Fields(&f, valid)...)
 	}
 	// v2 fields are optional and never fail a finding: an invalid value is dropped and noted
 	if f.FaultKind != "" {

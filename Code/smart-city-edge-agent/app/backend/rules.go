@@ -19,7 +19,16 @@ func inSet(s string, set ...string) bool {
 }
 
 func StatusOf(role, metric, pattern string, st Stats, baseMean float64) string {
-	m := Metrics[role+"/"+metric]
+	return StatusOfM(Metrics[role+"/"+metric], role, metric, pattern, st, baseMean)
+}
+
+// StatusOfNode: StatusOf with the thresholds of THIS sensor (its card, rules_config.go).
+func StatusOfNode(role, metric, node, pattern string, st Stats, baseMean float64) string {
+	return StatusOfM(effectiveMetric(role, metric, node), role, metric, pattern, st, baseMean)
+}
+
+// StatusOfM: the rule status of a window against the thresholds in m.
+func StatusOfM(m Metric, role, metric, pattern string, st Stats, baseMean float64) string {
 	if pattern == "flatline" {
 		if math.Abs(st.Last) > 1e-6 {
 			return "sensor_fault"
@@ -29,23 +38,26 @@ func StatusOf(role, metric, pattern string, st Stats, baseMean float64) string {
 	// Physical plausibility (not in the training rules, added after the app stress test): indoor CO2
 	// cannot sit below outdoor air (~420 ppm), so a reading under 350 ppm is a sensor fault. Without
 	// this a drop to 270 ppm read as a harmless "step decrease" and raised nothing.
-	if role == "air_quality" && metric == "co2" && st.Last < 350 {
+	if m.HasFaultLo && st.Last < m.FaultLo {
+		return "sensor_fault"
+	}
+	if m.HasFaultHi && st.Last > m.FaultHi {
 		return "sensor_fault"
 	}
 	if pattern == "erratic" && role != "power" {
 		return "sensor_fault"
 	}
 	if m.HasLimits {
-		if m.Dir == "low" || (metric == "ph" && st.Min < 6.5 && st.Last < 7) {
+		if m.Dir == "low" || (m.HasLoSide && st.Min < m.WarnLo && st.Last < m.WarnLo+0.5) {
 			lv := st.Last
 			if inSet(pattern, "spike", "dip") {
 				lv = st.Min
 			}
-			if metric == "ph" {
-				if lv < 6.0 {
+			if m.HasLoSide {
+				if lv < m.CritLo {
 					return "critical"
 				}
-				if lv < 6.5 {
+				if lv < m.WarnLo {
 					return "warning"
 				}
 			} else {
@@ -78,21 +90,34 @@ func StatusOf(role, metric, pattern string, st Stats, baseMean float64) string {
 	}
 	ref := math.Max(math.Abs(baseMean), 1e-6)
 	rel := st.Range / ref
+	abruptCrit, gradualWarn := 1.5, 0.3
+	if m.AbruptCrit > 0 {
+		abruptCrit = m.AbruptCrit
+	}
+	if m.GradualWarn > 0 {
+		gradualWarn = m.GradualWarn
+	}
 	switch {
 	case pattern == "stable":
 		return "normal"
 	case inSet(pattern, "spike", "step_increase", "step_decrease", "dip", "exponential_increase", "throttling", "erratic"):
-		if rel > 1.5 {
+		if rel > abruptCrit {
 			return "critical"
+		}
+		if m.AbruptWarn > 0 && rel <= m.AbruptWarn {
+			return "normal"
 		}
 		return "warning"
 	case inSet(pattern, "gradual_increase", "gradual_decrease"):
-		if rel > 0.3 {
+		if m.GradualCrit > 0 && rel > m.GradualCrit {
+			return "critical"
+		}
+		if rel > gradualWarn {
 			return "warning"
 		}
 		return "normal"
 	case pattern == "oscillation":
-		if role == "water" {
+		if m.Osc == "warning" || (m.Osc == "" && role == "water") {
 			return "warning"
 		}
 	}
@@ -324,6 +349,10 @@ type Finding struct {
 	EventActive *bool  `json:"event_active,omitempty"` // still happening at the window end
 	Onset       string `json:"onset,omitempty"`        // HH:MM sensor time the event started
 	FaultKind   string `json:"fault_kind,omitempty"`   // only with status sensor_fault, one of FaultKinds
+	// agt_v3 fields (V3_DESIGN §2.2, features_v3.go); B50 never emits them
+	DataQuality    *FindingDQ `json:"data_quality,omitempty"`
+	SeverityReason string     `json:"severity_reason,omitempty"`
+	EvidenceIDs    []string   `json:"evidence,omitempty"`
 }
 
 // mkFinding is a v1-shaped finding (the six fields the rules fill).
@@ -363,16 +392,20 @@ func occLabelFinding(pattern string, s OccStats, end int64) Finding {
 
 // RuleFinding = Mode 1 output for one window (deterministic, no LLM).
 func RuleFinding(role, metric, node string, xs []float64, end int64) Finding {
-	pattern := RulePattern(role, metric, xs, end)
+	return ruleFindingAs(RulePatternNode(role, metric, node, xs, end), role, metric, node, xs, end)
+}
+
+// ruleFindingAs: RuleFinding with a given pattern (engine critical gap bypass).
+func ruleFindingAs(pattern, role, metric, node string, xs []float64, end int64) Finding {
 	if role == "occupancy" {
 		return occLabelFinding(pattern, ComputeOccStats(xs), end)
 	}
-	m := Metrics[role+"/"+metric]
+	m := effectiveMetric(role, metric, node)
 	st := ComputeStats(xs, m.Dec)
 	zero := maxf(absAll(xs)) < 1e-6 || (pattern == "flatline" && math.Abs(st.Last) < 1e-6)
-	status := StatusOf(role, metric, pattern, st, mean(xs[:12]))
+	status := StatusOfM(m, role, metric, pattern, st, mean(xs[:12]))
 	cause := CauseOf(role, metric, pattern, status, IsOffHours(end), strings.HasPrefix(node, "SR-"), zero)
-	obs := ruleObservations(role, metric, pattern, status, st, end, zero)
+	obs := ruleObservations(m, metric, pattern, status, st, end, zero)
 	conf := 0.7
 	if pattern == "stable" {
 		conf = 0.8
@@ -388,8 +421,7 @@ func absAll(xs []float64) []float64 {
 	return o
 }
 
-func ruleObservations(role, metric, pattern, status string, st Stats, end int64, zero bool) []string {
-	m := Metrics[role+"/"+metric]
+func ruleObservations(m Metric, metric, pattern, status string, st Stats, end int64, zero bool) []string {
 	d := m.Dec
 	u := ""
 	if m.Unit != "" {

@@ -66,6 +66,14 @@ async function openSession(id) {
 function newChat() { S.id = null; S.session = null; renderSide(); renderChat(); $('#q').focus(); }
 
 /* ------------------------------------------------------------ conversation */
+// where the answer was computed: the backend names the model when chat runs on its own server (chat_url, e.g.
+// "qwen3.5-2b rsn_v3 (cpu)" or the htpd fallback); a fast answer without a model is the rule-based router (CPU);
+// a slower one is the model on the NPU (no chat_url)
+function engineOf(m) {
+  if (m.model) return ' · ' + m.model;
+  return (m.ms - (m.queued_ms || 0)) >= 1500 ? ' on the NPU' : '';
+}
+
 function msgNode(m) {
   if (m.role === 'user') return h('div', { class: 'row user' }, h('div', { class: 'bub', text: m.text }));
   const toolsBox = h('div', { class: 'tools' }, (m.tools || []).map((t) => h('div', { class: 'tool' },
@@ -74,7 +82,7 @@ function msgNode(m) {
   const meta = h('div', { class: 'meta' },
     m.tools && m.tools.length ? h('button', { type: 'button', class: 'how', onclick: () => toolsBox.classList.toggle('open') }, 'How I found this · ' + m.tools.length + ' lookup' + (m.tools.length > 1 ? 's' : '')) : null,
     m.queued_ms > 1500 ? h('span', { text: 'waited ' + (m.queued_ms / 1000).toFixed(0) + ' s for an alert analysis' }) : null,
-    m.ms ? h('span', { text: ((m.ms - (m.queued_ms || 0)) / 1000).toFixed(1) + ' s on the NPU' }) : null);
+    m.ms ? h('span', { text: ((m.ms - (m.queued_ms || 0)) / 1000).toFixed(1) + ' s' + engineOf(m) }) : null);
   return h('div', { class: 'row bot' + (m.busy ? ' busy' : '') + (m.error ? ' err' : '') }, h('div', { class: 'av', 'aria-hidden': 'true', text: '✦' }),
     h('div', { class: 'bub' }, h('div', {}, richText(m.text)), meta, toolsBox));
 }

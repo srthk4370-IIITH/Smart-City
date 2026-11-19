@@ -22,6 +22,7 @@
   } catch (e) { document.documentElement.setAttribute('data-theme', 'dark'); }
 })();
 </script>
+<link rel="stylesheet" href="phase1.css">
 </head>
 <body>
 <header class="bar">
@@ -33,16 +34,22 @@
       <button class="ibtn opbtn" id="op" type="button" aria-label="Choose who is using this device"></button>
       <button class="ibtn" id="eng" type="button" aria-pressed="false" aria-label="Engineering view: show modes, models and evidence" title="Engineering view"></button>
       <button class="ibtn" id="theme" type="button" aria-label="Switch between light and dark mode"></button>
+      <div class="gear-wrap">
+        <button class="ibtn" id="gear" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="gear-menu" aria-label="Settings and more" title="Settings"></button>
+        <div class="gear-menu" id="gear-menu" role="menu" aria-label="Settings" hidden>
+          <a href="#about" role="menuitem">About</a>
+          <a href="#cards" role="menuitem">Cards &amp; rules</a>
+        </div>
+      </div>
     </div>
   </div>
 </header>
 
 <nav class="tabs" id="rail" aria-label="Sections">
-  <a href="#sensors" data-view="sensors"></a>
   <a href="#live" data-view="live"></a>
+  <a href="#sensors" data-view="sensors"></a>
   <a href="#incidents" data-view="incidents"></a>
   <a href="#map" data-view="map"></a>
-  <a href="#about" data-view="about"></a>
 </nav>
 
 <div class="modebar eng-only">
@@ -60,9 +67,11 @@
 <main class="wrap" id="main">
   <div id="shift" class="shift" role="status" aria-live="polite" hidden></div>
   <section id="view-sensors" class="view">
-    <div class="ltitle"><h1>Sensors</h1><p>Move a slider and watch the agents react. You are the sensor.</p></div>
+    <div class="ltitle"><h1>Sensors</h1><p>Live readings from the campus API. The agents check every sensor.</p></div>
     <nav id="dh-strip" class="dh-strip" aria-label="Domain health at a glance"></nav>
     <div id="sens"><div class="empty">Loading sensors ...</div></div>
+    <h2 class="sec-h" id="dh-heading">Data health</h2>
+    <div id="health"><div class="empty">Loading ...</div></div>
   </section>
   <section id="view-live" class="view">
     <div class="ltitle"><h1>Campus Live</h1><p id="l-sub">Connecting to the edge device ...</p></div>
@@ -87,8 +96,13 @@
     <div id="inc-list" class="inc-list"></div>
   </section>
   <section id="view-map" class="view">
-    <div class="ltitle"><h1>Campus Map</h1><p>A schematic of every building, level and sensor.</p></div>
-    <div id="map"></div>
+    <div class="ltitle"><h1>Map</h1><p>Site tree, typed links, sensor spec cards and the campus map.</p></div>
+    <div id="site"><div class="empty">Loading the site ...</div></div>
+    <details class="card p1-card" id="map-det"><summary><b>Building schematic</b></summary><div id="map"></div></details>
+  </section>
+  <section id="view-cards" class="view">
+    <div class="ltitle"><h1>Cards &amp; rules</h1></div>
+    <div id="cards"></div>
   </section>
   <section id="view-about" class="view">
     <div class="ltitle"><h1>About</h1><p>How this runs entirely on the device.</p></div>
@@ -131,6 +145,18 @@
 
 <div id="pop" class="pop" hidden></div>
 <div id="toasts" class="toasts" aria-live="polite"></div>
+<div id="nonet" class="nonet" hidden role="alertdialog" aria-labelledby="nonet-t">
+  <div class="nonet-box">
+    <div class="nonet-ic" aria-hidden="true">&#x1F4F6;</div>
+    <h2 id="nonet-t">No network - connect to Wi-Fi</h2>
+    <p id="nonet-why">The campus sensor API cannot be reached, so no new readings are arriving.</p>
+    <p id="nonet-age" class="muted"></p>
+    <div class="nonet-btns"><button type="button" class="btn" id="nonet-wifi">Open Wi-Fi settings</button>
+      <button type="button" class="btn plain" id="nonet-hide">Show the last data</button></div>
+    <p class="muted" style="font-size:13px">The app resumes by itself and fills the gap from the API when the network is back.</p>
+  </div>
+</div>
 <script src="app.js"></script>
+<script src="phase1.js"></script>
 </body>
 </html>

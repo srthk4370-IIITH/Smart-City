@@ -65,7 +65,7 @@ func (r *Reasoner) openFast(cands []Candidate) *Incident {
 	r.mu.Unlock()
 	r.preliminary(inc, rc)
 	r.log(inc, fmt.Sprintf("Critical fast path: %s beyond its critical limit for %d readings - incident opened at once with the rules report; "+
-		"the AI analysis follows when the event has lasted %d readings and updates this incident", inc.Sensors[0].Node+" "+inc.Sensors[0].Metric, fastReadings, persistReadings))
+		"the AI analysis follows when the event has lasted %d readings and updates this incident", inc.Sensors[0].Node+" "+inc.Sensors[0].Metric, trigRules().FastReadings, trigRules().PersistReadings))
 	r.persist(inc)
 	return inc
 }
@@ -108,6 +108,6 @@ func (r *Reasoner) adoptFast(cands []Candidate, mode int) *Incident {
 		inc.Severity = fresh.Severity
 	}
 	r.mu.Unlock()
-	r.log(inc, fmt.Sprintf("AI analysis of the fast-path incident: %d sensor(s) at %d readings", len(cands), persistReadings))
+	r.log(inc, fmt.Sprintf("AI analysis of the fast-path incident: %d sensor(s) at %d readings", len(cands), trigRules().PersistReadings))
 	return inc
 }

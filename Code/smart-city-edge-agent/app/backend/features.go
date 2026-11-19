@@ -30,6 +30,14 @@ type Metric struct {
 	Dir        string
 	Floor      float64
 	Lo, Hi     float64
+	// Rule-engine thresholds beyond Warn/Crit (rules_config.go: effectiveMetric overlays the sensor's card on them).
+	WarnLo, CritLo         float64 // low side of a "both" limit (pH 6.5 / 6.0); valid when HasLoSide
+	HasLoSide              bool
+	FaultLo, FaultHi       float64 // a reading below / above is a sensor_fault (indoor CO2 < 350 ppm); valid when HasFaultLo / HasFaultHi
+	HasFaultLo, HasFaultHi bool
+	// relative rate rules of metrics without fixed limits (range / first-hour mean); 0 = the built-in value
+	AbruptWarn, AbruptCrit, GradualWarn, GradualCrit float64
+	Osc                                              string // "warning" | "normal" | "" (water = warning)
 }
 
 func lim(unit string, dec int, warn, crit string, dir string, floor, lo, hi float64) Metric {
@@ -228,6 +236,22 @@ func downsample(xs []float64) []float64 {
 }
 
 // Fmt mirrors Python: dec==0 -> str(int(round(v))) (banker's rounding), else f"{v:.{dec}f}"
+// effDec raises the decimals for a window whose values are all far below the card resolution (a 3 W standby load
+// on a kW card read 0.00 for hours and was called a flatline / stuck sensor). Exact zeros keep the card decimals.
+func effDec(xs []float64, dec int) int {
+	if dec < 2 { // counts / 1-decimal cards keep the training format (parity with the Python prompt builder)
+		return dec
+	}
+	mx := 0.0
+	for _, v := range xs {
+		mx = math.Max(mx, math.Abs(v))
+	}
+	for dec < 4 && mx > 0 && mx < math.Pow(10, float64(1-dec)) {
+		dec++
+	}
+	return dec
+}
+
 func Fmt(v float64, dec int) string {
 	if dec == 0 {
 		return strconv.FormatInt(int64(math.RoundToEven(v)), 10)
@@ -251,6 +275,7 @@ type Stats struct {
 }
 
 func ComputeStats(xs []float64, dec int) Stats {
+	dec = effDec(xs, dec) // every caller (rules, post-rules, prompts) judges flat/plateau at the window's real resolution
 	n := len(xs)
 	_, b, r2 := linfit(xs)
 	diffs := make([]float64, n-1)
@@ -411,7 +436,7 @@ type AgentInput struct {
 }
 
 func BuildAgentPrompt(role, node, location, metric string, xs []float64, end int64) AgentInput {
-	m := Metrics[role+"/"+metric]
+	m := effectiveMetric(role, metric, node)
 	unitShown := m.Unit
 	if unitShown == "" {
 		unitShown = "ratio"
@@ -437,6 +462,7 @@ func BuildAgentPrompt(role, node, location, metric string, xs []float64, end int
 		}
 		lines = append(lines, "STATES (1=occupied): "+sb.String())
 	} else {
+		m.Dec = effDec(xs, m.Dec) // owner 2026-11-17: tiny readings (3 W room meter = 0.003 kW) keep their resolution
 		st = ComputeStats(xs, m.Dec)
 		ds := downsample(xs)
 		parts := make([]string, len(ds))
@@ -455,8 +481,7 @@ func BuildAgentPrompt(role, node, location, metric string, xs []float64, end int
 }
 
 // ---------------------------------------------------------------- Mode-1 rule classifier
-func windowScale(role, metric string, st Stats) float64 {
-	m := Metrics[role+"/"+metric]
+func windowScale(m Metric, st Stats) float64 {
 	floor := m.Floor
 	if floor <= 0 {
 		floor = math.Max(0.03*math.Abs(st.Mean), 0.05)
@@ -481,6 +506,15 @@ func robustNoise(xs []float64) float64 {
 }
 
 func RulePattern(role, metric string, xs []float64, end int64) string {
+	return rulePatternM(Metrics[role+"/"+metric], role, xs, end)
+}
+
+// RulePatternNode: RulePattern with the sensor's own (card-edited) floor.
+func RulePatternNode(role, metric, node string, xs []float64, end int64) string {
+	return rulePatternM(effectiveMetric(role, metric, node), role, xs, end)
+}
+
+func rulePatternM(m Metric, role string, xs []float64, end int64) string {
 	if role == "occupancy" {
 		s := ComputeOccStats(xs)
 		switch {
@@ -499,9 +533,9 @@ func RulePattern(role, metric string, xs []float64, end int64) string {
 		}
 		return "intermittent"
 	}
-	m := Metrics[role+"/"+metric]
+	m.Dec = effDec(xs, m.Dec)
 	st := ComputeStats(xs, m.Dec)
-	s := windowScale(role, metric, st)
+	s := windowScale(m, st)
 	if st.FlatRun >= 16 {
 		return "flatline"
 	}

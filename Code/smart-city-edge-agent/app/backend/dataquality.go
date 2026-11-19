@@ -181,6 +181,9 @@ func (e *Engine) IngestReading(rd Reading, now int64) (string, error) {
 		}
 	}
 	b := e.sim + bucketSec - age/bucketSec*bucketSec // the bucket the reading falls in (5-min buckets end at b)
+	if e.Live && clock == "" && rd.Ts >= 1e9 {       // wall-clock engine: the bucket of the device time itself
+		b = (int64(rd.Ts) + bucketSec - 1) / bucketSec * bucketSec
+	}
 	if fs.replacedAt != 0 && b <= fs.replacedAt {
 		fs.stats.Rejected++
 		return "before_replacement", nil
@@ -224,6 +227,22 @@ func (e *Engine) feedMeasured(k string, fs *feedState, b int64) {
 		}
 		e.series[k][b] = a.sum / float64(a.n)
 		fs.cnt[b] = a.n
+	}
+	// live engine (campus input): a demo / test scenario (/api/inject, chaos, stories) rides on the real readings, on
+	// the bucket's value or the newest value of the last 15 min; the incident is marked injected as before
+	if e.Live && len(e.injects) > 0 {
+		if sn := e.bank[k]; sn != nil && e.injectedSensor(sn.Node, sn.Metric) {
+			base, ok := e.series[k][b]
+			for j := int64(1); !ok && j <= 3; j++ {
+				base, ok = e.series[k][b-j*bucketSec]
+			}
+			if ok {
+				if e.series[k] == nil {
+					e.series[k] = map[int64]float64{}
+				}
+				e.series[k][b] = e.applyInjections(sn.Node, sn.Metric, b, base)
+			}
+		}
 	}
 	for bb := range fs.pending {
 		if bb <= b {
@@ -344,9 +363,16 @@ func glitchMetric(role, metric string) bool {
 
 // nearLimit: the value is within the deadband of the metric's warning limit (ISA-18.2 deadband): a
 // reading this close to the limit does not end an abnormal count or episode on its own.
-func nearLimit(role, metric string, v float64) bool {
-	m, ok := Metrics[role+"/"+metric]
-	if !ok || !m.HasLimits || m.Warn == 0 {
+func nearLimit(role, metric string, v float64) bool { return nearLimitNode(role, metric, "", v) }
+
+// nearLimitNode: nearLimit against the warning limit of this sensor (its card, rules_config.go).
+func nearLimitNode(role, metric, node string, v float64) bool {
+	m, ok := effectiveMetricOK(role, metric, node)
+	return ok && nearLimitM(m, v)
+}
+
+func nearLimitM(m Metric, v float64) bool {
+	if !m.HasLimits || m.Warn == 0 {
 		return false
 	}
 	db := math.Abs(m.Warn) * deadbandFrac

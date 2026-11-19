@@ -27,7 +27,7 @@ const SYN = {
 // Q&A category -> site topic colour (tokens.css); safety uses the severity red, limits the "rejected" red.
 const CAT_TOPIC = { 'use case': 'use_case', use_case: 'use_case', accuracy: 'accuracy', 'agent design': 'agent_design', latency: 'latency', data: 'dataset_v2', hardware: 'hardware',
   'false alarms': 'refinement', safety: 'ops', 'status quo': 'timeline', model: 'training_v2', training: 'training_v2', thermals: 'hardware',
-  robustness: 'app_ux', situations: 'app_ux', limits: 'rejected', next: 'agent_design', status: 'app_ux' };
+  robustness: 'app_ux', situations: 'app_ux', limits: 'rejected', next: 'agent_design', status: 'app_ux', chat: 'app_ux', reasoner: 'accuracy' };
 
 const HONEST = /\b(not measured|not significantly|not yet|still to do|planned|unsolved|circular)/i;
 

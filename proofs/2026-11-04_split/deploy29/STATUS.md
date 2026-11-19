@@ -1,0 +1,16 @@
+# Deploy 29: split3 APK (GPU keep-warm = header-only checkpoint ping); split stays on (03:49 IST)
+- snapshot: APK 46c14b58, new APK b619e7a1
+- split APK alone (chat_url unset): chaos rc=0 fastcheck rc=0 {"fast_incident": "INC-0695", "fast_s": 5.6, "ai_update_s": 27.8, "final_model": "qwen3.5-4b (htpd)", "valid": true, "severity": "sensor_fault", "title": "CO2 sensor fault (bias): KH building, level 03", "pass": true}
+- before GPU: avail=7995MB t=93C
+- split on: GPU up after 15 s; profile: chat_think=adaptive chat_url=http://127.0.0.1:8090 
+- GPU resident: avail=4660MB t=94C
+- fastcheck with 2B on GPU: rc=0 {"fast_incident": "INC-0697", "fast_s": 5.6, "ai_update_s": 33.0, "final_model": "qwen3.5-4b (htpd)", "valid": true, "severity": "sensor_fault", "title": "KH building, level 03: Suspect CO2 readings", "pass": true} | avail=2516MB t=65C
+- chat: 0 s | model - | tools ['open_incidents'] | busy False | error False | Which domains have open incidents right now? -> 46 incidents are waiting for an operator decision. By domain: air quality 32 (2 critical, 30 sensor fault; oldest from 2026-10-14 10:25); HVAC 8 (8 warning; oldest from 2026-10-18 00:40); weather 5 (2
+- chat: 0 s | model - | tools ['current_levels'] | busy False | error False | CO2 theek hai KH level 3 pe? -> CO2 at KH building, level 03, indoor air sensor 03 (SR-AQ-KH03-03): 450.1 ppm (reading of 2026-10-14 10:15), but this sensor is flagged as faulty, so the value may not be real (alert limits: above 100
+- chat: 0 s | model - | tools ['open_incidents'] | busy False | error False | Close all open incidents. -> I can't do that: my tools only read the device's data, so I cannot change a device, a setpoint, a threshold or an incident. An operator has to do it. 46 incidents are waiting for a decision; open each
+- chat: 26 s | model qwen3.5-2b rsn_v3 (gpu) | tools ['get_sensor_history'] | busy False | error False | Has the KH level 2 AC unit 24 had repeated problems? -> That sensor has no usable data on the device: its readings are on the device itself, not on the network. I can't answer the question with what I have.
+- chat: 0 s | model - | tools ['current_levels'] | busy False | error False | Compare air quality and water incidents this week. -> There is no air quality sensor at KH building, level 2. The device measures it here: PM2.5 at KN building, outdoor air station (AQ-KN00-00): 23 ug/m3 (reading of 2026-10-14 12:25), but this sensor is
+- chat: 22 s | model qwen3.5-2b rsn_v3 (gpu) | tools ['domain_health'] | busy False | error False | Give me a quick status of the whole campus in two lines. -> Air quality: 40 open incidents, worst critical. Water: 1 open incident, worst critical. Power: 0 open incidents. Occupancy: 0 open incidents. Weather: 6 open incidents, worst critical. HVAC: 15 open i
+- after chat: avail=2349MB t=72C; guard kills: 0
+- DEPLOYED: APK b619e7a1 (split), GPU chat ON; chaos 2 rc=0; fastchecks ok
+- board now: APK b619e7a1; reasoner_model=/data/local/tmp/gpu/qwen35_reasoner_q4_0.gguf chat_think=adaptive chat_url=http://127.0.0.1:8090 ; llama-server 5010
