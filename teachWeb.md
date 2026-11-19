@@ -1,239 +1,216 @@
 # teachWeb: the evaluation website, page by page, and how to present it
 
 **URL:** https://qidk-nasa.pages.dev
-**Password:** ask the team, or see the private notes. Never say it on screen and never put it in a slide or a chat.
+**Password:** ask the team. Never say it aloud on stream, never show it on screen, never put it in a slide, a chat or a
+file. Log in **before** you share the screen.
 
-Last updated: 29 Oct 2026, morning of the final evaluation (12:00 IST). Every number below comes from
-`proofs/2026-10-28_master/FACTS_2026-10-29.md`. If a number is not in that file, do not say it.
+Last updated: 4 Nov 2026, the morning of the final evaluation (12:00 IST). The site was rebuilt and deployed at about
+09:40 IST (`proofs/2026-11-04_split/website_1104.log`: "verify ok"). Every number below comes from the site's source
+files or the proof files named next to it. The full project guide is `teach.md`; the deck is `ppt.md`.
 
 ---
 
 ## 0. What the website is (say this in one breath)
 
-"This is our evidence site. It is a static, password-protected site, built from our proof files at build time.
-Every number on it links back to a file in `proofs/`. Nothing is typed in by hand without a source, and no raw sensor
-readings or model prompts are published, only aggregates."
+"This is our evidence site. It is a static, password-protected site, built from our proof files at build time. Every
+number links back to a file in `proofs/`. No raw sensor readings, prompts or room-level occupancy are published, only
+aggregates."
 
-How it is built (for the person driving the laptop, if someone asks):
+How it is built (if someone asks):
 - Collectors in `Website/build/collect/*.py` read the proof files and write `Website/data/*.json`.
-  - `today.py` builds the Today page. It now also reads this morning's files: `improve/STATUS.md`,
-    `improve2/STATUS.md`, `split3r/result.txt` and `gpu_bench_out/out.md`.
-  - `overlay.py` brings the Q&A answers up to date (current build, rsn_v2 decision, GPU result, chat path).
-  - `status.py` builds the status strip.
-- `Website/build/build.py` encrypts everything with the site password into `dist/`, and wrangler deploys it to
-  Cloudflare Pages (`qidk-nasa`).
-- The data is decrypted in the viewer's browser after the password is typed. The lock button in the top bar locks it again.
+  - **New for 4 Nov:** `recent.py` adds six datasets: `lat_app_ai_update` (AI update per deploy, 55.2 s on 28 Oct ->
+    21.7-28.0 s on deploy20-27), `lat_reasoner_spec` (reasoner 23.3 -> 9.1 s), `ux_chat_sweeps` (27 -> 39/40,
+    25 -> 39/40, blind 20/40), `ux_chat_timing` (160 questions: 142 < 1 s, median 0.2 s, 0 errors),
+    `acc_reasoner_split` (4B vs 2B on the same gate), `acc_rsn_v1_v2` (rsn_v1 vs rsn_v2 on the same 106 incidents).
+  - `decisions.py` (now D001-D134) and `decision_groups.py` (now G01-G36).
+  - `overlay.py` keeps the Q&A current (105 questions, new categories `chat` and `safety`).
+- `Website/build/build.py` encrypts everything with the site password into `dist/`; wrangler deploys to Cloudflare Pages
+  (`qidk-nasa`). The viewer's browser decrypts after the password is typed; the lock button locks it again.
+- Source of these changes: `Website/HAANDBOOK.md`, entry "2026-11-04 evaluation-day update".
 
 ---
 
-## 1. Page by page
+## 1. The eval-day story in one paragraph (memorise)
 
-The top bar has: **Deck · Today · Journey · Route · Decisions · Proofs · Raw data · Q&A**.
+"Today the board runs three models. The domain agents (our fine-tuned Llama 3.2 3B, ft_B50) and the incident-report
+reasoner (our fine-tuned Qwen3.5-4B, rsn_v1) run on the Hexagon NPU. For this evaluation only, the Campus Assistant's
+model is our fine-tuned Qwen3.5-2B (rsn_v3 r2) on 5 CPU cores, because on the same gate it chats better (0.737 vs 0.477)
+but writes worse reports (severity 0.793 vs 0.919). The 4B is being trained further to be the one model for both. We first
+tried the 2B on the GPU and measured 9-10 tokens/s; on the CPU it does about 25 with identical text, because the model's
+recurrent layers run on the CPU anyway. If the chat server fails, chat falls back to the 4B on the NPU."
 
-### 1.1 Deck (home)
-- **What it shows:** a one-line summary ("An AI agent that reads building sensors and reports faults, on the phone
-  chip, offline"), two headline before/after numbers, a status strip (agents, reasoner, event-to-report time,
-  live build), and a "Start here" path. The slide deck viewer sits below.
-- **Where the numbers come from:** the headline numbers are read from the datasets (12-agent report Genie → htpd;
-  agent accuracy at 40 min → 3 h). The status strip reads `data/today.json`.
-- **Key takeaway:** this is a working edge system on a Snapdragon 8 Gen 3 board, and every claim has a proof.
+Sources: `proofs/2026-10-29_rsn_v3/kaggle/gate/g2b_r2/GATE.md`, `proofs/2026-11-04_split/README.md`,
+`proofs/2026-11-04_split/gpu/tune/TUNE.md`.
 
-### 1.2 Today (the most important page for the evaluation)
-Sections from top to bottom:
-
-1. **Banner: "Live now: edge-agent 8e4ed42c"** (Campus Assistant with chat queue and keep-warm). Domain agents B50,
-   reasoner rsn_v1, htpd_v8x3, split 3, retrieval library of 254 reference reports, and the Campus Assistant chat.
-   Checked through the app after the deploy: chaos scenarios passed, critical breach opened by the fast path in
-   **5.7 s**, AI report on the same incident at **47.7 s**. Source: `improve7/STATUS.md`. (The later Ask-AI button
-   build in `improve4/STATUS.md` shows "FAILED", but that was a false failure of the deploy script (its log rotated),
-   not of the app; the board went back to the healthy chat build and the button build is being retried.)
-2. **On the board:** a table of every part that runs (agents, reasoner, NPU daemon, split decoding, contract repairs,
-   app, preliminary report, critical fast path, early AI) with md5 values and a "why" column.
-3. **How an incident flows today:** sensor readings → critical fast path → event gate (8 readings) → preliminary report
-   in the same second (rules + retrieval, checklist usable at once) → reasoner report (merges the checklist) →
-   re-checks at 1.5 h and 3 h, operator approves every action.
-4. **Latency:** big numbers: preliminary report at 0 s, reasoner title and severity 8 to 15 s, full report
-   25.2 to 38.6 s (overnight final deploy, 6 scenarios), fast path 5.5 s with AI update 53.5 s (live build). Two tables:
-   where the NPU time goes (including the ladder **27.8 → 25.8 → 21.6 s**: base → polling → split decoding,
-   and 22.2 s on this morning's 10-incident A/B), and latency levers kept and dropped (GPU and split 3r now listed as
-   dropped, with measurements).
-5. **Accuracy:** reasoner card (rsn_v1: severity 91.9%, label 87.8%, valid output 98.7% on 150 held-out incidents;
-   board 30-prompt check; 97% severity consistency, 100% with the guard; contract repairs 83.2% → 87.6%;
-   rsn_v1 vs rsn_v2 94.7% vs 87.6%; chat dev set) and domain agents card (B50).
-6. **This morning (29 Oct)** (new section):
-   - four builds this morning, each checked through the app: three stayed live in turn (fast path 5.6 / 5.6 / 5.5 s;
-     AI report 47.2 / 42.2 / 42.3 s); the fourth (Ask-AI button build) hit a deploy-script false failure, was retried and passed (improve5), and the
-     sixth added the chat queue (improve6, live: fast path 5.5 s, AI report 53.5 s);
-   - contract repairs: label 83.2% → 87.6% on 386 board answers, 0 new errors;
-   - checklist from the preliminary report with the smart merge;
-   - rsn_v2 rejected: the 106-case table (severity 94.7 vs 87.6, label 88.4 vs 85.6, check recall 0.90 vs 0.81,
-     score 0.938 vs 0.913) plus its two board errors;
-   - GPU measured: 7.35 / 8.44 / 8.35 tokens/s (pp1 / pp3 / tg), about 2.5x slower than the NPU;
-   - split 3r: 22.2 vs 22.2 s, no gain;
-   - two-stage report with retrieval: how it works and its deploy check (4/4 at 0 s, 2/4 retrieved);
-   - **Campus Assistant (conversational interface): live** (new card): a second app on the same backend, rsn_v1 in its
-     trained chat mode with the exact trained prompt and 9 read-only tools (incidents, sensor faults and history,
-     sensors, domain health, action history, documents), up to 5 lookups, history kept on the board, "How I found this"
-     shows the tool calls, queued behind incident analysis and answered automatically (alerts first). Board check: 9-14 s per answer,
-     count_incidents → 89 today, refused "close them all"; weak spot: "which are still open?" reused the plain count
-     (no open-only filter). Host chat dev set: 100% answered, 100% first tool, 90% numbers exact, 0% ungrounded.
-     Sources: `improve3/STATUS.md`, HANDBOOK 2.60.
-7. **Overnight run (28 to 29 Oct):** the final overnight deploy steps, 6 scenarios through the app, split 4/6 A/B,
-   retrieval deploy, rsn_v2 retry, overnight job table.
-8. **Known limits** and **What's next** (five items, see section 4 below).
-
-- **Key takeaway:** what runs right now, how fast, how accurate, and what we honestly have not solved.
-
-### 1.3 Journey
-- **What it shows:** eleven steps from 6 to 29 Oct, oldest first. Each step: what we did, why, what we measured,
-  and what we dropped. Step 11 (new) is this morning: Campus Assistant, contract repairs, preliminary checklist, seed library kept;
-  rsn_v2, GPU and split 3r rejected.
-- **Where the numbers come from:** each step has a proof chip that links to its folder.
-- **Key takeaway:** we measured every idea and dropped the ones that did not help. That is the story of the project.
-
-### 1.4 Route
-- **What it shows:** the full route from spec to standalone board (22 steps), the latency route (each kept step with
-  its measured saving), the training v2 status, and 13 speed ideas we measured and dropped.
-- **Key takeaway:** latency came down step by step, and each step is measured.
-
-### 1.5 Decisions
-- **What it shows:** the design decisions, grouped, each with evidence and the alternatives we rejected, plus
-  "in practice" situations on the board.
-- **Key takeaway:** every choice (NPU over GPU, accuracy first, human approval, policy gate) has a reason and evidence.
-
-### 1.6 Proofs
-- **What it shows:** every measured result as a chart or table, each linked to its source file. Filter by proof folder.
-  App screens before/after. "Download the numbers": aggregates and per-sample scores, no raw sensor values.
-- **Key takeaway:** "Evidence, on request". If an evaluator doubts a number, open it here.
-
-### 1.7 Raw data
-- **What it shows:** the cleaned campus sensor data (2025): pick a sensor, see its analysis, and see how raw windows
-  become training examples.
-- **Key takeaway:** the models were trained and tested on real campus data, with test months and some sensors held out.
-
-### 1.8 Q&A
-- **What it shows:** "What happens when...?" situations, the use case, and a searchable list of about 100 questions,
-  each with a short answer and a chart. Answers updated today: what runs now, why not the GPU (measured), why rsn_v2
-  was rejected, contract repairs, what the operator sees first, whether the 40-55 min wait is solved (no), the Campus
-  Assistant chat (live),
-  split 3r.
-- **Key takeaway:** use it live when an evaluator asks something: type a keyword, show the answer.
+**How to present the split honestly:**
+- Say "for the evaluation only" and "each model where it scores best". Do not call the 2B "our reasoner".
+- Say the 2B **failed** the report gate; that is why it does not write reports.
+- The 160-question comparison was read side by side, **not graded** against ground truth (`CMP_d27_d30.md`).
+- Each chat answer shows its engine ("· qwen3.5-2b rsn_v3 (cpu)"); a router answer shows no badge.
 
 ---
 
-## 2. A 10 to 12 minute walk-through
+## 2. Page by page
 
-Before you start: log in, open the **Today** page in one tab and **Deck** in another. Zoom the browser to about 110%.
-Have the app on the board running in parallel if someone else is demoing it.
+The top bar: **Deck · Today · Journey · Route · Decisions · Proofs · Raw data · Q&A**. The nav subtitle and deck link now
+say "sixteen steps".
 
-| # | Time | Click | What to say (short) |
+### 2.1 Deck (home)
+- **Shows:** one-line summary, headline before/after numbers, a status strip and a "Start here" path; the slide viewer.
+- **Status strip (new):** agents (B50, NPU) / reports (rsn_v1 4B, NPU) / chat (eval day: 2B on the CPU) / critical breach
+  -> AI report. A third headline anchor comes from `lat_app_ai_update` (AI report on the incident 55.2 s -> ~22-28 s).
+- **Say:** "A working edge system on one Snapdragon 8 Gen 3 board, and every claim has a proof."
+
+### 2.2 Today (the most important page)
+Top half is new for 4 Nov; the 29 Oct material is kept below as "History".
+
+1. **Evaluation-day split (deploy32 live) banner.** Says chat runs on the CPU (2B), reports and agents on the NPU; GPU
+   measured ~9-10 tok/s vs ~25 on the CPU; live as **deploy32**; fastcheck 5.6 s alert / 27.9 s AI report with chat
+   running; a chat question during the incident answered in 6 s; model chat answers 7-14 s fresh (~28 s for a long
+   list) vs 10-42 s on the GPU.
+2. **On the board today:** table of parts: backend (CPU), domain agents ft_B50 (NPU, resident; gate2 +61, safety 16/16),
+   reasoner rsn_v1 (NPU, swapped in, load 2.8 s; severity 91.9%, label 87.8%), htpd_v9f (draft corpora, 150 s guard),
+   chat model eval only (rsn_v3 r2 2B, CPU 5 threads, GPU measured 2.7x slower; chat dev pass 0.737 vs 0.477; killed first
+   under memory pressure), apps (two icons, one backend).
+3. **How an incident flows today:** readings every 5 min (demo replay every 2 s) -> critical fast path (~5.6 s; 2.6 s
+   after a silent gap) -> preliminary report in the same second (live checklist) -> event gate (8 readings, 4 h window,
+   one agent per sensor in one NPU batch) -> reasoner report ~28 s after the fast incident, "AI so far" while it writes,
+   validator -> re-checks at 1.5 h and 3 h, 12 h drift/level-shift checks; operator approves every action.
+4. **Latency today:** "Compute is seconds; sensor time is minutes." Table: 40-55 min gate; 5.6 s fast path; same-second
+   preliminary; agent 2.06 s; swap 2.80 s (was 3.67); reasoner 8.9-9.1 s (was 23.3); fast incident -> AI 28.0 / 32.7 s;
+   router chat median 0.2 s (142/160 < 1 s); 4B chat 8.8-17.2 s (~5 s warm); 2B CPU chat 7.0 / 11.6 / 13.8 s (~28 s long
+   list; GPU 10-42 s). Then the "why": memory-bandwidth roof (~52 GB/s over 2.6 GB for the 4B), one NPU model at a time.
+5. **Models today:** "The 2B chats better; the 4B writes better reports" (chart from `acc_reasoner_split`), plus rsn_v1 vs
+   rsn_v2 (`acc_rsn_v1_v2`: severity 94.7% vs 87.6%).
+6. **Campus Assistant:** router first, model for the rest (up to 5 read-only tool calls, "How I found this"), Hinglish and
+   typos, refusals, and the eval-day sweep (deploy30: 160/160, 0 errors, router 143/160, model mean 8.4-13.4 s per set vs
+   9.2-12.4 s on the 4B, one 63 s loop fixed in deploy31; 2B better on ~6 of 17, worse on 1-2). Charts `ux_chat_sweeps`,
+   `ux_chat_timing`.
+7. **Decisions since 29 October:** verified drafts (23.3 -> 9.1 s; app AI 52.6 -> 21.7-28 s), silent-sensor fast path
+   (2.6 s vs 44-46 s), weather-aware validator floor, chat router from graded sweeps, rsn_v3 2B rolled back for reports and
+   r2 kept for chat, the split, fix-forward deploys. Links to Decisions G31-G36.
+8. **History · the 29 October evaluation build**, **Morning of 29 October**, **Overnight run (28 to 29 October)**: the old
+   material. Do not present it as "now". (If asked: the 29 Oct build had AI reports at 42-55 s; today ~28 s.)
+9. **Known limits** (rewritten) and **What's next** (four items, see section 5).
+
+### 2.3 Journey (16 steps)
+Steps 1-11 as before (Genie, htpd, window study, v2 retrain, post-rules and blends, reasoner, faster reports, B50 and
+gate2, sensor time, deploy with rollback, small measured fixes of 29 Oct). **New:**
+- **12. Verified drafts inside split decoding, a faster swap, and drafts that learn from the app** (htpd v9-v9f;
+  23.3 -> 9.1 s; load 3.67 -> 2.80 s; agents -21%).
+- **13. A weather-aware validator rule, and critical readings after a silence** (deploy22; 2.6 s fast incident).
+- **14. Graded chat sweeps on the board, and a router in front of the model** (27 -> 39/40, 25 -> 39/40, blind 20/40,
+  question-type layer).
+- **15. A fine-tuned 2B for chat and reports: better chat, worse reports** (2B r1 rolled back; r2 gate).
+- **16. Each model where it scores best: 2B chat on the CPU, 4B reports on the NPU.**
+- **Papers we built on** (end of page): GPTQ, LoRA/QLoRA, speculative decoding, prompt lookup / suffix drafts, ReAct,
+  Toolformer, LLMCompiler, RAG, DPO, STaR, WiSE-FT / model soups / task arithmetic, prompt injection, Lost in the Middle,
+  Qwen3 and Llama 3 reports, HAX guidelines, HeteroInfer, each with the repo file that cites it. Lookahead Decoding is
+  listed separately as "well known, not cited in the repo" (same list as ppt.md slide 28).
+- **Say:** "We measured every idea and dropped the ones that did not help."
+
+### 2.4 Route
+Unchanged: route from spec to standalone board (22 steps), latency route (ends at 19 Oct), training v2 status, dropped
+speed ideas. **Say:** "For the newer latency steps, see Journey 12-16 and Today."
+
+### 2.5 Decisions
+- Groups **G01-G36**, 134 decisions. New groups:
+  - **G31** A cross-domain reasoner on the same NPU, accuracy first (D126 P0 choice; D127 reject rsn_v2).
+  - **G32** Make the reports fast without changing their answers (D128 split, D129 verified drafts, D131 reasoner stays on
+    the NPU): reasoner 23.3 -> 9.1 s; AI report 55 s -> 22-28 s.
+  - **G33** Critical fast path; honest about sensor time (D130).
+  - **G34** Campus Assistant: router first, model for the rest, read-only (D132): 39/40 on two sweeps; 142/160 < 1 s.
+  - **G35** Evaluation day: each model where it scores best (D133): chat 0.737 vs 0.477; reports 0.919 vs 0.793.
+  - **G36** Fix forward with automatic rollback (D134).
+- **Say:** "Every choice has a reason, evidence and the alternatives we rejected."
+
+### 2.6 Proofs
+Every measured result as a chart or table with its source file; the six new datasets appear here too. "Download the
+numbers" gives aggregates only. **Say:** "Any number you doubt, we open here."
+
+### 2.7 Raw data
+Cleaned 2025 campus sensor data: pick a sensor, see its analysis and how windows become training examples. 20,538
+threshold breaches in the cleaned data (ppt slide 2).
+
+### 2.8 Q&A
+- **105 questions**, searchable, new categories **chat** and **safety**.
+- Rewritten answers: explanation time, incident speed, honest limits, what is unsolved, next steps, NPU vs GPU, what runs
+  today, training status, the chat answer; "Do you use speculative decoding?" (yes, inside split decoding).
+- New questions: chat model today, Hinglish, can the assistant change anything, validator, why not two models on the NPU,
+  papers.
+- **Say:** "The questions you are likely to ask are here", then type "GPU", "2B" or "Hinglish".
+
+---
+
+## 3. A 10-12 minute walk-through
+
+Before: warm the board (one incident, then open the chat once; `proofs/2026-11-04_split/DEMO.md`). Log in to the site
+before sharing the screen. Open **Today** and **Deck** in two tabs; zoom about 110%.
+
+| # | time | click | what to say |
 |---|---|---|---|
-| 1 | 0:00-1:00 | **Deck** | "Agentic edge AI for a smart campus. Domain agents read each sensor, a reasoner writes one cross-domain report, all on the QIDK, offline, no cloud. Every number here links to a proof file." Point at the status strip: live build, agents B50, reasoner rsn_v1. |
-| 2 | 1:00-2:30 | **Today**, banner + On the board | "This is what runs right now: edge-agent 8e4ed42c. Llama 3.2 3B agents (B50) and Qwen3.5-4B reasoner (rsn_v1), both Q4_0 on the Hexagon NPU, one model at a time, through our htpd daemon, plus the Campus Assistant chat. We deployed it this morning and checked it through the app: critical breach to incident in 5.7 s, AI report on the same incident in 47.7 s." |
-| 3 | 2:30-3:30 | Today, **How an incident flows** | Walk the 6 steps. Stress: the preliminary report appears in the same second, and the operator can start ticking the checklist at once; the AI report merges in. The operator approves every action; the AI never switches anything. |
-| 4 | 3:30-5:00 | Today, **Latency** | "On the NPU: preliminary at 0 s, title and severity 8-15 s, full report 25-39 s. The reasoner went 27.8 → 25.8 → 21.6 s with polling and split decoding. In the real world the bigger delay is sensor time: 8 readings at 5 min each is 40-55 min. Critical cases skip it through the fast path." |
-| 5 | 5:00-6:30 | Today, **Accuracy** | "Reasoner on 150 held-out incidents: severity 91.9%, label 87.8%, 0% ungrounded. This morning's contract repairs moved the label from 83.2% to 87.6% on 386 real board answers, with 0 new errors." |
-| 6 | 6:30-8:30 | Today, **This morning** | "We also say no on evidence. rsn_v2 lost on the same 106 incidents, severity 87.6% vs 94.7%, so rsn_v1 stays. We measured the GPU: about 2.5x slower than the NPU. Split 3r: no gain. Retrieval: the preliminary uses the most similar past report from a library of 254 seeds plus every live report, but the numbers always come from the live values, and severity never goes below the rules." |
-| 7 | 8:30-9:30 | **Journey** (scroll to step 9-11) | "The real delay is sensor time, not NPU time. The last step is this morning: small measured fixes, bigger ideas rejected on evidence." |
-| 8 | 9:30-10:30 | **Proofs** (open one chart) | "Any number you doubt, we open here, with its file." Pick one (e.g. a latency chart) and show the source chip. |
-| 9 | 10:30-11:30 | **Board: Campus Assistant** (live demo, not on the website) | Open the Campus Assistant icon on the board. Ask "How many incidents were there today?", then "Please close them all." (it refuses: read-only), then tap "How I found this". Say: "The same on-device reasoner answers questions from the incident store, with exact numbers, and never acts on its own." Then read Known limits + What's next on Today. |
-| 10 | 11:30-12:00 | **Q&A** | "And the questions you are likely to ask are here." Type "GPU" or "rsn_v2" to show it works. |
+| 1 | 0:00-1:00 | Deck | "Agentic edge AI for a campus: domain agents per sensor, a reasoner for one cross-domain report, a chat assistant, all on the QIDK, offline. Every number links to a proof." Point at the status strip (agents / reports / chat / breach -> AI). |
+| 2 | 1:00-2:30 | Today, split banner + On the board | The eval-day paragraph (section 1). "deploy32 is live; reports unchanged with chat running: 5.6 s alert, 27.9 s AI report." |
+| 3 | 2:30-3:30 | Today, How an incident flows | Fast path, same-second preliminary with live checklist, AI report merges, human approves. |
+| 4 | 3:30-5:00 | Today, Latency | "Compute is seconds, sensor time is minutes: 40-55 min for normal events, 5.6 s for criticals. Reasoner 23.3 -> 9.1 s with verified drafts; decode is at the bandwidth roof." |
+| 5 | 5:00-6:30 | Today, Models + Campus Assistant | "2B chats better, 4B reports better: that is the split. Router answers in 0.2 s median; model answers 7-14 s." |
+| 6 | 6:30-8:00 | Journey, steps 12-16 | "Each step measured; the 2B was rolled back for reports and kept for chat." Scroll to Papers. |
+| 7 | 8:00-9:00 | Decisions, G35 and G32 | "Each model where it scores best; faster without changing answers." |
+| 8 | 9:00-10:00 | Proofs, one chart | Open `lat_app_ai_update` or `acc_reasoner_split`, show the source. |
+| 9 | 10:00-11:30 | Board: Campus Assistant (live, not on the site) | Ask "Which incident needs my attention first?", then "explain why"; "Kitne incidents aaj hue?"; "Show me critical alerts" (model, badge "qwen3.5-2b rsn_v3 (cpu)"); "Turn off all the AC units in KH building" (refused). Tap "How I found this". |
+| 10 | 11:30-12:00 | Q&A | Type "2B" or "GPU". |
 
-If you have only 5 minutes: steps 2, 4, 5, 6, 9.
-
----
-
-## 3. Likely evaluator questions, with crisp answers
-
-**Does it really run on the board alone?**
-Yes. Both models run on the Hexagon NPU of the QIDK, offline, no cloud. One model on the NPU at a time; htpd swaps them.
-
-**How fast is it?**
-Preliminary report in the same second as the incident. One domain agent 5.9 s (first token 0.7 s). 12 agents 20.7 s.
-Reasoner report 21.6 s mean on the bench, 22.2 s in this morning's A/B. Full AI report from incident start 42-47 s
-in the fast-path check. Critical breach to incident: 5.6 s.
-
-**Then why do you say 40 to 55 minutes?**
-Real sensors give one reading every 5 min, and the AI waits for 8 abnormal readings. That is sensor time, not compute.
-We accept it for the prototype; critical cases use the fast path (2 readings). Young-window training is the next step.
-
-**How accurate is the reasoner?**
-rsn_v1 on 150 held-out incidents (host copy, which agrees with the board 207/208): severity 91.9%, label 87.8%,
-parsed 98.7%, ungrounded 0%, unit errors 0%, actuation 0%, injection followed 0%. Board 30-prompt check: parse 30/30,
-severity 27/30, label 25/30.
-
-**Why didn't you deploy the newer reasoner rsn_v2?**
-On the same 106 held-out incidents it was worse: severity 87.6% vs 94.7%, label 85.6% vs 88.4%, checklist recall
-0.81 vs 0.90. On the board it also invented a title location and misread 324 > 300 ppm. Accuracy first, so rsn_v1 stays.
-
-**Why not the GPU?**
-We measured it this morning: Adreno 750, upstream llama.cpp OpenCL, 7.35 / 8.44 / 8.35 tokens/s, about 2.5x slower than
-the NPU split. It may help bursts later (a second incident's agents while the NPU reasoner runs), after a memory-safety check.
-
-**Why not two models on the NPU at once?**
-We tried: two resident models rebooted the board. So one model at a time, with a 4.6 s swap.
-
-**What is the preliminary report? Is it the AI?**
-No, it is the rules computed from the live values, worded like the most similar past report (hybrid retrieval:
-structured vector 0.7 + TF-IDF 0.3, same role and metric). Severity is the higher of rules and retrieval, so it never
-under-alerts. It is labelled "Preliminary" with the best match percentage and incident id, and the AI report replaces it.
-
-**Could retrieval copy wrong numbers from an old incident?**
-No. Numbers always come from the live values; only the wording comes from the old report.
-
-**What are "contract repairs"?**
-Rule-based checks after the reasoner: severity normal with needs_more_data gets the label unknown, and a title location
-that is not in the input is replaced by one from the input. Replayed on 386 board answers: label 83.2% → 87.6%, 0 new errors.
-
-**Can the AI switch something off by itself?**
-No. Policy gate (valid JSON, allowed labels, real evidence ids, numbers must exist in the input, no actuation language),
-severity guard (AI may not say normal when rules say warning or critical), and human approval for every action.
-If the AI fails the gate, a deterministic report is used.
-
-**Is the NPU output repeatable?**
-Not bit for bit. Same prompt 5 times: severity agrees 97%, 100% with the severity guard.
-
-**Can I chat with it?**
-Yes, on the board: the **Campus Assistant** (✦ Ask AI in the dashboard, or its own icon). It is the same rsn_v1 model
-in its trained chat mode with 9 read-only tools over the incident store. On the board it answers in 9-14 s, quotes exact
-numbers, shows how it found them, and refuses to act. On 100 chat dev questions (laptop, same file): 100% answered,
-100% right first tool, 90% numbers exact, 0% ungrounded. The website describes it on Today ("Campus Assistant ...
-live" card, with the board check table); demo it on the board.
-
-**What if the board hangs?**
-htpd_v8x3 has a 150 s wall-clock guard per report, bounded token picking, and a heartbeat stall log; the overnight
-watchdog saw 0 stalls. Every deploy has a rollback script and a known-good snapshot.
-
-**What did you try that did not work?**
-rsn_v2, the GPU, split 4 (+1%), split 6 (does not fit), split 3r (22.2 vs 22.2 s), MTP and n-gram speculation (slower),
-two resident models (reboot). All on the Today and Journey pages.
+If only 5 minutes: steps 2, 4, 5, 9.
 
 ---
 
-## 4. Next steps (say them in this order)
-1. Chat v2: the Campus Assistant is live (beginner version). Next: stream answers, open the chat from an incident with
-   that context, run the 100-question chat set on the board, add maintenance-log tools.
-2. Reasoner speed: force fully determined text (for example the sensor id after "S1 (") in the htpd forcer;
-   group rebalancing is exhausted.
-3. Young-window training (data ready, paused) to shorten the 8-reading gate; early AI is built but off.
-4. GPU for bursts: a second incident's agents while the NPU reasoner runs (needs the memory-safety check).
-5. rsn_v3: fix rsn_v2's severity regressions before another round.
+## 4. Likely evaluator questions (website angle)
+
+**Why does chat use a different model from reports?** Same gate: 2B chat 0.737 vs 0.477; 4B report severity 0.919 vs
+0.793, check recall 0.848 vs 0.405. Evaluation only; the 4B is being trained to do both (G35, D133).
+
+**Why the CPU, not the GPU, for the 2B?** Measured 9-10 vs ~25 tokens/s, identical text; the hybrid model's recurrent
+layers run on the CPU, so the GPU path syncs every layer (`TUNE.md`).
+
+**Does the chat slow down incident reports?** No: fastcheck with the 2B resident 5.6 s / 27.7-27.9 s, same as without
+(`deploy30-32/STATUS.md`). Chat no longer waits for the NPU.
+
+**What if the chat server fails?** That call falls back to the 4B on the NPU and the 2B is skipped for 60 s;
+`split_off.sh` turns the split off in ~4 s without an app restart (rehearsed: 3.8 s, the 4B answered in 6.1 s).
+
+**How fast is the system?** Critical breach -> incident 5.6 s; AI report ~28 s later (78 s for the first incident after
+4 h idle, so we warm up); preliminary at once; non-critical events wait 40-55 min of sensor time.
+
+**How accurate?** rsn_v1: severity 91.9%, label 87.8% on 150 held-out; agents (htpd) 90.7% pattern on the board.
+
+**Why not rsn_v2?** Severity 87.6% vs 94.7% on the same 106 incidents (G31, D127).
+
+**Why not two models on the NPU?** It rebooted the board; we swap in 2.8 s.
+
+**Can the AI or the chat act?** No. Read-only tools, refusals, validator, severity guard, human approval.
+
+**What did you try that did not work?** rsn_v2; GPU for the reasoner and for the 2B; LADE; grammar decoding; continuous
+batching; row padding; split 4/6/3r; MTP and n-gram speculation outside split; T30; 2B r1 for reports.
 
 ---
 
-## 5. Pitfalls: do not say these
+## 5. Next steps (in this order, as on Today)
+1. One general model: rsn_v3 4B must beat rsn_v1 on reports and the 2B on chat; then the split goes away.
+2. Younger events: young-window training; the early provisional AI is built and off until proven.
+3. Chat: a fresh blind set after every fix, streaming answers, chat about the open incident.
+4. Fog layer: derived data to a free Supabase project, board as the only writer.
 
-- **Do not claim the 40-55 min real-world gate is solved.** It is accepted for the prototype; only critical breaches
-  use the fast path. Power, tank level and flow have no fixed critical limits, so they have no fast path.
-- **Do not say rsn_v2 is deployed or "almost as good".** It was rejected on evidence (severity 87.6% vs 94.7%).
-- **Do not say the GPU is faster or "the next speed-up".** It was measured about 2.5x slower than the NPU.
-- **Do not say split 3r, split 4 or split 6 helped.** They did not.
-- **Do not call the preliminary report "the AI"** or say it reasons. It is rules plus wording from a similar past report.
-- **Do not oversell the chat.** The Campus Assistant is a beginner version: read-only, short answers, one question at a
-  time, and a question asked during an incident analysis waits in a queue (alerts come first). Its 100-question score is from the
-  laptop with the same model file; on the board we ran a short check (see teach.md §9).
-- **Do not quote numbers that are not on the site or in the fact sheet.** If unsure, open Proofs or Q&A and read it.
-- **Do not mix demo time and real time.** The demo replays one reading every 2 s; in the field it is one every 5 min.
-- **Do not show the password** on the projector; log in before you share the screen.
-- **Heat:** back-to-back heavy incidents push the board to 90-94 °C; if it throttles, say so plainly, it is a known limit
-  (needs a heatsink or fan in the field).
+---
+
+## 6. Pitfalls: do not say these
+
+- Do not say the password, show it, or type it while sharing the screen.
+- Do not present the 29 Oct "History" section as the current build (its 42-55 s AI times are old; today ~28 s).
+- Do not say the 2B is our report model or "better overall". It failed the report gate.
+- Do not say the 160-question comparison was graded; it was read side by side.
+- Do not claim the 40-55 min gate is solved; only criticals have the fast path; power, tank level and flow have none.
+- Do not say the GPU helped. It was measured slower for the reasoner (~2.5x) and the 2B (9-10 vs 25 tok/s).
+- Do not call the preliminary report "the AI"; it is rules plus wording from a similar past report.
+- Do not mix demo time (one reading every 2 s) with real time (one every 5 min).
+- Heat: heavy NPU work reaches 84-97 C; if it throttles, say so plainly.
+- If the first incident is slow, say: "cold start after idle; measured 78 s once, 28 s warm" (`FINAL_CHECK.md`).

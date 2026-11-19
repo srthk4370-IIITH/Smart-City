@@ -67,8 +67,10 @@ def main():
             "and the AI updates the same incident.") if s["live"] else ""
     upd = {
         "How quickly does an operator get an explanation?":
-            f"In seconds once the AI starts: {timing(s)}. Before that, an event needs 8 abnormal readings, which is 40 to 55 min of real "
-            f"sensor time at one reading per 5 min. {fast} Re-checks follow at +1.5 h and +3 h.",
+            "A critical breach opens its incident about 5.6 s after the second critical reading (2.6 s after a silent gap), with a "
+            "preliminary report and a live checklist in the same second; the AI report lands on the same incident about 28 s later "
+            "(deploy27 fastcheck: 28.0 and 32.7 s). Non-critical events wait for 8 abnormal readings, 40 to 55 min of real sensor time "
+            "at one reading per 5 min. Re-checks follow at +1.5 h and +3 h. Sources: proofs/2026-11-03_deploy27/apk/STATUS.md, HANDBOOK 2.67.",
         "Walk me through one incident.":
             "Crowded room (28 Oct, through the app): CO2 and power abnormal for 8 readings; 2 domain agents run in one NPU batch; the "
             "preliminary report shows after 7 s; the reasoner (Qwen3.5-4B) puts up its title and severity at 17 s and the full cross-domain "
@@ -86,7 +88,9 @@ def main():
             "It did: trained on routines labelled normal, v2 cut false alarms on calm windows from 31% to 18% (deployed 21 Oct). "
             "mixA50, B50's parent, measured 18% against v2's 22% on a fresh seed (25 Oct).",
         "How fast is an incident now?":
-            f"With the cross-domain reasoner: {timing(s)}. The agents alone: 10 in one batch about 11.0 s, 4 about 3.3-3.7 s (warm).",
+            "Board lab: one agent request 2.06 s with the agent draft index (was 2.59 s); reasoner report 8.9-9.1 s with verified drafts "
+            "inside split decoding (was 23.3 s); reasoner model load 2.8 s. Through the app, the AI report on a fast-path incident: "
+            "55.2 s on 28 Oct, 21.7-28 s since 31 Oct. Sources: HANDBOOK 2.63-2.65, proofs/2026-10-29_latency/repack/VERDICT.md.",
         "Will v2 be slower?":
             "At first yes: 13-14-agent chaos incidents took 26-33 s (two batches, longer prompts). Profile work brought a 10-agent B50 "
             "batch to about 11.0 s warm. The bigger cost today is the reasoner's longer report, which is why a preliminary report "
@@ -99,21 +103,24 @@ def main():
             "The reasoner replaced the synthesizer. If its report fails the gate, the deterministic report (rules plus validated agent "
             "findings) is used and marked; over-long lists are trimmed with a note instead of rejecting the whole report.",
         "What are the honest limits?":
-            "Sensor time dominates (40 to 55 min to the AI for non-critical events); heat at chaos peaks (90-94 °C); the NPU is not "
-            "bit-repeatable (severity agrees 97% across repeats, 100% with the guard); recurring small spikes; one campus's data; power "
-            "not measured in joules. The Today page keeps this list current.",
+            "Sensor time dominates (40 to 55 min to the AI for non-critical events; power, tank level and flow have no fast path); heat "
+            "(84-97 °C on the hottest zone during NPU work); the NPU is not bit-repeatable (severity agrees 97% across repeats, 100% with "
+            "the guard); recurring small spikes and pump cycling; blind chat questions still expose gaps; on evaluation day chat and "
+            "reports use two different models; one campus's data; the fog store is designed but not built.",
         "What is still unsolved?":
             "Recurring sub-threshold spikes and pump cycling are still often misnamed, and non-critical events still wait 8 readings "
-            "for the AI. The gate study (agents on 3-7 readings) is the next step for the latter.",
+            "for the AI. One model that is best at both chat and reports does not exist yet: the 2B chats better, the 4B reports better.",
         "What is next?":
-            "After the evaluation: (1) the Campus Assistant chat (live since 29 Oct): streaming, chat about the open incident, the "
-            "100-question chat set on the board, an open-only filter and maintenance tools; (2) reasoner speed by forcing fully determined text in the htpd forcer; (3) young-window training to shorten the "
-            "8-reading gate; (4) the GPU for bursts (a second incident's agents while the NPU reasoner writes), after a memory-safety "
-            "check; (5) rsn_v3, fixing rsn_v2's severity regressions first.",
+            "(1) One general model: rsn_v3 4B (training on Kaggle) must beat rsn_v1 on reports and the 2B on chat, then the evaluation-day "
+            "split goes away; (2) earlier AI through young-window training (the provisional early AI is built and off); (3) a fresh blind "
+            "chat set after every fix, streaming answers, chat about the open incident; (4) the fog layer (derived data to a free Supabase "
+            "project, board as the only writer).",
         "Why the NPU and not the GPU?":
             "Measured twice. Agents: ~8.4 s per agent on the Adreno GPU, no batching gain. Reasoner (29 Oct, upstream llama.cpp "
             "OpenCL, GPU alone): 7.35 / 8.44 / 8.35 tokens/s (pp1 / pp3 / tg), about 2.5x slower than the NPU split. "
-            "Source: proofs/2026-10-28_master/gpu_bench_out/out.md.",
+            "Source: proofs/2026-10-28_master/gpu_bench_out/out.md. On evaluation day we also tried the 2B chat model on the GPU: "
+            "8-10 tokens/s, against ~25 on 5 CPU cores with identical answers (Qwen3.5's recurrent layers run on the CPU anyway), "
+            "so chat runs on the CPU (proofs/2026-11-04_split/gpu/tune/TUNE.md).",
         "What happens after training finishes?":
             "Done: v2 was merged, exported to GGUF Q4_0 for htpd and deployed on 21 Oct; the agents later moved to mixA50 (25 Oct) "
             "and B50 (28 Oct), each only after a paired test on the board or its host copy.",
@@ -124,24 +131,21 @@ def main():
             "It missed the 3 h bar. The owner shipped it for the early-alert and false-alarm gains, and choosing the re-check window by "
             "the event's shape lifted 3 h to 86.3% on a fresh seed (182 events). v1 stayed available as the revert.",
         "What runs on the QIDK today?":
-            f"Domain agents B50 (Llama 3.2 3B, Q4_0) and the {s['rname']} reasoner (Qwen3.5-4B, Q4_0) on one NPU through {s['bin']}, "
-            f"split decoding with {s['split']} groups, a preliminary report"
-            + (" with retrieval of similar past incidents" if s["rag"] else " from rules and agents")
-            + (", 254 seed reference reports, a checklist that starts from the preliminary report and merges with the AI report, the Campus Assistant chat (Ask AI) with read-only tools"
-               if s.get("ea") else "")
-            + ", policy gate, native app, all offline on the board."
-            + (f" Live build: edge-agent {s['ea']}, deployed the morning of 29 Oct and checked through the app "
-               f"(fast path {s['fc'].get('fast_s')} s, AI report on the same incident {s['fc'].get('ai_update_s')} s)."
-               if s.get("ea") else f" Final deploy: {s['final']}.") + " Details on the Today page.",
+            "Evaluation day (4 Nov): domain agents ft_B50 (Llama 3.2 3B, Q4_0) resident in htpd on the NPU; the rsn_v1 reasoner "
+            "(Qwen3.5-4B, Q4_0) swapped onto the NPU per incident, split decoding with verified drafts (htpd_v9f); the Campus Assistant "
+            "chat on rsn_v3 r2 (Qwen3.5-2B, Q4_0) on 5 CPU cores through llama-server, falling back to the 4B on the NPU if that "
+            "server fails. Plus the critical fast path, the retrieval preliminary report, the validator, the approval workflow and the chat "
+            "router. All offline on the board. The split is for the evaluation only. Details on the Today page.",
         "Where is training right now?":
-            "Finished. v2 completed 4,494 steps (best dev loss 0.054) and shipped 21 Oct; the reasoner (Qwen3.5-4B, QLoRA r32, about 21 h) "
-            "was trained next. No training runs on the board.",
+            "Domain agents: final (v2, then the B50 blend). Reasoner: rsn_v1 (Qwen3.5-4B) is live for reports. rsn_v3: the 2B r2 was "
+            "stopped at step 1,234 of 3,508 for the evaluation (best checkpoint at step 1,000) and serves chat today; the 4B rsn_v3 is "
+            "trained on Kaggle to become the single model. No training runs on the board. Source: proofs/2026-10-29_rsn_v3/kaggle/STATUS.md.",
     }
     n_upd = 0
     for it in q["qa"]:
         if it["q"] in upd:
             it["short_answer"] = upd[it["q"]]
-            it["updated"] = "2026-10-29"
+            it["updated"] = "2026-11-04"
             n_upd += 1
     new = [
         ("reasoner", "What is the cross-domain reasoner?",
@@ -152,14 +156,18 @@ def main():
          "same prompt 5 times gives the same severity 97% of the time, 100% with the light guard."),
         ("reasoner", "Why does a full report take about 30 s when an incident used to take 4 s?",
          "The reasoner writes a full report of several hundred tokens and decoding is bound by memory bandwidth (about 60 ms per "
-         "token). So the operator gets a preliminary report within seconds and the reasoner's title and severity before the rest."),
+         "token, about 52 GB/s over 2.6 GB of weights). We cut sequential steps instead: split decoding and verified drafts brought the "
+         "reasoner from 23.3 s to about 9 s in the lab. The rest of the ~28 s is the 8-reading AI gate on the incident, the agents, the "
+         "model swap and the swap back. The operator gets a preliminary report in the same second and 'AI so far' while it writes."),
         ("reasoner", "Why is the NPU answer not always the same?",
          "Prefill sums in fp16 in a different order run to run, so logits differ bit for bit; that only flips a word at near-ties "
          "(margins 0.003-0.16). Severity still agrees 97% across repeats, and the guard never lets the report say normal when the "
          "rules say warning or worse."),
-        ("latency", "Why not speculative decoding?",
-         "Measured on the board: MTP and n-gram drafts were 1% to 20% slower, because verifying 2-4 tokens costs 82-133 ms against "
-         "66 ms for one, and rollback snapshots doubled prefill."),
+        ("latency", "Do you use speculative decoding?",
+         "Yes, but only where it pays. Single-stream MTP and n-gram drafts were 1% to 20% slower on the board (a 1-row step is only "
+         "66 ms; verifying 2-4 rows costs 82-133 ms). Inside split decoding the steps already carry 2-4 rows, so extra draft rows are "
+         "nearly free: drafts from the prompt and a corpus of past outputs, verified greedily, cut the reasoner from 23.3 s to 9.1 s "
+         "with severity and label unchanged (HANDBOOK 2.63-2.66). Lookahead decoding in Genie (LADE) was rejected because it changed answers."),
         ("latency", "Why not run the reasoner on the GPU?",
          "Measured on 29 Oct: Adreno 750, upstream llama.cpp OpenCL, GPU alone: 7.35 / 8.44 / 8.35 tokens/s (pp1 / pp3 / tg), about "
          "2.5x slower than the NPU split. It is not a latency path; it may help bursts later (a second incident's agents on the GPU "
@@ -176,17 +184,46 @@ def main():
          "A preliminary report in the same second the incident opens: a rules report from the live values in the wording of the most "
          "similar past report (hybrid retrieval: structured vector 0.7 + TF-IDF 0.3; 254 seed reports plus every live AI report). "
          "Severity is the higher of rules and retrieval, so it never under-alerts. Its checklist is live, and the AI report merges in "
-         "about 40 s later."),
+         "about 28 s later (deploy27 fastcheck)."),
         ("latency", "Is the 40-55 min wait solved?",
          "No. Non-critical events still need 8 readings (40-55 min of real sensor time at one reading per 5 min) before the AI runs. "
          "Critical breaches take the fast path (2 readings past the limit). Young-window training to shorten the gate is the next step."),
         ("status", "Is there a chat interface?",
-         "Yes, live since 29 Oct: the Campus Assistant, a second app on the same backend (launcher icon and the dashboard's Ask AI "
-         "button). rsn_v1 answers in its trained chat mode with 9 read-only tools (incidents, sensor faults and history, sensors, "
-         "domain health, action history, documents), up to 5 lookups, and shows the tool calls under 'How I found this'. On the "
-         "board: 9-14 s per answer; it refused 'close them all'; weak spot: 'which are still open?' reused the plain count (no "
-         "open-only filter yet). Host chat dev set: 100% answered, 100% first tool right, 90% numbers exact, 0% ungrounded. "
-         "Questions asked during an incident analysis are queued and answered automatically: alerts first."),
+         "Yes: the Campus Assistant, a second app on the same backend (launcher icon and the dashboard's Ask AI button). A Go router "
+         "answers most questions straight from read-only tools (counts, lists, current levels, faulty sensors, rankings, what-if against "
+         "limits, follow-ups); the rest go to a tool-calling model (up to 5 read-only calls, shown under 'How I found this'). Actions "
+         "and prompt injections are refused. On the board, 142 of 160 questions were answered in under 1 s (median 0.2 s, 0 errors); "
+         "model answers took 8.8-17.2 s on the 4B. On evaluation day the model is the 2B on the CPU: 7-14 s for most model answers."),
+        ("chat", "Why is chat on a different model today?",
+         "Because each model is better at one job. On the same gate, rsn_v3 r2 (Qwen3.5-2B) passes 0.737 of 300 chat questions against "
+         "0.477 for rsn_v1 (4B), but writes worse reports (RWH severity 0.793 vs 0.919, check recall 0.405 vs 0.848). So for the evaluation "
+         "only, chat runs on the 2B on the CPU and reports stay on the 4B on the NPU. The 4B is being trained further to be the one general "
+         "model. Sources: proofs/2026-10-29_rsn_v3/kaggle/gate/g2b_r2/GATE.md, proofs/2026-11-04_split/README.md."),
+        ("chat", "Does the assistant understand Hindi or Hinglish?",
+         "Common Hinglish and Hindi time words, yes: kitne, aaj, kal, kharab, theek hai, ghante, din, and typos. 'CO2 theek hai KH level 3 "
+         "pe?' was answered on the board from current_levels in under a second (proofs/2026-11-03_deploy27/apk/STATUS.md). Full Hindi "
+         "sentences are not covered by the router; they go to the model."),
+        ("chat", "Can the assistant change anything?",
+         "No. Every tool is read-only. 'Close all open incidents' gets: I can't do that, my tools only read the device's data; an operator "
+         "has to do it. Unsafe actions were refused 3/3 and the injection attempt was refused on the blind set; invented incident ids and "
+         "sensor nodes are rejected by a guard (HANDBOOK 2.68, 2.70)."),
+        ("safety", "What does the validator check?",
+         "Every report: valid JSON in the schema, allowed labels, evidence ids that exist, no actuation language, and an action floor by "
+         "severity (a critical report must start with an inspection or a facility review unless every flagged sensor is weather). Contract "
+         "repairs fix known slips (normal + needs more data -> unknown; a title location must come from the input; pH wording follows the "
+         "measured direction). A report that still fails is replaced by a deterministic report, marked as such (HANDBOOK 2.59, 2.67; "
+         "proofs/2026-11-03_fixes/README.md)."),
+        ("latency", "Why not keep both models on the NPU and skip the swap?",
+         "Two resident models rebooted the board (HANDBOOK 2.27, 2.37): NPU and GPU buffers are unmovable memory inside a 7.26 GB zone. "
+         "So htpd holds one model and swaps; a multithreaded weight repack cut the reasoner's load from 3.67 s to 2.80 s "
+         "(proofs/2026-10-29_latency/repack/VERDICT.md)."),
+        ("model", "Which papers did you build on?",
+         "GPTQ (Frantar et al., 2023) for the agents' int4 weights; LoRA (Hu et al., 2021) and QLoRA (Dettmers et al., 2023) for every "
+         "fine-tune; speculative decoding (Leviathan et al., 2023), prompt lookup and SuffixDecoding-style corpus drafts for the reasoner; "
+         "ReAct (Yao et al., 2023) and Toolformer (Schick et al., 2023) for the tool-calling chat; RAG (Lewis et al., 2020) for the "
+         "preliminary report; WiSE-FT and model soups (Wortsman et al., 2022) and task arithmetic (Ilharco et al., 2023) for the B50 blend; "
+         "DPO (Rafailov et al., 2023) and STaR (Zelikman et al., 2022) in the training plans; Lookahead Decoding (Fu et al., 2024) behind "
+         "the rejected LADE test. The full list is on the Journey page."),
         ("latency", "Did split 3r or more split groups help?",
          "No. Split 4: +1%; split 6 does not fit the NPU session; split 3r (fork after the label) 22.2 vs 22.2 s on 10 incidents. "
          "Split 3 stays."),
@@ -204,9 +241,9 @@ def main():
     have = {it["q"] for it in q["qa"]}
     for cat, qq, a in new:
         if qq not in have:
-            q["qa"].append({"category": cat, "q": qq, "short_answer": a, "evidence_ids": [], "updated": "2026-10-29"})
+            q["qa"].append({"category": cat, "q": qq, "short_answer": a, "evidence_ids": [], "updated": "2026-11-04"})
     cats = q["meta"].get("categories") or []
-    for c in ("reasoner",):
+    for c in sorted({c for c, _, _ in new}):
         if c not in cats:
             cats.append(c)
     q["meta"].update(categories=sorted(cats), n=len(q["qa"]), overlay=rel(S), overlay_at=NOW,

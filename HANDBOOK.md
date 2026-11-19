@@ -2695,3 +2695,414 @@ headers. It's a post-mid-eval item, as is Qwen for reasoning.
 - **Laptop disk (2026-10-31):** C: had 5.8 GB free; the 4B import (merge + bf16 convert, ~16 GB inside the WSL vhdx) filled it and crashed WSL. Cleanup (owner-approved list) + vhdx compact -> **88 GB free**. import_adapter.sh now needs >= 20 GB free on C:, and merge_q4.sh waits on *available* (not free) RAM >= 1.5 GB. Root: start.ps1 / stop.ps1 control the laptop training (train_ctl.sh).
 - **Weather validator through the app:** 3 runs, outdoor 45 C (INC-0577, INC-0579, INC-0583). The reasoner report was accepted every time (qwen3.5-4b (htpd), valid, no errors). The model judged all three as sensor_fault, so the new critical+monitor branch was not exercised on the board; only the unit tests cover it.
 - **Board after the crash:** r2 live (d1250c3c). The weather gap test was killed mid-run, then all 27 sensors were reset to their defaults (replay 10:00). Rollback: deploy22/known_good_deploy21 (deploy21 APK 458cffb5 + profile).
+
+## 2.68 2026-11-01: chat router fixes from a 40-question board sweep (deploy23, APK only)
+- **Sweep** (proofs/2026-11-01_chat, VERDICT.md): 40 operator questions asked through the app on the board, one at a time,
+  with the board at 60 C or less before each. The mix: counts, lists, sensor status, why, what-if, maintenance,
+  follow-ups, Hindi-English, typos, out-of-scope. Each answer was graded against /api/incidents and /api/sensors.
+  The script (sweep.py / run_sweep.sh) is reusable: `bash run_sweep.sh <tag>`.
+- **Before (deploy22 r3): 27/40, median 9.7 s.** Every count was right. Failure classes:
+  - action requests were not refused ("Close all open incidents" listed them);
+  - questions about one incident went to the model, 11-14 s, and once printed a tool call as text;
+  - faulty/maintenance answers ignored the 11 sensor-fault incidents waiting for a decision;
+  - silent sensors (quality stale, nothing recorded) were reported as "right now ... (fine)";
+  - an empty ranking of a silent metric and a setpoint what-if fell to the model;
+  - list_sensors printed raw floats;
+  - "approved" questions got a bare count.
+- **Fix** (Go only; model, htpd and ggml-hexagon unchanged):
+  - `chat_router_ops.go` (new): refusal for close/approve/dismiss/delete/reset/switch...; get_incident answers (by
+    id, or "it/this" after an answer naming exactly one incident; variants why / real-or-fault / what-to-do with the
+    open checklist); "sensors need maintenance" → faulty_sensors plus pending sensor-fault incidents and silent
+    sensors; approved/dismissed → find_incidents / count_incidents; "overall health" → waiting incidents, most
+    urgent, live faults, silent count; current levels of a stale sensor say "no new reading (sensor silent ...);
+    last value X"; a ranking with no readings names the silent sensors.
+  - `chat_router.go`: `chatRoute.Act`, the ops routes run first, plus Hindi `kya hai` / `abhi`.
+  - `chat_peak.go`: setpoint.
+  - `chat.go`: list_sensors values rounded (the training parity fixture still matches).
+  - Tests: chat_router_ops_test.go (TestChatRouteOps, TestChatRoutedOpsAnswers, TestChatListSensorsRounded).
+    `go test ./...` ok. TestDQGlitchFilterGateOnly flaked once in a full run (untouched code; 20/20 alone).
+- **Deploy23** (proofs/2026-10-29_latency/deploy23.sh, status deploy23/STATUS*.md):
+  - r1: the ready check timed out because the app rotated htpd.log on start. Auto rollback. The check now counts ready
+    lines after the log's old end.
+  - r2 APK 08f00baa: **LIVE**. chaos 2 rc=0, fastcheck 6.3/5.7 s, AI 27.3/27.4 s, chat 5/5.
+  - r3 APK ddcd2844 = r2 + one missing space in the "what should I do" answer: **LIVE** 09:5x IST. chaos 2 rc=0, fastcheck 5.7/5.7 s, AI 27.5 s. Rollback deploy23/known_good (= r2).
+- **After (same 40 questions on r2): 39/40, median 0.2 s wall** (22 routed in under 1 s; the 18 model answers median 9.4 s).
+  0 errors, 0 busy. Left: "and for water?" after a model ranking repeated that ranking (model variance; sweep1 got it right).
+- **Board note:** sensors set by slider/API stop recording after 15 min of wall time (`heldStale`). Chat now says
+  "silent" instead of quoting the old value as current.
+
+## 2.69 2026-11-01: held-out chat sweep, general router fixes (deploy24, APK only)
+- **Why:** deploy23 was tuned on one set of 40 questions. A held-out set of 40 new questions (proofs/2026-11-01_chat/questions_heldout.json,
+  VERDICT_heldout.md) used different wordings: spans, follow-ups, Hindi, typos, comparisons, unknown names, unsafe/out-of-scope asks.
+  It was asked on the board the same way (`bash run_heldout.sh <tag>`). Truth comes from incident snapshots at each question's sim
+  time (truth*.py).
+- **Before (deploy23 r3): 25/40, median 10.2 s.** General failure classes:
+  - N-hour/N-day spans and Hindi day words went to the wrong preset;
+  - "which incident first" named no incident, so its follow-ups failed;
+  - state questions without "now" listed old incidents;
+  - a what-if with a target value was refused;
+  - a sensor described in words got an invented node id;
+  - "the 3 most recent" showed 5;
+  - "kharab" was not read as faulty.
+- **Fix** (`chat_router_v24.go` + small hooks in chat_router.go / chat_router_ops.go / chat.go; model/htpd/ggml-hexagon unchanged):
+  - spans become from/to at the device's time; plain counts over a period are routed, with the window in the answer;
+  - count follow-ups keep the previous filters ("pending" = workflow needs_decision, via a new optional `workflow` filter);
+  - period summaries;
+  - the priority answer names one incident;
+  - short follow-ups without a pronoun are supported;
+  - what-if targets become change_abs;
+  - a sensor described in words gets its node id (the level/unit words are dropped);
+  - current_levels for state-like metric questions;
+  - limit "N most recent";
+  - Hindi aaj/kal/kitne/kharab.
+  Tests: chat_router_v24_test.go. `go test ./...` ok.
+- **Deploy24** (proofs/2026-10-29_latency/deploy24.sh): r1 48820db3 live 13:33, r2 75d0f758 **LIVE 14:14 IST**.
+  Both: chaos 2 rc=0, fastcheck pass (AI 27-28 s), chat 5/5. Rollback deploy24/known_good (= r1).
+- **After:** held-out 39/40, median 0.02 s (14 model answers, median 10.1 s); sweep1's 40 on deploy24: 40/40 (no regression).
+  - Left: #25, where the model picked the wrong metric (ac_on) for the right node.
+  - The after score reuses the questions the fixes were designed from. Write a fresh set to measure again.
+
+## 2.70 2026-11-01: blind chat sweep, chat question-type layer (deploy25, APK only)
+- **Blind baseline (deploy24 r2): 20/40** (proofs/2026-11-01_chat/VERDICT_blind.md, grades7_blind.json). Unsafe actions 3/3 refused; the injection was refused; one out-of-scope reply was misleading; one in-scope concept question was declined.
+  Failure classes: reading questions became incident searches, spans were dropped or widened, follow-ups lost their referent, ids/nodes were invented, scenarios and what-ifs were mistyped.
+- **Fix** (no phrase patches; model/htpd/ggml-hexagon unchanged):
+  - chat_router_v25.go: intent classes (action, injection, out of scope, future, scenario, reading, sensor health, incidents) for English, Hinglish and typos (chatNormalize); sensor and place resolution with the metric chosen per node (a temperature on an AC is room_temp); referents from the previous answer's tool args (incident set, one incident, sensors); grouping, longest-waiting / worst, co-occurrence, glossary, what-if against limits, AC-units what-if, "normal or high" against the sensor's own 7 days.
+  - chat_time.go: one span parser (N min/h/days/weeks, ghante/din, since <weekday> <time>, between, overnight, this morning, dates and date ranges, N weeks ago, future). A period it cannot read is never widened.
+  - chat_guard.go: the model gets the period and sensors as a hint; tool time is held to the question; invented incident ids and nodes return errors; a failed tool is stated in the answer; unverified ids are removed.
+  - Tests: chat_router_v25_test.go; chat_replay_test.go (offline replay of a board sweep, opt-in). `go vet` and `go test ./...` pass.
+- **Deploy25** (proofs/2026-10-29_latency/deploy25.sh): r1 c862b7a1 and r2 bad36220 (**LIVE 19:22 IST**). Both: chaos 2 rc=0, fastcheck x2 pass (AI 22 s). Rollback deploy25/known_good (= r1); deploy24 r2 APK is in deploy25/known_good_r1_d24.
+- **Re-run on r2** (run_d25.sh): sweep1 40 done (sweep10_s1_d25.jsonl). Held-out Q1-11 and Q28-40 done; Q12-27 got no answer (the app was unavailable mid-run). Blind 9/40. The run was paused for the 2B deploy (deploy26); blind2 (questions_blind2.json, written 18:21 IST before any coding) has not run yet. Resume: `bash run_d25.sh heldout blind blind2` after deploy26 settles.
+
+## 2.71 2026-11-02: rsn_v3 2B on the board, measure only (deploy26 live, no changes)
+- **Report bench (RWH q10-q39, same window, htpd_v9f + live env):** 2B sev 29/30, label 29/30, parse 30/30, 4.6 s mean. 4B (same day) 27/25, 7.8 s; identical to the 2026-10-28 reference. Check recall 0.73 for both. The 2B leaves about 2 GB more RAM free.
+- **App stories (/api/ingest) + A/B on the same app prompts:**
+  - The 2B turned a room-temperature sensor fault into a **false critical** ("outdoor heat source"), still critical at 3 h.
+  - Its pH 9.6 report contradicted itself (critical + check_sensor) and was rejected by the validator (deterministic fallback).
+  - The 4B got both right. On the weather heat ramp the 2B was closer to the intent.
+  - Fast-path AI update about 23-26 s.
+- **Chat (deploy25 router + 2B):** sweep1 37/40, held-out 35/40 (d24 39), blind 39/40, blind2 33/40 (first run). Router 139/143; **2B model answers 5/17** (sweep1 2/5 against the 4B's 4/5): invented tool arguments and "could not find an answer". sweep1 Q9/Q39-40 were a replay-clock artefact (December window), fine now.
+- **Heat:** the 95 °C peak is nsphvx/nsphmx and cpu-1-2-1, during decode or model load only. The 4B peaks at 96 °C and stays ≥90 °C longer. No 105 °C kill.
+- **Recommendation: roll back to the 4B (owner OK: `deploy26_2b.sh --rollback`).** Use the failures for rsn_v3 r2. proofs/2026-11-02_2b_board/VERDICT.md.
+
+## 2.72 2026-11-03: app fixes, 4B stays (deploy27, APK e0ccda2b; proofs/2026-11-03_fixes)
+- **chatGuard:** rank_readings, faulty_sensors and what_if are held to the question's time span.
+- **pH direction (`phdir.go`):** pH above 8.5 is reported as alkaline and below 6.5 as acidic, whatever the retrieved or model wording says.
+- **Model label** now follows `reasoner_model`.
+- **Router:** blind2 Q17, Q30, Q32 and Q37 fixed. "This week" means since Monday; the owner still has to confirm Monday vs the last 7 days.
+- **Checks:** chaos 2 rc=0; fastcheck 5.6 s fast alert, AI report 28.0 s and 32.7 s. 160-question sweep: 142/160 answered by the router, median 0.2 s, 0 errors.
+- **2B r2 gate:** chat 0.737 vs 0.477 for the 4B, but it failed the report suites (RWH severity 0.793 vs 0.919). `kaggle/gate/g2b_r2/GATE.md`.
+
+## 2.73 2026-11-04: eval-day split, 2B chat on the CPU, 4B reports on the NPU (deploy28-30; proofs/2026-11-04_split/README.md)
+- **For the evaluation only (owner).** The 2B answers chat because it scored higher there. Reports and agents stay on the NPU. The 4B keeps training and will be the single general model.
+- **Building llama-server:** the Docker image pull stalled at about 10 MB/min. A native NDK r29 build took 3 min (OpenCL on, Hexagon off) and ships its own libs to `/data/local/tmp/chatgpu/lib`; the NPU libs are untouched.
+- **Engine choice:**
+  - On the GPU (Adreno OpenCL) it decoded at 8-10 t/s. Qwen3.5 is hybrid: its recurrent layers run on the CPU, so every layer syncs GPU and CPU.
+  - **CPU only: about 25 t/s at 5-6 threads, identical text** (`gpu/tune/TUNE.md`). With 8 threads it is slower, because the little cores join.
+  - MTP and n-gram speculation: no gain.
+- **Cache fix for the hybrid model:** llama-server can resume a prompt only from a checkpoint, about one micro-batch before the prompt's end (`-cms 0 -ub 128`). The prompt's sim-clock time line comes right after the 15-tool header, so each new question re-prefilled about 3,100 tokens (12 s on the GPU). The app's keep-warm now sends the header, then the hour's prefix, every 30 s, at about 4 tokens per ping. A new question now re-prefills about 290 tokens.
+- **Other app changes (APK split5 7427684d):**
+  - GPU/CPU chat timeout 60 s (was 2 min).
+  - Badge comes from the profile key `chat_device`.
+  - A chat no longer waits for the NPU; on a chat-server error the app falls back to htpd and skips the server for 60 s.
+- **Checks:**
+  - deploy30: chaos 2 rc=0; fastcheck 5.6 s / 21.4 s before the split and 5.6 s / 27.7 s with the 2B on the CPU while chat ran.
+  - Guards: `oom_score_adj` 1000; kill below 700 MB free; restart only at ≥1.5 GB free and <80 °C. 0 kills.
+  - Fresh-session model answers 7-14 s (one long list 28 s); on the GPU the same questions took 10-42 s.
+- **Fallback:** `split_off.sh` takes about 10 s with no restart and puts chat back on the 4B. `split_on.sh` turns the split back on. Full revert: `deploy28/known_good`.
+- **deploy31 (split6 APK 0957f89f, 05:00 IST):**
+  - A repeated identical tool call in one question is dropped, and a round of only repeats ends the question. Before this, the 2B looped once for 63 s in d30 blind2.
+  - After each (re)start, `chat_gpu.sh` pre-warms the header (`warm.json`).
+  - Checks: chaos 2 rc=0; fastcheck 5.7 s / 28.0 s, and 5.6 s / 27.7 s with a chat running during the incident.
+- **160-question sweep on deploy30 (`proofs/2026-11-04_split/CMP_d27_d30.md`):** 160/160 answered, 0 errors. The router answered 143 (median 0.2 s). The 17 model answers averaged 8.4-13.4 s per set, vs 9.2-12.4 s on the 4B, apart from the loop above. Read side by side, the 2B was better on about 6 of 17 and worse on 1-2.
+- **Rejected:**
+  - CPU decode with GPU prefill offload (`--device GPUOpenCL -ngl 0`): cold 27 s and no warm gain; the weights are copied per batch.
+  - `-ub 256/512`: about 260-520 tokens re-prefilled per question.
+  - CPU prefill runs at only ~100 t/s when the board is hot, so a large tool result (~1k tokens) costs 7-13 s. That is the remaining chat cost.
+- **deploy32 (split7 APK 9e82675a):** the chat UI now names the engine of each answer: the model badge, e.g. "· qwen3.5-2b rsn_v3 (cpu)", when chat_url is set; nothing for a fast router answer; "on the NPU" only for a slow answer without a badge. Before this it always said "on the NPU".
+- **split_on.sh** now waits for the server's header pre-warm before routing chat to it. Rehearsal: the first answer took 5.7 s; before the change it queued 45 s. `split_off.sh` took 3.8 s, and the 4B answered next in 6.1 s (`fallback_rehearsal.txt`).
+- **blind2 on deploy31:** 40/40 answered, 0 errors, model mean 10.2 s (the 4B: 11.4 s). The question that looped is now 13.5 s instead of 62.9 s.
+- **Cold start (09:34):** the first incident after 4 h of idle took a 78 s AI update (fast alert 6.9 s). Agents and reasoner themselves took 23.5 s; the rest was waiting before the AI started. The next run took 28.0 s. Warm up with one incident before a demo (`proofs/2026-11-04_split/DEMO.md`).
+
+## 2.74 2026-11-06: rsn_v3 4B local, fog tools + offline fallback, dataset r3 (proofs/2026-11-06_4b_local)
+- **Tools (21 chat, `TOOLS.md`):**
+  - The 15 rsn_v3 tools are kept.
+  - **Fog tools with a backend fallback:** `fog_search_history`, `fog_analytics` (incident_trend / resolve_time /
+    sensor_monthly), `search_knowledge` (was a stub; now a 46-passage fog knowledge base with a 16-passage device cache)
+    and `fog_status`. `get_incident` of an archived id goes to the fog.
+  - **New local tools:** `co_occurring_incidents`, `recurring_issues`, `compare_periods`.
+  - The incident toolset is unchanged: a fog lookup would sit on the alert's critical path, and the r2 rows and
+    validator are tied to the 4-tool header.
+- **Fallback (chat_fog.go):**
+  - The fog is asked with `POST {fog_url}/v1/tool` (profile `fog_url`, `fog_token`, `fog_timeout_ms` default 2000).
+  - Unset, timeout or error -> the same query on the device store, returned with `source:device_fallback`,
+    `fog:unreachable` and coverage {from, incidents, complete, index_from, counts_exact, note}. After a failure the
+    fog is skipped for 30 s. The model never chooses the fallback.
+  - The device store now includes the **all-time index**: `incidents.archive.jsonl` read back as index rows. Chat
+    counts stay exact beyond the 1000 kept incidents; before this, archived incidents were invisible to chat.
+  - The prompt carries the live fog line and "Full incident records on the device since D". This prompt (21-tool
+    header, 4,579 tokens) is only sent with `chat_think=adaptive` + `chat_prompt=r3`.
+  - `FogHandler` serves the same contract for a fog box or the tests. The Supabase side and the sync uploader are not
+    built (owner decision).
+- **Go:** `go test ./...` passes. New tests:
+  - `TestChatFogParity`: 92 calls, fog online and offline, identical to the Python training tools;
+  - fallback when the fog is unset, returns HTTP 500, or times out after 200 ms (no second wait);
+  - online behaviour;
+  - `TestChatHeaderR3MatchesTraining`: byte-identical header and system.
+- **Dataset r3 (`DATASET.md`, `data/final`, MD5SUMS):**
+  - Store: 2,978 incidents 2025-11 .. 2026-10. The device keeps 1,000 full records since 2026-06-24 and indexes the
+    rest; the fog has everything.
+  - **chat_train_r3 33,597 rows:**
+    - 19,051 r2 rows re-rendered with the r3 header and system. 960 rows of the kinds the tools replace were dropped.
+    - 962 replay rows.
+    - **8,835 new fog and cross-domain rows** in 20 kinds: online 3,951, offline 4,006, timeout 878 (fog down
+      mid-conversation). They include multi-turn, Hinglish (995), refusals, injections, "don't call the fog" rows and
+      fallback disclosure.
+    - 4,749 rsn_v3 device kinds re-run on the r3 store in both fog states.
+  - incidents_train: the r2 35,151 rows, unchanged.
+  - Test: `chat_test_r3` 983 held-out records, both fog states.
+  - Verify pass: new kinds 100 %, re-run kinds 98.9 %. Schema check: 0 invalid calls of 36,804. No overlap with chat
+    dev v3, chat_test_r2 or chat_test_r3.
+  - About **268 M tokens per epoch** (chat 182 M, mean 5,420; incidents 86 M). Cuts are the owner's choice: a subset of
+    the r2 rows, or shorter tool descriptions.
+- **Trainer gen-eval on r3:** `data/final/gen_chat_r3.jsonl` (60) and `gen_train_chat_r3.jsonl` (20). `train_rsn3.py` gained `--gen-r3 auto|on|off` (auto = records with a `fog` field) and `--gen-r3-tools`; each record is verified on the r3 store in its own fog state, and r2 records are scored as before. Use `--gen-n 60`. CPU self-test: gold 80/80 pass, corrupted answers 0/80, r2 path 40/40.
+- **Baton: one 4B r3 run on Kaggle and the laptop** (`proofs/2026-11-06_4b_local/baton/BATON.md`):
+  - The run trains on Kaggle (T4 x2, private script kernel `rsn3-r3-baton-train`) while the weekly GPU quota lasts, then on
+    the laptop. It moves back to Kaggle after the quota refresh. `baton_auto.sh` (via `proofs/detach.sh`) decides with
+    `kaggle quota` and the push/kernel errors.
+  - One lineage travels as `lineage.tar` with md5s: ckpt_latest (adapter, optimizer, scheduler, scaler, step, RNG),
+    best-K, schedule.json (data cursor), best.json and the logs. The baton dataset is private; so is the r3 data dataset,
+    which is md5-verified and has no test sets. `baton/BATON` records the holder, step and md5.
+  - A step is 16 rows on 1 or 2 GPUs (rows split by rank, gradients summed). Kaggle runs fp16 + GradScaler, the laptop
+    bf16. LoRA weights and AdamW8bit state are fp32/uint8 on both sides: a real laptop state.pt loads into the Kaggle path
+    and back bit-exactly (`baton_util.py loadtest`). The scaler state is carried across laptop hops.
+  - Safety: the laptop is stopped cleanly before a push. If it trains while Kaggle holds the baton, the pull is refused as
+    a conflict. Uploads are secret-scanned (no token, `.env`, htpd_profile or website_final.sh).
+  - Credential: the owner's `~/.kaggle/access_token`, which kaggle CLI 2.2.4 uses (only its existence + chmod 600 are
+    checked).
+  - Start from Windows with `baton/start_auto.ps1`: it adds a hidden keepalive wsl.exe, because
+    instanceIdleTimeout=15 s would otherwise kill the loop.
+  - Offline tests: `baton/test/run_tests.sh` uses a fake kaggle CLI.
+  - 2026-11-07 fixes after the first real sessions:
+    - Kaggle seq 1 skipped 102 of 468 steps (shared-prefix OOM on fp16 T4 without the memory levers). Kaggle now keeps
+      the exact levers `--ckpt-offload --mlp-chunk 512`. On a shared-prefix OOM the trainer re-runs that rank's rows one
+      per forward instead of skipping.
+    - The push now waits until the new baton dataset version is live: seq 2 had aborted as stale.
+    - Owner: the seq-1 segment (511-979) is discarded and the lineage restored to step 511; its only skipped step is
+      step 4 (laptop).
+    - Kaggle speed: seq 1 gave 575 useful tok/s per session. The time went to 22 % OOM-wasted steps, a duplicated prefix
+      per rank, ~16 min tokenization, ~10 min Triton warm-up, and causal_conv1d failing to build (torch 2.11/cu130 image).
+    - Speed changes:
+      - `--sp-rank-balance` (whole prefix clusters per rank: 18 % less slower-rank work on the real schedule);
+      - levers only on forwards over 4096 tokens;
+      - token caches and the Triton cache shipped as private dataset files;
+      - causal_conv1d built for sm_75 with its log kept (`KAGGLE_PIN_TORCH=1` as fallback).
+    - Expected about 830-910 tok/s and +45-55 % steps per session; not yet measured (BATON.md "Kaggle speed").
+    - Zero skipped steps is now enforced on Kaggle: the kernel adds the new trainer flag `--oom-stop`. A micro-batch OOM
+      is retried one row per forward like a shared-prefix OOM; a row that OOMs even alone saves `ckpt_latest` at the
+      state before that step and exits 7 (`OOM STOP`), never dropping rows. Default (2B, laptop) unchanged. CPU test:
+      `baton/test/oom_retry_test.py` (tiny model, OOMs injected by monkeypatch), wired into `run_tests.sh`.
+  - A real Kaggle session is untested: the GPU quota was 0 h left on 2026-11-06, with the refresh at 2026-11-07
+    00:00 UTC.
+- **Training speed: `--shared-prefix` (proofs/2026-11-06_4b_local/speed/EQUIV.md):**
+  - **How it works:** in each 16-row step, rows that start with the same tokens run that prefix once:
+    - chat rows share the 21-tool header, about 4,637 tokens;
+    - incident rows share system prompt + tools, 1,319 tokens.
+    - The prefix's per-layer end state (attention K/V; Gated-DeltaNet conv tail + recurrent state) feeds every
+      continuation. The prefix gradients are summed in fp32, and one backward goes through the prefix.
+  - **Nothing else changes:** same rows, same loss (sum CE over each row's label tokens / n, / accum), checkpoint format
+    unchanged.
+  - **New flags, default off:**
+    - `--shared-prefix`;
+    - `--shared-prefix-cont` (continuation tokens per forward, default 2048);
+    - `--shared-prefix-min`;
+    - `--offload-min` (exact threshold for `--ckpt-offload`);
+    - `--step-log` (per-step steps.jsonl).
+  - **CPU equivalence:** tiny real-config Qwen3.5 with both layer types, LoRA r32 on all 12 targets, real r3 rows; every
+    LoRA gradient compared.
+    - fp32: gradient rel-L2 1.7-3.0e-7 (the baseline's own batching noise is 8.9e-8) and loss rel diff 1e-8 or less.
+      This holds for chat, incident and mixed steps, labels inside the prefix, a single row, and with offload / mlp-chunk /
+      the head-cpu stand-in.
+    - bf16: the only gap was the CPU math-backend attention, now upcast to fp32 off CUDA. On fp16 (Kaggle T4) the
+      continuation attention is also upcast to fp32. The laptop bf16 path is unchanged.
+  - **Not exact:** LoRA dropout draws one mask for the shared prefix instead of one per row. The expected gradient is the
+    same.
+  - **GPU A/B** (real run, steps 44->46 from a frozen step-44 copy; `speed/ab.sh`, `ab_spthr.txt` / `ab_spB2.txt`):
+    - Step 45: 262 -> 558 tok/s. Step 46: 284 -> 840 tok/s (2.1-3.0x).
+    - Peak VRAM 4.41 / 4.98 -> 4.08 / 4.69 GiB (allocated / reserved).
+    - Loss: step 45 +1.7e-3 relative, step 46 +5e-4 (dropout masks differ).
+    - Two earlier B attempts OOMed: thresholds of 4096 skipped the offload on continuations, and a GDN conv tail kept as a
+      view held the whole projection (1.8 GB). Both are fixed.
+    - The token count on the real schedule predicted 63 % fewer decoder-layer tokens (2.7x).
+  - **Live run:** `--shared-prefix` was added to run.env FIT_FLAGS on 2026-11-06 at about 11:00 UTC, resuming from step 44.
+    The epoch-1 ETA is expected to drop from about 250-290 h to roughly 100-120 h busy.
+  - **Kaggle:** `baton/baton_util.py` recipe keeps `--shared-prefix`, `--shared-prefix-min` and `--shared-prefix-cont`. It
+    drops the laptop-only `--offload-min` and `--step-log`. Both sides train the same way.
+  - **Pending:** a CPU re-run with the final code, and the main() checkpoint round trip with the flag switched across a
+    resume (`speed/go_chain.sh`). They need about 1.2 GB of host RAM, so they run at a stop.
+- **Automatic export + gate after training (`proofs/2026-11-06_4b_local/post/POST.md`):** `post/post_chain.sh` is
+  launched once with `post/start_post.ps1` (detach.sh + hidden keepalive).
+  - **Waits** until training has finished (`chain/train.done` or status.json stopped/done), the laptop holds the baton,
+    and no trainer or baton hop is running.
+  - **Picks** the best checkpoint by the gen dev score (best.json).
+  - **Exports** it with the export_gguf.sh merge convention (alpha/r) to
+    `Code/models_stage/rsn_v3_4b_r3_q4_0.gguf` + md5. The merge and the bf16 GGUF are written to an NTFS temp dir, so
+    the WSL vhdx cannot fill C: as it did on 2026-10-31. C: needs >= 20 GB free plus headroom, and both Windows and WSL
+    RAM are checked.
+  - **Gates** it on the host GPU under GPU_LOCK, at heat 92/88: RWH, RWH-2 and round-1 dev (incident prompt), plus chat
+    dev v3 with the r3 app prompt (adaptive think). The rule is the g2b_r2 rule, against rsn_v1.
+  - **Informational:** chat_test_r3 (983, r3 verifier, per fog state; rsn_v1 is out of distribution there) and
+    incidents_test_r2 per slice. Output: `post/gate_r3/GATE.md` + gate.json; verdict ~3 h after the GGUF, everything in
+    ~12-14 h.
+  - **Dry runs (CPU):** the scorer reproduces the g2b_r2 table exactly, the chat eval passes against a mock server, and
+    a tiny-model wait -> pick -> merge -> GGUF -> Q4_0 run matches W + 2·B@A exactly and is idempotent.
+  - Board deployment stays the owner's decision.
+- **Board deploy prepared for 2026-11-15 (`proofs/2026-11-06_4b_local/board/DEPLOY_R3.md`; no board, no GPU used):**
+  - **r3 APK** (`board/SmartCityEdge.r3.apk`, `build_r3.sh`, `go_test.txt`) = split7 + the r3 chat.
+    - Without `chat_prompt=r3` it behaves as deploy32 (`TestChatR3OffIsDeploy32`): the archive index, the knowledge
+      base and the six new tools are switched off, so installing it first is safe.
+    - New profile key `reason_ctx` -> `htpd --reason-ctx`. Unset keeps the 4096 default. **r3 needs 8192:** the prefix
+      is about 5,070 tokens and rows run to 7,229, so with 4096 every r3 question would overflow.
+    - **Blocker (DEPLOY_R3.md §0b):** the live split-spec context is one unified KV pool of
+      `reasoner_split` 3 x reason_ctx + 256 cells. At 8192 that is 24,832 cells (about 432 MB), more than the sp6
+      6 x 4096 allocation that failed with `HTP0 buffer mapping failed size 427401216` (2.54).
+      - Test T0 on Nov 15 with rsn_v1, before the model switch: reason_ctx=8192, then split-2, then split-1.
+      - Fix: htpd v9h `HTPD_REASON_POOL=12544` (per-stream cap 8192, the same pool as today).
+      - Fallback: chat on CPU llama-server with the r3 4B (`board/warm_r3.json` = the r3 header pre-warm), reports on
+        the NPU at 4096.
+    - Badge `qwen3.5-4b rsn_v3`.
+    - Laptop fog for the online test: `go test -run TestFogServe` (opt-in) + `adb reverse`.
+  - **Plan:**
+    - Stage A: the APK alone with chaos 2 + fastcheck.
+    - Stage B: the GGUF chosen by the gate goes to `/data/local/tmp/gpu` via .part + md5 + mv, app stopped.
+    - Stage C: `split_off.sh` retires the 2B. Then `reasoner_model` (r3), `chat_think=adaptive`, `chat_prompt=r3` and
+      `reason_ctx=8192`; fog_url stays unset.
+    - Tests: fastcheck/chaos, the 160-question sweep, and fog offline / online / timeout / error.
+    - Rollback: known_good profile + `split_on.sh` (never with chat_prompt=r3 left in), or the full APK.
+  - **Latency estimate:**
+    - Measured with rsn_v1: the 2,486-token chat prefix builds in 4.6-5.8 s on the NPU (425-545 tok/s); a disk restore
+      takes 0.2 s.
+    - The r3 prefix is 2.04x longer, so the first question of each hour (or after a fog-line flip) costs about
+      4 s swap + 10-13 s instead of 4 + 5-6 s. Same-hour and warm questions are unchanged (+0.2 s). Adaptive think adds
+      2.5-8 s on hard questions.
+  - **Mitigations that keep the header:**
+    - the existing NPU keep-warm already pings the r3 prefix;
+    - proposed htpd v9h: chain the hourly prefix onto a saved header-only state, so about 490 tokens are prefilled
+      instead of 5,070;
+    - an hour-ahead pre-build;
+    - router coverage of the new question kinds;
+    - fog_url unset.
+    v9h and the pre-build need the owner's OK.
+
+## 2.75 2026-11-09: prototype → production gap; security hardening documented, not built (PRODUCTION_GAP.md)
+- **Full list:** `PRODUCTION_GAP.md` (repo root). Each area: today, production need, why skipped, effort, priority.
+  Source: `proofs/2026-11-09_roadmap/ROADMAP.md` §4 and §6.
+- **Security hardening = DOCUMENTED ONLY (not implemented):**
+  - adbd on 127.0.0.1:5555 has no auth (the app's only route to the NPU); in tcpip mode it may listen on the LAN.
+    Bind address unknown. Production: no adb; a system service with a SELinux/fastrpc policy, or a QCS-class IoT SKU.
+  - HTTP API on 0.0.0.0:8000 is plaintext; writes need `X-API-Token`, reads (incidents, per-room occupancy) are open on
+    the LAN. Production: auth for reads, TLS/mTLS, loopback bind unless LAN ingest is on.
+  - Also: per-device keys, secrets in Keystore, operator PIN + audit log to the fog, signed update bundles, isolated
+    network, aggregated occupancy in the cloud (DPDP Act 2023 notice + retention policy).
+- **IN PROGRESS (another agent, in parallel; not done until its proofs say so):** MQTT ingest bridge, time sync
+  (NTP / gateway timestamps, "clock uncertain" flag), off-board alerts with escalation, heartbeat + dead-man alert,
+  fog uploader (Supabase), early provisional AI + automatic warm-up, OTA with signing and self-test rollback.
+- **Hardware / process:** DC supply + UPS, heatsink + enclosure + 40 °C soak, storage-wear measurement, shadow mode
+  2-4 weeks, canary board, one-floor pilot, IS 10500 / CPCB limits check, operator guide + runbook.
+- **Cost from sources only:** Supabase Pro $25/month (free tier pauses after ~7 idle days); SMS/WhatsApp and hardware
+  not priced.
+- **Production features BUILT, all OFF by default (2026-11-09, `proofs/2026-11-09_production/FEATURES.md`).**
+  - What is built, in `backend/prod*.go`; each starts only when its `htpd_profile` key is set:
+    - MQTT ingest bridge (`mqtt_url`);
+    - time sync (`time_sync=1`): NTP, laptop push or MQTT timestamps; unstamped `clock_uncertain` incidents are
+      re-stamped once the clock is set;
+    - alert delivery (`alert_webhook` / `alert_smtp`): persisted retry queue, dedup, escalation, rate limit;
+    - heartbeat (`heartbeat_url`) plus `tools/heartbeat_monitor.py` as the dead-man monitor;
+    - fog uploader (`fog_upload=1`): derived data only, idempotent `(stream, seq)` upserts, 50 MB outbox, served on
+      the fog side by `edge-agent -fog-addr`;
+    - idle NPU warm-up (`warm_idle_min`);
+    - OTA with md5 checks, atomic swap and self-test rollback (`tools/ota/`).
+  - Early AI (`ai_early_k` plus `ai_early_shapes`) needs both keys and stays off.
+  - With no keys, behaviour is unchanged and `/api/prod/*` answers 404.
+  - Tested on the laptop only: 23 Go tests and the OTA fake-adb test pass. The one `go test ./...` failure,
+    `TestChatRouterBlind2Fixes`, failed before this work.
+  - Not run on the board. The Nov 15 checks per feature are in FEATURES.md.
+
+## 2.77 2026-11-12: r4 top-up of the 4B r3 model, unattended, STRICT gate (proofs/2026-11-12_topup_r4/train/TOPUP.md)
+
+- What: continue the gated r3 adapter (step 2800, read-only copy `~/smartcity_runs/KEEP_rsn3_4b_r3_s2800`) on ~15k r4 rows
+  (short `<think>` before the JSON for multi-domain incident reports, empty think for single-domain) with 1:1 r3 replay per
+  step, LR 3e-5 (warm-up 3 %, cosine to 0.1x), all 6 GB fit flags + `--oom-stop` (`topup_train.py`, imports train_rsn3.py).
+  The start adapter is scored at step 0; checkpoints are kept only if they beat it on r4 dev + r3 slices with r3 not lower.
+- Gate (STRICT, vs r3-2800 itself): (a) r4 held-out test better by >= 1 item, (b) all 19 old checks within 1 item,
+  (c) chat_test_r3 fog slices not lower beyond noise. FAIL = r3-2800 stays; the r4 GGUF is `rsn_v3_4b_r4_q4_0.gguf`.
+- Run: `proofs\2026-11-12_topup_r4\train\start_r4.ps1` (training + supervisor_r4 + post + gate); status `AUTO_STATUS_r4.md`;
+  stop `stop_r4.ps1`. Not started yet (GPU busy). ETA up to ~3 days of training if no early stop, then ~7 h post.
+- App: `reasoner_think=adaptive` (profile or `SCE_REASONER_THINK`) opens the think block in report prompts; reports with a leading
+  think block are accepted and stripped (`ReportCall.think` keeps it); htpd forced schema off in that mode. Default unchanged.
+  Only switch it on together with an r4 model that passed the gate.
+
+## 2.78 2026-11-12: early provisional AI gate study, PARTIAL (proofs/2026-11-12_early_ai/STUDY.md)
+- **Method.** The app's own path is replayed on the gate-study events (real history, k = 3..8 readings, 6 shapes):
+  Engine gate → `buildIncident` → B50 agents (htpd shim) → rsn_v3 4B r3 reasoner, on the host GPU. Each early report is
+  compared with the same event's k = 8 report.
+- **Status.** Only 31 of 440 groups were done (15 min of GPU) before WSL restarted and r4 took the GPU.
+- **Results so far.** Pooled flip rate vs k = 8 is 22-50 % at k = 3..7. No shape clears any k (n ≤ 3 pairs per shape
+  and k). Flatline events were almost never gated on the bank sensors; this needs checking.
+- **Decision.** Keep `ai_early_k` / `ai_early_shapes` unset (off).
+- **Resume** after r4, one command (it waits for GPU_LOCK): `wsl.exe -e bash /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-12_early_ai/harness/start.sh`.
+  The rest takes about 4-4.5 h of GPU.
+
+## 2.79 2026-11-12: htpd v9h, reasoner KV pool + M2 chained chat prefix (built, not deployed; proofs/2026-11-12_htpd_v9h)
+- **Why:** the r3 chat prefix is ~5,000 tokens (rows up to 7,229). htpd's per-stream cap of 4096 stops it at once
+  with `ctx` (reproduced on the host). Split-3 @8192 needs 24,832 cells, and that size is expected to fail the HTP
+  mapping (2.54). A new hour also re-prefills all ~5k tokens (10-13 s on the NPU).
+- **What (htpd only, all env-gated; without the env v9h = v9f, bit-identical logits on the host):**
+  - `HTPD_REASON_POOL=12544`: the unified split-spec pool keeps today's 12,544 cells while `--reason-ctx 8192` lets one
+    stream use 8192.
+  - A pool-exhausted decode now ends with `ctx`, not `error`.
+  - `HTPD_REASON_CHAIN=1`: a new static prefix is built on a saved **base** state. The base is the longest head
+    shared with a known prefix (>= 1024 tokens; for r3 the header + date, ~4.6k tokens) and is found in memory or by
+    scanning the state files' token headers on disk. So a new hour prefills ~400 tokens. Cache kinds `chain-base`,
+    `chain-mem`, `chain-disk`. No app change.
+- **Host proof** (2B r2, exact r3 prefix, greedy):
+  - same text and the same picks as v9f in 5/5 hour switches;
+  - logits bit-identical without the chain, max top-1 diff 0.33 with it (prefill split point);
+  - new-hour prefill 7.6 s (memory) / 10.2 s (disk) vs ~100 s.
+  - A 7.1k-token prompt: v9f@4096 stops `ctx`, v9h POOL 12544 @8192 answers.
+- **Board:** binary md5 7296d502. A/B plan V0-V4 with rollback to v9f in `proofs/2026-11-06_4b_local/board/DEPLOY_R3.md`
+  section 0b. M3 (pre-build of the next hour) needs the APK and is not built.
+
+## 2.80 2026-11-12: domain-agent holes study (proofs/2026-11-12_agents_holes/REPORT.md)
+The question was whether the live B50 agents have enough holes to justify a retrain. It was measured on 992 held-out dev3f
+windows, using the live GGUF on the host GPU.
+- **Sensor names do not matter.** Renaming the building, level and sensor number gives 99.2% agreement on pattern, status
+  and cause. The run-to-run noise floor is 98.0%, and accuracy is unchanged.
+- **Absolute accuracy, for the first time.** Overall: pattern 89.0, status 87.2, cause 87.3.
+
+  | domain | status accuracy |
+  |---|---|
+  | occupancy | 100 |
+  | weather | 94.6 |
+  | hvac | 93.4 |
+  | air quality | 90.4 |
+  | water | 74.7 |
+  | power | 70.7 |
+
+  Critical recall is 79.8, and 12% of calm windows raise a false alarm.
+- **Propagation.** The 4B r3 catches 94% of templated agent errors but only 2 of 19 errors from real agent runs. All 13
+  real air-quality "normal on a faulty sensor" claims went straight into the report.
+- **Verdict.** Do a targeted top-up from B50, not a rebuild:
+  - Data: about 8k rows, 60% B50 replay and 40% targeted (power severity, water leaks and critical events, calm-looking
+    sensor faults, critical recall, calm negatives).
+  - Training: QLoRA on a Kaggle T4.
+  - Gate: gate2 vs B50, power status >= 78, water status >= 80, critical recall >= 85, rename agreement, and the
+    real-agent incidents through the 4B.
+
+## 2.81 2026-11-13..16: v3 plan change, weight editing, agt_v3 training, reasoner fine-tune (proofs/2026-11-13_weight_edit, AGENT_REGISTRY.md)
+- **Plan (owner):** reasoner = r3-2800 weight-edited + fine-tune on bigger v3 data (not rsn_v4 from base); fine-tune after agt_v3; deploy everything new together later (app Go builders + byte parity later).
+- **Label audit** (proofs/2026-11-13_label_audit): 657/12,715 real-agent golds not visible in the evidence (r3 trained on 450). The "r3 caught 2/19 real agent errors" was mostly one mislabeled PM10 window; cleaned: 2/10.
+- **agt_v3 data**: 47,444 rows; faults 22% -> 11.1%; card jitter 30%; verify adds noise-fault >= 3x card noise and no warning with 1h average past critical; gate adds fault precision >= .90 and false-fault <= 3%.
+- **agt_v3 training** (Kaggle, 3 sessions; fixes: Kaggle auto-extracts .tar -> lineage.bin; CRLF in push.sh): Q4_0 dev 250 .696 / 750 .850 / 1500 .884 / **1750 .902** (water .917, power .776 weakest). Gate on snap_1750 (gpu_free pgrep deadlock with a CPU-only llama-server -> GPU_ASSUME_FREE=1).
+- **Weight editing** on r3-2800: projection (hurts), per-point MEMIT (memorises), mean-key (stopped); neuron surgery (owner idea, Claude picks neurons from activation x logit-lens tables): kept C1 = 4 after-tool detector neurons rewired along the exact d log-odds(close) direction + 8 'agent said normal' detectors x0.2: think margin +0.10, hard think kept 1.00, NLL +0.0006 (small, clean). Merged base: C:\Users\hp\qidk_models\r3_edit_C1. Tool-choice probe: no single-token defect -> training data. Trust: r3 already ignores wrong agent claims on unseen flips (only 34% of pairs hurt).
+- **Reasoner dataset v2** (proofs/2026-11-13_v3_data/rsn/data/final_v2): v1 6,133 + agt_v3 real outputs (synthetic + cleaned real windows), weak reasoning types, cross-floor flow family, suspect parent, fault vs event, tool choice; ~12.1k new + ~4k replay, ~55 M tokens (~20 h); fine-tune auto-starts when READY.
+- **Reasoner strict gate**: owner limit <= 4 h (fast stratified subsets, cached r3-2800), built after the fine-tune starts.

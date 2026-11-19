@@ -216,11 +216,23 @@ def main():
     RESULTS.append((all((x["id"] is None) == (not x["measured"]) for x in sidx) and all((DATA / "situations" / f"{x['id']}.json").exists() for x in sidx if x["id"]),
                     "situations index: measured <-> dataset, not measured -> no numbers", len(sidx), "consistent"))
 
+    # after 29 Oct (recent.py, 2026-11-04)
+    gate = PROOFS / "2026-10-29_rsn_v3/kaggle/gate/g2b_r2/GATE.md"
+    check("acc_reasoner_split rsn_v1 RWH severity", y("acc_reasoner_split", "rsn_v1 4B (reports, NPU)", "RWH severity"), 0.919)
+    check("acc_reasoner_split 2B chat pass", y("acc_reasoner_split", "rsn_v3 r2 2B (chat on eval day, GPU)", "chat dev v3 pass"), 0.737)
+    text_has("acc_reasoner_split in GATE.md", gate, "| chatdev3 | pass_rate |", "0.737 | 0.477")
+    text_has("lat_reasoner_spec in HANDBOOK", HB, "K=8 + ALIGN", "9.1 s")
+    text_has("lat_app_ai_update deploy27", PROOFS / "2026-11-03_deploy27/apk/STATUS.md", "ai_update_s", "28.0")
+    chat = [r for f in ("sweep20_s1_d27", "sweep21_heldout_d27", "sweep22_blind_d27", "sweep23_blind2_d27")
+            for r in read_jsonl(PROOFS / f"2026-11-01_chat/{f}.jsonl")]
+    check("ux_chat_timing router < 1 s", y("ux_chat_timing", "answers", "< 1 s (router)"), sum(float(r["wall_s"]) < 1 for r in chat))
+    check("ux_chat_sweeps sweep 1 after", y("ux_chat_sweeps", "after", "sweep 1"), 39 / 40)
+
     ids = {p.stem for t in TOPICS for p in (DATA / t).glob("*.json")}
     dec = read_json(DATA / "decisions.json")
     groups = dec["decisions"]
-    refs = [e for g in groups for e in g["evidence_ids"] + [r["evidence_id"] for r in g["rejected"]]
-            + [e for k in g["children"] for e in k["evidence_ids"] + [r["evidence_id"] for r in k["rejected"]]]]
+    refs = [e for g in groups for e in g["evidence_ids"] + [r["evidence_id"] for r in g["rejected"] if r["evidence_id"]]
+            + [e for k in g["children"] for e in k["evidence_ids"] + [r["evidence_id"] for r in k["rejected"] if r["evidence_id"]]]]
     kids = [k["id"] for g in groups for k in g["children"]]
     RESULTS.append((25 <= len(groups) <= 45 and all(e in ids for e in refs) and len(kids) == len(set(kids)) == len(dec["alias"]),
                     "decisions: 25-45 groups, every evidence id published, every old id aliased once", len(groups), f"{len(kids)} children"))

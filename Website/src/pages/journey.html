@@ -1,7 +1,7 @@
 <section class="section">
-  <span class="label">Journey · 6 to 29 October 2026</span>
+  <span class="label">Journey · 6 October to 4 November 2026</span>
   <p class="statement">From one slow model call to a two-model edge system.</p>
-  <p class="lead">Eleven steps, oldest first. Each says what we did, why, and what we measured on the QIDK. Steps we tried and dropped are listed too, because they explain why things are the way they are.</p>
+  <p class="lead">Sixteen steps, oldest first. Each says what we did, why, and what we measured on the QIDK. Steps we tried and dropped are listed too, because they explain why things are the way they are.</p>
   <div class="jr-legend" aria-hidden="true">
     <span><i class="jr-dot is-kept"></i>kept, runs today</span>
     <span><i class="jr-dot is-replaced"></i>kept, later replaced</span>
@@ -141,9 +141,81 @@
           <li><b>rsn_v2</b>: on the same 106 held-out incidents, severity 87.6% against rsn_v1's 94.7%. rsn_v1 stays.</li>
           <li><b>Reasoner on the GPU</b>: about 2.5x slower than the NPU. <b>Split 3r</b>: 22.2 vs 22.2 s.</li>
         </ul></dd>
-      <dt>Result</dt><dd>Every build was checked through the app before it stayed live (fast path 5.5 to 5.6 s, AI report on the same incident 42 to 47 s). See <a href="#/today">Today</a> for the live build.</dd>
+      <dt>Result</dt><dd>Every build was checked through the app before it stayed live (fast path 5.5 to 5.6 s, AI report on the same incident 42 to 47 s).</dd>
+    </dl>
+  </li>
+
+  <li class="jr-step is-kept" data-proof="proofs/2026-10-29_latency">
+    <span class="label">12 · 29 Oct to 1 Nov · Speed without new answers</span>
+    <h2 class="jr-title">Verified drafts inside split decoding, a faster swap, and drafts that learn from the app</h2>
+    <dl class="jr-dl">
+      <dt>What</dt><dd>A per-step profile showed every millisecond of a decode step is inside the NPU call (97 to 123 ms; CPU work under 0.4 ms), so the only lever left was fewer sequential steps. Split streams already decode 2 to 4 rows per step, the costliest range on this NPU, while extra rows up to 16 cost little. So each stream now proposes draft tokens from the prompt and from a corpus of past outputs by the same model, and the NPU verifies them greedily.</dd>
+      <dt>Kept</dt><dd>
+        <ul class="jr-ul">
+          <li><b>Report drafts</b> (htpd v9, deploy18): reasoner 23.3 → 9.1 s in the lab, severity and label 6/6 unchanged.</li>
+          <li><b>Live corpus</b> (v9d, deploy19): every finished report feeds the drafts; 11.83 → 8.89 s on 6 held-out real incidents, repeated incidents 4.6 to 5.1 s.</li>
+          <li><b>Agent draft index</b> (v9e, deploy20): agent requests 2.59 → 2.06 s, 23 of 24 outputs identical.</li>
+          <li><b>Chat drafts</b> (v9f, deploy21): chat requests −17% on average, 10 of 10 identical.</li>
+          <li><b>Parallel weight repack</b> (deploy14): reasoner model load 3.67 → 2.80 s, byte-identical weights.</li>
+        </ul></dd>
+      <dt>Result</dt><dd>AI report on a fast-path incident through the app: 52.6 s (deploy14) → 21.7 to 28 s (deploy20 onwards).</dd>
+    </dl>
+  </li>
+
+  <li class="jr-step is-kept" data-proof="proofs/2026-10-31_validator">
+    <span class="label">13 · 31 Oct · Validator and silent sensors</span>
+    <h2 class="jr-title">A weather-aware validator rule, and critical readings after a silence</h2>
+    <dl class="jr-dl">
+      <dt>What</dt><dd>A critical report may start with "monitor" only when every flagged sensor is a weather sensor; any other critical report must start with an inspection or a facility review. A critical reading after a sensor was silent now skips the window-coverage rule for the fast incident only; the AI still waits for real coverage.</dd>
+      <dt>Result</dt><dd>CO2 2000 ppm after a 17-minute silence: fast incident in 2.6 s (before: 44 to 46 s). Every build again passed chaos and the fast-path check through the app.</dd>
+    </dl>
+  </li>
+
+  <li class="jr-step is-kept" data-proof="proofs/2026-11-01_chat">
+    <span class="label">14 · 1 to 3 Nov · Campus Assistant</span>
+    <h2 class="jr-title">Graded chat sweeps on the board, and a router in front of the model</h2>
+    <dl class="jr-dl">
+      <dt>What</dt><dd>40-question sweeps asked through the app on the board and graded against the incident store: counts, lists, sensor status, why, what-if, maintenance, follow-ups, Hinglish, typos, unsafe and out-of-scope requests. Fixes went into a Go question-type layer (intent classes, a time-span parser, referents from the previous answer, Hinglish words) and a guard that rejects invented incident ids and sensors. A fresh blind set was written before each round of fixes.</dd>
+      <dt>Result</dt><dd>Sweep 1: 27/40 → 39/40, median 9.7 → 0.2 s. Held-out: 25/40 → 39/40. The blind set (20/40) showed the fixes were too specific, which led to the general question-type layer. On the latest 4B build, 142 of 160 questions were answered by the router in under 1 s, 0 errors.</dd>
+    </dl>
+  </li>
+
+  <li class="jr-step is-rejected" data-proof="proofs/2026-11-02_2b_board">
+    <span class="label">15 · 2 to 3 Nov · rsn_v3</span>
+    <h2 class="jr-title">A fine-tuned 2B for chat and reports: better chat, worse reports</h2>
+    <dl class="jr-dl">
+      <dt>What</dt><dd>rsn_v3 trains Qwen3.5 on verified self-distilled chat answers and contrastive report pairs. The first 2B round was tried on the board and rolled back: a false critical on a room-temperature sensor fault and a self-contradicting pH report. A diagnosis found a tokenization bug that never trained the model to close its thinking block; round 2 fixed it.</dd>
+      <dt>Result</dt><dd>Round 2 against rsn_v1 on the same gate: chat 0.737 vs 0.477 (better), RWH severity 0.793 vs 0.919 and check recall 0.405 vs 0.848 (worse). It fails the report gate, so it does not write reports.</dd>
+    </dl>
+  </li>
+
+  <li class="jr-step is-kept" data-proof="proofs/2026-11-04_split">
+    <span class="label">16 · 4 Nov · Evaluation day</span>
+    <h2 class="jr-title">Each model where it scores best: 2B chat on the CPU, 4B reports on the NPU</h2>
+    <dl class="jr-dl">
+      <dt>What</dt><dd>For the evaluation only, the Campus Assistant's model calls go to the 2B (rsn_v3 r2) in a llama.cpp server on 5 CPU cores; reports and agents stay on the NPU, unchanged. If that server errors or is unreachable, chat falls back to the 4B on the NPU. The chat server is the first process the kernel kills under memory pressure, and it is stopped below 700 MB free.</dd>
+      <dt>Why</dt><dd>The 2B answers chat better and the 4B writes better reports. Chat off the NPU also no longer waits behind an incident analysis. We first ran it on the Adreno GPU and measured 8-10 tokens/s; Qwen3.5 is a hybrid model whose recurrent layers run on the CPU anyway, so on the CPU alone it decodes ~25 tokens/s with identical answers. The 4B is being trained further to become the one general model on the device.</dd>
+      <dt>Result</dt><dd>See <a href="#/today">Today</a> for the deploy result and the measured chat latency.</dd>
     </dl>
   </li>
 </ol>
+
+<section class="section">
+  <span class="label">Papers we built on</span>
+  <p class="lead">Methods we used or measured, with the project file that cites each one. The last group is well known and directly relevant but not cited in the repository.</p>
+  <ul class="jr-ul jr-refs">
+    <li><b>GPTQ</b>: Frantar, Ashkboos, Hoefler, Alistarh, <i>GPTQ: Accurate Post-Training Quantization for Generative Pre-trained Transformers</i>, ICLR 2023. Int4 weights for the agents (QUANT_RESEARCH.md, HANDBOOK 2.7).</li>
+    <li><b>LoRA</b>: Hu et al., <i>LoRA: Low-Rank Adaptation of Large Language Models</i>, 2021 (ICLR 2022). <b>QLoRA</b>: Dettmers et al., <i>QLoRA: Efficient Finetuning of Quantized LLMs</i>, NeurIPS 2023. Every fine-tune (REASONER_DESIGN.md).</li>
+    <li><b>Speculative decoding</b>: Leviathan, Kalman, Matias, <i>Fast Inference from Transformers via Speculative Decoding</i>, ICML 2023. <b>Prompt lookup decoding</b> (Saxena, GitHub) and SuffixDecoding-style corpus drafts. Verified drafts in htpd (reasoner_fast/RESEARCH.md, HANDBOOK 2.63).</li>
+    <li><b>ReAct</b>: Yao et al., ICLR 2023. <b>Toolformer</b>: Schick et al., NeurIPS 2023. <b>LLMCompiler</b>: Kim et al., ICML 2024. The tool-calling chat (REASONER_DESIGN.md).</li>
+    <li><b>RAG</b>: Lewis et al., <i>Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks</i>, NeurIPS 2020. The retrieval preliminary report (REASONER_DESIGN.md, FOG_OPTIONS.md).</li>
+    <li><b>WiSE-FT</b> and <b>Model soups</b>: Wortsman et al., CVPR 2022 and ICML 2022. <b>Task arithmetic</b>: Ilharco et al., ICLR 2023. The mixA50 and B50 weight blends (domain_research/PLAN.md, v2t3f/RESEARCH.md).</li>
+    <li><b>DPO</b>: Rafailov et al., NeurIPS 2023. <b>STaR</b>: Zelikman et al., NeurIPS 2022. The 3e top-up and the rsn_v3 plan (PLAN.md, PLAN_V2.md).</li>
+    <li><b>Indirect prompt injection</b>: Greshake et al., 2023. <b>Lost in the Middle</b>: Liu et al., TACL 2024. Reasoner prompt design (REASONER_DESIGN.md).</li>
+    <li><b>Qwen3 Technical Report</b>, Qwen Team, 2025; <b>The Llama 3 Herd of Models</b>, Dubey et al., 2024. Model choice (REASONER_DESIGN.md).</li>
+    <li><b>Guidelines for Human-AI Interaction</b>: Amershi et al., CHI 2019. Operator UI (UX_RESEARCH.md). <b>HeteroInfer</b>, arXiv 2501.14794: GPU + NPU together on 8 Gen 3 (GPU_RESEARCH.md).</li>
+    <li><b>Not cited in the repository, directly relevant:</b> Fu et al., <i>Break the Sequential Dependency of LLM Inference Using Lookahead Decoding</i>, ICML 2024, the method behind the LADE test we rejected (HANDBOOK 2.14).</li>
+  </ul>
+</section>
 
 <div data-slot="next"></div>

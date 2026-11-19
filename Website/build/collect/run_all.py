@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _lib import *  # noqa
 
 import accuracy, agent_design, latency, hardware, refinement, app_ux, training_v2, dataset_v2, ops, timeline, extras  # noqa
-import use_case, situations  # noqa
+import use_case, situations, recent  # noqa
 import decision_groups, route, qa, status, today, overlay  # noqa
 
 TOPICS = ["use_case", "situations", "latency", "hardware", "accuracy", "agent_design", "refinement", "training_v2", "dataset_v2", "app_ux", "ops", "timeline"]
@@ -184,6 +184,7 @@ def main():
     latency.main(); hardware.main(); refinement.main(); app_ux.main()
     tv2 = training_v2.main()
     dataset_v2.main(); ops.main(); timeline.main(); extras.main(); use_case.main(); situations.main()
+    recent.main()   # deploys 14-28, chat router, rsn_v3, evaluation-day split (2026-11-04)
     before = len(list(DATA.glob("*/*.json"))) - len(list((DATA / "raw").glob("*.json")))
     fold()
     decision_groups.main(); route.main(); qa.main(); status.main(); today.main(); overlay.main()
