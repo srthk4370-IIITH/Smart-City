@@ -950,6 +950,23 @@ static std::string g_corpus_live;
 static int g_corpus_live_max = 3000, g_corpus_live_n = 0;
 static int g_sspec_klong = 0, g_sspec_longm = 16;
 static int g_reason_ctx_stream = 4096;  // --reason-ctx (cells one stream may use)
+// v9h (2026-11-12). Both default off: without the env below v9h runs exactly v9f's code paths.
+// HTPD_REASON_POOL=N: a split-spec reasoner context with one unified KV pool gets N cells in total instead of
+// streams x --reason-ctx + 256; --reason-ctx stays the per-stream cap. HTPD_REASON_POOL=12544 + --reason-ctx 8192 =
+// today's KV allocation (3 x 4096 + 256), and one stream (the r3 chat, ~5.1k-7.2k tokens) may use up to 8192 cells.
+// A decode that finds no free KV cell (pool exhausted) now stops the request with "ctx" instead of "error".
+// HTPD_REASON_CHAIN=1 (M2, chained static prefix): when the request's static "prefix" is in neither the memory nor the
+// disk cache, htpd looks for a known static key (memory or disk) that is a prefix of it, restores that state and
+// prefills only the rest. When another known key shares a long head with the new prefix (>= HTPD_REASON_CHAIN_MIN
+// tokens, default 1024, e.g. the r3 header + date before the hourly time line) and no known prefix reaches within
+// HTPD_REASON_CHAIN_SLACK (256) tokens of that head, the state at the end of the shared head is saved once as a base
+// (disk + memory). The next hour's prefix then costs ~490 tokens instead of ~5,070. The model sees the same tokens.
+// HTPD_REASON_MEM_STATIC: static states kept in host memory (default 2, 3 with the chain; a base is evicted last).
+static bool g_kv_full = false;                 // this request hit "no free KV cell" (llama_decode rc 1)
+static bool g_reason_chain = false;
+static int g_chain_min = 1024, g_chain_slack = 256, g_rmem_static = 2;
+static std::vector<std::vector<llama_token>> g_rdisk_keys;  // static-prefix keys whose state files exist (this model)
+static bool g_rdisk_scanned = false;
 
 struct SpecCorpus {
     std::vector<llama_token> t;                                 // documents, each followed by -1
@@ -1140,6 +1157,76 @@ static bool starts_with_toks(const std::vector<llama_token> & v, const std::vect
     return k.size() <= v.size() && std::equal(k.begin(), k.end(), v.begin());
 }
 
+// disk state file of a static key (v9f naming, unchanged: model path + tokens + context layout tags)
+static std::string reason_disk_path(const llama_token * k, size_t n) {
+    uint64_t h = fnv1a(g_reason_path_s.data(), g_reason_path_s.size());
+    h = fnv1a(k, n * sizeof(llama_token), h);
+    if (g_reason_rs > 0) h = fnv1a(&g_reason_rs, sizeof g_reason_rs, h);  // snapshot planes change the state layout
+    if (g_sspec_ctx) { const int tag = g_sspec_kvu ? 0x39b1 : 0x39b0; h = fnv1a(&tag, sizeof tag, h); }  // v9 context layout
+    char b[40];
+    snprintf(b, sizeof b, "%016llx", (unsigned long long) h);
+    return g_reason_path_s + ".prefix_" + b + ".state";
+}
+
+static void rdisk_add(const std::vector<llama_token> & k) {
+    for (auto & e : g_rdisk_keys) if (e == k) return;
+    g_rdisk_keys.push_back(k);
+}
+
+// v9h: index of the static keys on disk (read once per process from the state files' token headers; only files whose
+// name matches this model + context layout)
+static void rdisk_scan() {
+    if (g_rdisk_scanned) return;
+    g_rdisk_scanned = true;
+    const size_t sl = g_reason_path_s.rfind('/');
+    const std::string dir = sl == std::string::npos ? "." : g_reason_path_s.substr(0, sl);
+    const std::string stem = (sl == std::string::npos ? g_reason_path_s : g_reason_path_s.substr(sl + 1)) + ".prefix_";
+    DIR * d = opendir(dir.c_str());
+    if (!d) return;
+    while (dirent * e = readdir(d)) {
+        const std::string n = e->d_name;
+        if (n.size() <= stem.size() + 6 || n.compare(0, stem.size(), stem) != 0 || n.compare(n.size() - 6, 6, ".state") != 0) continue;
+        const std::string p = dir + "/" + n;
+        FILE * fp = fopen(p.c_str(), "rb");
+        if (!fp) continue;
+        uint32_t hd[3] = {0, 0, 0};
+        std::vector<llama_token> k;
+        if (fread(hd, sizeof(uint32_t), 3, fp) == 3 && hd[0] == LLAMA_STATE_SEQ_MAGIC && hd[1] == LLAMA_STATE_SEQ_VERSION &&
+            hd[2] >= 64 && hd[2] <= (1u << 20)) {
+            k.resize(hd[2]);
+            if (fread(k.data(), sizeof(llama_token), k.size(), fp) != k.size()) k.clear();
+        }
+        fclose(fp);
+        if (!k.empty() && reason_disk_path(k.data(), k.size()) == p) rdisk_add(k);
+    }
+    closedir(d);
+    fprintf(stderr, "htpd: prefix chain: %zu static keys on disk\n", g_rdisk_keys.size());
+}
+
+static size_t lcp_toks(const std::vector<llama_token> & a, const std::vector<llama_token> & b) {
+    const size_t n = std::min(a.size(), b.size());
+    size_t i = 0;
+    while (i < n && a[i] == b[i]) ++i;
+    return i;
+}
+
+static bool file_exists(const std::string & p) { struct stat st; return stat(p.c_str(), &st) == 0; }
+
+// keep at most g_rmem_static static states in memory: drop the oldest that is not a prefix (base) of the new key
+static void rmem_static_push(std::vector<llama_token> key, std::vector<uint8_t> && blob) {
+    int n_static = 0;
+    for (auto & e : g_rcache) n_static += !e.turn;
+    if (n_static >= g_rmem_static) {
+        auto victim = g_rcache.end();
+        for (auto it = g_rcache.begin(); it != g_rcache.end(); ++it)
+            if (!it->turn && !(g_reason_chain && it->key.size() < key.size() && starts_with_toks(key, it->key))) { victim = it; break; }
+        if (victim == g_rcache.end())
+            for (auto it = g_rcache.begin(); it != g_rcache.end(); ++it) if (!it->turn) { victim = it; break; }
+        if (victim != g_rcache.end()) g_rcache.erase(victim);
+    }
+    g_rcache.push_back({std::move(key), std::move(blob), false});
+}
+
 // greedy argmax restricted to the bytes the forcer allows (EOG only once the answer is complete); the plain
 // argmax whenever it is allowed, so outside schema deviations the model's own choice is kept
 static FILE * g_trace = nullptr;  // HTPD_REASON_TRACE: per-pick logits trace of the current reason request
@@ -1292,6 +1379,7 @@ static std::vector<Out> run_reason(llama_context * ctx, const std::vector<std::s
     }
 
     auto t0 = clk::now();
+    g_kv_full = false;
     g_pick_slow64 = g_pick_slow1k = g_pick_full = 0;
     llama_batch batch = llama_batch_init(std::max(n_batch, n * 72), 0, 1);
     auto prefill = [&](int s, int from, int to, bool want_last) -> bool {  // tokens [from, to) of stream s
@@ -1305,18 +1393,71 @@ static std::vector<Out> run_reason(llama_context * ctx, const std::vector<std::s
             g_hb_phase = 1; g_hb_in_decode = 1;
             const int rc_pf = llama_decode(ctx, batch);
             g_hb_in_decode = 0; g_hb_step++;
-            if (rc_pf != 0) { fprintf(stderr, "htpd: reason prefill failed\n"); return false; }
+            if (rc_pf != 0) { if (rc_pf == 1) g_kv_full = true; fprintf(stderr, "htpd: reason prefill failed (rc %d)\n", rc_pf); return false; }
         }
         return true;
     };
-    auto disk_path = [&](const std::vector<llama_token> & k) {
-        uint64_t h = fnv1a(g_reason_path_s.data(), g_reason_path_s.size());
-        h = fnv1a(k.data(), k.size() * sizeof(llama_token), h);
-        if (g_reason_rs > 0) h = fnv1a(&g_reason_rs, sizeof g_reason_rs, h);  // snapshot planes change the state layout
-        if (g_sspec_ctx) { const int tag = g_sspec_kvu ? 0x39b1 : 0x39b0; h = fnv1a(&tag, sizeof tag, h); }  // v9 context layout
-        char b[40];
-        snprintf(b, sizeof b, "%016llx", (unsigned long long) h);
-        return g_reason_path_s + ".prefix_" + b + ".state";
+    auto disk_path = [&](const std::vector<llama_token> & k) { return reason_disk_path(k.data(), k.size()); };
+    // v9h M2: bring stream i to the longest known static state that is a prefix of ptoks (memory, else disk) and, when
+    // a known key shares a longer head with ptoks, build and save the state at the end of that head (a base) first.
+    // Returns the tokens of ptoks now in stream i (0: nothing restored, the stream is empty).
+    auto chain_base = [&](int i, std::string & how) -> int {
+        const int P = (int) ptoks.size();
+        rdisk_scan();
+        const ReasonCache * bm = nullptr;
+        const std::vector<llama_token> * bd = nullptr;
+        size_t L = 0;
+        for (auto & e : g_rcache) {
+            if (e.turn) continue;
+            if ((int) e.key.size() < P && starts_with_toks(ptoks, e.key)) { if (!bm || e.key.size() > bm->key.size()) bm = &e; }
+            else if (const size_t l = lcp_toks(e.key, ptoks); (int) l + 16 <= P) L = std::max(L, l);
+        }
+        for (auto it = g_rdisk_keys.begin(); it != g_rdisk_keys.end();) {
+            if (!file_exists(disk_path(*it))) { it = g_rdisk_keys.erase(it); continue; }  // pruned (LRU)
+            if ((int) it->size() < P && starts_with_toks(ptoks, *it)) { if ((!bd || it->size() > bd->size()) && (!bm || it->size() > bm->key.size())) bd = &*it; }
+            else if (const size_t l = lcp_toks(*it, ptoks); (int) l + 16 <= P) L = std::max(L, l);
+            ++it;
+        }
+        if (bm && bd && bd->size() <= bm->key.size()) bd = nullptr;
+        int b = 0;
+        auto tb = clk::now();
+        if (bd) {  // disk base (longer than any memory one)
+            std::vector<llama_token> ft(bd->size() + 1);
+            size_t nt = 0;
+            const std::string p = disk_path(*bd);
+            if (llama_state_seq_load_file(ctx, p.c_str(), i, ft.data(), ft.size(), &nt) != 0 && nt == bd->size() &&
+                std::equal(bd->begin(), bd->end(), ft.begin())) { b = (int) bd->size(); utime(p.c_str(), nullptr); how = "chain-disk"; }
+            else { llama_memory_seq_rm(mem, i, -1, -1); bd = nullptr; }
+        }
+        if (!b && bm) {
+            if (llama_state_seq_set_data(ctx, bm->blob.data(), bm->blob.size(), i) != 0) {
+                b = (int) bm->key.size(); how = "chain-mem";
+                const std::string p = disk_path(bm->key);
+                if (file_exists(p)) utime(p.c_str(), nullptr);  // keep the base's file out of the LRU prune
+            } else llama_memory_seq_rm(mem, i, -1, -1);
+        }
+        const double t_restore = ms_since(tb);
+        if ((int) L >= g_chain_min && (int) L > b + g_chain_slack && (int) L <= P - 16) {
+            tb = clk::now();
+            if (!prefill(i, b, (int) L, false)) { llama_memory_seq_rm(mem, i, -1, -1); return 0; }
+            std::vector<llama_token> key(ptoks.begin(), ptoks.begin() + L);
+            if (g_reason_disk_cache) {
+                const std::string p = disk_path(key), part = p + ".part";
+                if (llama_state_seq_save_file(ctx, part.c_str(), i, key.data(), key.size()) != 0) {
+                    rename(part.c_str(), p.c_str());
+                    rdisk_add(key);
+                    prefix_cache_prune(g_reason_path_s);
+                } else remove(part.c_str());
+            }
+            std::vector<uint8_t> blob(llama_state_seq_get_size(ctx, i));
+            blob.resize(llama_state_seq_get_data(ctx, blob.data(), blob.size(), i));
+            if (!blob.empty()) rmem_static_push(key, std::move(blob));
+            fprintf(stderr, "htpd: prefix chain: base of %zu tokens built on %d in %.0f ms\n", key.size(), b, ms_since(tb));
+            b = (int) L;
+            how = "chain-base";
+        }
+        if (b) fprintf(stderr, "htpd: prefix chain: %s %d of %d prefix tokens (restore %.0f ms)\n", how.c_str(), b, P, t_restore);
+        return b;
     };
 
     // ---- restore the longest cached prefix state of each stream (whole-state, recurrent-safe)
@@ -1327,6 +1468,9 @@ static std::vector<Out> run_reason(llama_context * ctx, const std::vector<std::s
         for (auto & e : g_rcache)
             if (e.key.size() < toks[i].size() && starts_with_toks(toks[i], e.key) && (!best || e.key.size() > best->key.size())) best = &e;
         std::string how = "none";
+        // v9h chain: a memory state shorter than the static prefix does not end the search (exact disk state, then chain)
+        if (best && g_reason_chain && (int) ptoks.size() >= 64 && best->key.size() < ptoks.size() && ptoks.size() < toks[i].size() &&
+            starts_with_toks(toks[i], ptoks)) best = nullptr;
         if (best && llama_state_seq_set_data(ctx, best->blob.data(), best->blob.size(), i) != 0) {
             start[i] = (int) best->key.size();
             how = best->turn ? "turn" : "mem";
@@ -1345,13 +1489,16 @@ static std::vector<Out> run_reason(llama_context * ctx, const std::vector<std::s
                 }
             }
             if (!ok) {
-                if (!prefill(i, 0, P, false)) { llama_memory_seq_rm(mem, i, -1, -1); }
+                std::string hc;
+                const int from = g_reason_chain ? chain_base(i, hc) : 0;
+                if (!prefill(i, from, P, false)) { llama_memory_seq_rm(mem, i, -1, -1); }
                 else {
-                    ok = true; how = "saved";
+                    ok = true; how = from > 0 ? hc : "saved";
                     if (g_reason_disk_cache) {  // .part + rename: a crash never leaves a torn state file
                         const std::string part = path + ".part";
                         if (llama_state_seq_save_file(ctx, part.c_str(), i, ptoks.data(), ptoks.size()) != 0) {
                             rename(part.c_str(), path.c_str());
+                            if (g_reason_chain) rdisk_add(ptoks);
                             prefix_cache_prune(g_reason_path_s);
                         } else remove(part.c_str());
                     }
@@ -1359,16 +1506,13 @@ static std::vector<Out> run_reason(llama_context * ctx, const std::vector<std::s
             }
             if (ok) {
                 start[i] = P;
-                std::vector<uint8_t> blob(llama_state_seq_get_size(ctx, i));
-                blob.resize(llama_state_seq_get_data(ctx, blob.data(), blob.size(), i));
-                if (!blob.empty()) {
-                    // at most 2 static-prefix states (~100 MB each) in host memory: drop the oldest
-                    int n_static = 0;
-                    for (auto & e : g_rcache) n_static += !e.turn;
-                    if (n_static >= 2)
-                        for (auto it = g_rcache.begin(); it != g_rcache.end(); ++it) if (!it->turn) { g_rcache.erase(it); break; }
-                    g_rcache.push_back({ptoks, std::move(blob), false});
-                }
+                if (how == "disk" && g_reason_chain) rdisk_add(ptoks);
+                // static-prefix states (~100 MB each) in host memory: at most HTPD_REASON_MEM_STATIC (v9f: 2), oldest out
+                bool have = false;
+                for (auto & e : g_rcache) if (!e.turn && e.key == ptoks) have = true;
+                std::vector<uint8_t> blob(have ? 0 : llama_state_seq_get_size(ctx, i));
+                if (!have) blob.resize(llama_state_seq_get_data(ctx, blob.data(), blob.size(), i));
+                if (!blob.empty()) rmem_static_push(ptoks, std::move(blob));
             }
         }
         if (i == 0) rs.cache = how;
@@ -1507,7 +1651,7 @@ static std::vector<Out> run_reason(llama_context * ctx, const std::vector<std::s
                 batch.token[idx] = draft[j]; batch.pos[idx] = pd + (int) j; batch.n_seq_id[idx] = 1; batch.seq_id[idx][0] = 0;
                 batch.logits[idx] = true;
             }
-            if (llama_decode(ctx, batch) != 0) { fprintf(stderr, "htpd: reason decode failed\n"); break; }
+            if (const int rc = llama_decode(ctx, batch); rc != 0) { if (rc == 1) g_kv_full = true; fprintf(stderr, "htpd: reason decode failed (rc %d)\n", rc); break; }
             sp.steps++;
             if (!draft.empty()) { sp.drafts++; sp.drafted += (int) draft.size(); }
             int row = (int) cert.size() - 1;  // batch row whose logits predict the next token
@@ -1679,7 +1823,7 @@ static std::vector<Out> run_reason(llama_context * ctx, const std::vector<std::s
             auto tp2 = clk::now();
             pf_dec += std::chrono::duration<double, std::milli>(tp2 - tp1).count();
             g_hb_in_decode = 0; g_hb_phase = 3; g_hb_step++;
-            if (rc_dec != 0) { fprintf(stderr, "htpd: reason decode failed\n"); failed = true; break; }
+            if (rc_dec != 0) { if (rc_dec == 1) g_kv_full = true; fprintf(stderr, "htpd: reason decode failed (rc %d)\n", rc_dec); failed = true; break; }
             steps++;
             for (int s = 0; s < NS; ++s) {
                 if (base[s] < 0) continue;
@@ -1887,7 +2031,7 @@ static std::vector<Out> run_reason(llama_context * ctx, const std::vector<std::s
         auto tp2 = clk::now();
         pf_dec += std::chrono::duration<double, std::milli>(tp2 - tp1).count();
         g_hb_in_decode = 0; g_hb_phase = 3; g_hb_step++;
-        if (rc_dec != 0) { fprintf(stderr, "htpd: reason decode failed\n"); break; }
+        if (rc_dec != 0) { if (rc_dec == 1) g_kv_full = true; fprintf(stderr, "htpd: reason decode failed (rc %d)\n", rc_dec); break; }
         steps++;
         for (int s = 0; s < NS; ++s) {
             if (last[s] < 0) continue;
@@ -1933,7 +2077,7 @@ static std::vector<Out> run_reason(llama_context * ctx, const std::vector<std::s
     if (sspec) for (int q = 0; q < (int) llama_n_seq_max(ctx); ++q) llama_memory_seq_rm(mem, q, -1, -1);  // C and S sequences
     for (int s = 0; s < NS; ++s) {
         llama_memory_seq_rm(mem, s, -1, -1);
-        if (out[s].stop.empty()) out[s].stop = "error";
+        if (out[s].stop.empty() || (g_kv_full && out[s].stop == "error")) out[s].stop = g_kv_full ? "ctx" : "error";  // v9h: pool full
         fprintf(stderr, "htpd: reason stream %d: %d tokens (%d forced, %d constrained picks), stop %s, %.0f ms\n",
                 s, out[s].tokens, out[s].forced, changed[s], out[s].stop.c_str(), out[s].ms);
         if (s == NS - 1)
@@ -2182,6 +2326,14 @@ int main(int argc, char ** argv) {
     // v9 split-spec (default off)
     g_sspec_k = std::max(0, std::min(16, env_int("HTPD_REASON_SPLIT_SPEC", 0)));
     g_reason_ctx_stream = reason_ctx;
+    g_reason_chain = getenv("HTPD_REASON_CHAIN") && atoi(getenv("HTPD_REASON_CHAIN")) > 0;
+    if (const char * e = getenv("HTPD_REASON_CHAIN_MIN"); e && *e) g_chain_min = std::max(64, atoi(e));
+    if (const char * e = getenv("HTPD_REASON_CHAIN_SLACK"); e && *e) g_chain_slack = std::max(0, atoi(e));
+    g_rmem_static = g_reason_chain ? 3 : 2;
+    if (const char * e = getenv("HTPD_REASON_MEM_STATIC"); e && *e) g_rmem_static = std::max(1, atoi(e));
+    if (g_reason_chain || getenv("HTPD_REASON_POOL"))
+        fprintf(stderr, "htpd: v9h: pool %s, chain %d (min %d, slack %d), memory static states %d\n",
+                getenv("HTPD_REASON_POOL") ? getenv("HTPD_REASON_POOL") : "off", (int) g_reason_chain, g_chain_min, g_chain_slack, g_rmem_static);
     if (g_sspec_k > 0 && g_reason_spec > 0) {
         fprintf(stderr, "htpd: HTPD_REASON_SPEC (v8s) is set: HTPD_REASON_SPLIT_SPEC ignored\n");
         g_sspec_k = 0;
@@ -2292,6 +2444,10 @@ int main(int argc, char ** argv) {
                 cp.n_seq_max = (uint32_t) (2 * reason_streams);
                 cp.kv_unified = g_sspec_kvu;
                 cp.n_ctx = g_sspec_kvu ? (uint32_t) (reason_streams * reason_ctx + 256) : (uint32_t) (2 * reason_streams * reason_ctx);
+                if (const char * e = getenv("HTPD_REASON_POOL"); e && atoi(e) > 0) {  // v9h: one shared pool, per-stream cap stays
+                    if (g_sspec_kvu) cp.n_ctx = (uint32_t) atoi(e);
+                    else fprintf(stderr, "htpd: HTPD_REASON_POOL ignored: needs the unified KV (HTPD_REASON_SPEC_KVU on)\n");
+                }
             }
             rctx = llama_init_from_model(rmodel, cp);
             if (rctx) g_reason_rs = (int) llama_n_rs_seq(rctx);
