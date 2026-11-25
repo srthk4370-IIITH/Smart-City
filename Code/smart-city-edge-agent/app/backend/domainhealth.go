@@ -137,6 +137,9 @@ func staleSensor(st SensorState, sim int64) bool {
 // done used to vanish from the tile the moment it was approved. Unowned incidents older than the open
 // window stay listed by the app as "earlier, still awaiting your decision".
 func openIncident(inc *Incident, sim, epoch int64) bool {
+	if inc.SystemCheck {
+		return false
+	}
 	if wfOf(inc) == wfClosed {
 		return false
 	}

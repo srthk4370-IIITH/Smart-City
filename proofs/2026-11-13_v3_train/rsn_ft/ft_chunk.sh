@@ -28,13 +28,13 @@ t=0; until gpu_free; do
   sleep 300; t=$((t + 1))
 done
 echo "rsn_ft $RUN $(date -Is) pid=$$" > "$LOCK"
-export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 TOKENIZERS_PARALLELISM=false PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 TOKENIZERS_PARALLELISM=false PYTORCH_CUDA_ALLOC_CONF=${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}
 export TORCHINDUCTOR_COMPILE_THREADS=1 MALLOC_ARENA_MAX=2 RSN3_SEG_TOKENIZE=1 RSN3_GEN_TOK_BUDGET=${RSN3_GEN_TOK_BUDGET:-8400}
 ARGS="--base $BASE ${START_ADAPTER:+--init-adapter $START_ADAPTER} --tools $TOOLS4 --new $NEW --replay $REPLAY
  --out $O --max-len ${MAX_LEN:-7424} --quant nf4 --dtype bf16 --gen-v4-inc $DEV4_INC --gen-v4-chat $DEV4_CHAT ${R3REF:+--r3-ref $R3REF}
  --gen-inc $GEN_INC3 --gen-chat $GEN_CHAT3 ${FIT_FLAGS:?FIT_FLAGS missing} ${TOPUP_FLAGS:-} ${GEN_FLAGS:-} ${MAX_STEPS:+--max-steps $MAX_STEPS}"
 status "$RUN chunk start (${CHUNK_H} h, max_len ${MAX_LEN:-7424})"
-nice -n 10 $PY "$T4/rsn_ft_train.py" $ARGS --hours "$CHUNK_H" >> "$O/stdout.log" 2>&1 &
+nice -n ${TRAIN_NICE:-10} $PY "$T4/rsn_ft_train.py" $ARGS --hours "$CHUNK_H" >> "$O/stdout.log" 2>&1 &
 TP=$!
 ( hot=0; n=0; np=0; while sleep 10; do kill -0 $TP 2>/dev/null || exit 0
     { [ -e "$O/STOP" ] || [ -e "$C/STOP" ]; } && touch "$O/STOP"

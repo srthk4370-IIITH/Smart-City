@@ -186,10 +186,21 @@ type Incident struct {
 	Related   []string `json:"related_incidents,omitempty"`
 	GroupWhy  string   `json:"group_why,omitempty"`
 
-	promoSim int64       // sensor time of the last promotion re-run (promote.go)
-	openedAt time.Time   // wall clock the incident was created in this process (watchdog.go)
-	quiet    bool        // a refinement's working copy: no SSE, no token stream (refine.go)
-	preempt  func() bool // checked between NPU calls; true = stop, more urgent work is waiting
+	// polish pass (polish_*.go)
+	SystemCheck  bool   `json:"system_check,omitempty"`  // opened by the deploy check: hidden from the operator, auto-closed
+	Watermark    string `json:"watermark,omitempty"`     // set on a demo-injected incident: "DEMO ..." so nobody mistakes it for a real event
+	EventMode    bool   `json:"event_mode,omitempty"`    // one incident for a building during an alarm flood
+	Zone         string `json:"zone,omitempty"`          // the building of an event-mode incident
+	ShortRunAt   int64  `json:"short_run_at,omitempty"`  // wall unix: the AI ran on the last 4 h of a short event
+	SeverityWhy  string `json:"severity_why,omitempty"`  // why the severity last changed (refine.go)
+	SeverityKept bool   `json:"severity_kept,omitempty"` // a drop from critical was refused because the rules still read critical
+
+	promoSim   int64       // sensor time of the last promotion re-run (promote.go)
+	openedAt   time.Time   // wall clock the incident was created in this process (watchdog.go)
+	shortNoWin bool        // short-event sweep already wrote "no real window" (polish_events.go)
+	shortFull  bool        // the 8-reading analysis already replaced the early one (promote.go)
+	quiet      bool        // a refinement's working copy: no SSE, no token stream (refine.go)
+	preempt    func() bool // checked between NPU calls; true = stop, more urgent work is waiting
 }
 
 type Reasoner struct {
@@ -202,6 +213,7 @@ type Reasoner struct {
 	notify     func(string, any)
 	seq        int
 	active     bool
+	loopGen    int // bumped by the watchdog when it resets a stuck r.active (watchdog.go)
 	pending    []Candidate
 	coolWait   bool            // a runWhenCool watcher is waiting for the thermal guard to clear
 	jobs       []job           // explicitly requested analyses (Analyze, Rerun), run in order after pending alerts
@@ -217,6 +229,7 @@ type Reasoner struct {
 	// promotion of context sensors that turn abnormal inside an open incident (promote.go)
 	promos map[string]*promoJob
 	promoQ []string
+	pol    polishState // event mode, system checks, zone chains (polish_events.go)
 }
 
 func NewReasoner(g *GenieRunner, e *Engine, dir string, notify func(string, any)) *Reasoner {
@@ -224,6 +237,7 @@ func NewReasoner(g *GenieRunner, e *Engine, dir string, notify func(string, any)
 		refineQ: map[string]bool{}}
 	os.MkdirAll(filepath.Dir(r.store), 0o755)
 	r.load()
+	r.loadPending()
 	r.ret.rebuild(r.incidents)
 	if n := r.ret.loadSeed(filepath.Join(dir, "data", "rag_seed.json")); n > 0 {
 		trace("retrieval: %d seed reference cases loaded", n)
@@ -234,7 +248,12 @@ func NewReasoner(g *GenieRunner, e *Engine, dir string, notify func(string, any)
 func (r *Reasoner) List() []*Incident {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := append([]*Incident(nil), r.incidents...)
+	out := make([]*Incident, 0, len(r.incidents))
+	for _, i := range r.incidents {
+		if !i.SystemCheck { // deploy-check incidents are not the operator's business (polish_events.go)
+			out = append(out, i)
+		}
+	}
 	// newest first by ID, not by wall clock: the device clock can jump back years after a power loss
 	sort.Slice(out, func(i, j int) bool { return incNum(out[i].ID) > incNum(out[j].ID) })
 	return out
@@ -293,6 +312,7 @@ func (r *Reasoner) Busy() bool {
 // so the NPU never builds a backlog and the user's most recent sensor change is always analysed.
 // The thermal guard defers LLM analysis while the device is hot (rules keep running).
 func (r *Reasoner) HandleCandidates(cands []Candidate) {
+	cands = r.eventMode(cands) // polish_events.go: alarm flood in one building = one incident
 	if cands = r.promoteOpen(r.splitFast(cands)); len(cands) == 0 {
 		return
 	}
@@ -312,7 +332,7 @@ func (r *Reasoner) HandleCandidates(cands []Candidate) {
 			r.mergePending(cands)
 			if !r.coolWait {
 				r.coolWait = true
-				go r.runWhenCool()
+				safeGo("cool wait", r.runWhenCool)
 			}
 			r.mu.Unlock()
 			r.notify("log", map[string]any{"msg": fmt.Sprintf("Thermal guard: NPU %.0f C, skin %.0f C - LLM analysis queued until the board cools (rules still active)", npu, skin)})
@@ -323,7 +343,7 @@ func (r *Reasoner) HandleCandidates(cands []Candidate) {
 	r.active = true
 	mode := r.Mode
 	r.mu.Unlock()
-	go r.loop(work{cands: cands, mode: mode})
+	safeGo("analysis loop", func() { r.loop(work{cands: cands, mode: mode}) })
 }
 
 // mergePending folds candidates into the pending batch, newest reading per sensor winning.
@@ -341,6 +361,12 @@ func (r *Reasoner) mergePending(cands []Candidate) {
 			r.pending = append(r.pending, c)
 		}
 	}
+	var dropped int
+	r.pending, dropped = prioritizePending(r.pending, maxPendingCands)
+	if dropped > 0 {
+		log.Printf("pending queue: full (%d), dropped the %d least severe waiting sensors", maxPendingCands, dropped)
+	}
+	r.savePendingLocked()
 }
 
 // Submit queues an explicitly requested analysis (dashboard Analyze, Rerun) behind whatever the
@@ -356,7 +382,7 @@ func (r *Reasoner) mergePending(cands []Candidate) {
 // Returns false when the request queue is full (maxJobs); the API answers 429.
 func (r *Reasoner) Submit(cands []Candidate, mode int) bool {
 	if mode == 1 {
-		go r.Process(cands, mode)
+		safeGo("analysis (rules)", func() { r.Process(cands, mode) })
 		return true
 	}
 	r.mu.Lock()
@@ -369,14 +395,14 @@ func (r *Reasoner) Submit(cands []Candidate, mode int) bool {
 		ok := r.enqueue(cands, mode)
 		r.coolWait = true
 		r.mu.Unlock()
-		go r.runWhenCool()
+		safeGo("cool wait", r.runWhenCool)
 		r.notify("log", map[string]any{"msg": fmt.Sprintf("Thermal guard: NPU %.0f C, skin %.0f C - requested analysis queued until the board cools", npu, skin)})
 		return ok
 	}
 	r.active = true
 	r.lastNPU = time.Now()
 	r.mu.Unlock()
-	go r.loop(work{cands: cands, mode: mode})
+	safeGo("analysis loop", func() { r.loop(work{cands: cands, mode: mode}) })
 	return true
 }
 
@@ -396,6 +422,7 @@ func (r *Reasoner) next() (w work, ok bool) {
 	if r.pending != nil {
 		w = work{cands: r.pending, mode: r.Mode}
 		r.pending = nil
+		r.savePendingLocked()
 		return w, true
 	}
 	if len(r.jobs) > 0 {
@@ -451,17 +478,17 @@ func (r *Reasoner) runWhenCool() {
 }
 
 func (r *Reasoner) loop(w work) {
+	r.mu.RLock()
+	gen := r.loopGen
+	r.mu.RUnlock()
 	for {
-		if w.early != nil {
-			r.runEarly(*w.early)
-		} else if w.promote != "" {
-			r.runPromote(w.promote)
-		} else if w.refine != "" {
-			r.runRefine(w.refine)
-		} else {
-			r.Process(w.cands, w.mode)
-		}
+		r.runWork(w)
 		r.mu.Lock()
+		if r.loopGen != gen { // the watchdog gave up on this loop (it was stuck) and started a new one
+			r.mu.Unlock()
+			log.Printf("reasoner: an abandoned analysis loop finished late; ignored")
+			return
+		}
 		var ok bool
 		if w, ok = r.next(); !ok {
 			r.active = false
@@ -521,6 +548,7 @@ func longRangeLines(b *strings.Builder, s SensorRef, indent string) {
 
 func (r *Reasoner) newIncident(cands []Candidate, mode int) *Incident {
 	inc := r.buildIncident(cands, mode)
+	markDemo(inc)
 	r.mu.Lock()
 	r.seq++
 	inc.ID = fmt.Sprintf("INC-%04d", r.seq)
@@ -552,6 +580,12 @@ func (r *Reasoner) buildIncident(cands []Candidate, mode int) *Incident {
 	}
 	// cross-domain context (parallel deterministic context agents, CPU, microseconds)
 	ctxPicks := r.eng.ContextFor(flagged, 4)
+	var snoozed []string // critical readings on snoozed sensors still alert (polish_engine.go)
+	for _, c := range flagged {
+		if why := r.eng.SnoozeReason(c.Node, c.Metric); why != "" {
+			snoozed = append(snoozed, fmt.Sprintf("%s is snoozed (%s) but a critical reading still alerts", nice[c.Metric], why))
+		}
+	}
 	r.mu.Lock()
 	inc := &Incident{Mode: mode, State: "running", CreatedSim: cands[0].End,
 		CreatedWall: incidentWall(), Approval: "pending"}
@@ -588,6 +622,9 @@ func (r *Reasoner) buildIncident(cands []Candidate, mode int) *Incident {
 	}
 	inc.Mode1 = mode1Report(inc.Sensors)
 	wfCreated(inc) // workflow.go: analysing
+	for _, m := range snoozed {
+		inc.Timeline = append(inc.Timeline, TimelineItem{T: time.Now().Format("15:04:05"), Msg: m})
+	}
 	r.mu.Unlock()
 	return inc
 }
@@ -648,7 +685,7 @@ func utf8CompletePrefix(s string) int {
 
 func (r *Reasoner) log(inc *Incident, msg string) {
 	r.mu.Lock()
-	inc.Timeline = append(inc.Timeline, TimelineItem{time.Now().Format("15:04:05"), msg})
+	inc.Timeline = append(inc.Timeline, TimelineItem{nowTime().In(IST).Format("15:04:05"), msg}) // real IST time, not the device RTC (2026-11-20)
 	r.mu.Unlock()
 	if !inc.quiet {
 		r.notify("incident", map[string]any{"id": inc.ID, "state": inc.State, "msg": msg})
@@ -661,6 +698,7 @@ func (r *Reasoner) Process(cands []Candidate, mode int) *Incident {
 	if inc == nil {
 		inc = r.newIncident(cands, mode)
 	}
+	r.markSystemCheck(inc, cands)
 	// persisted as "running" straight away: if the process dies mid-analysis the alert is not lost -
 	// it reloads as "failed" and the operator can rerun it (found by killing the backend mid-run)
 	r.persist(inc)
@@ -695,6 +733,7 @@ func (r *Reasoner) Process(cands []Candidate, mode int) *Incident {
 	trace("phase %s done +%dms", inc.ID, time.Since(t0).Milliseconds())
 	r.log(inc, fmt.Sprintf("Finished in %.1fs, %d NPU call(s)", inc.TotalMs/1000, inc.NPUCalls))
 	r.persist(inc)
+	r.autoCloseSystemCheck(inc)
 	return inc
 }
 
@@ -1297,4 +1336,19 @@ func (r *Reasoner) preliminary(inc *Incident, rc *ReportCall) {
 	}
 	r.mu.Unlock()
 	r.log(inc, "Preliminary report shown (rules + agent findings); the reasoner is writing the full report")
+}
+
+// runWork runs one unit of work; a panic in it is logged with its stack and the loop carries on (the incident it
+// was working on is failed over by the watchdog).
+func (r *Reasoner) runWork(w work) {
+	defer recoverLog("analysis")
+	if w.early != nil {
+		r.runEarly(*w.early)
+	} else if w.promote != "" {
+		r.runPromote(w.promote)
+	} else if w.refine != "" {
+		r.runRefine(w.refine)
+	} else {
+		r.Process(w.cands, w.mode)
+	}
 }

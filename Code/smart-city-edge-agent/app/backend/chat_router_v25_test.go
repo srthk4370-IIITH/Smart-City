@@ -401,7 +401,7 @@ func TestChatExplainScenarioV25(t *testing.T) {
 		"Explain power factor to me in simple words, I'm not an electrical guy.": "Power factor is",
 		"what does TDS mean?":      "TDS (total dissolved solids",
 		"PM2.5 ka matlab kya hai?": "PM2.5 is the amount",
-		"Suppose the tank inlet valve fails shut overnight - what would the sensors show and how fast would we know?": "about 40 minutes",
+		"Suppose the tank inlet valve fails shut overnight - what would the sensors show and how fast would we know?": "4 of the last 8 readings are abnormal",
 		"If the main feeder trips, how quickly would the system alert?":                                               "SB00 substation",
 		"What if outdoor PM2.5 goes to 180 tomorrow, should we cancel outdoor sports?":                                "CRITICAL",
 		"if CO2 in the classroom rises to 1200, will it alert?":                                                       "WARNING",

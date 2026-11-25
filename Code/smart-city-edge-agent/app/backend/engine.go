@@ -51,25 +51,26 @@ type Injection struct {
 }
 
 type SensorState struct {
-	Node        string   `json:"node"`
-	Metric      string   `json:"metric"`
-	Role        string   `json:"role"`
-	Location    string   `json:"location"`
-	Unit        string   `json:"unit"`
-	Last        *float64 `json:"last"`
-	Updated     int64    `json:"updated"`
-	Points      int      `json:"points_24h"`
-	SMA1h       *float64 `json:"sma_1h"`
-	EMA1h       *float64 `json:"ema_1h"`
-	SlopePerH   *float64 `json:"slope_per_h"`
-	Pattern     string   `json:"pattern"`
-	Status      string   `json:"status"`
-	Cause       string   `json:"likely_cause"`
-	DataOK      bool     `json:"data_ok"`
-	Injected    bool     `json:"injected"`
-	Finding     *Finding `json:"finding,omitempty"`
-	AbnormalFor int      `json:"abnormal_for"` // consecutive abnormal readings (AI is called at persistReadings)
-	Reported    bool     `json:"reported"`     // already in an incident during this abnormal episode
+	Node             string   `json:"node"`
+	Metric           string   `json:"metric"`
+	Role             string   `json:"role"`
+	Location         string   `json:"location"`
+	Unit             string   `json:"unit"`
+	Last             *float64 `json:"last"`
+	Updated          int64    `json:"updated"`
+	Points           int      `json:"points_24h"`
+	SMA1h            *float64 `json:"sma_1h"`
+	EMA1h            *float64 `json:"ema_1h"`
+	SlopePerH        *float64 `json:"slope_per_h"`
+	Pattern          string   `json:"pattern"`
+	Status           string   `json:"status"`
+	Cause            string   `json:"likely_cause"`
+	DataOK           bool     `json:"data_ok"`
+	Injected         bool     `json:"injected"`
+	Finding          *Finding `json:"finding,omitempty"`
+	AbnormalFor      int      `json:"abnormal_for"`       // CONSECUTIVE abnormal readings so far (display of the current run; the AI gate uses abnormal_in_window)
+	AbnormalInWindow int      `json:"abnormal_in_window"` // abnormal readings among the last persist_readings (the AI is called at abnormal_of_window)
+	Reported         bool     `json:"reported"`           // already in an incident during this abnormal episode
 	// data quality (dataquality.go): good | uncertain | bad | stale | maintenance, why, real-reading
 	// coverage of the 4 h window, held (slider / sample-and-hold) or measured (device feed), ingest counters
 	Quality     string       `json:"quality"`
@@ -81,6 +82,7 @@ type SensorState struct {
 	normalRun   int          // consecutive normal readings (off-delay)
 	prev        string       // pattern at the previous poll
 	same        int          // consecutive polls with an abnormal status
+	abTimes     []int64      // sensor times of the fresh abnormal readings still inside the gate window (K-of-window gate)
 	alerted     bool         // already reported during this abnormal episode
 	clearedAt   int64        // sensor time the reported episode returned to normal (0 = still abnormal)
 	alertedAt   int64        // sensor time the episode was reported
@@ -89,6 +91,14 @@ type SensorState struct {
 	critRun     int          // consecutive FRESH readings beyond the critical limit (fast path)
 	fastAt      int64        // sensor time a fast-path incident was opened for this episode (0 = none)
 	earlyAt     int64        // sensor time a provisional early AI run was requested for this episode (0 = none)
+	// snoozed (polish_engine.go), filled in by Snapshot: criticals alarm as usual, everything else is held
+	// warming up (hardening): a live sensor with fewer than PersistReadings readings since start / restore - the AI gate
+	// cannot open yet; minutes left until it can
+	WarmingUp   bool   `json:"warming_up"`
+	WarmMinLeft int    `json:"warming_min_left"`
+	Snoozed     bool   `json:"snoozed,omitempty"`
+	SnoozeUntil int64  `json:"snooze_until,omitempty"`
+	SnoozeWhy   string `json:"snooze_reason,omitempty"`
 }
 
 type Engine struct {
@@ -228,7 +238,7 @@ func (e *Engine) reset() {
 		e.batchUntil, e.batchOpen = 0, 0
 		e.cooldown = map[string]int64{}
 		for _, st := range e.states {
-			st.prev, st.same, st.alerted, st.normalRun = "", 0, false, 0
+			st.prev, st.same, st.alerted, st.normalRun, st.abTimes = "", 0, false, 0, nil
 		}
 		return
 	}
@@ -253,7 +263,7 @@ func (e *Engine) reset() {
 	e.cooldown = map[string]int64{}
 	e.epoch, e.shift = time.Now().UnixNano(), 0
 	for _, st := range e.states {
-		st.prev, st.same, st.alerted, st.normalRun = "", 0, false, 0
+		st.prev, st.same, st.alerted, st.normalRun, st.abTimes = "", 0, false, 0, nil
 	}
 	for _, fs := range e.dq { // a restart discards every reading; device feeds stay measured
 		fs.pending, fs.cnt = map[int64]*bucketAcc{}, map[int64]int{}
@@ -669,7 +679,7 @@ func (e *Engine) detect() []Candidate {
 			if !ok {
 				st.Pattern, st.Status, st.Cause, st.Finding = "-", "insufficient_data", "", nil
 				st.SMA1h, st.EMA1h, st.SlopePerH = nil, nil, nil
-				st.same, st.AbnormalFor, st.normalRun = 0, 0, 0
+				st.same, st.AbnormalFor, st.normalRun, st.abTimes, st.AbnormalInWindow = 0, 0, 0, nil, 0
 				e.setQuality(k, st, false)
 				continue
 			}
@@ -708,7 +718,7 @@ func (e *Engine) detect() []Candidate {
 				// not enough real readings (gap, offline, warming up, replaced): no AI, a reason instead
 				st.Pattern, st.Status, st.Cause, st.Finding = "-", "insufficient_data", "", nil
 				st.SMA1h, st.EMA1h, st.SlopePerH = nil, nil, nil
-				st.same, st.AbnormalFor, st.normalRun = 0, 0, 0
+				st.same, st.AbnormalFor, st.normalRun, st.abTimes, st.AbnormalInWindow = 0, 0, 0, nil, 0
 				e.setQuality(k, st, false)
 				continue
 			}
@@ -739,7 +749,11 @@ func (e *Engine) detect() []Candidate {
 		st.Pattern, st.Status, st.Cause, st.Finding = f.Pattern, f.Status, f.LikelyCause, &f
 		e.setQuality(k, st, true)
 		if e.dq[k].inMaintenance(e.sim) { // out of service: shown, never alarmed
-			st.same, st.AbnormalFor, st.normalRun = 0, 0, 0
+			st.same, st.AbnormalFor, st.normalRun, st.abTimes, st.AbnormalInWindow = 0, 0, 0, nil, 0
+			continue
+		}
+		if e.dq[k].snoozedAt(e.sim) && f.Status != "critical" { // snoozed: only a critical may still open an incident
+			st.same, st.AbnormalFor, st.normalRun, st.critRun, st.abTimes, st.AbnormalInWindow = 0, 0, 0, 0, nil, 0
 			continue
 		}
 		// Only an abnormal STATUS (warning, critical, faulty/stuck sensor) may call the AI. A shape change at
@@ -758,6 +772,7 @@ func (e *Engine) detect() []Candidate {
 			}
 			st.same = 0
 			st.AbnormalFor = 0
+			st.AbnormalInWindow = st.winCount(e.sim, tr.PersistReadings) // normal reading: the window keeps its earlier abnormal ones until they age out
 			if st.fastAt != 0 && e.sim-st.fastAt >= int64(tr.FastCooldown)*bucketSec {
 				st.fastAt = 0 // episode over and cooled down: a new critical episode may open a fast incident again
 			}
@@ -773,7 +788,8 @@ func (e *Engine) detect() []Candidate {
 		if _, fresh := s[e.sim]; !fresh {
 			// no new reading this bucket (live edge forward-filled): the window did not change, so it is
 			// not another abnormal reading for the on-delay
-			if st.same > 0 && !st.alerted {
+			st.AbnormalInWindow = st.winCount(e.sim, tr.PersistReadings)
+			if st.AbnormalInWindow > 0 && !st.alerted {
 				abnormal[k] = Candidate{st.Node, st.Metric, st.Role, f, xs, e.sim, st.Injected, false, false}
 			}
 			continue
@@ -783,7 +799,7 @@ func (e *Engine) detect() []Candidate {
 			// reported episode is still abnormal or has only just cleared. Without this a load surge on a meter
 			// whose throttling episode was reported (and is still in the 4 h window) was absorbed into the old
 			// episode and never alerted; power has no thresholds, so valueAbnormal cannot re-arm it either.
-			st.alerted, st.Reported, st.clearedAt, st.same = false, false, 0, 0
+			st.alerted, st.Reported, st.clearedAt, st.same, st.abTimes = false, false, 0, 0, nil
 		}
 		if st.alerted && st.clearedAt != 0 {
 			// Same sensor abnormal again after a reported episode. The 4-hour window still contains the old
@@ -791,7 +807,7 @@ func (e *Engine) detect() []Candidate {
 			// genuinely new event: the CURRENT value is beyond a threshold again, or the old readings have
 			// left the window.
 			if valueAbnormalNode(st.Role, st.Metric, st.Node, xs[len(xs)-1]) || e.sim-st.clearedAt >= int64(Window)*bucketSec {
-				st.alerted, st.Reported, st.clearedAt, st.same = false, false, 0, 0
+				st.alerted, st.Reported, st.clearedAt, st.same, st.abTimes = false, false, 0, 0, nil
 			} else {
 				continue
 			}
@@ -807,6 +823,15 @@ func (e *Engine) detect() []Candidate {
 			continue
 		}
 		st.same++
+		// K-of-window counts READINGS beyond the threshold: after a one-reading spike/dip the window shape keeps the rule
+		// abnormal for many readings while the value is back to normal; those must not count (2026-11-20, one 2999 ppm
+		// glitch reached the AI). Trend / stuck / erratic findings count as before.
+		if !((f.Pattern == "spike" || f.Pattern == "dip") && len(xs) > 0 && hasLimits(st.Role, st.Metric, st.Node) &&
+			!valueAbnormalNode(st.Role, st.Metric, st.Node, xs[len(xs)-1])) {
+			st.abTimes = append(st.abTimes, e.sim)
+		}
+		st.AbnormalInWindow = st.winCount(e.sim, tr.PersistReadings)
+		inWin := st.AbnormalInWindow
 		st.AbnormalFor, st.Reported = st.same, st.alerted
 		abnormal[k] = Candidate{st.Node, st.Metric, st.Role, f, xs, e.sim, st.Injected, false, false}
 		if st.alerted && sevRank(f.Status) > st.reportedSev {
@@ -823,11 +848,11 @@ func (e *Engine) detect() []Candidate {
 		} else {
 			st.critRun = 0
 		}
-		if !st.alerted && st.fastAt == 0 && st.critRun >= tr.FastReadings && st.same < tr.PersistReadings {
+		if !st.alerted && st.fastAt == 0 && st.critRun >= tr.FastReadings && inWin < tr.AbnormalOfWindow {
 			st.fastAt = e.sim
 			fast = append(fast, Candidate{st.Node, st.Metric, st.Role, f, xs, e.sim, st.Injected, true, false})
 		}
-		if ek > 0 && !st.alerted && st.earlyAt == 0 && st.same >= ek && st.same < tr.PersistReadings && earlyShapeOK(f, eshapes) {
+		if ek > 0 && !st.alerted && st.earlyAt == 0 && inWin >= ek && inWin < tr.AbnormalOfWindow && earlyShapeOK(f, eshapes) {
 			st.earlyAt = e.sim
 			fast = append(fast, Candidate{st.Node, st.Metric, st.Role, f, xs, e.sim, st.Injected, false, true})
 		}
@@ -892,6 +917,12 @@ func valueAbnormalNode(role, metric, node string, last float64) bool {
 	return ok && valueAbnormalM(m, last)
 }
 
+// hasLimits: the sensor's card has fixed warning/critical limits (power and similar metrics are judged on shape).
+func hasLimits(role, metric, node string) bool {
+	m, ok := effectiveMetricOK(role, metric, node)
+	return ok && (m.Warn != 0 || m.Crit != 0)
+}
+
 func valueAbnormalM(m Metric, last float64) bool {
 	if m.Warn == 0 && m.Crit == 0 {
 		return false
@@ -942,7 +973,7 @@ func (e *Engine) batchEvents(abnormal map[string]Candidate) []Candidate {
 	tr := trigRules()
 	if e.batchUntil == 0 {
 		for k := range abnormal {
-			if st := e.states[k]; !st.alerted && st.same >= tr.PersistReadings {
+			if st := e.states[k]; !st.alerted && st.AbnormalInWindow >= tr.AbnormalOfWindow {
 				e.batchOpen = e.sim
 				e.batchUntil = e.sim + int64(tr.BatchReadings)*bucketSec
 				e.batchOpenWall = time.Now()
@@ -967,7 +998,7 @@ func (e *Engine) batchEvents(abnormal map[string]Candidate) []Candidate {
 	}
 	if e.sim < e.batchOpen+int64(tr.BatchMaxReadings)*bucketSec {
 		for k := range abnormal {
-			if st := e.states[k]; !st.alerted && st.same < tr.PersistReadings {
+			if st := e.states[k]; !st.alerted && st.AbnormalInWindow < tr.AbnormalOfWindow {
 				return nil // a late sensor is still too young: keep the batch open a little longer
 			}
 		}
@@ -1085,8 +1116,13 @@ func (e *Engine) Snapshot() (int64, []SensorState, []*Injection) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 	out := make([]SensorState, 0, len(e.states))
-	for _, s := range e.states {
-		out = append(out, *s)
+	for k, s := range e.states {
+		c := *s
+		if fs := e.dq[k]; fs.snoozedAt(e.sim) {
+			c.Snoozed, c.SnoozeUntil, c.SnoozeWhy = true, fs.snoozeUntil, fs.snoozeWhy
+		}
+		c.WarmingUp, c.WarmMinLeft = e.warmingLocked(k)
+		out = append(out, c)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Node+out[i].Metric < out[j].Node+out[j].Metric })
 	inj := append([]*Injection(nil), e.injects...)
@@ -1178,11 +1214,65 @@ func (e *Engine) Series(node, metric string, hours int) SeriesOut {
 // there is a plausible late joiner the batch window should wait for. Mature, already-qualifying
 // sensors are exactly the ones the batch will report, so they are not a reason to keep waiting.
 func anyOtherAbnormal(e *Engine, abnormal map[string]Candidate) bool {
-	pr := trigRules().PersistReadings
+	pr := trigRules().AbnormalOfWindow
 	for k := range abnormal {
-		if st := e.states[k]; st != nil && !st.alerted && st.same < pr {
+		if st := e.states[k]; st != nil && !st.alerted && st.AbnormalInWindow < pr {
 			return true
 		}
 	}
 	return false
+}
+
+// winCount: abnormal readings among the last w readings (buckets) ending at sim, from the fresh abnormal ones kept in
+// abTimes; a missing reading is never in the list, so it counts as not abnormal. Old entries are dropped.
+func (st *SensorState) winCount(sim int64, w int) int {
+	from := sim - int64(w-1)*bucketSec
+	j := 0
+	for _, t := range st.abTimes {
+		if t >= from && t <= sim {
+			st.abTimes[j] = t
+			j++
+		}
+	}
+	st.abTimes = st.abTimes[:j]
+	return j
+}
+
+// SparseWindowAt: the AI window of a slow-cadence sensor (an hourly pH probe has 4 real readings in 4 h, never the 45
+// the grid window needs). Built only from the real readings up to end, newest 48 at most, oldest first, time-compressed;
+// a short history is front-padded with its oldest real reading (as window's critical bypass does). Needs at least 4
+// real readings with the newest at most 3 cadences old. Nothing is invented. ok=false with a reason otherwise.
+func (e *Engine) SparseWindowAt(node, metric string, end int64) ([]float64, string, bool) {
+	cad := e.cadenceSec(node, metric)
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	s := e.series[key(node, metric)]
+	var ts []int64
+	for b := range s {
+		if b <= end && b <= e.sim {
+			ts = append(ts, b)
+		}
+	}
+	if len(ts) == 0 {
+		return nil, "the sensor has no readings yet", false
+	}
+	sort.Slice(ts, func(i, j int) bool { return ts[i] > ts[j] })
+	if end-ts[0] > 3*cad {
+		return nil, fmt.Sprintf("the newest reading is %d min old", (end-ts[0])/60), false
+	}
+	if len(ts) < 4 {
+		return nil, fmt.Sprintf("only %d real reading(s) exist (at least 4 needed)", len(ts)), false
+	}
+	if len(ts) > Window {
+		ts = ts[:Window]
+	}
+	xs := make([]float64, Window)
+	for i := 0; i < Window; i++ {
+		j := i // i-th from the newest
+		if j >= len(ts) {
+			j = len(ts) - 1
+		}
+		xs[Window-1-i] = s[ts[j]]
+	}
+	return xs, "", true
 }

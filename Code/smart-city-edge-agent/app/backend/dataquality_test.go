@@ -4,6 +4,7 @@ import (
 	"math"
 	"math/rand"
 	"testing"
+	"time"
 )
 
 // dqEngine: a real engine with exact readings (no jitter), stopped so tests drive Tick by hand.
@@ -155,6 +156,7 @@ func TestDQHeldAPIValueGoesStale(t *testing.T) {
 // One single-reading glitch does not open an incident; two glitches (a dropout fault) and a real
 // event still do. The AI's window is never modified.
 func TestDQGlitchFilterGateOnly(t *testing.T) {
+	pinClock(t) // other tests leave the network clock set / held ahead: the gate's buckets moved (flaky 2026-11-20)
 	xs := make([]float64, Window)
 	for i := range xs {
 		xs[i] = 600 + float64(i%2)
@@ -299,3 +301,20 @@ func TestDQHealthShowsDataQuality(t *testing.T) {
 }
 
 var _ = math.Abs
+
+// pinClock: fixed device clock, network clock off, monotonic hold cleared; restored after the test.
+func pinClock(t *testing.T) {
+	t.Helper()
+	oldDev, oldSet, oldOff, oldLast := devClock, netClock.set.Load(), netClock.off.Load(), netClock.last.Load()
+	fixed := time.Date(2026, 11, 17, 10, 0, 0, 0, IST)
+	devClock = func() time.Time { return fixed }
+	netClock.set.Store(false)
+	netClock.off.Store(0)
+	netClock.last.Store(0)
+	t.Cleanup(func() {
+		devClock = oldDev
+		netClock.set.Store(oldSet)
+		netClock.off.Store(oldOff)
+		netClock.last.Store(oldLast)
+	})
+}

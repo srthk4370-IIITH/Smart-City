@@ -1,0 +1,20 @@
+bash -n ok chain_r4.sh
+bash -n ok ctl_r4.sh
+bash -n ok paths_r4.sh
+bash -n ok supervisor_r4.sh
+bash -n ok topup_chunk.sh
+bash -n ok gate_r4.sh
+bash -n ok post_r4.sh
+py_compile ok
+paths_r4 (data/final now): NEW=? REPLAY=? DEV4_INC=? DEV4_CHAT=? TEST4_INC=? TEST4_CHAT=? TOOLS4=/mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-06_4b_local/data/final/tools_r3.json
+# r4 top-up STRICT gate: rsn_v3_4b_r4 vs rsn_v3_4b_r3 (r3 step 2800) -> **FAIL**
+A rc 1 (expect 1)
+# r4 top-up STRICT gate: rsn_v3_4b_r4 vs rsn_v3_4b_r3 (r3 step 2800) -> **A-PASS (b, c pending)**
+B rc 0 (expect 0)
+# r4 top-up STRICT gate: rsn_v3_4b_r3 vs rsn_v3_4b_r3 (r3 step 2800) -> **FAIL**
+C rc 1 (expect 1: only (a) fails)
+22
+| r4 test | combined | 0.927 | 0.927 | > base by >= 1 item (0.0007), no part worse beyond noise | **NO** |
+|---|---|---|---|---|---|---|---|
+| online | 421 | 0.841 | 0.841 | 0.841 | 0.0 | 0.0 | True |
+| offline | 493 | 0.692 | 0.692 | 0.692 | 0.0 | 0.0 | True |

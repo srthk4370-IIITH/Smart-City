@@ -128,11 +128,24 @@ func listUpTo(xs []string, n int) string {
 	return strings.Join(xs[:n], ", ") + fmt.Sprintf(" (+%d more)", len(xs)-n)
 }
 
+// consistentTitle (2026-11-20 INC-0004): a calm AI/findings title ("All clear", "... judged normal", "no fault")
+// never stays on a warning or critical incident; the rules' title is used instead. Caller holds r.mu.
+func consistentTitle(inc *Incident) {
+	calm := strings.HasPrefix(inc.Title, "All clear") || strings.Contains(inc.Title, "judged normal") || v3CalmTitleRe.MatchString(inc.Title)
+	if !calm || (inc.Severity != "warning" && inc.Severity != "critical") {
+		return
+	}
+	if inc.RuleTitle != "" && !strings.HasPrefix(inc.RuleTitle, "All clear") {
+		inc.Title = cleanTitleRefs(inc.RuleTitle)
+	}
+}
+
 // retitle swaps the provisional rule title for the AI's, keeping the rules' title as RuleTitle.
 // Idempotent: back-filled incidents keep their original RuleTitle. Caller holds r.mu.
 func retitle(inc *Incident) {
 	if inc.RuleTitle == "" {
 		inc.RuleTitle = inc.Title
 	}
-	inc.Title = reasonerTitle(inc)
+	inc.Title = cleanTitleRefs(reasonerTitle(inc))
+	consistentTitle(inc)
 }

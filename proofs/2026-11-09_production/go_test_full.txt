@@ -1,0 +1,48 @@
+--- FAIL: TestChatRouterBlind2Fixes (0.03s)
+    chat_fixes_1103_test.go:169: approvals: Of the 4 incidents this week (since Monday) (2026-11-09 00:00 to 2026-11-09 09:00), 2 were dismissed and 1 approved by an operator. 1 has no decision yet.
+2026/11/09 10:44:28 chat: GPU llama-server http://127.0.0.1:45071 failed (HTTP 503) - falling back to htpd for 1m0s
+2026/11/09 10:44:28 chat: GPU keep-warm failed: Post "http://127.0.0.1:46429/completion": dial tcp 127.0.0.1:46429: connect: connection refused
+2026/11/09 10:45:02 alerts: INC-0007|critical via webhook1 failed (HTTP 503), retry 1 in 15s
+2026/11/09 10:45:02 fog: outbox over 0 MB: 12 oldest rows dropped so far
+2026/11/09 10:45:02 fog: outbox over 0 MB: 25 oldest rows dropped so far
+2026/11/09 10:45:02 fog: outbox over 0 MB: 38 oldest rows dropped so far
+2026/11/09 10:45:03 fog: outbox over 0 MB: 51 oldest rows dropped so far
+2026/11/09 10:45:03 fog: outbox over 0 MB: 64 oldest rows dropped so far
+2026/11/09 10:45:03 fog: outbox over 0 MB: 77 oldest rows dropped so far
+2026/11/09 10:45:03 fog: outbox over 0 MB: 89 oldest rows dropped so far
+2026/11/09 10:45:03 fog: outbox over 0 MB: 102 oldest rows dropped so far
+2026/11/09 10:45:03 fog: outbox over 0 MB: 114 oldest rows dropped so far
+2026/11/09 10:45:03 fog: outbox over 0 MB: 127 oldest rows dropped so far
+2026/11/09 10:45:03 fog: outbox over 0 MB: 139 oldest rows dropped so far
+2026/11/09 10:45:03 fog: outbox over 0 MB: 151 oldest rows dropped so far
+2026/11/09 10:45:03 fog: outbox over 0 MB: 164 oldest rows dropped so far
+2026/11/09 10:45:05 mqtt: connected to tcp://127.0.0.1:46181
+2026/11/09 10:45:05 mqtt: EOF; reconnecting in 569ms
+2026/11/09 10:45:06 mqtt: connected to tcp://127.0.0.1:46181
+2026/11/09 10:45:06 mqtt: connected to tcp://127.0.0.1:46655
+2026/11/09 10:45:06 prod: alert delivery on (1 channels)
+2026/11/09 10:45:06 time: device clock invalid at start (2023-11-09T10:45:06Z, RTC reset?): incidents stay unstamped until NTP, the laptop (POST /api/prod/time) or MQTT timestamps give the time
+2026/11/09 10:45:09 time: clock set from ntp:127.0.0.1:47992, correction 26304h0m0s
+2026/11/09 10:45:09 time: incident created while the clock is invalid (device 2023-11-09T10:45:09Z): no wall stamp until the clock is synced
+2026/11/09 10:45:09 time: clock set from api, correction 26303h59m59s
+2026/11/09 10:45:09 time: 1 incident(s) re-stamped after the clock sync
+2026/11/09 10:45:09 time: clock set from mqtt, correction 26304h0m1s
+2026/11/09 10:45:09 warm: idle warm-up done in 0 ms
+2026/11/09 10:45:09 warm: idle warm-up done in 0 ms
+2026/11/09 10:45:09 severity-disagreement {"final":"warning","guard":true,"incident":"INC-T","label":"","reasoner":"normal","rule":"warning","stage":""}
+2026/11/09 10:45:09 severity-disagreement {"final":"warning","guard":true,"incident":"INC-T","label":"","reasoner":"normal","rule":"critical","stage":""}
+2026/11/09 10:45:09 severity-disagreement {"final":"warning","guard":false,"incident":"INC-T","label":"","reasoner":"warning","rule":"critical","stage":""}
+2026/11/09 10:45:09 severity-disagreement {"final":"critical","guard":false,"incident":"INC-T","label":"","reasoner":"critical","rule":"warning","stage":""}
+2026/11/09 10:45:09 severity-disagreement {"final":"sensor_fault","guard":false,"incident":"INC-T","label":"","reasoner":"sensor_fault","rule":"warning","stage":""}
+2026/11/09 10:45:15 store: compacted to 2 incidents (0 archived)
+2026/11/09 10:45:18 [GenieRunner] NPU context creation failed (attempt 1), retrying in 3s
+2026/11/09 10:45:21 [GenieRunner] NPU context creation failed (attempt 2), retrying in 7s
+2026/11/09 10:45:29 [GenieRunner] NPU context creation failed (attempt 1), retrying in 3s
+2026/11/09 10:45:32 [GenieRunner] NPU context creation failed (attempt 2), retrying in 7s
+2026/11/09 10:45:39 [GenieRunner] NPU context creation failed (attempt 3), retrying in 15s
+2026/11/09 10:45:54 store: skipped 1 unreadable line(s) in /tmp/TestStoreTornLineCompactionAndRetention1283487814/001/state/incidents.jsonl
+2026/11/09 10:45:54 store: compacted to 50 incidents (10 archived)
+2026/11/09 10:45:57 store: compacted to 1 incidents (0 archived)
+FAIL
+FAIL	edgeagent	89.273s
+FAIL

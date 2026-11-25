@@ -139,8 +139,18 @@ func TestAlertEscalationUnlessAcknowledged(t *testing.T) {
 	}
 	clk.t = clk.t.Add(time.Hour)
 	a.Tick()
-	if esc.n() != 1 {
-		t.Fatal("escalated twice")
+	if esc.n() != 3 { // the ladder: 15, 30 and 60 min (hardening); the acknowledged INC-0011 never escalates
+		t.Fatalf("ladder: %d escalations, want 3", esc.n())
+	}
+	for _, g := range esc.got {
+		if g["incident"] != "INC-0010" {
+			t.Fatalf("escalated %v", g["incident"])
+		}
+	}
+	clk.t = clk.t.Add(5 * time.Hour)
+	a.Tick()
+	if esc.n() != 3 {
+		t.Fatal("ladder repeats")
 	}
 }
 

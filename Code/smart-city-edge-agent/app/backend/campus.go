@@ -803,6 +803,9 @@ func startCampus(s *Server) {
 	}
 	campus = newCampusClient(s.eng)
 	s.eng.SetLive(time.Duration(campus.backfillH) * time.Hour)
+	if msg, err := s.eng.RestoreState(s.dir, nowTime()); err == nil { // before the backfill fills the gap (polish_engine.go)
+		log.Printf("campus: %s", msg)
+	}
 	go campus.Run(nil)
 	log.Printf("campus: input from %s every %v (backfill %d h)", campus.base, campus.every, campus.backfillH)
 }

@@ -1,0 +1,198 @@
+### ex_event (air_quality, 3h)
+  CARD: room air temperature [C], continuous, indoor room (office, capacity 7) | normal 20-30 | warning above 30 | critical above 34 | impossible below 5 or above 55 | noise 0.15 | max 5-min change 1 | dynamics: follows AC: falls 1-3 C/h when cooling starts, rises 0.3-1 C/h when AC is off; people and sun add heat
+  NODE: SR-AQ-KP00-06 (Block KP, level 00, office KP-006)
+  E1 last = 32.9 C
+  E3 min = 25.4 C at 18:45
+  E5 largest 5-min change = +0.9 C at 21:50
+  -> warning / step_increase / dq=ok / cause=hvac_cooling_issue / conf=0.95
+     reason: E1 32.9 C above warning 30 (card)
+### ex_event (power, 3h, jittered card, bacnet)
+  CARD: electrical load [kW], continuous, energy meter (electrical panel) | no fixed limits | impossible below 0 or above 2000 | noise 0.1 | rate rule (change = max - min vs first-hour mean): step, spike, dip or fast rise = warning, critical above 250%; gradual change warning above 40%; cycling normal
+  NODE: WB.F0.PM0 (Block WB, level 00, main panel WB)
+  E2 max = 0.89 kW at 04:45
+  E3 min = 0.50 kW at 07:00
+  E4 trend = -0.04 kW/h (r2 0.27)
+  -> warning / gradual_decrease / dq=ok / cause=normal_load / conf=0.8
+     reason: gradual fall over 40% of the first-hour level: warning (card rate rule)
+### calm_routine (power, 40min)
+  CARD: electrical load [kW], continuous, energy meter (library, capacity 136) | no fixed limits | impossible below 0 or above 2000 | noise 0.1 | rate rule (change = max - min vs first-hour mean): step, spike, dip or fast rise = warning, critical above 150%; gradual change warning above 30%; cycling normal
+  NODE: SR-EM-UC00-06 (Block UC, level 00, library UC-006)
+  E2 max = 3.01 kW at 08:35
+  E3 min = 1.52 kW at 10:35
+  E7 halves 2.39 -> 2.27, curvature +0.03/h, oscillation crossings 6
+  -> normal / oscillation / dq=ok / cause=cyclic_equipment / conf=0.7
+     reason: on/off cycling is normal (card cycle)
+### calm_routine (water, 1.5h)
+  CARD: water flow rate [m3/h], continuous, pipe flow meter (pump) | no fixed limits | impossible below 0 or above 40 | noise 0.05 | rate rule (change = max - min vs first-hour mean): step, spike, dip or fast rise = warning, critical above 150%; gradual change warning above 30%; cycling warning
+  NODE: WM-WF-HD00-09 (HD hall, floor 0, supply pump HD)
+  E3 min = 0.00 m3/h at 08:30
+  E7 halves 0.60 -> 0.60, curvature -1.39/h, oscillation crossings 8
+  E8 noise 0.312, longest flat run 6 pts, plateau at max 0 pts
+  -> normal / oscillation / dq=ok / cause=pump_cycling / conf=0.7
+     reason: pump cycling every 50 min or more is normal (card cycle)
+### unseen_metric (hvac, 1.5h, free)
+  CARD: server room temperature [C], continuous, network room (library, capacity 85) | normal 11-26 | warning above 26 | critical above 33 | impossible below 0 or above 60 | noise 0.095 | max 5-min change 2.2 | dynamics: held steady by precision AC; rises 2-6 C/h when cooling fails
+  NODE: VL-SER-12 (ZN building, floor 5, library ZN-512)
+  E1 last = 34.6 C
+  E2 max = 34.9 C at 04:40
+  E5 largest 5-min change = +1.9 C at 03:35
+  -> critical / step_increase / dq=ok / cause=cooling_failure / conf=0.95
+     reason: E1 34.6 C above critical 33 (card)
+### unseen_metric (power, 40min)
+  CARD: generator fuel level [%], continuous, diesel generator (AC unit) | normal 28-100 | warning below 28 | critical below 11 | impossible below 0 or above 100 | noise 0.39 | max 5-min change 6.5 | dynamics: flat while the generator is idle; falls 2-6 %/h while it runs; jumps up when refuelled
+  NODE: UK-GEN-47 (NQ building, floor 2, AC unit NQ2-2)
+  E1 last = 72.8 %
+  E3 min = 71.4 % at 16:00
+  E5 largest 5-min change = -5.1 % at 15:45
+  -> normal / step_decrease / dq=ok / cause=generator_running / conf=0.95
+     reason: E1 72.8 % above warning 28 (card)
+### hole_power (power, 40min, jittered card, free)
+  CARD: electrical load [kW], continuous, energy meter (lab, capacity 40) | no fixed limits | impossible below 0 or above 2000 | noise 0.1 | rate rule (change = max - min vs first-hour mean): step, spike, dip or fast rise = warning, critical above 200%; gradual change warning above 20%; cycling normal
+  NODE: XX XX-501 energy meter 1 (XX building, floor 5, lab XX-501)
+  E1 last = 47.90 kW
+  E2 max = 50.53 kW at 23:45
+  E3 min = 0.00 kW at 00:05
+  -> warning / dip / dq=ok / cause=load_drop_or_outage / conf=0.95
+     reason: dip under 200% change: warning (card rate rule)
+### hole_power (power, 1.5h)
+  CARD: electrical load [kW], continuous, energy meter (office, capacity 8) | no fixed limits | impossible below 0 or above 2000 | noise 0.1 | rate rule (change = max - min vs first-hour mean): step, spike, dip or fast rise = warning, critical above 150%; gradual change warning above 30%; cycling normal
+  NODE: SR-EM-XX04-01 (XX building, level 04, office XX-401)
+  E1 last = 0.83 kW
+  E2 max = 1.12 kW at 10:55
+  E3 min = 0.00 kW at 09:45
+  -> warning / dip / dq=ok / cause=load_drop_or_outage / conf=0.95
+     reason: dip under 150% change: warning (card rate rule)
+### hole_water (water, 40min, free)
+  CARD: water tank level [level], continuous, water tank (rooftop tank) | no fixed limits | impossible below 0 or above 500 | noise 0.5 | rate rule (change = max - min vs first-hour mean): step, spike, dip or fast rise = warning, critical above 150%; gradual change warning above 30%; cycling warning
+  NODE: UA L98 tank level 0 (UA bhavan, level 01, rooftop tank UA-0)
+  E1 last = 96.8 level
+  E2 max = 98.3 level at 04:05
+  E3 min = 62.0 level at 03:15
+  -> critical / step_increase / dq=ok / cause=tank_overflow_risk / conf=0.7
+     reason: E1 96.8 above overflow 94.0 (card tank)
+### hole_water (water, 3h, bacnet)
+  CARD: water tank level [level], continuous, water tank (rooftop tank) | no fixed limits | impossible below 0 or above 500 | noise 0.5 | rate rule (change = max - min vs first-hour mean): step, spike, dip or fast rise = warning, critical above 150%; gradual change warning above 30%; cycling warning
+  NODE: PG.F98.LT9800 (PG block, level 02, rooftop tank PG-0)
+  E2 max = 128.5 level at 06:30
+  E3 min = 80.7 level at 08:00
+  E5 largest 5-min change = -44.0 level at 07:15
+  -> warning / step_decrease / dq=ok / cause=tank_draining / conf=0.95
+     reason: step down under 150% change: warning (card rate rule)
+### hole_calm_fault (air_quality, 40min)
+  CARD: CO2 concentration [ppm], continuous, indoor room (server room) | normal 400-1000 | warning above 1000 | critical above 1500 | impossible below 350 or above 5000 | noise 6 | max 5-min change 150 | dynamics: rises with people, +300-800 ppm/h when full; back near 450 within ~1 h of vacancy; outdoor ~420
+  NODE: SR-AQ-TS03-03 (TS building, level 03, server room TS3.3)
+  E5 largest 5-min change = +187.0 ppm at 00:10
+  E7 halves 418 -> 526, curvature +144.8/h, oscillation crossings 2
+  -> sensor_fault / step_increase / dq=fault / cause=sensor_fault / conf=0.95
+     reason: E5 +187.0 exceeds max 5-min change 150: bias (card)
+### hole_calm_fault (air_quality, 40min, jittered card)
+  CARD: CO2 concentration [ppm], continuous, indoor room (lecture hall, capacity 205) | normal 400-1005 | warning above 1005 | critical above 1340 | impossible below 350 or above 5000 | noise 6 | max 5-min change 150 | dynamics: rises with people, +300-800 ppm/h when full; back near 450 within ~1 h of vacancy; outdoor ~420
+  NODE: SR-AQ-XN03-08 (XN building, floor 3, room XN-308)
+  E1 last = 421 ppm
+  E8 noise 3.68, longest flat run 12 pts, plateau at max 0 pts
+  -> sensor_fault / flatline / dq=fault / cause=sensor_fault / conf=0.35
+     reason: E8 flat run 12 pts: stuck reading, a data fault (card faults)
+### ex_fault (weather, 1.5h, jittered card)
+  CARD: outdoor relative humidity [%], continuous, rooftop weather station (weather station) | normal 20-97 | warning above 97 | critical above 105 | impossible below 1 or above 100 | noise 0.3 | max 5-min change 8 | dynamics: daily cycle opposite to temperature: highest near dawn, lowest mid-afternoon; rain pushes it to 90-100
+  NODE: WE-BR01-02 (weather station WE-BR01-02)
+  E1 last = 100.0 %
+  E5 largest 5-min change = +32.5 % at 00:55
+  -> sensor_fault / step_increase / dq=fault / cause=sensor_fault / conf=0.95
+     reason: E5 +32.5 exceeds max 5-min change 8: bias (card)
+### ex_fault (air_quality, 1.5h, jittered card, hindi)
+  CARD: PM2.5 particulate matter [ug/m3], continuous, indoor room (canteen, capacity 239) | normal 0-64 | warning above 64 | critical above 115 | impossible below 0 or above 1000 | noise 1 | dynamics: follows outdoor air with a 20-90 min lag; cooking, cleaning or dust inside give short spikes
+  NODE: cc-vayu-0-3 (CC hall, floor 0, canteen CC0.3)
+  E5 largest 5-min change = -26.8 ug/m3 at 22:15
+  E8 noise 2.22, longest flat run 2 pts, plateau at max 0 pts
+  -> sensor_fault / erratic / dq=fault / cause=sensor_fault / conf=0.3
+     reason: E8 noise 2.22 far above card noise 1: noisy sensor (card faults)
+### hole_recall (air_quality, 3h, jittered card)
+  CARD: PM2.5 particulate matter [ug/m3], continuous, indoor room (lab, capacity 27) | normal 0-55 | warning above 55 | critical above 120 | impossible below 0 or above 1000 | noise 1 | dynamics: follows outdoor air with a 20-90 min lag; cooking, cleaning or dust inside give short spikes
+  NODE: SR-AQ-ZL02-09 (ZL building, level 02, lab ZL-209)
+  E2 max = 125.8 ug/m3 at 01:25
+  E3 min = 2.1 ug/m3 at 01:40
+  E8 noise 9.52, longest flat run 2 pts, plateau at max 0 pts
+  -> critical / spike / dq=ok / cause=indoor_emission_source / conf=0.95
+     reason: E2 125.8 ug/m3 above critical 120 (card)
+### hole_recall (air_quality, 3h, jittered card, hindi)
+  CARD: room air temperature [C], continuous, indoor room (lab, capacity 34) | normal 20-29 | warning above 29 | critical above 32 | impossible below 5 or above 55 | noise 0.15 | max 5-min change 1 | dynamics: follows AC: falls 1-3 C/h when cooling starts, rises 0.3-1 C/h when AC is off; people and sun add heat
+  NODE: jh-vayu-2-1 (JH hall, level 02, lab JH-201)
+  E1 last = 30.4 C
+  E3 min = 25.2 C at 00:40
+  E5 largest 5-min change = +0.9 C at 01:25
+  -> warning / step_increase / dq=ok / cause=hvac_cooling_issue / conf=0.95
+     reason: E1 30.4 C above warning 29 (card)
+### dq_edge (power, 3h, jittered card, free)
+  CARD: power factor [ratio], continuous, feeder meter (electrical panel) | normal 0.963-1 | warning below 0.963 | critical below 0.66 | impossible below 0 or above 1 | noise 0.005 | max 5-min change 0.15 | dynamics: near 0.95-1.0; dips when many AC compressors and motors run
+  NODE: HN L0 panel meter 0 (Block HN, floor 0, main panel HN)
+  E1 last = 1.000
+  E5 largest 5-min change = +0.037 at 05:00
+  E8 noise 0.0030, longest flat run 38 pts, plateau at max 38 pts
+  -> normal / step_increase / dq=insufficient / cause=normal_load / conf=0.75
+     reason: E1 1.000 above warning 0.963 (card)
+### dq_edge (weather, 1.5h, hindi)
+  CARD: outdoor air temperature [C], continuous, rooftop weather station (weather station) | normal 10-38 | warning above 38 | critical above 42 | impossible below 5 or above 50 | noise 0.08 | max 5-min change 1.5 | dynamics: daily cycle: lowest near 06:00, highest near 14:00-15:00; rain cools 2-5 C
+  NODE: sl-mausam-4-0 (weather station sl-mausam-4-0)
+  E1 last = 22.2 C
+  E4 trend = +0.1 C/h (r2 0.61)
+  E7 halves 22.0 -> 22.2, curvature +0.2/h, oscillation crossings 9
+  -> normal / stable / dq=insufficient / cause=normal_weather / conf=0.55
+     reason: E1 22.2 C below warning 38 (card)
+### ex_longrange (power, 40min, free)
+  CARD: power factor [ratio], continuous, feeder meter (electrical panel) | normal 0.85-1 | warning below 0.85 | critical below 0.7 | impossible below 0 or above 1 | noise 0.005 | max 5-min change 0.15 | dynamics: near 0.95-1.0; dips when many AC compressors and motors run
+  NODE: XJ L0 panel meter 0 (XJ bhavan, level 00, main panel XJ)
+  E1 last = 0.705
+  E3 min = 0.644 at 14:00
+  E6 SMA 1h = 0.688, EMA 1h = 0.689, mean 4h = 0.689
+  -> warning / stable / dq=ok / cause=normal_load / conf=0.75
+     reason: E1 0.705 below warning 0.85 (card)
+### ex_longrange (air_quality, 3h)
+  CARD: CO2 concentration [ppm], continuous, indoor room (server room, capacity 2) | normal 400-1000 | warning above 1000 | critical above 1500 | impossible below 350 or above 5000 | noise 6 | max 5-min change 150 | dynamics: rises with people, +300-800 ppm/h when full; back near 450 within ~1 h of vacancy; outdoor ~420
+  NODE: SR-AQ-CY03-04 (Block CY, level 03, server room CY-304)
+  E9 12 h view: slow drift +370.6 ppm since 10:55 (r2 1.00, 7.4x normal variation)
+  -> sensor_fault / gradual_increase / dq=fault / cause=sensor_fault / conf=0.8
+     reason: E9 slow drift +370.6 off-hours: calibration drift (card faults)
+### ex_hvac (hvac, 40min)
+  CARD: AC unit room temperature with run state and setpoint [C], hvac_unit, indoor AC unit (AC unit) | warning above 30 | critical above 34 | impossible below 10 or above 45 | noise 0.1 | max 5-min change 2 | dynamics: comfort band setpoint -3/+2 C; warning above 30, critical above 34; pull-down 1-3 C/h after start; 4+ starts per
+  NODE: SR-AC-UF00-02 (UF block, floor 0, AC unit UF0-2)
+  E8 occupancy n/a; usually on 2% at this hour (idle unit); end Wed 18:20; missing 0/48; alarm code 146
+  -> warning / unit_alarm / dq=ok / cause=unit_alarm / conf=0.95
+     reason: unit reports an alarm: warning (card)
+### ex_hvac (hvac, 3h)
+  CARD: AC unit room temperature with run state and setpoint [C], hvac_unit, indoor AC unit (AC unit) | warning above 30 | critical above 34 | impossible below 10 or above 45 | noise 0.1 | max 5-min change 2 | dynamics: comfort band setpoint -3/+2 C; warning above 30, critical above 34; pull-down 1-3 C/h after start; 4+ starts per
+  NODE: SR-AC-SG05-02 (SG building, level 05, AC unit SG5-2)
+  E5 AC on 144/144 samples, mode cool, starts 0, stops 0, running 720 min
+  E7 setpoint unchanged at 22.0 C; temp flat 715 min max, largest 5-min step -0.1 C at 16:20
+  -> sensor_fault / flatline / dq=fault / cause=sensor_fault / conf=0.85
+     reason: temperature flat while the unit runs: stuck sensor (card faults)
+### ex_occupancy (occupancy, 3h)
+  CARD: room occupancy [0/1], binary_state, room presence sensor (office, capacity 7) | no fixed limits | dynamics: 1 = people present; classes and office hours on workdays
+  NODE: SR-OC-KL01-01 (KL block, level 01, office KL-101)
+  E2 occupied fraction = 0.00
+  E3 state changes = 0
+  -> normal / vacant / dq=ok / cause=vacant / conf=0.95
+     reason: no presence: normal (card cycle)
+### ex_occupancy (occupancy, 1.5h)
+  CARD: room occupancy [0/1], binary_state, room presence sensor (lecture hall, capacity 97) | no fixed limits | dynamics: 1 = people present; classes and office hours on workdays
+  NODE: SR-OC-MA00-01 (MA block, level 00, room MA-001)
+  E3 state changes = 14
+  E4 first occupied at 02:15
+  E6 window end 03:50 (off-hours)
+  -> warning / off_hours_presence / dq=ok / cause=off_hours_presence / conf=0.85
+     reason: presence with window end 03:50 off-hours 22:00-06:00 = warning (card cycle)
+### ex_stable (weather, 1.5h, free)
+  CARD: outdoor air temperature [C], continuous, rooftop weather station (weather station) | normal 10-38 | warning above 38 | critical above 42 | impossible below 5 or above 50 | noise 0.08 | max 5-min change 1.5 | dynamics: daily cycle: lowest near 06:00, highest near 14:00-15:00; rain cools 2-5 C
+  NODE: PV L4 weather station 1 (weather station PV L4 weather station 1)
+  E1 last = 35.5 C
+  E2 max = 36.2 C at 14:50
+  E3 min = 35.4 C at 12:35
+  -> normal / stable / dq=ok / cause=normal_weather / conf=0.75
+     reason: E1 35.5 C below warning 38 (card)
+### ex_stable (air_quality, 40min)
+  CARD: PM10 particulate matter [ug/m3], continuous, outdoor air station (meter) | normal 0-100 | warning above 100 | critical above 250 | impossible below 0 or above 1000 | noise 1 | dynamics: traffic peaks 08-10 and 19-22, higher on still winter nights, dust events with wind, rain washes it out
+  NODE: AQ-EW00-00 (outdoor air station AQ-EW00-00)
+  E1 last = 86.1 ug/m3
+  E3 min = 62.3 ug/m3 at 19:00
+  E6 SMA 1h = 80.1, EMA 1h = 80.0, mean 4h = 73.3 ug/m3
+  -> normal / stable / dq=ok / cause=normal_conditions / conf=0.75
+     reason: E1 86.1 ug/m3 below warning 100 (card)

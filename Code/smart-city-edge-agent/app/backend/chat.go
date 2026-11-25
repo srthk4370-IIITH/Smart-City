@@ -253,15 +253,17 @@ func newChatStore(dir string) *chatStore {
 			}
 		}
 	}
+	if c.archiveOldLocked(nowTime()) > 0 {
+		c.saveLocked()
+	}
 	return c
 }
 
 func (c *chatStore) saveLocked() {
 	list := c.listLocked()
 	b, _ := json.Marshal(list)
-	tmp := c.path + ".tmp"
-	if os.WriteFile(tmp, b, 0o644) == nil {
-		os.Rename(tmp, c.path)
+	if err := atomicWrite(c.path, b, 0o644); err != nil {
+		log.Printf("chat: sessions not saved: %v", err)
 	}
 }
 
@@ -297,6 +299,7 @@ func (c *chatStore) Warm(r *Reasoner) {
 	c.warming = true
 	c.mu.Unlock()
 	go func() {
+		defer recoverLog("chat warm")
 		defer func() { c.mu.Lock(); c.warming = false; c.mu.Unlock() }()
 		// GPU chat (chat_url): the model stays resident; a ping only keeps a llama-server context checkpoint inside the
 		// static tool header. Qwen3.5 is hybrid (recurrent layers), so the cache can only resume from a checkpoint, and
@@ -363,6 +366,7 @@ func (c *chatStore) Ask(ctx context.Context, r *Reasoner, id, question string) (
 		return nil, errors.New("ask a question (max 600 characters)")
 	}
 	c.mu.Lock()
+	c.archiveOldLocked(nowTime())
 	s := c.S[id]
 	if s == nil {
 		c.seq++
@@ -370,19 +374,19 @@ func (c *chatStore) Ask(ctx context.Context, r *Reasoner, id, question string) (
 		if len([]rune(title)) > 60 {
 			title = string([]rune(title)[:57]) + "..."
 		}
-		s = &ChatSession{ID: fmt.Sprintf("CHAT-%04d", c.seq), Title: title, Created: time.Now().Unix()}
+		s = &ChatSession{ID: fmt.Sprintf("CHAT-%04d", c.seq), Title: title, Created: nowTime().Unix()}
 		c.S[s.ID] = s
 	}
 	history := append([]ChatMsg(nil), s.Msgs...)
-	s.Msgs = append(s.Msgs, ChatMsg{Role: "user", Text: question, At: time.Now().Unix()})
-	s.Updated = time.Now().Unix()
+	s.Msgs = append(s.Msgs, ChatMsg{Role: "user", Text: question, At: nowTime().Unix()})
+	s.Updated = nowTime().Unix()
 	c.saveLocked()
 	c.mu.Unlock()
 
 	ans := c.answer(ctx, r, history, question)
 	c.mu.Lock()
 	s.Msgs = append(s.Msgs, ans)
-	s.Updated = time.Now().Unix()
+	s.Updated = nowTime().Unix()
 	c.saveLocked()
 	out := *s
 	c.mu.Unlock()
@@ -392,21 +396,44 @@ func (c *chatStore) Ask(ctx context.Context, r *Reasoner, id, question string) (
 func (c *chatStore) answer(ctx context.Context, r *Reasoner, history []ChatMsg, question string) ChatMsg {
 	chatFogRef.Store(r)
 	t0 := time.Now()
-	msg := ChatMsg{Role: "assistant", At: time.Now().Unix()}
+	msg := ChatMsg{Role: "assistant", At: nowTime().Unix()}
 	question = chatWithNode(r, chatNormalize(question)) // deploy24: "KH level 2 AC unit 24" -> its node id; deploy25: typos
 	// deploy25: question types (readings, sensor health, incidents over any span, follow-ups, refusals) first
+	// polish 2026-11-20: the template answer is the fallback; an open question (why / should I / summarise / compare)
+	// with tool facts goes on to the reasoner with those facts as context (chatSendToReasoner)
+	var tmpl *ChatMsg
 	if v, ok := (chatTools{r: r, now: chatNowOf(r)}).chatRouteV25(question, history); ok && v.Text != "" {
 		msg.Text, msg.Tools, msg.Ms = v.Text, v.Tools, time.Since(t0).Milliseconds()
-		return msg
-	}
-	// a routed question (peak, current levels, recent / open incidents, faulty sensors, what-if) needs no NPU
-	// (chat_router.go): answered at once from one tool, never queued behind an incident analysis
-	if text, tool, ok := (chatTools{r: r, now: chatNowOf(r)}).chatRouted(question, history); ok {
+		tmpl = &msg
+	} else if text, tool, ok := (chatTools{r: r, now: chatNowOf(r)}).chatRouted(question, history); ok {
+		// a routed question (peak, current levels, recent / open incidents, faulty sensors, what-if) needs no NPU
+		// (chat_router.go): answered at once from one tool, never queued behind an incident analysis
 		msg.Text, msg.Tools, msg.Ms = text, []ChatTool{tool}, time.Since(t0).Milliseconds()
-		return msg
+		tmpl = &msg
+	}
+	if tmpl != nil {
+		if !chatSendToReasoner(question, *tmpl) {
+			msg.Text = chatFinish(question, msg.Text)
+			return msg
+		}
+		fb := *tmpl
+		fb.Text = chatFinish(question, fb.Text)
+		tmpl = &fb
+		msg = ChatMsg{Role: "assistant", At: msg.At}
 	}
 	// Queue, don't refuse (owner 2026-10-29): wait for the chat ahead and for any incident analysis (alerts first),
 	// then answer. The UI polls /api/chat/status to show what the question is waiting for. Give up after 5 min.
+	if tmpl != nil {
+		// the NPU is taken (another chat, or an alert's analysis comes first): the template answer now, not a wait
+		if !c.run.TryLock() {
+			return *tmpl
+		}
+		busy := r.analysingIncident() != ""
+		c.run.Unlock()
+		if busy {
+			return *tmpl
+		}
+	}
 	c.setWait("another question")
 	deadline := time.Now().Add(5 * time.Minute)
 	for !c.run.TryLock() {
@@ -465,6 +492,10 @@ func (c *chatStore) answer(ctx context.Context, r *Reasoner, history []ChatMsg, 
 	// are held to them (chatValidateCall); its answer is checked against the tool results (chatCheckAnswer)
 	guard := tools.chatGuardOf(question, history)
 	modelQ := question + guard.Hint
+	if tmpl != nil {
+		modelQ += chatFactsHint(tmpl.Text)
+		msg.Tools = append(msg.Tools, tmpl.Tools...)
+	}
 	var turns []v3Turn
 	used := 0
 	seen := map[string]bool{} // tool calls made for this question (name + arguments as the model wrote them)
@@ -505,11 +536,14 @@ func (c *chatStore) answer(ctx context.Context, r *Reasoner, history []ChatMsg, 
 		used += len(calls)
 		turns = append(turns, t)
 	}
+	if tmpl != nil && (msg.Error || msg.Text == "") {
+		return *tmpl // the reasoner failed: the template answer from the same facts
+	}
 	if msg.Text == "" && !msg.Error {
 		msg.Text = "I could not find an answer to that on the device."
 	}
 	if !msg.Error {
-		msg.Text = guard.Check(msg.Text, msg.Tools)
+		msg.Text = chatFinish(question, guard.Check(msg.Text, msg.Tools))
 	}
 	msg.Ms = time.Since(t0).Milliseconds()
 	if gpu != nil {
@@ -696,6 +730,9 @@ func (t chatTools) incidents() []chatInc {
 		all = append(all, t.r.incidents...)
 	}
 	for _, p := range all {
+		if p.SystemCheck { // deploy-check incidents are not the operator's business (polish_events.go)
+			continue
+		}
 		ci := chatInc{inc: p, at: time.Unix(p.CreatedSim, 0), patterns: map[string]string{}, status: map[string]string{}, faults: map[string]string{},
 			archived: !live[p.ID]}
 		if p.Final != nil && p.Final.Parsed != nil && !p.Final.Preliminary {
@@ -1203,6 +1240,7 @@ func (t chatTools) run(name string, args map[string]any) (map[string]any, error)
 func (s *Server) chatRoutes(mux *http.ServeMux) {
 	cs := newChatStore(s.dir)
 	chatMain = cs
+	s.voiceRoutes(mux)
 	mux.HandleFunc("/api/chat/warm", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "POST", 405)
@@ -1232,6 +1270,17 @@ func (s *Server) chatRoutes(mux *http.ServeMux) {
 		}
 		cs.mu.Unlock()
 		writeJSON(w, out)
+	})
+	// "Clear history": every chat session is removed (POST or DELETE)
+	mux.HandleFunc("/api/chat/sessions/clear", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost && r.Method != http.MethodDelete {
+			http.Error(w, "POST", 405)
+			return
+		}
+		cs.mu.Lock()
+		n := cs.clearLocked()
+		cs.mu.Unlock()
+		writeJSON(w, map[string]any{"cleared": n})
 	})
 	mux.HandleFunc("/api/chat/sessions/", func(w http.ResponseWriter, r *http.Request) {
 		id := strings.TrimPrefix(r.URL.Path, "/api/chat/sessions/")

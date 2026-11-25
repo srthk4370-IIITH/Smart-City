@@ -545,13 +545,10 @@ func (s *siteStore) Save(c *SiteConfig, source string) error {
 	b, _ := json.MarshalIndent(c, "", " ")
 	if s.dir != "" {
 		_ = os.MkdirAll(filepath.Join(s.dir, "state", "site_versions"), 0o755)
-		if err := os.WriteFile(s.path()+".part", b, 0o644); err != nil {
+		if err := atomicWrite(s.path(), b, 0o644); err != nil {
 			return err
 		}
-		if err := os.Rename(s.path()+".part", s.path()); err != nil {
-			return err
-		}
-		_ = os.WriteFile(filepath.Join(s.dir, "state", "site_versions", fmt.Sprintf("site.v%d.json", c.Version)), b, 0o644)
+		_ = atomicWrite(filepath.Join(s.dir, "state", "site_versions", fmt.Sprintf("site.v%d.json", c.Version)), b, 0o644)
 	}
 	s.cfg, s.ix = c, NewSiteIndex(c)
 	return nil

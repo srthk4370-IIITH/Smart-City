@@ -1,0 +1,11 @@
+A/B spthr: steps 44 -> 46 of the live schedule
+A: --micro-tokens 7424 --head-cpu --ckpt-offload --mlp-chunk 512 --lean-host 
+B: --micro-tokens 7424 --head-cpu --ckpt-offload --mlp-chunk 512 --lean-host --shared-prefix --offload-min 4096 --mlp-chunk-min 4096
+== arm A (/home/hp_srthk4370/smartcity_runs/ab_spthr_A) 10:27:25
+arm A rc 3 heat pauses 0; [10:28:18] fit levers: head-cpu, ckpt-offload (forwards over 0 tokens), mlp-chunk 512 (forwards over 512 tokens) 
+== arm B (/home/hp_srthk4370/smartcity_runs/ab_spthr_B) 10:37:21
+arm B rc 1 heat pauses 0; [10:38:29] fit levers: head-cpu, ckpt-offload (forwards over 4096 tokens), mlp-chunk 512 (forwards over 4096 tokens) [10:38:29] shared prefix on: min 256 tokens, continuation batch micro_tokens - prefix padded tokens [10:38:58] OOM in a shared-prefix batch at step 44: optimizer step skipped 
+ step |  A tok/s     A s   A al   A rs   A loss |  B tok/s     B s   B al   B rs   B loss |  dloss
+   45 |      262   220.8   4.41   4.98   0.4178 |        -       -      -      -        - |      -
+   46 |      284   235.6   4.18   4.98   0.3894 |        -       -      -      -        - |      -
+A: 2 steps, 284.2 tok/s (sum tokens / sum s, first step excluded), max peak alloc 4.41 GiB, reserved 4.98 GiB, mean loss 0.4036

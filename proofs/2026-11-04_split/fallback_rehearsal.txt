@@ -1,0 +1,27 @@
+== split_off
+stopped
+profile now: 0 split keys (0 = off); llama-server: none
+
+real	0m3.768s
+user	0m0.015s
+sys	0m0.000s
+== 6.1 s | None | Are there any HVAC problems I should worry about?
+  ANSWER Open HVAC incidents: 15; worst status: warning; needs decision: 8.
+== split_on
+split on: GPU up after 5 s; profile: chat_think=adaptive chat_url=http://127.0.0.1:8090 chat_device=cpu 
+
+real	0m6.056s
+user	0m0.015s
+sys	0m0.031s
+== 45.3 s | qwen3.5-2b rsn_v3 (cpu) | Are there any HVAC problems I should worry about?
+  ANSWER 15 incidents involve hvac, worst status warning. Check [INC-0486] first.
+== rehearsal 2 (split_on waits for pre-warm)
+stopped
+profile now: 0 split keys (0 = off); llama-server: none
+split on: GPU up after 5 s; profile: chat_think=adaptive chat_url=http://127.0.0.1:8090 chat_device=cpu 
+
+real	0m43.634s
+user	0m0.031s
+sys	0m0.000s
+== 5.7 s | qwen3.5-2b rsn_v3 (cpu) | Are there any HVAC problems I should worry about?
+  ANSWER 15 incidents involve hvac, worst status warning. Handle these first.

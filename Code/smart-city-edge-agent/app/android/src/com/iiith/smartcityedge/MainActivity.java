@@ -12,6 +12,8 @@ import android.view.WindowInsetsController;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
+import android.webkit.PermissionRequest;
+import android.webkit.WebChromeClient;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.JavascriptInterface;
@@ -33,6 +35,17 @@ public class MainActivity extends Activity {
     private WebView web;
     private final Handler ui = new Handler(Looper.getMainLooper());
 
+    private PermissionRequest micReq;
+
+    @Override
+    public void onRequestPermissionsResult(int code, String[] perms, int[] res) {
+        if (code == 2 && micReq != null) {
+            if (res.length > 0 && res[0] == 0) micReq.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
+            else micReq.deny();
+            micReq = null;
+        }
+    }
+
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -53,6 +66,23 @@ public class MainActivity extends Activity {
             @Override
             public void onReceivedError(WebView v, WebResourceRequest r, WebResourceError e) {
                 if (r.isForMainFrame()) waitAndLoad();
+            }
+        });
+        // Voice chat: the page asks for the microphone (getUserMedia); ask Android once, then grant the WebView.
+        web.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onPermissionRequest(final PermissionRequest req) {
+                runOnUiThread(() -> {
+                    boolean mic = false;
+                    for (String r : req.getResources()) if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(r)) mic = true;
+                    if (!mic) { req.deny(); return; }
+                    if (checkSelfPermission("android.permission.RECORD_AUDIO") == 0) {
+                        req.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
+                    } else {
+                        micReq = req;
+                        requestPermissions(new String[]{"android.permission.RECORD_AUDIO"}, 2);
+                    }
+                });
             }
         });
         // Phase 1: the "No network" page opens the Wi-Fi settings (window.SCE.wifi()).

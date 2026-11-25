@@ -6,6 +6,7 @@
   const { h, api, post, toast } = window.SCE_H || {};
   const P = { site: null, status: null, cards: null, sel: null, dirty: false, nonetHidden: false, timer: 0, view: '' };
   const $id = (x) => document.getElementById(x);
+  const nice = (s) => (s == null || s === '' ? '-' : String(s).replace(/_/g, ' '));
   const put = (path, body) => api(path, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   const ageTxt = (s) => (s == null ? '-' : s < 90 ? s + ' s' : s < 5400 ? Math.round(s / 60) + ' min' : (s / 3600).toFixed(1) + ' h');
   const STC = { normal: 'var(--green,#34c759)', warning: 'var(--orange,#ff9500)', critical: 'var(--red,#ff3b30)', data_issue: 'var(--tx2)' };
@@ -87,8 +88,9 @@
     cards = cards || {}; cards.existing = cards.existing || {}; cards.faults = cards.faults || []; cards.actions = cards.actions || []; cards.kinds = cards.kinds || []; cards.domains = cards.domains || {};
     P.site = site; P.status = status; P.cards = cards; P.dirty = false;
   }
-  function sel(opts, val, on) {
-    const s = h('select', { class: 'sel' }, opts.map((o) => h('option', { value: o, text: o || '(none)', selected: o === val })));
+  function sel(opts, val, on, labels) {
+    const lab = (o) => (typeof labels === 'function' ? labels(o) : labels && labels[o]) || o || '(none)';
+    const s = h('select', { class: 'sel' }, opts.map((o) => h('option', { value: o, text: lab(o), selected: o === val })));
     s.onchange = () => on(s.value); return s;
   }
   function inp(val, on, type) {
@@ -114,49 +116,307 @@
       const st = nodeStatus(n.id), mon = P.site.nodes.some((s) => s.parent === n.id && s.kind === 'sensor');
       c.setAttribute('r', mon ? 9 : 5); c.setAttribute('fill', STC[st] || STC.normal); c.setAttribute('opacity', mon ? '1' : '.45');
       c.setAttribute('stroke', P.sel === n.id ? 'var(--accent)' : 'none'); c.setAttribute('stroke-width', '4'); c.style.cursor = 'pointer';
-      const t = document.createElementNS(NS, 'title'); t.textContent = (n.name || n.id) + ' · ' + st; c.append(t);
+      const t = document.createElementNS(NS, 'title'); t.textContent = nm(n) + ' · ' + SW[normSt(st)]; c.append(t);
       c.addEventListener('click', () => { P.sel = n.id; renderSite(); });
       svg.append(c);
     }
-    box.append(h('div', { class: 'card p1-card' }, h('h3', { text: 'Campus map' }), svg,
-      h('p', { class: 'muted', text: 'Positions from the campus API (xcor, ycor). Big dots carry monitored sensors; colour = worst status below. Tap a dot to edit it.' })));
+    box.append(h('details', { class: 'card p1-card' }, h('summary', {}, h('b', { text: 'Campus positions' })), svg,
+      h('p', { class: 'muted', text: 'Where the buildings sit on the campus. Big dots carry monitored sensors; colour shows the worst status below. Tap a dot to open it.' })));
   }
 
-  function treeNode(n, depth) {
-    const ch = kids(n.id), st = nodeStatus(n.id);
-    const lab = h('span', { class: 'p1-tn' + (P.sel === n.id ? ' on' : '') }, h('i', { class: 'p1-dot', style: 'background:' + (STC[st] || STC.normal) }),
-      h('span', { text: (n.name || n.id) + (n.kind === 'sensor' ? '' : ' (' + (n.etype || n.kind) + ')') + (n.inferred ? ' *' : '') }));
-    lab.onclick = (e) => { e.preventDefault(); P.sel = n.id; renderSite(); };
-    if (!ch.length) return h('div', { class: 'p1-leaf' }, lab);
-    lab.append(h('span', { class: 'p1-cnt', text: String(ch.length) }));
-    const d = h('details', { open: depth < 1 || openPath().has(n.id) }, h('summary', {}, lab), h('div', { class: 'p1-kids' }, ch.map((c) => treeNode(c, depth + 1))));
-    return d;
+  /* ---------------- plain words for node kinds ---------------- */
+  const KW = { campus: 'campus', building: 'building', wing: 'wing', floor: 'floor', room: 'room', zone: 'area', equipment: 'equipment', sensor: 'sensor' };
+  const kindWord = (n) => (n.kind === 'building' && /ground|field|court|stadium|garden|lawn/i.test(n.name || '') ? 'ground' : KW[n.kind] || n.kind);
+  const nm = (n) => String(n.name || n.id).replace(/\s*\((?:api|API)\)/g, '');
+  const nmShort = (n) => { const m = /\(([A-Z0-9]{1,4})\)\s*$/.exec(nm(n)); return m ? m[1] : (n.code || nm(n).slice(0, 6)); };
+  const SW = { normal: 'OK', warning: 'Warning', critical: 'Critical', data_issue: 'Data problem' };
+  const SG = { normal: '●', warning: '▲', critical: '■', data_issue: '◆' };
+  const normSt = (s) => (s === 'critical' || s === 'warning' || s === 'normal' ? s : 'data_issue');
+  const NSV = 'http://www.w3.org/2000/svg';
+  const sv = (tag, a, ...kids) => {
+    const e = document.createElementNS(NSV, tag);
+    for (const k in a || {}) if (a[k] != null && a[k] !== false) e.setAttribute(k, a[k]);
+    kids.forEach((c) => { if (c != null) e.append(c.nodeType ? c : document.createTextNode(String(c))); });
+    return e;
+  };
+  const sensorsBelow = (id, memo) => {
+    if (memo.has(id)) return memo.get(id);
+    const n = byId().get(id); let c = n && n.kind === 'sensor' ? 1 : 0;
+    kids(id).forEach((k) => { c += sensorsBelow(k.id, memo); });
+    memo.set(id, c); return c;
+  };
+  const pathOpenSet = () => { const s = new Set(), m = byId(); let x = m.get(P.sel); while (x && x.parent) { s.add(x.parent); x = m.get(x.parent); } return s; };
+
+  /* ---------------- botanical tree graphic (inline SVG, no library) ----------------
+     trunk = campus, boughs = buildings, thinner branches = floors then rooms, leaves = sensors.
+     Leaf colour + glyph = status. Buildings without sensors fold into one "+N other buildings" twig. */
+  const CW = 1600, CH = 1100, CX = 800, CY = 900;
+  const pol = (r, a) => [CX + r * Math.sin(a), CY - r * Math.cos(a)];
+  const LEGEND = { normal: 'Working fine', warning: 'Needs a look', critical: 'Critical', data_issue: 'Data problem' };
+  function buildTreeModel() {
+    const memo = new Map(), camp = P.site.nodes.find((n) => n.kind === 'campus');
+    if (!camp) return null;
+    const stOfS = (s) => normSt((((P.status || {}).sensors) || {})[s.id]);
+    const shown = (n) => kids(n.id).filter((k) => k.kind === 'sensor' || n.kind === 'campus' || sensorsBelow(k.id, memo) > 0);
+    const wgt = (n) => {
+      if (n.fold) return 1.2;
+      const c = shown(n), br = c.filter((k) => k.kind !== 'sensor'), sn = c.length - br.length;
+      return Math.pow(Math.max(1.2, br.reduce((a, k) => a + wgt(k), 0) + (sn ? 0.8 + sn * 0.35 : 0)), 0.85);
+    };
+    const out = { camp, br: [], lf: [], total: sensorsBelow(camp.id, memo) };
+    const A = 62 * Math.PI / 180;
+    const grow = (n, depth, a0, a1, parent, idx) => {
+      const a = (a0 + a1) / 2;
+      const r = n.fold ? 190 : depth === 1 ? 310 + (idx % 2) * 45 : parent.r + ({ 2: 170, 3: 125 }[depth] || 95) + (idx % 2) * 18;
+      const pt = pol(r, a), me = { n, depth, a, r, x: pt[0], y: pt[1], L: n.fold ? 0 : sensorsBelow(n.id, memo), parent, st: n.fold ? 'normal' : normSt(nodeStatus(n.id)) };
+      const di = ((P.status || {}).rollup || {})[n.id]; if (me.st === 'normal' && di && di.data_issues > 0) me.st = 'data_issue';
+      out.br.push(me);
+      if (n.fold) return me;
+      const c = shown(n), br = c.filter((k) => k.kind !== 'sensor'), sn = c.filter((k) => k.kind === 'sensor');
+      const sw = sn.length ? 0.8 + sn.length * 0.35 : 0, tot = br.reduce((s, k) => s + wgt(k), 0) + sw;
+      let cur = a0;
+      br.forEach((k, i) => { const w = wgt(k) / (tot || 1) * (a1 - a0); grow(k, depth + 1, cur, cur + w, me, i); cur += w; });
+      if (sn.length) {
+        const sorted = sn.slice().sort((x, y) => (stOfS(y) === 'normal' ? 0 : 1) - (stOfS(x) === 'normal' ? 0 : 1));
+        const MAXL = 6, vis = sorted.slice(0, MAXL);
+        vis.forEach((s, i) => {
+          const phi = vis.length === 1 ? a : a + (i - (vis.length - 1) / 2) * 0.55, len = 36 + (i % 2) * 12, p2 = [me.x + len * Math.sin(phi), me.y - len * Math.cos(phi)];
+          out.lf.push({ n: s, x: p2[0], y: p2[1], par: me, st: stOfS(s), cl: sorted.length > 3 });
+        });
+        if (sorted.length > MAXL) { const p2 = [me.x + 62 * Math.sin(a), me.y - 62 * Math.cos(a)]; out.lf.push({ more: sorted.length - MAXL, x: p2[0], y: p2[1], par: me, n: sorted[MAXL], st: 'normal' }); }
+      }
+      return me;
+    };
+    let roots = shown(camp).filter((k) => k.kind !== 'sensor');
+    const empty = roots.filter((k) => sensorsBelow(k.id, memo) === 0);
+    roots = roots.filter((k) => sensorsBelow(k.id, memo) > 0);
+    if (empty.length) { if (P.otherOpen) roots = roots.concat(empty); else roots.push({ id: 'other', kind: 'fold', fold: true, name: '+' + empty.length + ' other building' + (empty.length === 1 ? '' : 's'), names: empty }); }
+    const tot = roots.reduce((s, k) => s + wgt(k), 0);
+    let cur = -A;
+    roots.forEach((k, i) => { const w = wgt(k) / (tot || 1) * 2 * A; grow(k, 1, cur, cur + w, { n: camp, r: 0, x: CX, y: CY, a: 0, L: out.total }, i); cur += w; });
+    let x0 = CX, x1 = CX, y0 = CY, y1 = CY + 150;
+    out.br.forEach((b) => { x0 = Math.min(x0, b.x); x1 = Math.max(x1, b.x); y0 = Math.min(y0, b.y); });
+    out.lf.forEach((l) => { x0 = Math.min(x0, l.x - 20); x1 = Math.max(x1, l.x + 20); y0 = Math.min(y0, l.y - 20); });
+    out.bounds = [x0 - 40, y0 - 40, x1 + 40, y1];
+    return out;
   }
-  function openPath() { const s = new Set(), m = byId(); let x = m.get(P.sel); while (x && x.parent) { s.add(x.parent); x = m.get(x.parent); } return s; }
+  function taper(x0, y0, cx, cy, x1, y1, w0, w1) {
+    const N = 12, L = [], R = [];
+    for (let i = 0; i <= N; i++) {
+      const t = i / N, u = 1 - t;
+      const x = u * u * x0 + 2 * u * t * cx + t * t * x1, y = u * u * y0 + 2 * u * t * cy + t * t * y1;
+      let dx = 2 * u * (cx - x0) + 2 * t * (x1 - cx), dy = 2 * u * (cy - y0) + 2 * t * (y1 - cy);
+      const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l;
+      const w = (w0 + (w1 - w0) * Math.pow(t, 0.8)) / 2;
+      L.push([x - dy * w, y + dx * w]); R.push([x + dy * w, y - dx * w]);
+    }
+    const pts = L.concat(R.reverse());
+    return 'M' + pts.map((p) => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('L') + 'Z';
+  }
+  const bwidth = (L, depth) => Math.max(3.5, Math.min(30, 3 + 4.6 * Math.sqrt(L))) * (depth > 2 ? 0.8 : depth === 2 ? 0.9 : 1);
+  const plainLabel = (n) => {
+    let t = nm(n).replace(/^room of\s+/i, '').split(/\s+/).filter((w) => !/\d/.test(w) && !/^[A-Z]{2,}(-|$)/.test(w) && !/^\(/.test(w)).join(' ').trim() || nm(n);
+    if (/^level\s*$/i.test(t)) t = nm(n);
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  };
+  const hsh = (s) => { let x = 0; for (let i = 0; i < s.length; i++) x = (x * 31 + s.charCodeAt(i)) | 0; return ((x >>> 0) % 1000) / 1000; };
+  const LEAFD = 'M0 0C5 -6 15 -6 20 0C15 6 5 6 0 0Z';
+  function renderTree(box) {
+    const M = buildTreeModel(); if (!M) { box.append(h('div', { class: 'card p1-card' }, h('p', { class: 'muted', text: 'The site has no campus node yet.' }))); return; }
+    const svg = sv('svg', { class: 'bt-svg', role: 'img', 'aria-label': 'Campus tree: the trunk is the campus, boughs are buildings, branches are floors and rooms, leaves are sensors. The same tree is listed below.', preserveAspectRatio: 'xMidYMid meet' });
+    const gB = sv('g', { class: 'bt-br' }), gL = sv('g', { class: 'bt-lf' }), gT = sv('g', { class: 'bt-tx', 'aria-hidden': 'true' });
+    svg.append(sv('ellipse', { class: 'bt-shadow', cx: CX, cy: CY + 150, rx: 520, ry: 26 }), sv('path', { class: 'bt-ground', d: 'M0 ' + (CY + 150) + 'Q' + CX + ' ' + (CY + 120) + ' ' + CW + ' ' + (CY + 150) + 'L' + CW + ' ' + (CH + 400) + 'L0 ' + (CH + 400) + 'Z' }), gB, gL, gT);
+    const pick = (id) => (e) => { e.stopPropagation(); if (svg._drag) return; if (id === 'other') { P.otherOpen = !P.otherOpen; renderSite(); return; } selectNode(id); };
+    const tw = bwidth(M.total, 1) * 1.7 + 12;
+    const trunk = sv('path', { class: 'bt-b bt-normal', d: taper(CX - 4, CY + 150, CX + 10, CY + 70, CX, CY, tw * 1.5, tw * 0.85), 'data-id': M.camp.id });
+    trunk.append(sv('title', {}, nm(M.camp) + ' (campus)')); trunk.addEventListener('click', pick(M.camp.id)); gB.append(trunk);
+    const labels = [], order = M.br.slice().sort((a, b) => a.depth - b.depth);
+    order.forEach((b) => {
+      const p = b.parent, j = (hsh(b.n.id) - 0.5) * 36, bend = (b.a < 0 ? -1 : 1) * 0.12;
+      const ctl = p.r === 0 ? pol(b.r * 0.55, b.a * 0.4) : pol(p.r + (b.r - p.r) * 0.55 + j, p.a + bend * (hsh(b.n.id + 'x') - 0.3));
+      const w1 = bwidth(b.L, b.depth), w0 = p.r === 0 ? w1 * 1.25 : w1, wt = Math.max(3, w1 * 0.5);
+      const el = sv('path', { class: 'bt-b bt-' + b.st + (b.n.fold ? ' fold' : ''), d: taper(p.x, p.y, ctl[0], ctl[1], b.x, b.y, w0, wt), 'data-id': b.n.id });
+      el.append(sv('title', {}, b.n.fold ? b.n.name + ' (tap to ' + (P.otherOpen ? 'fold' : 'show') + ')' : nm(b.n) + ' (' + kindWord(b.n) + ') - ' + LEGEND[b.st]));
+      const hit = sv('path', { class: 'bt-hit', d: 'M' + p.x.toFixed(1) + ' ' + p.y.toFixed(1) + 'Q' + ctl[0].toFixed(1) + ' ' + ctl[1].toFixed(1) + ' ' + b.x.toFixed(1) + ' ' + b.y.toFixed(1), 'data-id': b.n.id });
+      el.addEventListener('click', pick(b.n.id)); hit.addEventListener('click', pick(b.n.id));
+      gB.append(el, hit, sv('circle', { class: 'bt-b bt-' + b.st, cx: b.x, cy: b.y, r: wt * 0.55, 'data-id': b.n.id }));
+      // label geometry: point at 38 % along the curve (near the base, where the branch is thick)
+      const t = b.depth === 1 ? 0.4 : 0.55, u = 1 - t;
+      const mx = u * u * p.x + 2 * u * t * ctl[0] + t * t * b.x, my = u * u * p.y + 2 * u * t * ctl[1] + t * t * b.y;
+      let dx = 2 * u * (ctl[0] - p.x) + 2 * t * (b.x - ctl[0]), dy = 2 * u * (ctl[1] - p.y) + 2 * t * (b.y - ctl[1]);
+      if (dx < 0) { dx = -dx; dy = -dy; }
+      const ang = Math.atan2(dy, dx) * 180 / Math.PI, steep = Math.abs(ang) > 60;
+      const glyph = b.st !== 'normal' ? SG[b.st] + ' ' : '';
+      const pn = plainLabel(b.n), full = glyph + (b.depth === 1 ? nm(b.n) : pn), short = glyph + (b.n.fold ? b.n.name : b.depth === 1 ? nmShort(b.n) : pn.split(' ').slice(0, 2).join(' '));
+      const text = sv('text', { class: 'bt-t d' + Math.min(b.depth, 3) + (b.st !== 'normal' ? ' bad' : '') + (b.n.fold ? ' fold' : '') }, full);
+      gT.append(text);
+      labels.push({ text, mx, my, ang: steep ? 0 : ang, steep, off: w1 / 2 + 5, right: b.x >= CX, full, short, pri: (b.n.fold ? 5 : 0) + b.depth * 10 - Math.min(b.L, 9) * 0.1, bold: b.depth === 1, curLen: Math.hypot(b.x - p.x, b.y - p.y) });
+    });
+    labels.sort((a, b) => a.pri - b.pri);
+    M.lf.forEach((l) => {
+      const ang = Math.atan2(l.y - l.par.y, l.x - l.par.x) * 180 / Math.PI + (hsh((l.n.id || '') + 'r') - 0.5) * 30;
+      const g = sv('g', { class: 'bt-leaf bt-' + l.st + (P.sel === l.n.id ? ' sel' : ''), 'data-id': l.more ? 'more' : l.n.id });
+      { const qx = (l.par.x + l.x) / 2 + (l.y - l.par.y) * 0.18, qy = (l.par.y + l.y) / 2 - (l.x - l.par.x) * 0.18; gB.append(sv('path', { class: 'bt-twig', d: 'M' + l.par.x.toFixed(1) + ' ' + l.par.y.toFixed(1) + 'Q' + qx.toFixed(1) + ' ' + qy.toFixed(1) + ' ' + l.x.toFixed(1) + ' ' + l.y.toFixed(1) })); }
+      if (l.more) {
+        g.append(sv('circle', { class: 'bt-more', r: 13 }), sv('text', { class: 'bt-cnt', 'text-anchor': 'middle', dy: '.35em' }, '+' + l.more), sv('title', {}, l.more + ' more sensors here'));
+      } else {
+        const sway = sv('g', { class: 'bt-sway', style: 'animation-delay:' + (hsh(l.n.id) * -4).toFixed(2) + 's' });
+        const rot = sv('g', { transform: 'rotate(' + ang.toFixed(0) + ')' }, sv('path', { class: 'bt-shape', d: LEAFD }));
+        sway.append(rot);
+        if (l.st !== 'normal') { const c = 10 * Math.cos(ang * Math.PI / 180), s = 10 * Math.sin(ang * Math.PI / 180); sway.append(sv('text', { class: 'bt-gl', x: c.toFixed(1), y: s.toFixed(1), 'text-anchor': 'middle', dy: '.35em' }, SG[l.st])); }
+        g.append(sway, sv('title', {}, (l.n.name || nice(l.n.metric)) + ' - ' + LEGEND[l.st]));
+        const lt = sv('text', { class: 'bt-lt', x: 24, dy: '.35em' }, nice(l.n.metric)); g.append(lt); l.lt = lt;
+      }
+      g.addEventListener('click', pick(l.n.id));
+      gL.append(g); l.g = g;
+    });
+    P.treePos = new Map(); M.br.forEach((b) => P.treePos.set(b.n.id, [b.x, b.y])); M.lf.forEach((l) => { if (!l.more) P.treePos.set(l.n.id, [l.x, l.y]); });
+    P.treeLinks = sv('g', { class: 'bt-links', 'aria-hidden': 'true' }); svg.insertBefore(P.treeLinks, gL);
+    const view = { cx: CX, cy: 600, w: CW };
+    const wrap = h('div', { class: 'bt-wrap' }, svg);
+    const dims = () => { const r = wrap.getBoundingClientRect(); return { w: r.width || 360, h: r.height || 420 }; };
+    const apply = () => {
+      const d = dims(), vh = view.w * d.h / d.w, sc = d.w / view.w, fs = 12 / sc, k = Math.min(3.2, Math.max(0.9, 6 / (9 * sc)));
+      svg.setAttribute('viewBox', (view.cx - view.w / 2).toFixed(1) + ' ' + (view.cy - vh / 2).toFixed(1) + ' ' + view.w.toFixed(1) + ' ' + vh.toFixed(1));
+      P.vb = { cx: view.cx, cy: view.cy, w: view.w };
+      // label collision pass: highest priority first, a label is hidden if its box overlaps one already placed
+      const placed = [];
+      labels.forEach((L) => {
+        const size = L.bold ? fs * 1.08 : fs, fit = (txt) => txt.length * size * 0.6 <= Math.max(L.curLen * 1.1, 1);
+        let txt = fit(L.full) ? L.full : fit(L.short) ? L.short : (L.pri < 12 ? L.short : '');
+        if (L.pri >= 12 && !fit(L.full) && !fit(L.short)) txt = '';
+        let box = null;
+        if (txt) {
+          const w = txt.length * size * 0.6, hgt = size * 1.2, a = L.ang * Math.PI / 180, ox = L.steep ? (L.right ? L.off + w / 2 : -(L.off + w / 2)) : 0, oy = L.steep ? 0 : -L.off - size * 0.2;
+          const cx = L.mx + ox - Math.sin(a) * 0, cy = L.my + oy, ex = Math.abs(Math.cos(a)) * w / 2 + Math.abs(Math.sin(a)) * hgt / 2, ey = Math.abs(Math.sin(a)) * w / 2 + Math.abs(Math.cos(a)) * hgt / 2;
+          box = [cx - ex, cy - ey, cx + ex, cy + ey, cx, cy];
+          if (placed.some((q) => box[0] < q[2] && box[2] > q[0] && box[1] < q[3] && box[3] > q[1])) txt = '';
+        }
+        if (!txt) { L.text.style.display = 'none'; return; }
+        placed.push(box); L.text.style.display = ''; if (L.text.textContent !== txt) L.text.textContent = txt;
+        L.text.setAttribute('font-size', size.toFixed(2));
+        L.text.setAttribute('text-anchor', L.steep ? (L.right ? 'start' : 'end') : 'middle');
+        const px = L.steep ? L.mx + (L.right ? L.off : -L.off) : L.mx, py = L.steep ? L.my : L.my - L.off - size * 0.2;
+        L.text.setAttribute('transform', 'translate(' + px.toFixed(1) + ' ' + py.toFixed(1) + ') rotate(' + L.ang.toFixed(1) + ')');
+        L.text.setAttribute('dy', L.steep ? '.35em' : '0');
+      });
+      M.lf.forEach((l) => { l.g.setAttribute('transform', 'translate(' + l.x.toFixed(1) + ' ' + l.y.toFixed(1) + ') scale(' + k.toFixed(2) + ')'); if (l.lt) l.lt.style.display = sc * k >= 0.8 ? '' : 'none'; if (l.lt) l.lt.setAttribute('font-size', (12 / (sc * k)).toFixed(2)); });
+    };
+    const fit = () => {
+      const d = dims(), b = M.bounds, bw = (b[2] - b[0]) * 1.06, bh = (b[3] - b[1]) * 1.06;
+      view.w = Math.max(bw, bh * d.w / d.h); view.cx = (b[0] + b[2]) / 2; view.cy = (b[1] + b[3]) / 2; apply();
+    };
+    const zoom = (f, px, py) => {
+      const d = dims(), vh = view.w * d.h / d.w, nw = Math.max(260, Math.min(CW * 1.6, view.w / f)), fx = px == null ? 0.5 : px, fy = py == null ? 0.5 : py;
+      const ox = view.cx - view.w / 2 + fx * view.w, oy = view.cy - vh / 2 + fy * vh, nh = nw * d.h / d.w;
+      view.cx = ox - fx * nw + nw / 2; view.cy = oy - fy * nh + nh / 2; view.w = nw; apply();
+    };
+    const ptrs = new Map(); let last = null, startPt = null;
+    svg.addEventListener('pointerdown', (e) => { ptrs.set(e.pointerId, [e.clientX, e.clientY]); startPt = [e.clientX, e.clientY]; svg._drag = false; last = null; });
+    svg.addEventListener('pointermove', (e) => {
+      if (!ptrs.has(e.pointerId)) return;
+      const d = dims(), prev = ptrs.get(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+      if (ptrs.size === 1) {
+        if (!svg._drag && Math.hypot(e.clientX - startPt[0], e.clientY - startPt[1]) < 6) return;
+        if (!svg._drag) { svg._drag = true; try { svg.setPointerCapture(e.pointerId); } catch (x) { /* ignore */ } }
+        view.cx -= (e.clientX - prev[0]) * view.w / d.w; view.cy -= (e.clientY - prev[1]) * view.w / d.w; apply();
+      } else if (ptrs.size === 2) {
+        svg._drag = true; const [a, b] = [...ptrs.values()], dist = Math.hypot(a[0] - b[0], a[1] - b[1]);
+        if (last) { const r = svg.getBoundingClientRect(); zoom(dist / last, ((a[0] + b[0]) / 2 - r.left) / r.width, ((a[1] + b[1]) / 2 - r.top) / r.height); } last = dist;
+      }
+    });
+    const up = (e) => { ptrs.delete(e.pointerId); last = null; setTimeout(() => { if (!ptrs.size) svg._drag = false; }, 0); };
+    svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
+    svg.addEventListener('wheel', (e) => { e.preventDefault(); const r = svg.getBoundingClientRect(); zoom(e.deltaY < 0 ? 1.2 : 1 / 1.2, (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height); }, { passive: false });
+    const tb = (label, txt, fn) => h('button', { type: 'button', class: 'btn sm bt-btn', 'aria-label': label, title: label, onclick: fn }, txt);
+    const legend = h('div', { class: 'bt-legend', 'aria-label': 'What the leaves mean' }, h('span', { text: 'Each leaf is a sensor:' }),
+      ['normal', 'warning', 'critical', 'data_issue'].map((s) => h('span', { class: 'bt-key bt-' + s }, h('i', { 'aria-hidden': 'true', text: s === 'normal' ? '●' : SG[s] }), LEGEND[s])));
+    box.append(h('div', { class: 'card p1-card bt-card' },
+      h('div', { class: 'bt-hd' }, h('h3', { text: 'Campus tree' }), h('div', { class: 'bt-tools' }, tb('Zoom in', '+', () => zoom(1.35)), tb('Zoom out', '-', () => zoom(1 / 1.35)), tb('Fit the whole tree', 'Fit', fit))), legend, wrap,
+      h('p', { class: 'muted', text: 'Trunk = campus, boughs = buildings, branches = floors and rooms. Tap a branch or leaf to open it; drag to move, pinch or scroll to zoom.' })));
+    P.treeApply = { fit, apply, view };
+    requestAnimationFrame(() => { if (P.vb) { view.cx = P.vb.cx; view.cy = P.vb.cy; view.w = P.vb.w; apply(); } else fit(); markSel(); });
+    if (typeof ResizeObserver !== 'undefined') { const ro = new ResizeObserver(() => apply()); ro.observe(wrap); }
+    P.treeEl = svg;
+  }
+  function markSel() {
+    if (!P.treeEl) return;
+    P.treeEl.querySelectorAll('.sel,.onpath').forEach((e) => e.classList.remove('sel', 'onpath'));
+    const esc = (v) => (window.CSS && CSS.escape ? CSS.escape(v) : v), m = byId();
+    P.treeEl.querySelectorAll('[data-id="' + esc(P.sel || '') + '"]').forEach((e) => { if (!e.classList.contains('bt-hit')) e.classList.add('sel'); });
+    let x = m.get(P.sel); while (x && x.parent) { P.treeEl.querySelectorAll('.bt-b[data-id="' + esc(x.parent) + '"]').forEach((e) => e.classList.add('onpath')); x = m.get(x.parent); }
+    if (P.treeLinks) {
+      P.treeLinks.replaceChildren();
+      (P.site.links || []).filter((l) => l.from === P.sel || l.to === P.sel).forEach((l) => {
+        const a = P.treePos.get(l.from), b = P.treePos.get(l.to); if (!a || !b) return;
+        P.treeLinks.append(sv('path', { class: 'bt-link', d: 'M' + a[0].toFixed(1) + ' ' + a[1].toFixed(1) + 'Q' + ((a[0] + b[0]) / 2).toFixed(1) + ' ' + (Math.min(a[1], b[1]) - 90).toFixed(1) + ' ' + b[0].toFixed(1) + ' ' + b[1].toFixed(1) }));
+      });
+    }
+    const sn = m.get(P.sel); if (sn && sn.kind === 'sensor') P.treeEl.querySelectorAll('.bt-b[data-id="' + esc(sn.parent) + '"]').forEach((e) => e.classList.add('onpath'));
+  }
+  function selectNode(id) {
+    P.sel = id; markSel();
+    const m = byId(); let x = m.get(id); while (x && x.parent) { P.open.add(x.parent); x = m.get(x.parent); }
+    const tw = $id('p1-twin'), had = tw && tw.contains(document.activeElement); if (tw) { renderTwin(tw); if (had) { const r = tw.querySelector('[data-id="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]'); if (r) r.focus(); } }
+    const ed = $id('p1-edit'); if (ed) { ed.replaceChildren(); editor(ed); try { ed.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) { /* ignore */ } }
+  }
+
+  /* keyboard-accessible twin of the graphic: role=tree */
+  function renderTwin(host) {
+    const camp = P.site.nodes.find((n) => n.kind === 'campus'); if (!camp) return;
+    const memo = new Map(), focusId = P.focus && byId().has(P.focus) ? P.focus : (P.sel && byId().has(P.sel) ? P.sel : camp.id);
+    const build = (n, level) => {
+      const ch = kids(n.id), st = normSt(nodeStatus(n.id)), isOpen = P.open.has(n.id) && ch.length;
+      const ns = sensorsBelow(n.id, memo), stt = n.kind === 'sensor' ? normSt(((P.status || {}).sensors || {})[n.id]) : st;
+      const row = h('button', { type: 'button', class: 'p1-tn' + (P.sel === n.id ? ' on' : ''), tabindex: n.id === focusId ? '0' : '-1', 'data-id': n.id,
+        onclick: () => { P.focus = n.id; if (ch.length) { if (P.open.has(n.id) && P.sel === n.id) P.open.delete(n.id); else P.open.add(n.id); } selectNode(n.id); } },
+      h('span', { class: 'p1-tw', 'aria-hidden': 'true', text: ch.length ? (isOpen ? '▾' : '▸') : '' }),
+      h('span', { class: 'bt-key bt-' + stt }, h('i', { 'aria-hidden': 'true', text: SG[stt] }), h('span', { class: 'sr-only', text: SW[stt] })),
+      h('span', { class: 'p1-nm', text: n.kind === 'sensor' ? (n.name || nice(n.metric)) : nm(n) + (n.inferred ? ' *' : '') }),
+      h('span', { class: 'p1-kw', text: kindWord(n) }),
+      ns && n.kind !== 'sensor' ? h('span', { class: 'p1-cnt', text: ns + (ns === 1 ? ' sensor' : ' sensors') }) : null);
+      const li = h('li', { role: 'treeitem', 'aria-level': level, 'aria-selected': P.sel === n.id ? 'true' : 'false', 'aria-expanded': ch.length ? (isOpen ? 'true' : 'false') : null }, row);
+      if (isOpen) li.append(h('ul', { role: 'group', class: 'p1-kids' }, ch.map((c) => build(c, level + 1))));
+      return li;
+    };
+    const ul = h('ul', { role: 'tree', class: 'p1-treelist', 'aria-label': 'Site tree' }, build(camp, 1));
+    ul.addEventListener('keydown', (e) => {
+      const rows = [...ul.querySelectorAll('.p1-tn')], i = rows.indexOf(document.activeElement); if (i < 0) return;
+      const go = (j) => { const r = rows[Math.max(0, Math.min(rows.length - 1, j))]; rows.forEach((x) => x.tabIndex = -1); r.tabIndex = 0; r.focus(); P.focus = r.dataset.id; };
+      const id = rows[i].dataset.id, n = byId().get(id), has = kids(id).length;
+      if (e.key === 'ArrowDown') { e.preventDefault(); go(i + 1); } else if (e.key === 'ArrowUp') { e.preventDefault(); go(i - 1); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); if (has && !P.open.has(id)) { P.open.add(id); P.focus = id; renderTwin(host); const r = host.querySelector('[data-id="' + id + '"]'); if (r) r.focus(); } else if (has) go(i + 1); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); if (has && P.open.has(id)) { P.open.delete(id); P.focus = id; renderTwin(host); const r = host.querySelector('[data-id="' + id + '"]'); if (r) r.focus(); } else if (n && n.parent) { const r = rows.find((x) => x.dataset.id === n.parent); if (r) { rows.forEach((x) => x.tabIndex = -1); r.tabIndex = 0; r.focus(); P.focus = n.parent; } } }
+      else if (e.key === 'Home') { e.preventDefault(); go(0); } else if (e.key === 'End') { e.preventDefault(); go(rows.length - 1); }
+    });
+    host.replaceChildren(h('h3', { text: 'Site tree' }), ul);
+  }
 
   function editor(box) {
     const m = byId(), n = m.get(P.sel);
-    if (!n) { box.append(h('div', { class: 'card p1-card' }, h('p', { class: 'muted', text: 'Pick a node on the map or in the tree to edit it. * = relation inferred by a rule (check it).' }))); return; }
+    if (!n) { box.append(h('div', { class: 'card p1-card' }, h('p', { class: 'muted', text: 'Tap a branch or leaf on the tree, or pick it in the list, to edit it. * = relation inferred by a rule (check it).' }))); return; }
     const mark = () => { P.dirty = true; $id('p1-save').disabled = false; };
     const set = (k) => (v) => { n[k] = v; if (k === 'parent' || k === 'name') renderSite(); mark(); };
     const ids = P.site.nodes.filter((x) => x.kind !== 'sensor' && x.id !== n.id).map((x) => x.id);
     const links = (P.site.links || []).filter((l) => l.from === n.id || l.to === n.id);
-    const lt = sel(LINKS, 'serves', () => {}), to = sel(P.site.nodes.filter((x) => x.kind !== 'sensor' && x.id !== n.id).map((x) => x.id), '', () => {});
-    const card = h('div', { class: 'card p1-card' }, h('h3', { text: (n.name || n.id) }),
-      h('p', { class: 'muted', text: n.id + ' · ' + n.kind + (n.api_type ? ' · API type ' + n.api_type : '') + (n.why ? ' · ' + n.why : '') + ' · status ' + nodeStatus(n.id) }),
+    const lt = sel(LINKS, 'serves', () => {}), to = sel(P.site.nodes.filter((x) => x.kind !== 'sensor' && x.id !== n.id).map((x) => x.id), '', () => {}, (id) => { const x = m.get(id); return x ? nm(x) : id; });
+    const lbl = (id) => { const x = m.get(id); return x ? nm(x) : id; }, plain = (o) => String(o).replace(/_/g, ' ');
+    const card = h('div', { class: 'card p1-card' }, h('h3', { text: nm(n) }),
+      h('p', { class: 'muted', text: kindWord(n).charAt(0).toUpperCase() + kindWord(n).slice(1) + ' · ' + SW[normSt(n.kind === 'sensor' ? ((P.status || {}).sensors || {})[n.id] : nodeStatus(n.id))] }),
+      h('details', { class: 'tech' }, h('summary', { text: 'Technical details' }), h('div', { class: 'tech-bd' }, h('p', { class: 'muted', text: n.id + ' · ' + n.kind + (n.etype ? ' · ' + n.etype : '') + (n.api_type ? ' · API type ' + n.api_type : '') + (n.why ? ' · ' + n.why : '') }))),
       h('div', { class: 'p1-grid' },
         field('Name', inp(n.name, set('name'))),
-        n.kind === 'campus' ? null : field('Parent', sel(ids, n.parent, set('parent'))),
-        field('Kind', sel(KINDS, n.kind, set('kind'))),
-        n.kind === 'equipment' ? field('Equipment type', sel(ETYPES, n.etype, set('etype'))) : null,
-        n.kind === 'room' || n.kind === 'zone' ? field('Use', sel(['', 'lecture_hall', 'office', 'lab', 'hostel_room', 'corridor', 'plant_room', 'library', 'canteen', 'server_room', 'meeting_room', 'outdoor_area'], n.use || '', set('use'))) : null,
+        n.kind === 'campus' ? null : field('Parent', sel(ids, n.parent, set('parent'), (id) => { const x = m.get(id); return x ? nm(x) : id; })),
+        field('Kind', sel(KINDS, n.kind, set('kind'), KW)),
+        n.kind === 'equipment' ? field('Equipment type', sel(ETYPES, n.etype, set('etype'), plain)) : null,
+        n.kind === 'room' || n.kind === 'zone' ? field('Use', sel(['', 'lecture_hall', 'office', 'lab', 'hostel_room', 'corridor', 'plant_room', 'library', 'canteen', 'server_room', 'meeting_room', 'outdoor_area'], n.use || '', set('use'), plain)) : null,
         n.kind === 'room' || n.kind === 'zone' ? field('Capacity', inp(n.capacity, set('capacity'), 'number')) : null,
         n.kind === 'sensor' ? null : field('Agent place text (optional)', inp(n.place, set('place'))),
         n.kind === 'sensor' ? field('Card', sel(Object.keys(Object.assign({}, P.cards.existing, P.site.cards || {})).sort(), n.card, set('card'))) : null),
       h('h4', { text: 'Typed links' }),
-      h('ul', { class: 'p1-links' }, links.map((l) => h('li', {}, h('span', { text: l.from + '  ' + l.type + '  ' + l.to + (l.inferred ? '  *' : '') + (l.why ? ' (' + l.why + ')' : '') }),
+      h('ul', { class: 'p1-links' }, links.map((l) => h('li', {}, h('span', { text: lbl(l.from) + '  ' + plain(l.type) + '  ' + lbl(l.to) + (l.inferred ? '  *' : '') + (l.why ? ' (' + l.why + ')' : '') }),
         h('button', { class: 'btn plain', type: 'button', onclick: () => { P.site.links = P.site.links.filter((x) => x !== l); mark(); renderSite(); } }, 'Remove')))),
-      n.kind === 'sensor' ? null : h('div', { class: 'p1-addlink' }, h('span', { text: n.id + ' ' }), lt, to,
+      n.kind === 'sensor' ? null : h('div', { class: 'p1-addlink' }, h('span', { text: nm(n) + ' ' }), lt, to,
         h('button', { class: 'btn', type: 'button', onclick: () => { if (!to.value) return; P.site.links.push({ from: n.id, to: to.value, type: lt.value }); mark(); renderSite(); } }, 'Add link')),
       n.kind === 'sensor' ? h('div', { class: 'sn-btns' }, h('button', { class: 'btn', type: 'button', onclick: () => cardEditor(n, false) }, 'Edit card'),
         h('button', { class: 'btn plain', type: 'button', onclick: () => cardEditor(n, true) }, 'New sensor type')) : null);
@@ -231,36 +491,49 @@
     const box = $id('site'); if (!box || !P.site) return;
     try { renderSite0(box); } catch (e) { box.replaceChildren(h('div', { class: 'empty', text: 'Site view error: ' + (e && e.message || e) })); }
   }
+  const SEVW = { critical: 'Critical', warning: 'Warning', normal: 'Fine', info: 'Fine', sensor_fault: 'Fault' };
   function renderSite0(box) {
     const camp = P.site.nodes.find((n) => n.kind === 'campus');
-    const st = P.status || {};
-    const groups = Object.entries(st.open || {}).map(([s, o]) => h('li', { text: o.id + ' ' + o.severity + ' · ' + s + ' · ' + (o.title || '') }));
-    const sus = (st.suspects || []).map((x) => h('li', { text: x.node + ' SUSPECT: ' + x.why }));
-    const save = h('button', { class: 'btn', id: 'p1-save', type: 'button', disabled: !P.dirty, onclick: async () => {
+    const st = P.status || {}, by = byId();
+    if (!P.open) P.open = new Set();
+    if (camp) P.open.add(camp.id);
+    pathOpenSet().forEach((x) => P.open.add(x));
+    const groups = Object.entries(st.open || {}).map(([s, o]) => h('li', { text: (SEVW[o.severity] || o.severity) + ' · ' + (o.title || '') + ' (' + o.id + ')' }));
+    const sus = (st.suspects || []).map((x) => { const nd = by.get(x.node); return h('li', { text: (nd ? nm(nd) : x.node) + ' may be the cause: ' + x.why }); });
+    const save = h('button', { class: 'btn', id: 'p1-save', type: 'button', disabled: !P.dirty, title: P.dirty ? null : 'Nothing to save yet: no changes made', onclick: async () => {
       try { const r = await put('/api/site', P.site); toast('Site saved as version ' + r.version); await loadSite(); renderSite(); } catch (e) { toast('Not saved: ' + e.message, true); }
     } }, 'Save site (new version)');
-    const rebuild = h('button', { class: 'btn plain', type: 'button', onclick: async () => {
-      if (!confirm('Rebuild the tree from the API registry? Your node / link edits are replaced (cards are kept).')) return;
-      try { await post('/api/site/rebuild'); await loadSite(); renderSite(); toast('Rebuilt from the API'); } catch (e) { toast(e.message, true); }
-    } }, 'Rebuild from API');
-    const edit = h('div', { id: 'p1-edit' });
+    const confirmBox = h('div', { class: 'p1-confirm', role: 'alertdialog', 'aria-label': 'Confirm rebuild', hidden: true },
+      h('p', { text: 'Rebuild the tree from the API registry? Your node and link edits are replaced (spec cards are kept).' }),
+      h('div', { class: 'sn-btns' },
+        h('button', { class: 'btn danger', type: 'button', onclick: async () => {
+          try { await post('/api/site/rebuild'); await loadSite(); renderSite(); toast('Rebuilt from the API'); } catch (e) { toast(e.message, true); }
+        } }, 'Yes, rebuild'),
+        h('button', { class: 'btn plain', type: 'button', onclick: () => { confirmBox.hidden = true; } }, 'Cancel')));
+    const rebuild = h('button', { class: 'btn plain', type: 'button', onclick: () => { confirmBox.hidden = false; } }, 'Rebuild from API');
+    const admin = h('details', { class: 'card p1-card', id: 'p1-admin', open: P.adminOpen ? true : null, ontoggle: (e) => { P.adminOpen = e.target.open; } },
+      h('summary', {}, h('b', { text: 'Site admin' }), P.dirty ? h('span', { class: 'p1-dirty', text: ' - unsaved changes' }) : null),
+      h('p', { class: 'muted', text: 'Site version ' + P.site.version + ' (' + (P.site.source || '?') + (P.site.saved ? ', saved ' + new Date(P.site.saved).toLocaleString() : '') + ') · ' + P.site.nodes.length + ' nodes · ' + (P.site.links || []).length + ' links' }),
+      h('div', { class: 'sn-btns' }, save, rebuild), confirmBox);
+    const edit = h('div', { id: 'p1-edit' }), twin = h('div', { class: 'card p1-card p1-tree', id: 'p1-twin' });
     const det = $id('map-det');
-    box.replaceChildren(
-      h('div', { class: 'card p1-card' }, h('p', { class: 'muted', text: 'Site version ' + P.site.version + ' (' + (P.site.source || '?') + (P.site.saved ? ', saved ' + new Date(P.site.saved).toLocaleString() : '') + ') · ' + P.site.nodes.length + ' nodes · ' + (P.site.links || []).length + ' links' }),
-        h('div', { class: 'sn-btns' }, save, rebuild)));
-    box.append(h('div', { class: 'p1-cols' },
-      h('div', { class: 'card p1-card p1-tree' }, h('h3', { text: 'Site tree' }), camp ? treeNode(camp, 0) : h('p', { text: 'no campus node' })),
-      edit));
+    box.replaceChildren();
+    P.treeEl = null;
+    renderTree(box);
+    box.append(h('div', { class: 'p1-cols' }, twin, edit));
+    renderTwin(twin);
     editor(edit);
     renderMap(box);
     if (det) box.append(det);
     box.append(h('div', { class: 'card p1-card' }, h('h3', { text: 'Open incidents and suspect parents' }),
       groups.length ? h('ul', {}, groups) : h('p', { class: 'muted', text: 'No open incidents.' }), sus.length ? h('ul', {}, sus) : null));
+    box.append(admin);
   }
 
   /* ---------------- cards & rules: AI trigger rules + sensor thresholds ---------------- */
   const TRIG = [
-    ['persist_readings', 'Abnormal readings before the AI is called', 'Each reading = 5 min; a sensor must stay abnormal this long.'],
+    ['persist_readings', 'Reading window the AI check looks at', 'Each reading = 5 min; the AI check counts abnormal readings among the last this many.'],
+    ['abnormal_of_window', 'Abnormal readings out of the last 8 before the AI is called', 'The AI is called when this many of the window readings are beyond the threshold, not necessarily in a row.'],
     ['fast_readings', 'Critical readings for the instant rules alert (fast path)', 'Critical for this many readings raises the rules alert at once.'],
     ['batch_readings', 'Readings to group related sensors into one incident', 'Wait this long so related sensors become one incident.'],
     ['batch_max_readings', 'Longest wait to group (readings)', 'Upper limit of the grouping wait.'],
@@ -278,7 +551,8 @@
       if (v == null || !Number.isInteger(v)) pr.push(t[1] + ': enter a whole number');
       else if (r && (v < r.min || v > r.max)) pr.push(t[1] + ': must be between ' + r.min + ' and ' + r.max);
     }
-    if (vals.fast_readings >= vals.persist_readings) pr.push('Critical readings for the fast path must be fewer than the abnormal readings before the AI is called');
+    if (vals.fast_readings >= vals.persist_readings) pr.push('Critical readings for the fast path must be fewer than the reading window');
+    if (vals.abnormal_of_window > vals.persist_readings) pr.push('Abnormal readings before the AI is called must not exceed the reading window');
     if (vals.batch_readings > vals.batch_max_readings) pr.push('Readings to group must not exceed the longest wait to group');
     return pr;
   }
@@ -380,7 +654,7 @@
     if (v === 'cards' && need('cards')) renderCards();
     if (v === 'site' && need('site')) {
       try { await loadSite(); renderSite(); if (P.pendingEdit) { const pe = P.site.nodes.find((x) => x.id === P.pendingEdit); P.pendingEdit = null; if (pe) cardEditor(pe, false); } } catch (e) { $id('site').replaceChildren(h('div', { class: 'empty', text: 'Site unavailable: ' + e.message })); }
-      P.timer = setInterval(async () => { if (P.view !== 'site' || P.dirty || document.hidden) return; try { P.status = await api('/api/site/status'); } catch (e) { return; } }, 15000);
+      P.timer = setInterval(async () => { if (P.view !== 'site' || P.dirty || document.hidden) return; try { const ns = await api('/api/site/status'); const ch = JSON.stringify(ns) !== JSON.stringify(P.status); P.status = ns; if (ch && P.view === 'site') renderSite(); } catch (e) { return; } }, 15000);
     }
   }
   window.P1 = { show };

@@ -74,8 +74,8 @@ func TestFastPathCriticalStep(t *testing.T) {
 	if fast[0].c.Finding.Status != "critical" {
 		t.Fatalf("fast candidate status %s", fast[0].c.Finding.Status)
 	}
-	if len(ai) != 1 || ai[0].reading < persistReadings || ai[0].reading > persistReadings+batchReadings {
-		t.Fatalf("AI gate: %+v, want one candidate at reading %d..%d", ai, persistReadings, persistReadings+batchReadings)
+	if len(ai) != 1 || ai[0].reading < defaultAbnormalOfWindow || ai[0].reading > defaultAbnormalOfWindow+batchReadings {
+		t.Fatalf("AI gate: %+v, want one candidate at reading %d..%d", ai, defaultAbnormalOfWindow, defaultAbnormalOfWindow+batchReadings)
 	}
 	dir := t.TempDir()
 	r := NewReasoner(NewGenieRunner(dir, dir, true), e, dir, func(string, any) {})
@@ -108,8 +108,8 @@ func TestFastPathWarningDriftUnchanged(t *testing.T) {
 	if len(fast) != 0 {
 		t.Fatalf("warning drift took the fast path: %+v", fast)
 	}
-	if len(ai) != 1 || ai[0].reading < persistReadings {
-		t.Fatalf("AI gate: %+v, want one candidate at >= %d readings", ai, persistReadings)
+	if len(ai) != 1 || ai[0].reading < defaultAbnormalOfWindow {
+		t.Fatalf("AI gate: %+v, want one candidate at >= %d readings", ai, defaultAbnormalOfWindow)
 	}
 }
 

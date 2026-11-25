@@ -111,8 +111,8 @@ func TestWorkflowStateMachineAndEvents(t *testing.T) {
 	rg.r.mu.Lock()
 	inc.State = "running"
 	rg.r.mu.Unlock()
-	_, err := rg.r.Ack(inc.ID, "Ravi")
-	wantCode(t, err, 409, "ack while running")
+	_, err := rg.r.ApproveAll(inc.ID, "Ravi", "") // acknowledging is always possible now (hardening); approving a warning still waits for the report
+	wantCode(t, err, 409, "approve while running")
 	rg.r.mu.Lock()
 	inc.State = "done"
 	rg.r.mu.Unlock()

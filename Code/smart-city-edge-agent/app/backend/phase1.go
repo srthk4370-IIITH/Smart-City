@@ -345,7 +345,12 @@ func (s *Server) dailyDigest(day time.Time) DailySummary {
 		}
 	}
 	s.rsn.mu.RUnlock()
-	ds.Digest = fmt.Sprintf("%s: %d incidents (critical %d, warning %d); domains %v.", ds.Date, ds.Incidents, ds.BySev["critical"], ds.BySev["warning"], ds.ByDomain)
+	doms := make([]string, 0, len(ds.ByDomain)) // plain words, not Go map syntax (2026-11-19 hands-on)
+	for d, n := range ds.ByDomain {
+		doms = append(doms, fmt.Sprintf("%s %d", strings.ReplaceAll(d, "_", " "), n))
+	}
+	sort.Strings(doms)
+	ds.Digest = fmt.Sprintf("%s: %d incidents (critical %d, warning %d); by area: %s.", ds.Date, ds.Incidents, ds.BySev["critical"], ds.BySev["warning"], strings.Join(doms, ", "))
 	if len(ds.Top) > 0 {
 		ds.Digest += " Top: " + strings.Join(ds.Top, "; ")
 	}
@@ -373,7 +378,7 @@ func (s *Server) runDaily(ctx context.Context, day time.Time, ai bool) DailySumm
 	ds.Made = nowTime().UTC().Format(time.RFC3339)
 	_ = os.MkdirAll(s.dailyDir(), 0o755)
 	b, _ := json.MarshalIndent(ds, "", " ")
-	_ = os.WriteFile(filepath.Join(s.dailyDir(), ds.Date+".json"), b, 0o644)
+	_ = atomicWrite(filepath.Join(s.dailyDir(), ds.Date+".json"), b, 0o644)
 	return ds
 }
 
@@ -455,6 +460,6 @@ func startPhase1(s *Server) {
 	campusOnRegistry = func() { s.siteEnsure() }
 	startCampus(s)
 	if profOn("daily_summary") {
-		go s.dailyLoop()
+		safeGo("daily loop", s.dailyLoop)
 	}
 }

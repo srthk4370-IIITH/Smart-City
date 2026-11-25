@@ -1,0 +1,12 @@
+- 2026-11-25 20:18:47 [claude] rep run: 50 steps from rsn_fix ckpt_best_0060, 450 severity-balanced reports + 150 chat hold, lr 4e-6, evals 25/50, then gate (fix60 gate saved as GATE_fix60.md)
+- 2026-11-25 14:48:47 [rsn_rep rep] nproc=6 -> 4 CPU threads, nice 10, no throttle (owner working)
+- 2026-11-25 14:49:17 [rsn_rep rep] waiting: Windows free RAM ? MB < 1536 MB
+- 2026-11-25 14:51:54 [rsn_rep rep] free RAM 1164 MB < 1500: page-cache drop requested
+- 2026-11-25 14:52:56 [rsn_rep rep] free RAM 264 MB < 1500: page-cache drop requested
+- 2026-11-25 14:53:59 [rsn_rep rep] free RAM 591 MB < 1500: page-cache drop requested
+- 2026-11-25 14:55:01 [rsn_rep rep] free RAM 593 MB < 1500: page-cache drop requested
+- 2026-11-25 14:56:35 [rsn_rep rep] free RAM 1175 MB < 1500: page-cache drop requested
+- 2026-11-25 18:52:41 [rsn_rep rep] chunk 1 rc=0
+- 2026-11-25 18:52:41 [rsn_rep rep] after-run gate on /home/hp_srthk4370/smartcity_runs/rsn_rep/ckpt_best_0050 (gate only, no deploy)
+- 2026-11-26 01:19:32 [claude] owner OK: deleted superseded GGUFs big_q4_0 (step 242) + full_s640 to free C: for the gate merge (kept p2, fix60, r3c1)
+- 2026-11-25 20:31:26 [rsn_rep rep] gate rc=0 (see /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-21_rsn_full/gate_full/GATE.md; step 640 = GATE_0640.md)

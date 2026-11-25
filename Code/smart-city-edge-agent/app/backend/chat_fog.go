@@ -109,8 +109,7 @@ func (f *fogClient) mark(ok bool) {
 	if f.stateFile != "" && now.Sub(f.saved) > time.Minute {
 		f.saved = now
 		b, _ := json.Marshal(map[string]int64{"last_sync": now.Unix()})
-		os.MkdirAll(filepath.Dir(f.stateFile), 0o755)
-		os.WriteFile(f.stateFile, b, 0o644)
+		atomicWrite(f.stateFile, b, 0o644)
 	}
 }
 
@@ -182,6 +181,7 @@ func (f *fogClient) Refresh() {
 	f.probing = true
 	f.mu.Unlock()
 	go func() {
+		defer recoverLog("fog probe")
 		f.do(context.Background(), http.MethodGet, "/v1/status", nil)
 		f.mu.Lock()
 		f.probing = false

@@ -63,7 +63,7 @@ H.subprocess.Popen = _popen
 class Cfg:
     model = MODEL
     threads = 3
-    np = 1
+    np = int(os.environ.get("AGT_NP", "1"))  # parallel slots + requests (2026-11-21: 4 for the real-row run)
     slot_ctx = 1600
     max_new = 400
 

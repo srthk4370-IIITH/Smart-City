@@ -90,3 +90,67 @@
 14:46:52 fix_clock: app up
 14:47:52 fix_clock: "campus_link_label":"USB cable (laptop)" "corrected":"2026-11-19T09:17:51Z" 
 16:35:23 fix_clock: device 1695224845 laptop 1795086323 offset 99861478 s
+21:16:19 deploy reasoner rsn_v3_4b_p2_q4_0.gguf: stop app
+21:18:55 ABORT: push failed
+21:19:04 1j: stop
+21:19:44 1j: app up
+21:22:46 1j: link="campus_link_label":"USB cable (laptop)" clock="corrected":"2026-11-19T15:52:45Z"
+21:22:46 1j: health={"sim_time":1795103400,"worst":"sensor_fault","domains":[{"domain":"air_quality","headline":"normal","status":"normal","live_status":"normal","sensor_faults":0,"counts":{"normal":5},"sensors":5,"context_sensors":0,"trend":"steady","since":1795059900,"fresh":tr
+21:22:47 1j: agent.log tail: 2023/09/20 20:32:49 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|2023/09/20 20:33:49 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|2023/09/20 20:34:49 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|
+21:29:42 deploy reasoner rsn_v3_4b_p2_q4_0.gguf: stop app
+21:35:32 deploy reasoner rsn_v3_4b_p2_q4_0.gguf check INC-0025: agents_valid=1/1 final=qwen3.5-4b rsn_v3 (htpd) valid
+21:35:32 DEPLOYED reasoner rsn_v3_4b_p2_q4_0.gguf
+21:57:22 1k: stop
+22:00:36 1k: app up
+22:02:08 1k: stop
+22:02:47 1k: app up
+22:05:48 1k: link="campus_link_label":"USB cable (laptop)" clock="corrected":"2026-11-19T16:35:46Z"
+22:05:48 1k: health={"sim_time":1795106100,"worst":"insufficient_data","domains":[{"domain":"air_quality","headline":"insufficient_data","status":"normal","live_status":"normal","sensor_faults":0,"counts":{"insufficient_data":5},"sensors":5,"context_sensors":0,"trend":"elevated",
+22:05:48 1k: agent.log tail: 2023/09/20 15:43:32 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|2023/09/20 15:44:08 campus: backfill done (1756 readings, 12 h)|2023/09/20 15:44:32 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|
+00:00:50 1l: stop
+00:01:36 1l: app up
+00:04:36 1l: link="campus_link_label":"USB cable (laptop)" clock="corrected":"2026-11-19T18:34:34Z"
+00:04:36 1l: health={"sim_time":1795113000,"worst":"warning","domains":[{"domain":"air_quality","headline":"normal","status":"normal","live_status":"normal","sensor_faults":0,"counts":{"normal":5},"sensors":5,"context_sensors":0,"trend":"steady","since":1795069800,"fresh":true,"i
+00:04:37 1l: agent.log tail: 2023/09/20 17:41:18 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|2023/09/20 17:42:18 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|2023/09/20 17:43:18 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|
+02:44:30 1m: stop
+02:45:17 1m: app up
+02:48:17 1m: link="campus_link_label":"USB cable (laptop)" clock="corrected":"2026-11-19T21:18:15Z"
+02:48:17 1m: health={"sim_time":1795122900,"worst":"critical","domains":[{"domain":"air_quality","headline":"normal","status":"normal","live_status":"normal","sensor_faults":0,"counts":{"normal":5},"sensors":5,"context_sensors":0,"trend":"steady","since":1795079700,"fresh":true,"
+02:48:17 1m: agent.log tail: 2023/09/20 20:25:00 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|2023/09/20 20:26:00 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|2023/09/20 20:27:00 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|
+03:02:43 1n: stop
+03:03:25 1n: app up
+03:06:25 1n: link="campus_link_label":"USB cable (laptop)" clock="corrected":"2026-11-19T21:36:24Z"
+03:06:25 1n: health={"sim_time":1795124100,"worst":"warning","domains":[{"domain":"air_quality","headline":"normal","status":"normal","live_status":"normal","sensor_faults":0,"counts":{"normal":5},"sensors":5,"context_sensors":0,"trend":"steady","since":1795080600,"fresh":true,"d
+03:06:25 1n: agent.log tail: 2023/09/20 20:43:10 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|2023/09/20 20:44:10 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|2023/09/20 20:45:10 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|
+03:28:00 1o: stop
+03:28:41 1o: app up
+03:31:41 1o: link="campus_link_label":"USB cable (laptop)" clock="corrected":"2026-11-19T22:01:39Z"
+03:31:41 1o: health={"sim_time":1795125600,"worst":"warning","domains":[{"domain":"air_quality","headline":"normal","status":"normal","live_status":"normal","sensor_faults":0,"counts":{"normal":5},"sensors":5,"context_sensors":0,"trend":"steady","since":1795082100,"fresh":true,"i
+03:31:41 1o: agent.log tail: 2023/09/20 21:09:26 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|2023/09/20 21:09:40 severity-disagreement {"final":"warning","guard":true,"incident":"INC-0001","label":"normal_operation","reasoner":"norma|2023/09/20 21:10:26 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|
+04:02:46 1q: stop
+04:03:27 1q: app up
+04:06:29 1q: link="campus_link_label":"USB cable (laptop)" clock="corrected":"2026-11-19T22:36:24Z"
+04:06:29 1q: health={"sim_time":1795127700,"worst":"warning","domains":[{"domain":"air_quality","headline":"normal","status":"normal","live_status":"normal","sensor_faults":0,"counts":{"normal":5},"sensors":5,"context_sensors":0,"trend":"steady","since":1795084200,"fresh":true,"i
+04:06:29 1q: agent.log tail: 2023/09/20 21:43:14 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|2023/09/20 21:44:14 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|2023/09/20 21:45:14 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|
+04:17:19 1r: stop
+04:18:02 1r: app up
+04:21:02 1r: link="campus_link_label":"USB cable (laptop)" clock="corrected":"2026-11-19T22:50:59Z"
+04:21:02 1r: health={"sim_time":1795128600,"worst":"warning","domains":[{"domain":"air_quality","headline":"normal","status":"normal","live_status":"normal","sensor_faults":0,"counts":{"normal":5},"sensors":5,"context_sensors":0,"trend":"curbed","trend_from":"warning","since":179
+04:21:02 1r: agent.log tail: 2023/09/20 21:57:47 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|2023/09/20 21:58:47 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|2023/09/20 21:59:47 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|
+12:32:57 1s: stop
+12:33:38 1s: app up
+12:36:38 1s: link="campus_link_label":"USB cable (laptop)" clock="corrected":"2026-11-20T07:06:37Z"
+12:36:38 1s: health={"sim_time":1795158300,"worst":"critical","domains":[{"domain":"air_quality","headline":"normal","status":"normal","live_status":"normal","sensor_faults":0,"counts":{"normal":5},"sensors":5,"context_sensors":0,"trend":"steady","since":1795114800,"fresh":true,"
+12:36:38 1s: agent.log tail: 2023/09/21 06:12:49 campus: backfill done (1827 readings, 12 h)|2023/09/21 06:13:27 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|2023/09/21 06:14:27 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|
+13:38:26 1t: stop
+13:39:12 1t: app up
+13:42:12 1t: link="campus_link_label":"USB cable (laptop)" clock="corrected":"2026-11-20T08:12:10Z"
+13:42:13 1t: health={"sim_time":1795162200,"worst":"critical","domains":[{"domain":"air_quality","headline":"normal","status":"normal","live_status":"normal","sensor_faults":0,"counts":{"normal":5},"sensors":5,"context_sensors":0,"trend":"steady","since":1795118700,"fresh":true,"
+13:42:13 1t: agent.log tail: 2023/09/21 07:18:57 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|2023/09/21 07:19:57 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|2023/09/21 07:20:57 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|
+17:17:54 1u: stop
+17:18:40 1u: app up
+17:21:41 1u: link="campus_link_label":"USB cable (laptop)" clock="corrected":"2026-11-20T11:51:39Z"
+17:21:41 1u: health={"sim_time":1795175400,"worst":"warning","domains":[{"domain":"air_quality","headline":"normal","status":"normal","live_status":"normal","sensor_faults":0,"counts":{"normal":5},"sensors":5,"context_sensors":0,"trend":"steady","since":1795131900,"fresh":true,"i
+17:21:41 1u: agent.log tail: 2023/09/21 10:58:25 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|2023/09/21 10:59:25 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|2023/09/21 11:00:25 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|
+02:18:48 deploy reasoner rsn_v3_4b_v5_q4_0.gguf: stop app
+02:33:21 deploy reasoner rsn_v3_4b_v5_q4_0.gguf: stop app

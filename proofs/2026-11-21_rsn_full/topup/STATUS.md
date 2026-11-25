@@ -1,0 +1,35 @@
+# rsn_v3 local pipeline status (append-only)
+
+- 2026-11-24 10:00:20 [rsn_topup topup] nproc=6 -> 4 CPU threads, nice 10, GPU throttle via /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-21_rsn_full/topup/THROTTLE
+- 2026-11-24 10:05:08 [rsn_topup topup] free RAM 1468 MB < 1500: page-cache drop requested
+- 2026-11-24 17:17:20 [claude] owner: +200 steps (400) with report rows too; mix 0.75 (12 new + 4 replay); new = targeted x2 + 1000 unseen chat + 2000 unseen report (multi 600, domain 500, bigD 400, bigB 131, real 369). Restart, keep best.json (start score)
+- 2026-11-24 11:50:14 [rsn_topup topup] chunk 1 rc=3
+- 2026-11-24 11:50:56 [rsn_topup topup] nproc=6 -> 4 CPU threads, nice 10, GPU throttle via /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-21_rsn_full/topup/THROTTLE
+- 2026-11-24 11:51:26 [rsn_topup topup] waiting: Windows free RAM ? MB < 1536 MB
+- 2026-11-24 20:55:30 [claude] display freezes: signal throttle broke WSL dxg ioctls (3968 dxg errors in dmesg). Switched to in-trainer GPU pause hook (GPU_DUTY_FILE=THROTTLE). Clean STOP, WSL restart to reset dxg, relaunch
+- 2026-11-24 15:27:24 [rsn_topup topup] free RAM 1185 MB < 1500: page-cache drop requested
+- 2026-11-24 15:28:30 [rsn_topup topup] free RAM 884 MB < 1500: page-cache drop requested
+- 2026-11-24 15:29:46 [rsn_topup topup] free RAM 1112 MB < 1500: page-cache drop requested
+- 2026-11-24 15:30:06 [rsn_topup topup] chunk 1 rc=3
+- 2026-11-24 15:30:58 [rsn_topup topup] nproc=6 -> 4 CPU threads, nice 10, GPU throttle via /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-21_rsn_full/topup/THROTTLE
+- 2026-11-24 15:32:04 [rsn_topup topup] free RAM 867 MB < 1500: page-cache drop requested
+- 2026-11-24 15:33:11 [rsn_topup topup] free RAM 417 MB < 1500: page-cache drop requested
+- 2026-11-24 15:34:17 [rsn_topup topup] free RAM 1325 MB < 1500: page-cache drop requested
+- 2026-11-24 15:38:08 [rsn_topup topup] free RAM 773 MB < 1500: page-cache drop requested
+- 2026-11-24 22:05:29 [claude] WSL VM found restarted (uptime 0), trainer gone after resume at step 45 (~21:06 IST), no STOP; cause unknown (no Windows event). Relaunch + persistent dmesg/free log
+- 2026-11-24 16:35:41 [rsn_topup topup] nproc=6 -> 4 CPU threads, nice 10, GPU throttle via /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-21_rsn_full/topup/THROTTLE
+- 2026-11-24 16:36:12 [rsn_topup topup] waiting: Windows free RAM ? MB < 1536 MB
+- 2026-11-24 22:08:51 [claude] owner force-rebooted (lag). No GPU-bridge throttling at all: duty hook off (GPU_DUTY_FILE unset, THROTTLE 1000 0), no signals; mlp-chunk 512->256 (shorter GPU kernels, slower). Relaunch
+- 2026-11-24 16:38:59 [rsn_topup topup] nproc=6 -> 4 CPU threads, nice 10, GPU throttle via /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-21_rsn_full/topup/THROTTLE
+- 2026-11-24 16:40:36 [rsn_topup topup] free RAM 444 MB < 1500: page-cache drop requested
+- 2026-11-24 16:41:40 [rsn_topup topup] free RAM 1061 MB < 1500: page-cache drop requested
+- 2026-11-24 16:42:44 [rsn_topup topup] free RAM 1172 MB < 1500: page-cache drop requested
+- 2026-11-24 16:43:49 [rsn_topup topup] free RAM 1303 MB < 1500: page-cache drop requested
+- 2026-11-24 16:44:53 [rsn_topup topup] free RAM 1259 MB < 1500: page-cache drop requested
+- 2026-11-24 16:45:57 [rsn_topup topup] free RAM 1442 MB < 1500: page-cache drop requested
+- 2026-11-24 18:44:15 [rsn_topup topup] free RAM 1229 MB < 1500: page-cache drop requested
+- 2026-11-24 18:54:36 [rsn_topup topup] free RAM 1414 MB < 1500: page-cache drop requested
+- 2026-11-24 18:56:15 [rsn_topup topup] free RAM 1443 MB < 1500: page-cache drop requested
+- 2026-11-24 18:57:19 [rsn_topup topup] free RAM 1429 MB < 1500: page-cache drop requested
+- 2026-11-25 03:37:37 [claude] owner away 8-9 h: stop top-up at ~step 105 for final run (faster settings, evals every 50 with per-row diagnostics, more old-format report/chat rows)
+- 2026-11-24 22:10:25 [rsn_topup topup] chunk 1 rc=3

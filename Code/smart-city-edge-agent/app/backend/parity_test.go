@@ -43,7 +43,9 @@ func TestPromptParity(t *testing.T) {
 				}
 			}
 		}
-		if r := RulePattern(fx.Role, fx.Metric, fx.Xs, fx.End); r != fx.Rule {
+		// deliberate divergence (2026-11-19): Python calls a window flat on the rounded values; Go also needs the
+		// raw readings to repeat (rawFlatRun), so a jittering plateau is no longer a flatline sensor_fault
+		if r := RulePattern(fx.Role, fx.Metric, fx.Xs, fx.End); r != fx.Rule && !(fx.Rule == "flatline" && rawFlatRun(fx.Xs, effectiveMetric(fx.Role, fx.Metric, fx.Node).Dec) < 16) {
 			badRule++
 			if badRule <= 3 {
 				t.Errorf("rule mismatch %s/%s: go %s py %s", fx.Node, fx.Metric, r, fx.Rule)

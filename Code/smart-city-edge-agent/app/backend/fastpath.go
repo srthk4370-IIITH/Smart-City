@@ -19,6 +19,9 @@ import "fmt"
 func (r *Reasoner) splitFast(cands []Candidate) []Candidate {
 	var fast, early, rest []Candidate
 	for _, c := range cands {
+		if c.Fast && r.openHostFor(c) {
+			c.Fast = false // the sensor already belongs to an open incident: a new critical episode re-runs and escalates it
+		}
 		switch {
 		case c.Fast:
 			fast = append(fast, c)
@@ -77,7 +80,7 @@ func (r *Reasoner) adoptFast(cands []Candidate, mode int) *Incident {
 	var inc *Incident
 	for _, c := range cands {
 		if f := r.fastInc[key(c.Node, c.Metric)]; f != nil {
-			if c.End-f.CreatedSim > int64(Window)*bucketSec {
+			if c.End-f.CreatedSim > int64(Window)*bucketSec && !incidentOpenWF(f) {
 				delete(r.fastInc, key(c.Node, c.Metric)) // stale: that episode ended without reaching the AI gate
 				continue
 			}
@@ -99,6 +102,9 @@ func (r *Reasoner) adoptFast(cands []Candidate, mode int) *Incident {
 	fresh := r.buildIncident(cands, mode)
 	r.mu.Lock()
 	inc.Mode, inc.State = mode, "running"
+	if inc.DataStatus == "needs_more_data" {
+		inc.DataStatus, inc.RefineNote = "", ""
+	}
 	if inc.RefineStage == "provisional" {
 		inc.RefineStage = "" // the full analysis becomes the "early" stage; the provisional one stays in Revisions
 	}

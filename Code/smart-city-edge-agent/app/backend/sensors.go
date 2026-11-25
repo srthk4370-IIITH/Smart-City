@@ -148,3 +148,10 @@ func nowTime() time.Time {
 }
 
 func newRNG() *rand.Rand { return rand.New(rand.NewSource(time.Now().UnixNano())) }
+
+// isLive: the engine runs on wall-clock device feeds (campus live mode), where held slider values are never read.
+func (e *Engine) isLive() bool {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.Live
+}

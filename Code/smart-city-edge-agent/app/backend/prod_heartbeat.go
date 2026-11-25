@@ -52,7 +52,7 @@ func healthSnapshot(s *Server) map[string]any {
 	s.rsn.mu.RLock()
 	q := map[string]any{"active": s.rsn.active, "pending": len(s.rsn.pending), "jobs": len(s.rsn.jobs),
 		"early": len(s.rsn.early), "refines": len(s.rsn.refines), "cool_wait": s.rsn.coolWait}
-	incs := len(s.rsn.incidents)
+	incs := s.rsn.visibleCountLocked()
 	s.rsn.mu.RUnlock()
 	npu := map[string]any{"engine": npuEngine(), "status": s.genie.Status(), "reasoner": reasonerModelLabel()}
 	if htpdEnabled() {
@@ -68,6 +68,7 @@ func healthSnapshot(s *Server) map[string]any {
 		"ts": nowTime().Unix(), "clock_valid": clockValid(), "uptime_s": int(time.Since(s.start).Seconds()),
 		"sim_time": sim, "incidents": incs, "sensors": len(states), "sensors_silent": silent, "sensor_faults": faults,
 		"npu": npu, "queues": q, "device": deviceStats(), "agent": agentVer}
+	out["restarts_7d"], out["restarts_24h"] = restartCounts(s.dir, nowTime())
 	if prod.mqtt != nil {
 		out["mqtt"] = prod.mqtt.Stats()
 	}

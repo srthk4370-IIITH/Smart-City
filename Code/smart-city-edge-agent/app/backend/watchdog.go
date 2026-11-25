@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -18,12 +19,15 @@ const (
 
 // StartWatchdog sweeps once a minute.
 func (r *Reasoner) StartWatchdog() {
-	go func() {
+	safeGo("watchdog", func() {
 		for {
 			time.Sleep(time.Minute)
-			r.watchdogSweep(time.Now(), dataWaitMax, runMax)
+			safeIter("watchdog sweep", func() {
+				r.watchdogSweep(time.Now(), dataWaitMax, runMax)
+				r.shortEventSweep(time.Now()) // polish_events.go: the AI on the last 4 h of a short event
+			})
 		}
-	}()
+	})
 }
 
 // watchdogSweep returns how many incidents it moved out of "running".
@@ -53,11 +57,25 @@ func (r *Reasoner) watchdogSweep(now time.Time, wait, hard time.Duration) int {
 		r.mu.RUnlock()
 		switch {
 		case fast[inc] && idle && age >= wait:
-			r.markNeedsMoreData(inc, fmt.Sprintf("no new readings for %d min - the AI analysis could not start", int(age.Minutes())))
+			// 2026-11-19 board audit: the old text said "no new readings for 5 min" even while readings arrived;
+			// the AI waits for the event to last persistReadings readings (40+ min, hours for an hourly pH probe)
+			r.markNeedsMoreData(inc, fmt.Sprintf("the AI analysis starts once the event has lasted %d readings; not reached after %d min", trigRules().PersistReadings, int(age.Minutes())))
 			n++
 		case !active && age >= hard:
 			r.failOverToRules(inc, fmt.Sprintf("analysis did not finish in %d min", int(age.Minutes())))
 			n++
+		case active && age >= 2*hard:
+			// hard cap: r.active is stuck (a hung NPU call or a lost wake-up). Fail the incident over to the rules report,
+			// reset the flag so queued work can run, and abandon the stuck loop (loopGen).
+			r.failOverToRules(inc, fmt.Sprintf("analysis was stuck for %d min", int(age.Minutes())))
+			n++
+			r.mu.Lock()
+			r.active, r.coolWait = false, false
+			r.loopGen++
+			r.mu.Unlock()
+			log.Printf("watchdog: analysis loop stuck for %d min on %s - r.active reset, queue restarted", int(age.Minutes()), inc.ID)
+			active = false
+			r.Kick()
 		}
 	}
 	return n

@@ -70,6 +70,10 @@ type feedState struct {
 	maintFrom   int64
 	maintUntil  int64 // sensor time; 0 = none
 	maintWhy    string
+	snoozeFrom  int64 // maintenance snooze (polish_engine.go): sensor time window; criticals still alert
+	snoozeUntil int64
+	snoozeWhy   string
+	snoozeBy    string
 	replacedAt  int64 // sensor time of the last replacement (0 = never)
 	glitchAt    int64 // bucket of the last single-reading glitch the gate ignored
 }
@@ -295,7 +299,7 @@ func (e *Engine) SetMaintenance(node, metric string, minutes int, why string, re
 			e.replacedLocked(k, fs)
 		}
 		if st := e.states[k]; st != nil { // a fresh start for the gate
-			st.alerted, st.Reported, st.clearedAt, st.same, st.AbnormalFor, st.normalRun = false, false, 0, 0, 0, 0
+			st.alerted, st.Reported, st.clearedAt, st.same, st.AbnormalFor, st.normalRun, st.abTimes, st.AbnormalInWindow = false, false, 0, 0, 0, 0, nil, 0
 		}
 	}
 	return ks, nil
@@ -434,6 +438,9 @@ func (e *Engine) gapReason(k string, end int64) string {
 	return ""
 }
 
+// dqUncertainFilled: filled-in readings (of 48) from which a window is shown as uncertain (12.5%).
+const dqUncertainFilled = 6
+
 func whyText(w string) string {
 	if w == "" {
 		return ""
@@ -483,7 +490,7 @@ func (e *Engine) setQuality(k string, st *SensorState, ok bool) {
 		}
 	case fs != nil && fs.glitchAt != 0 && e.sim-fs.glitchAt < int64(Window)*bucketSec:
 		st.Quality, st.QualityWhy = "uncertain", "one-reading glitch at "+timeOf(fs.glitchAt)+" ignored by the alarm gate"
-	case have < Window:
+	case Window-have >= dqUncertainFilled: // 2026-11-20 board: 1-5 interpolated of 48 is a normal campus feed, not "uncertain"
 		st.Quality, st.QualityWhy = "uncertain", fmt.Sprintf("%d of %d readings in the 4 h window filled in", Window-have, Window)
 	case fs != nil && fs.uncertainAt != 0 && e.sim-fs.uncertainAt < int64(Window)*bucketSec:
 		st.Quality, st.QualityWhy = "uncertain", "the window holds readings flagged uncertain"

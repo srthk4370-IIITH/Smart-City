@@ -233,6 +233,7 @@ func startTimeSync(dir string) {
 		servers = []string{"pool.ntp.org", "time.google.com"}
 	}
 	go func() {
+		defer recoverLog("time sync")
 		for !clockValid() {
 			for _, s := range servers {
 				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)

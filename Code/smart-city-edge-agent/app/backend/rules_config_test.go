@@ -235,7 +235,7 @@ func TestRulesAPIValidationAndPersistence(t *testing.T) {
 	if code != 200 {
 		t.Fatalf("valid PUT %d %v", code, out)
 	}
-	want := TriggerRules{6, 3, 10, 3, 12, 5}
+	want := TriggerRules{6, 3, 10, 3, 12, 5, defaultAbnormalOfWindow, defaultEventAlarms}
 	if got := trigRules(); got != want {
 		t.Fatalf("rules after PUT %+v, want %+v", got, want)
 	}
@@ -265,14 +265,14 @@ func TestEngineUsesRuntimePersistReadings(t *testing.T) {
 		vals = append(vals, 1000+20*float64(i))
 	}
 	tr := defaultTrigger
-	tr.PersistReadings = 4
+	tr.PersistReadings, tr.AbnormalOfWindow = 4, 4
 	tr.BatchReadings = 1
 	withTrigger(t, tr)
 	_, ai := fpSplit(feedCO2(t, dqEngine(t), 60, 600, vals))
 	if len(ai) != 1 || ai[0].reading < 4 || ai[0].reading > 4+tr.BatchReadings+1 {
 		t.Fatalf("AI gate with persist 4: %+v, want one candidate at readings 4..%d", ai, 4+tr.BatchReadings+1)
 	}
-	tr.PersistReadings = 12
+	tr.PersistReadings, tr.AbnormalOfWindow = 12, 12
 	withTrigger(t, tr)
 	_, ai = fpSplit(feedCO2(t, dqEngine(t), 60, 600, vals))
 	if len(ai) != 1 || ai[0].reading < 12 {

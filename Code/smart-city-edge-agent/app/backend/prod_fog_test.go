@@ -23,6 +23,8 @@ type fogBox struct {
 }
 
 func newFogBox(t *testing.T) *fogBox {
+	t.Setenv("SCE_FOG_INGEST_TOKEN", "tok") // the fog ingest fails closed without a token
+	t.Setenv("SCE_FOG_TOKEN", "tok")
 	fb := &fogBox{dir: t.TempDir()}
 	fb.r = NewReasoner(NewGenieRunner(fb.dir, fb.dir, true), nil, fb.dir, func(string, any) {})
 	ing := FogIngestHandler(fb.r, fb.dir)

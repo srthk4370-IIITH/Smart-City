@@ -53,7 +53,7 @@ func chatNull(s string) any {
 
 // chatLocMatch: the location argument is a case-insensitive substring of the node id, its location text or building.
 func chatLocMatch(loc string, s SensorState, building string) bool {
-	return loc == "" || strings.Contains(strings.ToLower(s.Node+" "+s.Location+" "+building), strings.ToLower(loc))
+	return loc == "" || strings.Contains(strings.ToLower(s.Node+" "+s.Location+" "+building), strings.ToLower(loc)) || chatLocStructural(loc, s, building)
 }
 
 // chatBuilding: the building a node belongs to (sensors.json), "" when unknown. Meta.Nodes is written once in NewEngine.

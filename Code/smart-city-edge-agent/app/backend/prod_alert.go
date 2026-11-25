@@ -10,9 +10,10 @@ package main
 //	alert_on=critical,approved           what alerts: critical (fast path / reasoner / rules), approved (operator
 //	                                     approved an incident), warning (every warning; off by default)
 //	alert_injected=0                     demo-injected incidents do not page people (1 = they do)
-//	alert_escalate_min=15                a critical incident nobody acknowledged in the app after N min is sent again
-//	                                     to the escalation channel (0 = off)
+//	alert_escalate_min=15                an unacknowledged critical is sent again after N, 2N and 4N min (15 / 30 / 60), the
+//	                                     last time also to the backup contact (0 = off)
 //	alert_escalate_webhook= / alert_escalate_email=      escalation target (absent = the normal channels)
+//	alert_backup_email=a@x               backup contact (SMTP): told at the third reminder, 4x alert_escalate_min (60 min)
 //	alert_rate_per_hour=30               flood guard: more waits (critical ones first), nothing is dropped
 //	alert_link=http://<board>:8000/      base link put in the message ("#incident=<id>" appended)
 //
@@ -67,7 +68,8 @@ type alertChan struct {
 type alertWatch struct {
 	Since     int64     `json:"since"`
 	Escalated bool      `json:"escalated"`
-	Inc       incFields `json:"inc"` // newest version seen (escalation text)
+	Level     int       `json:"level,omitempty"` // reminders sent: 1 = first (alert_escalate_min), 2 = 2x, 3 = 4x + the backup contact
+	Inc       incFields `json:"inc"`             // newest version seen (escalation text)
 }
 
 type alerter struct {
@@ -75,6 +77,7 @@ type alerter struct {
 	file       string
 	chans      []alertChan
 	escal      []alertChan
+	backup     []alertChan // the backup contact (alert_backup_email), told at the last reminder level
 	escalAfter time.Duration
 	rate       int
 	on         map[string]bool
@@ -179,6 +182,9 @@ func newAlerterFromProfile(dir string) *alerter {
 		on = map[string]bool{"critical": true, "approved": true}
 	}
 	a := newAlerter(filepath.Join(dir, "state", "alert_queue.json"), chans, escal)
+	if to := profList("alert_backup_email"); len(to) > 0 && profStr("alert_smtp") != "" {
+		a.backup = append(a.backup, smtpChan("backup_email", profStr("alert_smtp"), profStr("alert_smtp_user"), profStr("alert_smtp_pass"), from, to))
+	}
 	a.on, a.injected, a.link = on, profOn("alert_injected"), profStr("alert_link")
 	a.escalAfter = time.Duration(profInt("alert_escalate_min", 15, 0, 1440)) * time.Minute
 	a.rate = profInt("alert_rate_per_hour", 30, 1, 10000)
@@ -223,13 +229,8 @@ func (a *alerter) save() {
 	if err != nil {
 		return
 	}
-	os.MkdirAll(filepath.Dir(a.file), 0o755)
-	tmp := a.file + ".tmp"
-	if f, err := os.Create(tmp); err == nil {
-		f.Write(b)
-		f.Sync()
-		f.Close()
-		os.Rename(tmp, a.file)
+	if err := atomicWrite(a.file, b, 0o644); err != nil {
+		log.Printf("alerts: queue not saved: %v", err)
 	}
 }
 
@@ -339,7 +340,7 @@ func (a *alerter) enqueue(m alertPayload, chans []alertChan) bool {
 }
 
 func (a *alerter) chanByName(n string) *alertChan {
-	for _, l := range [][]alertChan{a.chans, a.escal} {
+	for _, l := range [][]alertChan{a.chans, a.escal, a.backup} {
 		for i := range l {
 			if l[i].name == n {
 				return &l[i]
@@ -353,18 +354,7 @@ func (a *alerter) chanByName(n string) *alertChan {
 func (a *alerter) Tick() {
 	a.mu.Lock()
 	now := a.now()
-	for _, w := range a.Watch {
-		if !w.Escalated && now.Unix()-w.Since >= int64(a.escalAfter/time.Second) {
-			w.Escalated = true
-			m := a.message(w.Inc, "escalation")
-			chans := a.escal
-			if len(chans) == 0 {
-				chans = a.chans
-			}
-			a.enqueue(m, chans)
-			a.save()
-		}
-	}
+	a.escalateDue(now)
 	// rate window
 	keep := a.sentAt[:0]
 	for _, t := range a.sentAt {
@@ -489,7 +479,60 @@ func (a *alerter) Run(stop <-chan struct{}) {
 		case <-stop:
 			return
 		case <-t.C:
-			a.Tick()
+			safeIter("alerter", a.Tick)
 		}
 	}
 }
+
+// escalateDue re-notifies every unacknowledged critical at 1x, 2x and 4x alert_escalate_min (15 / 30 / 60 min by
+// default) on the escalation channels (or the normal ones), and at the last level also tells the backup contact
+// (alert_backup_email, by SMTP). The first level keeps the key "<id>|escalation" (older queue files stay valid).
+// Caller holds a.mu.
+func (a *alerter) escalateDue(now time.Time) {
+	if a.escalAfter <= 0 {
+		return
+	}
+	changed := false
+	for _, w := range a.Watch {
+		for w.Level < 3 {
+			due := int64(a.escalAfter/time.Second) * int64(1<<w.Level) // 1x, 2x, 4x
+			if now.Unix()-w.Since < due {
+				break
+			}
+			w.Level++
+			w.Escalated = true
+			m := a.message(w.Inc, "escalation")
+			if w.Level > 1 {
+				m.Key = fmt.Sprintf("%s|escalation%d", w.Inc.ID, w.Level)
+				m.Title = fmt.Sprintf("ESCALATION %d (not acknowledged for %d min): %s (%s)", w.Level, int(due/60), w.Inc.Title, w.Inc.ID)
+				m.Text = strings.Replace(m.Text, m.Text[:strings.Index(m.Text, "\n")], m.Title, 1)
+			}
+			chans := a.escal
+			if len(chans) == 0 {
+				chans = a.chans
+			}
+			a.enqueue(m, chans)
+			if w.Level == 3 && len(a.backup) > 0 {
+				mb := m
+				mb.Key += "|backup"
+				a.enqueue(mb, a.backup)
+			}
+			changed = true
+		}
+	}
+	if changed {
+		a.save()
+	}
+}
+
+// SendSystem queues a non-incident alert (disk full, ...) once per key on the normal channels.
+func (a *alerter) SendSystem(key, title, text string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.enqueue(alertPayload{Key: "system|" + key, Reason: "system", Severity: "warning", Title: title, Text: title + "\n" + text, Board: profStr("board_id")}, a.chans) {
+		a.save()
+	}
+}
+
+// alertChannelConfigured: at least one delivery channel exists (else /api/health says no_alert_channel).
+func alertChannelConfigured() bool { return prod.alert != nil && len(prod.alert.chans) > 0 }

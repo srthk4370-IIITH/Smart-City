@@ -102,17 +102,7 @@ func newFogUploader(dir string, e *Engine) *fogUploader {
 
 func (f *fogUploader) path(n string) string { return filepath.Join(f.dir, n) }
 
-func writeFileAtomic(p string, b []byte) error {
-	tmp := p + ".tmp"
-	fh, err := os.Create(tmp)
-	if err != nil {
-		return err
-	}
-	fh.Write(b)
-	fh.Sync()
-	fh.Close()
-	return os.Rename(tmp, p)
-}
+func writeFileAtomic(p string, b []byte) error { return atomicWrite(p, b, 0o644) }
 
 func (f *fogUploader) pos() int64 {
 	b, _ := os.ReadFile(f.path("fog_outbox.pos"))
@@ -405,7 +395,13 @@ func FogIngestHandler(r *Reasoner, dir string) http.Handler {
 		json.Unmarshal(b, &applied)
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if tok := os.Getenv("SCE_FOG_INGEST_TOKEN"); tok != "" && req.Header.Get("Authorization") != "Bearer "+tok {
+		// fails closed: no token configured = nothing is accepted (a fog box on a LAN must not take rows from anyone)
+		tok := profStr("fog_ingest_token")
+		if tok == "" {
+			http.Error(w, "fog ingest is off: no SCE_FOG_INGEST_TOKEN / fog_ingest_token configured", http.StatusServiceUnavailable)
+			return
+		}
+		if !tokenEq(strings.TrimPrefix(req.Header.Get("Authorization"), "Bearer "), tok) {
 			http.Error(w, "unauthorised", http.StatusUnauthorized)
 			return
 		}
@@ -446,9 +442,14 @@ func FogIngestHandler(r *Reasoner, dir string) http.Handler {
 			n++
 		}
 		if other.Len() > 0 {
-			if fh, err := os.OpenFile(rowsFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644); err == nil {
-				fh.Write(other.Bytes())
-				fh.Close()
+			fogMu.Lock()
+			err := appendSync(rowsFile, other.Bytes())
+			capTail(rowsFile, fogRowsCapBytes)
+			fogMu.Unlock()
+			if err != nil {
+				log.Printf("fog: rows write failed: %v", err)
+				http.Error(w, "storage error", http.StatusInsufficientStorage)
+				return
 			}
 		}
 		b, _ := json.Marshal(applied)

@@ -17,7 +17,7 @@ func TestStoreTornLineCompactionAndRetention(t *testing.T) {
 	var b strings.Builder
 	for i := 1; i <= 60; i++ {
 		fmt.Fprintf(&b, `{"id":"INC-%04d","state":"running"}`+"\n", i)
-		fmt.Fprintf(&b, `{"id":"INC-%04d","state":"done"}`+"\n", i)
+		fmt.Fprintf(&b, `{"id":"INC-%04d","state":"done","workflow":"closed","approval":"dismissed","closed_at":1}`+"\n", i)
 	}
 	b.WriteString(`{"id":"INC-0061","state":"do`) // torn
 	os.WriteFile(store, []byte(b.String()), 0o644)

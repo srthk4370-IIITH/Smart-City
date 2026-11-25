@@ -893,6 +893,19 @@ def gen_slices(a):
             "train": (inc(a.gen_train_inc, a.gen_train_n, 13), chat(a.gen_train_chat, a.gen_train_n, 14))}
 
 
+def gen_rowlog(d):
+    """2026-11-25: per-row eval diagnostics, appended to $RSN3_GEN_ROWS (unset = off) with the step from $RSN3_GEN_STEP"""
+    p = os.environ.get("RSN3_GEN_ROWS")
+    if not p:
+        return
+    try:
+        d = dict(d, step=int(os.environ.get("RSN3_GEN_STEP", "-1")))
+        with open(p, "a", encoding="utf-8") as f:
+            f.write(json.dumps(d, ensure_ascii=False, default=str) + "\n")
+    except Exception:
+        pass
+
+
 def gen_score(model, tok, tools, inc_rows, chat_recs, dev, gen_r3="auto", r3_tools=""):
     """greedy generation; incidents: parse / severity / label vs the gold report; chat: verify_chat pass. Returns sums
     [n_inc, parse, severity, label, n_chat, chat_pass] for this rank's share."""
@@ -913,6 +926,10 @@ def gen_score(model, tok, tools, inc_rows, chat_recs, dev, gen_r3="auto", r3_too
                 out[1] += 1
                 out[2] += float(p.get("severity") == g.get("severity"))
                 out[3] += float(p.get("label") == g.get("label"))
+            gen_rowlog({"slice": "r3_inc", "id": r.get("id"), "family": r.get("family"), "parse": isinstance(p, dict),
+                        "gold": {"severity": g.get("severity"), "label": g.get("label")},
+                        "pred": {"severity": p.get("severity"), "label": p.get("label")} if isinstance(p, dict) else None,
+                        "out": txt[:400]})
     if chat_recs:
         be.max_new = 420
         ss = [CL.Sample(r, 0, r.get("hard")) for r in chat_recs]
@@ -972,7 +989,11 @@ def verify_chat_recs(recs, cands, gen_r3="auto", r3_tools=""):
     res = []
     for r, c, ex in zip(recs, cands, execs):
         ex.qid = 0
-        res.append(bool(VC.verify(r, c, executor=ex)["pass"]))
+        v = VC.verify(r, c, executor=ex)
+        res.append(bool(v["pass"]))
+        gen_rowlog({"slice": "chat", "id": r.get("id"), "family": r.get("family"), "pass": bool(v["pass"]),
+                    "verify": {k: x for k, x in v.items() if k != "pass"}, "user": next((m.get("content") for m in reversed(r.get("messages", []))
+                    if m.get("role") == "user"), "")[:200], "cand": str(c)[:800]})
     return res
 
 

@@ -17,6 +17,7 @@
     <div class="side-hd">
       <div class="brand"><span class="dot" aria-hidden="true"></span>Campus Assistant</div>
       <button class="btn new" id="new" type="button">+ New chat</button>
+      <button class="btn clr" id="clear" type="button" title="Delete all saved chats on this board">Clear history</button>
     </div>
     <nav class="hist" id="hist" aria-label="Previous chats"></nav>
     <div class="side-ft">
@@ -36,13 +37,17 @@
       <button class="icon-btn" id="del" type="button" aria-label="Delete this chat" title="Delete this chat" hidden>🗑</button>
     </header>
     <section class="msgs" id="msgs" aria-live="polite"></section>
+    <p class="voicenote" id="voicenote" role="status" hidden></p>
+    <button class="speakstop" id="speakstop" type="button" hidden>⏹ Stop reading</button>
     <form class="composer" id="form" autocomplete="off">
       <textarea id="q" rows="1" maxlength="600" placeholder="Ask about incidents, sensors or actions…" aria-label="Your question"></textarea>
+      <button class="mic" id="mic" type="button" aria-label="Speak your question" aria-pressed="false" title="Tap to speak, tap again to send">🎤</button>
       <button class="send" id="send" type="submit" aria-label="Send">↑</button>
     </form>
-    <p class="hint">The assistant can't switch, open or close anything. It answers from data on this board and cites incident ids.</p>
+    <p class="hint">The assistant can't switch, open or close anything. It answers from data on this board. Decisions ("I'm on it", "Dismiss") are made in the dashboard.</p>
   </main>
 </div>
 <script src="chat.js"></script>
+<script src="voice.js"></script>
 </body>
 </html>

@@ -1,0 +1,774 @@
+- 2026-11-20 22:13:41 [chain] 1 real rows: agent s0450 on pre-cutoff windows (GPU, after speed test)
+- 2026-11-21 01:01:37 [chain] 2 build + audit real rows
+- 2026-11-21 01:03:37 [chain] 3 wait tools + speed test
+- 2026-11-21 01:03:37 [chain] 4 prep_data (~19.2k rows seen)
+- 2026-11-21 01:03:55 [chain] FAIL prep_data (logs/prep.log)
+- 2026-11-21 01:52:41 [chain2] 4 prep_data (12.8k rows seen, 800 steps, owner speed)
+- 2026-11-21 01:58:22 [chain2] 5 launch: --eval-every 200 --patience 2 
+- 2026-11-21 01:58:23 [chain2] launched pid 988
+- 2026-11-21 02:23:02 [rsn_full full] FAIL: missing /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-13_v3_data/rsn/data/final/data/train_new.jsonl (run prep_data.py) 2
+- 2026-11-21 02:24:16 [rsn_full full] nproc=8 -> 6 CPU threads, normal priority, no memory cap
+- 2026-11-21 03:17:15 [rsn_full full] chunk 1 rc=1
+- 2026-11-21 03:22:58 [rsn_full full] nproc=8 -> 6 CPU threads, normal priority, no memory cap
+- 2026-11-21 03:32:19 [rsn_full full] free RAM 1419 MB < 1500: page-cache drop requested
+- 2026-11-21 04:16:39 [rsn_full full] chunk 1 rc=1
+- 2026-11-21 04:39:37 [rsn_full full] chunk 2 rc=1
+- 2026-11-21 04:53:19 [rsn_full full] nproc=8 -> 6 CPU threads, normal priority, no memory cap
+- 2026-11-21 04:53:20 [rsn_full full] waiting: Windows free RAM 2633 MB < 3072 MB
+- 2026-11-21 04:53:56 [rsn_full full] nproc=8 -> 6 CPU threads, normal priority, no memory cap
+- 2026-11-21 05:06:53 [rsn_full full] chunk 1 rc=1
+- 2026-11-21 05:22:15 [rsn_full full] free RAM 1471 MB < 1500: page-cache drop requested
+- 2026-11-21 05:29:50 [rsn_full full] chunk 2 rc=1
+- 2026-11-21 05:46:29 [rsn_full full] free RAM 1420 MB < 1500: page-cache drop requested
+- 2026-11-21 05:53:15 [rsn_full full] nproc=8 -> 6 CPU threads, normal priority, no memory cap
+- 2026-11-21 05:54:51 [rsn_full full] free RAM 1255 MB < 1500: page-cache drop requested
+- 2026-11-21 05:55:53 [rsn_full full] free RAM 1369 MB < 1500: page-cache drop requested
+- 2026-11-21 06:00:32 [rsn_full full] free RAM 1397 MB < 1500: page-cache drop requested
+- 2026-11-21 06:14:56 [rsn_full full] free RAM 1401 MB < 1500: page-cache drop requested
+- 2026-11-21 06:15:59 [rsn_full full] free RAM 1408 MB < 1500: page-cache drop requested
+- 2026-11-21 06:17:01 [rsn_full full] free RAM 643 MB < 1500: page-cache drop requested
+- 2026-11-21 06:18:03 [rsn_full full] free RAM 986 MB < 1500: page-cache drop requested
+- 2026-11-21 06:19:06 [rsn_full full] free RAM 1012 MB < 1500: page-cache drop requested
+- 2026-11-21 06:20:08 [rsn_full full] free RAM 1253 MB < 1500: page-cache drop requested
+- 2026-11-21 06:21:10 [rsn_full full] free RAM 1234 MB < 1500: page-cache drop requested
+- 2026-11-21 06:22:13 [rsn_full full] free RAM 1229 MB < 1500: page-cache drop requested
+- 2026-11-21 06:23:15 [rsn_full full] free RAM 1160 MB < 1500: page-cache drop requested
+- 2026-11-21 06:31:30 [rsn_full full] free RAM 1323 MB < 1500: page-cache drop requested
+- 2026-11-21 06:34:05 [rsn_full full] free RAM 1478 MB < 1500: page-cache drop requested
+- 2026-11-21 06:41:17 [rsn_full full] free RAM 1372 MB < 1500: page-cache drop requested
+- 2026-11-21 06:45:25 [rsn_full full] free RAM 1381 MB < 1500: page-cache drop requested
+- 2026-11-21 06:49:32 [rsn_full full] free RAM 1480 MB < 1500: page-cache drop requested
+- 2026-11-21 06:50:35 [rsn_full full] free RAM 1241 MB < 1500: page-cache drop requested
+- 2026-11-21 06:51:37 [rsn_full full] free RAM 1457 MB < 1500: page-cache drop requested
+- 2026-11-21 06:53:06 [rsn_full full] nproc=8 -> 6 CPU threads, normal priority, no memory cap
+- 2026-11-21 07:00:26 [rsn_full full] chunk 1 rc=9
+- 2026-11-21 07:10:51 [rsn_full full] chunk 2 rc=9
+- 2026-11-21 07:21:14 [rsn_full full] chunk 3 rc=9
+- 2026-11-21 07:22:53 [rsn_full full] nproc=8 -> 6 CPU threads, normal priority, no memory cap
+- 2026-11-21 07:30:54 [rsn_full full] chunk 1 rc=9
+- 2026-11-21 07:31:25 [rsn_full full] nproc=8 -> 6 CPU threads, normal priority, no memory cap
+- 2026-11-21 07:41:17 [rsn_full full] free RAM 656 MB < 1500: page-cache drop requested
+- 2026-11-21 07:42:19 [rsn_full full] free RAM 836 MB < 1500: page-cache drop requested
+- 2026-11-21 07:43:22 [rsn_full full] free RAM 1256 MB < 1500: page-cache drop requested
+- 2026-11-21 08:26:18 [rsn_full full] free RAM 483 MB < 1500: page-cache drop requested
+- 2026-11-21 08:26:18 [rsn_full full] Windows free RAM 483 MB < 500: clean STOP requested (ckpt_latest saved, resumable: rm STOP files and re-run)
+- 2026-11-21 08:27:20 [rsn_full full] free RAM 471 MB < 1500: page-cache drop requested
+- 2026-11-21 08:28:23 [rsn_full full] free RAM 919 MB < 1500: page-cache drop requested
+- 2026-11-21 08:29:25 [rsn_full full] free RAM 930 MB < 1500: page-cache drop requested
+- 2026-11-21 08:29:31 [rsn_full full] chunk 1 rc=3
+- 2026-11-21 08:40:18 [rsn_full full] nproc=8 -> 6 CPU threads, normal priority, no memory cap
+- 2026-11-21 08:42:24 [rsn_full full] free RAM 502 MB < 1500: page-cache drop requested
+- 2026-11-21 08:43:28 [rsn_full full] free RAM 90 MB < 1500: page-cache drop requested
+- 2026-11-21 08:43:28 [rsn_full full] Windows free RAM 90 MB < 250: clean STOP requested (ckpt_latest saved, resumable: rm STOP files and re-run)
+- 2026-11-21 08:44:31 [rsn_full full] free RAM 1418 MB < 1500: page-cache drop requested
+- 2026-11-21 08:45:34 [rsn_full full] free RAM 1274 MB < 1500: page-cache drop requested
+- 2026-11-21 08:46:00 [rsn_full full] chunk 1 rc=3
+- 2026-11-21 08:54:21 [rsn_full full] nproc=8 -> 6 CPU threads, normal priority, no memory cap
+- 2026-11-21 08:55:56 [rsn_full full] free RAM 534 MB < 1500: page-cache drop requested
+- 2026-11-21 08:57:03 [rsn_full full] free RAM 822 MB < 1500: page-cache drop requested
+- 2026-11-21 08:58:06 [rsn_full full] free RAM 913 MB < 1500: page-cache drop requested
+- 2026-11-21 08:59:08 [rsn_full full] free RAM 1388 MB < 1500: page-cache drop requested
+- 2026-11-21 09:08:28 [rsn_full full] chunk 1 rc=1
+- 2026-11-21 09:20:23 [rsn_full full] free RAM 1143 MB < 1500: page-cache drop requested
+- 2026-11-21 09:21:25 [rsn_full full] free RAM 946 MB < 1500: page-cache drop requested
+- 2026-11-21 09:22:28 [rsn_full full] free RAM 1058 MB < 1500: page-cache drop requested
+- 2026-11-21 09:23:30 [rsn_full full] free RAM 1439 MB < 1500: page-cache drop requested
+- 2026-11-21 09:25:03 [rsn_full full] free RAM 1320 MB < 1500: page-cache drop requested
+- 2026-11-21 09:26:06 [rsn_full full] free RAM 845 MB < 1500: page-cache drop requested
+- 2026-11-21 09:27:09 [rsn_full full] free RAM 912 MB < 1500: page-cache drop requested
+- 2026-11-21 09:28:11 [rsn_full full] free RAM 1109 MB < 1500: page-cache drop requested
+- 2026-11-21 09:29:15 [rsn_full full] free RAM 1086 MB < 1500: page-cache drop requested
+- 2026-11-21 09:31:31 [rsn_full full] chunk 2 rc=1
+- 2026-11-21 09:43:10 [rsn_full full] free RAM 1040 MB < 1500: page-cache drop requested
+- 2026-11-21 09:44:12 [rsn_full full] free RAM 987 MB < 1500: page-cache drop requested
+- 2026-11-21 09:45:15 [rsn_full full] free RAM 1080 MB < 1500: page-cache drop requested
+- 2026-11-21 09:46:17 [rsn_full full] free RAM 1427 MB < 1500: page-cache drop requested
+- 2026-11-21 09:47:19 [rsn_full full] free RAM 1073 MB < 1500: page-cache drop requested
+- 2026-11-21 09:48:52 [rsn_full full] free RAM 1265 MB < 1500: page-cache drop requested
+- 2026-11-21 09:50:25 [rsn_full full] free RAM 1424 MB < 1500: page-cache drop requested
+- 2026-11-21 09:51:28 [rsn_full full] free RAM 477 MB < 1500: page-cache drop requested
+- 2026-11-21 09:52:30 [rsn_full full] free RAM 860 MB < 1500: page-cache drop requested
+- 2026-11-21 09:53:33 [rsn_full full] free RAM 1439 MB < 1500: page-cache drop requested
+- 2026-11-21 09:54:23 [rsn_full full] chunk 3 rc=1
+- 2026-11-21 10:06:02 [rsn_full full] free RAM 681 MB < 1500: page-cache drop requested
+- 2026-11-21 10:07:06 [rsn_full full] free RAM 347 MB < 1500: page-cache drop requested
+- 2026-11-21 10:08:09 [rsn_full full] free RAM 1250 MB < 1500: page-cache drop requested
+- 2026-11-21 10:09:11 [rsn_full full] free RAM 1209 MB < 1500: page-cache drop requested
+- 2026-11-21 10:16:26 [rsn_full full] free RAM 1456 MB < 1500: page-cache drop requested
+- 2026-11-21 10:17:28 [rsn_full full] free RAM 1443 MB < 1500: page-cache drop requested
+- 2026-11-21 10:18:21 [rsn_full full] chunk 4 rc=1
+- 2026-11-21 10:25:47 [rsn_full full] nproc=8 -> 6 CPU threads, normal priority, no memory cap
+- 2026-11-21 10:27:20 [rsn_full full] free RAM 742 MB < 1500: page-cache drop requested
+- 2026-11-21 10:28:24 [rsn_full full] free RAM 424 MB < 1500: page-cache drop requested
+- 2026-11-21 10:29:26 [rsn_full full] free RAM 1010 MB < 1500: page-cache drop requested
+- 2026-11-21 10:35:42 [rsn_full full] free RAM 1353 MB < 1500: page-cache drop requested
+- 2026-11-21 10:41:54 [rsn_full full] free RAM 918 MB < 1500: page-cache drop requested
+- 2026-11-21 10:42:57 [rsn_full full] free RAM 862 MB < 1500: page-cache drop requested
+- 2026-11-21 10:43:59 [rsn_full full] free RAM 1363 MB < 1500: page-cache drop requested
+- 2026-11-21 12:52:13 [rsn_full full] free RAM 1493 MB < 1500: page-cache drop requested
+- 2026-11-21 13:13:27 [rsn_full full] free RAM 1445 MB < 1500: page-cache drop requested
+- 2026-11-21 13:14:34 [rsn_full full] free RAM 1264 MB < 1500: page-cache drop requested
+- 2026-11-21 13:15:36 [rsn_full full] free RAM 1100 MB < 1500: page-cache drop requested
+- 2026-11-21 13:16:39 [rsn_full full] free RAM 1194 MB < 1500: page-cache drop requested
+- 2026-11-21 13:17:41 [rsn_full full] free RAM 1265 MB < 1500: page-cache drop requested
+- 2026-11-21 13:18:44 [rsn_full full] free RAM 1351 MB < 1500: page-cache drop requested
+- 2026-11-21 13:19:46 [rsn_full full] free RAM 1353 MB < 1500: page-cache drop requested
+- 2026-11-21 13:20:48 [rsn_full full] free RAM 1212 MB < 1500: page-cache drop requested
+- 2026-11-21 13:21:51 [rsn_full full] free RAM 1253 MB < 1500: page-cache drop requested
+- 2026-11-21 13:22:53 [rsn_full full] free RAM 1353 MB < 1500: page-cache drop requested
+- 2026-11-21 13:23:56 [rsn_full full] free RAM 1292 MB < 1500: page-cache drop requested
+- 2026-11-21 13:24:59 [rsn_full full] free RAM 1095 MB < 1500: page-cache drop requested
+- 2026-11-21 13:41:02 [rsn_full full] free RAM 1419 MB < 1500: page-cache drop requested
+- 2026-11-21 15:00:39 [rsn_full full] free RAM 1272 MB < 1500: page-cache drop requested
+- 2026-11-21 15:13:10 [rsn_full full] free RAM 1332 MB < 1500: page-cache drop requested
+- 2026-11-21 16:29:55 [rsn_full full] chunk 1 rc=3
+- 2026-11-21 16:31:37 [rsn_full full] free RAM 679 MB < 1500: page-cache drop requested
+- 2026-11-21 16:32:40 [rsn_full full] free RAM 517 MB < 1500: page-cache drop requested
+- 2026-11-21 16:33:43 [rsn_full full] free RAM 692 MB < 1500: page-cache drop requested
+- 2026-11-21 16:34:45 [rsn_full full] free RAM 944 MB < 1500: page-cache drop requested
+- 2026-11-21 16:35:47 [rsn_full full] free RAM 878 MB < 1500: page-cache drop requested
+- 2026-11-21 16:36:49 [rsn_full full] free RAM 992 MB < 1500: page-cache drop requested
+- 2026-11-21 16:37:51 [rsn_full full] free RAM 924 MB < 1500: page-cache drop requested
+- 2026-11-21 16:38:53 [rsn_full full] free RAM 799 MB < 1500: page-cache drop requested
+- 2026-11-21 16:39:56 [rsn_full full] free RAM 1247 MB < 1500: page-cache drop requested
+- 2026-11-21 16:40:58 [rsn_full full] free RAM 1055 MB < 1500: page-cache drop requested
+- 2026-11-21 16:42:00 [rsn_full full] free RAM 1094 MB < 1500: page-cache drop requested
+- 2026-11-21 16:43:02 [rsn_full full] free RAM 1020 MB < 1500: page-cache drop requested
+- 2026-11-21 16:44:07 [rsn_full full] free RAM 965 MB < 1500: page-cache drop requested
+- 2026-11-21 16:45:09 [rsn_full full] free RAM 999 MB < 1500: page-cache drop requested
+- 2026-11-21 16:46:11 [rsn_full full] free RAM 984 MB < 1500: page-cache drop requested
+- 2026-11-21 16:47:14 [rsn_full full] free RAM 992 MB < 1500: page-cache drop requested
+- 2026-11-21 16:48:16 [rsn_full full] free RAM 1098 MB < 1500: page-cache drop requested
+- 2026-11-21 16:49:18 [rsn_full full] free RAM 1047 MB < 1500: page-cache drop requested
+- 2026-11-21 16:50:20 [rsn_full full] free RAM 1030 MB < 1500: page-cache drop requested
+- 2026-11-21 16:51:22 [rsn_full full] free RAM 841 MB < 1500: page-cache drop requested
+- 2026-11-21 16:52:25 [rsn_full full] free RAM 1045 MB < 1500: page-cache drop requested
+- 2026-11-21 16:53:28 [rsn_full full] free RAM 1067 MB < 1500: page-cache drop requested
+- 2026-11-21 16:54:30 [rsn_full full] free RAM 1011 MB < 1500: page-cache drop requested
+- 2026-11-21 16:55:35 [rsn_full full] free RAM 439 MB < 1500: page-cache drop requested
+- 2026-11-21 16:56:38 [rsn_full full] free RAM 617 MB < 1500: page-cache drop requested
+- 2026-11-21 19:34:11 [rsn_full full] free RAM 1351 MB < 1500: page-cache drop requested
+- 2026-11-21 19:35:14 [rsn_full full] free RAM 1122 MB < 1500: page-cache drop requested
+- 2026-11-21 19:36:17 [rsn_full full] free RAM 1173 MB < 1500: page-cache drop requested
+- 2026-11-21 19:37:19 [rsn_full full] free RAM 1171 MB < 1500: page-cache drop requested
+- 2026-11-21 19:38:21 [rsn_full full] free RAM 1123 MB < 1500: page-cache drop requested
+- 2026-11-21 19:39:24 [rsn_full full] free RAM 1216 MB < 1500: page-cache drop requested
+- 2026-11-21 19:40:26 [rsn_full full] free RAM 1243 MB < 1500: page-cache drop requested
+- 2026-11-21 20:07:46 [rsn_full full] free RAM 1491 MB < 1500: page-cache drop requested
+- 2026-11-21 20:25:53 [rsn_full full] free RAM 1457 MB < 1500: page-cache drop requested
+- 2026-11-21 20:26:55 [rsn_full full] free RAM 1473 MB < 1500: page-cache drop requested
+- 2026-11-21 20:27:57 [rsn_full full] free RAM 1444 MB < 1500: page-cache drop requested
+- 2026-11-21 20:28:59 [rsn_full full] free RAM 1454 MB < 1500: page-cache drop requested
+- 2026-11-21 20:30:04 [rsn_full full] free RAM 1461 MB < 1500: page-cache drop requested
+- 2026-11-21 20:31:06 [rsn_full full] free RAM 1393 MB < 1500: page-cache drop requested
+- 2026-11-21 20:32:09 [rsn_full full] free RAM 1444 MB < 1500: page-cache drop requested
+- 2026-11-21 20:33:11 [rsn_full full] free RAM 1368 MB < 1500: page-cache drop requested
+- 2026-11-21 20:55:18 [rsn_full full] free RAM 1183 MB < 1500: page-cache drop requested
+- 2026-11-21 20:56:22 [rsn_full full] free RAM 954 MB < 1500: page-cache drop requested
+- 2026-11-21 20:57:26 [rsn_full full] free RAM 471 MB < 1500: page-cache drop requested
+- 2026-11-21 20:58:28 [rsn_full full] free RAM 949 MB < 1500: page-cache drop requested
+- 2026-11-21 20:59:30 [rsn_full full] free RAM 1035 MB < 1500: page-cache drop requested
+- 2026-11-21 21:00:33 [rsn_full full] free RAM 1085 MB < 1500: page-cache drop requested
+- 2026-11-21 21:01:36 [rsn_full full] free RAM 411 MB < 1500: page-cache drop requested
+- 2026-11-21 21:04:11 [rsn_full full] free RAM 1488 MB < 1500: page-cache drop requested
+- 2026-11-21 21:09:53 [rsn_full full] free RAM 1244 MB < 1500: page-cache drop requested
+- 2026-11-21 21:17:09 [rsn_full full] free RAM 1380 MB < 1500: page-cache drop requested
+- 2026-11-21 21:18:43 [rsn_full full] free RAM 1491 MB < 1500: page-cache drop requested
+- 2026-11-21 21:19:47 [rsn_full full] free RAM 1482 MB < 1500: page-cache drop requested
+- 2026-11-21 21:20:50 [rsn_full full] free RAM 1421 MB < 1500: page-cache drop requested
+- 2026-11-21 21:21:53 [rsn_full full] free RAM 1384 MB < 1500: page-cache drop requested
+- 2026-11-21 21:22:57 [rsn_full full] free RAM 1447 MB < 1500: page-cache drop requested
+- 2026-11-21 21:24:00 [rsn_full full] free RAM 1448 MB < 1500: page-cache drop requested
+- 2026-11-21 21:25:03 [rsn_full full] free RAM 1472 MB < 1500: page-cache drop requested
+- 2026-11-21 21:26:38 [rsn_full full] free RAM 1159 MB < 1500: page-cache drop requested
+- 2026-11-21 21:27:42 [rsn_full full] free RAM 769 MB < 1500: page-cache drop requested
+- 2026-11-21 21:28:46 [rsn_full full] free RAM 977 MB < 1500: page-cache drop requested
+- 2026-11-21 21:30:21 [rsn_full full] free RAM 1487 MB < 1500: page-cache drop requested
+- 2026-11-21 21:37:41 [rsn_full full] free RAM 1178 MB < 1500: page-cache drop requested
+- 2026-11-21 21:38:44 [rsn_full full] free RAM 1199 MB < 1500: page-cache drop requested
+- 2026-11-21 21:39:46 [rsn_full full] free RAM 1218 MB < 1500: page-cache drop requested
+- 2026-11-21 21:40:48 [rsn_full full] free RAM 1425 MB < 1500: page-cache drop requested
+- 2026-11-21 21:41:51 [rsn_full full] free RAM 1397 MB < 1500: page-cache drop requested
+- 2026-11-21 21:44:58 [rsn_full full] free RAM 1216 MB < 1500: page-cache drop requested
+- 2026-11-21 21:47:03 [rsn_full full] free RAM 1275 MB < 1500: page-cache drop requested
+- 2026-11-21 21:55:22 [rsn_full full] free RAM 1262 MB < 1500: page-cache drop requested
+- 2026-11-21 21:56:55 [rsn_full full] free RAM 1499 MB < 1500: page-cache drop requested
+- 2026-11-21 22:35:29 [rsn_full full] chunk 2 rc=3
+- 2026-11-21 22:37:48 [rsn_full full] free RAM 661 MB < 1500: page-cache drop requested
+- 2026-11-21 22:38:50 [rsn_full full] free RAM 540 MB < 1500: page-cache drop requested
+- 2026-11-21 22:40:23 [rsn_full full] free RAM 763 MB < 1500: page-cache drop requested
+- 2026-11-21 22:41:26 [rsn_full full] free RAM 1244 MB < 1500: page-cache drop requested
+- 2026-11-21 22:42:28 [rsn_full full] free RAM 1275 MB < 1500: page-cache drop requested
+- 2026-11-21 22:43:29 [rsn_full full] free RAM 1166 MB < 1500: page-cache drop requested
+- 2026-11-21 22:44:31 [rsn_full full] free RAM 1486 MB < 1500: page-cache drop requested
+- 2026-11-21 22:45:34 [rsn_full full] free RAM 1460 MB < 1500: page-cache drop requested
+- 2026-11-21 22:46:35 [rsn_full full] free RAM 1469 MB < 1500: page-cache drop requested
+- 2026-11-21 22:53:17 [rsn_full full] free RAM 1209 MB < 1500: page-cache drop requested
+- 2026-11-21 22:54:19 [rsn_full full] free RAM 1292 MB < 1500: page-cache drop requested
+- 2026-11-21 22:55:21 [rsn_full full] free RAM 1482 MB < 1500: page-cache drop requested
+- 2026-11-21 22:56:23 [rsn_full full] free RAM 1475 MB < 1500: page-cache drop requested
+- 2026-11-21 22:57:25 [rsn_full full] free RAM 1467 MB < 1500: page-cache drop requested
+- 2026-11-21 22:58:27 [rsn_full full] free RAM 1409 MB < 1500: page-cache drop requested
+- 2026-11-21 22:59:29 [rsn_full full] free RAM 1480 MB < 1500: page-cache drop requested
+- 2026-11-21 23:00:31 [rsn_full full] free RAM 1491 MB < 1500: page-cache drop requested
+- 2026-11-21 23:01:33 [rsn_full full] free RAM 1493 MB < 1500: page-cache drop requested
+- 2026-11-21 23:02:35 [rsn_full full] free RAM 1458 MB < 1500: page-cache drop requested
+- 2026-11-21 23:03:37 [rsn_full full] free RAM 1451 MB < 1500: page-cache drop requested
+- 2026-11-21 23:04:39 [rsn_full full] free RAM 1452 MB < 1500: page-cache drop requested
+- 2026-11-21 23:05:41 [rsn_full full] free RAM 1450 MB < 1500: page-cache drop requested
+- 2026-11-21 23:06:43 [rsn_full full] free RAM 1443 MB < 1500: page-cache drop requested
+- 2026-11-21 23:07:45 [rsn_full full] free RAM 1445 MB < 1500: page-cache drop requested
+- 2026-11-21 23:08:48 [rsn_full full] free RAM 1445 MB < 1500: page-cache drop requested
+- 2026-11-21 23:09:50 [rsn_full full] free RAM 1437 MB < 1500: page-cache drop requested
+- 2026-11-21 23:10:52 [rsn_full full] free RAM 1438 MB < 1500: page-cache drop requested
+- 2026-11-21 23:11:54 [rsn_full full] free RAM 1437 MB < 1500: page-cache drop requested
+- 2026-11-21 23:12:56 [rsn_full full] free RAM 1416 MB < 1500: page-cache drop requested
+- 2026-11-21 23:13:58 [rsn_full full] free RAM 1436 MB < 1500: page-cache drop requested
+- 2026-11-21 23:15:00 [rsn_full full] free RAM 1486 MB < 1500: page-cache drop requested
+- 2026-11-21 23:16:02 [rsn_full full] free RAM 1399 MB < 1500: page-cache drop requested
+- 2026-11-21 23:29:58 [rsn_full full] free RAM 1204 MB < 1500: page-cache drop requested
+- 2026-11-21 23:34:36 [rsn_full full] free RAM 1299 MB < 1500: page-cache drop requested
+- 2026-11-21 23:35:38 [rsn_full full] free RAM 1444 MB < 1500: page-cache drop requested
+- 2026-11-21 23:36:40 [rsn_full full] free RAM 1490 MB < 1500: page-cache drop requested
+- 2026-11-21 23:38:13 [rsn_full full] free RAM 1465 MB < 1500: page-cache drop requested
+- 2026-11-21 23:39:15 [rsn_full full] free RAM 1380 MB < 1500: page-cache drop requested
+- 2026-11-21 23:40:17 [rsn_full full] free RAM 1471 MB < 1500: page-cache drop requested
+- 2026-11-21 23:41:19 [rsn_full full] free RAM 1461 MB < 1500: page-cache drop requested
+- 2026-11-21 23:42:21 [rsn_full full] free RAM 1470 MB < 1500: page-cache drop requested
+- 2026-11-21 23:43:26 [rsn_full full] free RAM 1453 MB < 1500: page-cache drop requested
+- 2026-11-21 23:44:28 [rsn_full full] free RAM 1417 MB < 1500: page-cache drop requested
+- 2026-11-21 23:48:04 [rsn_full full] free RAM 1492 MB < 1500: page-cache drop requested
+- 2026-11-21 23:51:10 [rsn_full full] free RAM 1498 MB < 1500: page-cache drop requested
+- 2026-11-21 23:52:43 [rsn_full full] free RAM 1494 MB < 1500: page-cache drop requested
+- 2026-11-21 23:54:16 [rsn_full full] free RAM 1472 MB < 1500: page-cache drop requested
+- 2026-11-21 23:55:18 [rsn_full full] free RAM 1465 MB < 1500: page-cache drop requested
+- 2026-11-21 23:56:20 [rsn_full full] free RAM 1431 MB < 1500: page-cache drop requested
+- 2026-11-21 23:57:22 [rsn_full full] free RAM 1415 MB < 1500: page-cache drop requested
+- 2026-11-21 23:58:24 [rsn_full full] free RAM 1389 MB < 1500: page-cache drop requested
+- 2026-11-21 23:59:29 [rsn_full full] free RAM 1373 MB < 1500: page-cache drop requested
+- 2026-11-22 00:00:31 [rsn_full full] free RAM 1419 MB < 1500: page-cache drop requested
+- 2026-11-22 00:01:33 [rsn_full full] free RAM 1404 MB < 1500: page-cache drop requested
+- 2026-11-22 00:02:35 [rsn_full full] free RAM 1326 MB < 1500: page-cache drop requested
+- 2026-11-22 00:03:37 [rsn_full full] free RAM 1395 MB < 1500: page-cache drop requested
+- 2026-11-22 00:04:39 [rsn_full full] free RAM 1398 MB < 1500: page-cache drop requested
+- 2026-11-22 00:05:41 [rsn_full full] free RAM 1401 MB < 1500: page-cache drop requested
+- 2026-11-22 00:06:44 [rsn_full full] free RAM 1414 MB < 1500: page-cache drop requested
+- 2026-11-22 00:07:46 [rsn_full full] free RAM 1398 MB < 1500: page-cache drop requested
+- 2026-11-22 00:08:48 [rsn_full full] free RAM 1382 MB < 1500: page-cache drop requested
+- 2026-11-22 00:09:50 [rsn_full full] free RAM 1371 MB < 1500: page-cache drop requested
+- 2026-11-22 00:10:52 [rsn_full full] free RAM 1388 MB < 1500: page-cache drop requested
+- 2026-11-22 00:11:54 [rsn_full full] free RAM 1399 MB < 1500: page-cache drop requested
+- 2026-11-22 00:12:56 [rsn_full full] free RAM 1380 MB < 1500: page-cache drop requested
+- 2026-11-22 00:13:58 [rsn_full full] free RAM 1400 MB < 1500: page-cache drop requested
+- 2026-11-22 00:15:03 [rsn_full full] free RAM 1437 MB < 1500: page-cache drop requested
+- 2026-11-22 00:16:05 [rsn_full full] free RAM 1460 MB < 1500: page-cache drop requested
+- 2026-11-22 00:18:40 [rsn_full full] free RAM 1357 MB < 1500: page-cache drop requested
+- 2026-11-22 00:19:42 [rsn_full full] free RAM 1053 MB < 1500: page-cache drop requested
+- 2026-11-22 00:20:45 [rsn_full full] free RAM 1445 MB < 1500: page-cache drop requested
+- 2026-11-22 00:21:47 [rsn_full full] free RAM 1471 MB < 1500: page-cache drop requested
+- 2026-11-22 00:22:49 [rsn_full full] free RAM 1438 MB < 1500: page-cache drop requested
+- 2026-11-22 00:23:51 [rsn_full full] free RAM 1446 MB < 1500: page-cache drop requested
+- 2026-11-22 00:25:24 [rsn_full full] free RAM 1474 MB < 1500: page-cache drop requested
+- 2026-11-22 00:26:57 [rsn_full full] free RAM 1487 MB < 1500: page-cache drop requested
+- 2026-11-22 00:39:20 [rsn_full full] free RAM 1493 MB < 1500: page-cache drop requested
+- 2026-11-22 00:45:30 [rsn_full full] free RAM 1264 MB < 1500: page-cache drop requested
+- 2026-11-22 00:46:32 [rsn_full full] free RAM 1372 MB < 1500: page-cache drop requested
+- 2026-11-22 00:47:34 [rsn_full full] free RAM 1423 MB < 1500: page-cache drop requested
+- 2026-11-22 00:48:36 [rsn_full full] free RAM 1344 MB < 1500: page-cache drop requested
+- 2026-11-22 00:49:38 [rsn_full full] free RAM 1365 MB < 1500: page-cache drop requested
+- 2026-11-22 00:50:40 [rsn_full full] free RAM 1456 MB < 1500: page-cache drop requested
+- 2026-11-22 00:51:42 [rsn_full full] free RAM 1443 MB < 1500: page-cache drop requested
+- 2026-11-22 00:52:45 [rsn_full full] free RAM 1439 MB < 1500: page-cache drop requested
+- 2026-11-22 00:53:46 [rsn_full full] free RAM 1460 MB < 1500: page-cache drop requested
+- 2026-11-22 00:54:49 [rsn_full full] free RAM 1426 MB < 1500: page-cache drop requested
+- 2026-11-22 00:55:51 [rsn_full full] free RAM 1154 MB < 1500: page-cache drop requested
+- 2026-11-22 00:56:53 [rsn_full full] free RAM 1369 MB < 1500: page-cache drop requested
+- 2026-11-22 00:57:55 [rsn_full full] free RAM 1333 MB < 1500: page-cache drop requested
+- 2026-11-22 00:58:57 [rsn_full full] free RAM 1311 MB < 1500: page-cache drop requested
+- 2026-11-22 00:59:59 [rsn_full full] free RAM 1374 MB < 1500: page-cache drop requested
+- 2026-11-22 01:01:01 [rsn_full full] free RAM 1352 MB < 1500: page-cache drop requested
+- 2026-11-22 01:02:04 [rsn_full full] free RAM 1403 MB < 1500: page-cache drop requested
+- 2026-11-22 01:03:06 [rsn_full full] free RAM 1372 MB < 1500: page-cache drop requested
+- 2026-11-22 01:04:08 [rsn_full full] free RAM 1371 MB < 1500: page-cache drop requested
+- 2026-11-22 01:05:10 [rsn_full full] free RAM 1210 MB < 1500: page-cache drop requested
+- 2026-11-22 01:06:12 [rsn_full full] free RAM 1316 MB < 1500: page-cache drop requested
+- 2026-11-22 01:07:14 [rsn_full full] free RAM 1272 MB < 1500: page-cache drop requested
+- 2026-11-22 01:08:17 [rsn_full full] free RAM 1242 MB < 1500: page-cache drop requested
+- 2026-11-22 01:09:19 [rsn_full full] free RAM 1265 MB < 1500: page-cache drop requested
+- 2026-11-22 01:10:21 [rsn_full full] free RAM 1347 MB < 1500: page-cache drop requested
+- 2026-11-22 01:11:23 [rsn_full full] free RAM 1336 MB < 1500: page-cache drop requested
+- 2026-11-22 01:12:25 [rsn_full full] free RAM 1346 MB < 1500: page-cache drop requested
+- 2026-11-22 01:13:27 [rsn_full full] free RAM 1317 MB < 1500: page-cache drop requested
+- 2026-11-22 01:14:29 [rsn_full full] free RAM 1298 MB < 1500: page-cache drop requested
+- 2026-11-22 01:15:31 [rsn_full full] free RAM 1364 MB < 1500: page-cache drop requested
+- 2026-11-22 01:16:33 [rsn_full full] free RAM 1485 MB < 1500: page-cache drop requested
+- 2026-11-22 01:17:35 [rsn_full full] free RAM 1467 MB < 1500: page-cache drop requested
+- 2026-11-22 01:18:37 [rsn_full full] free RAM 1463 MB < 1500: page-cache drop requested
+- 2026-11-22 01:19:40 [rsn_full full] free RAM 1438 MB < 1500: page-cache drop requested
+- 2026-11-22 01:20:42 [rsn_full full] free RAM 1441 MB < 1500: page-cache drop requested
+- 2026-11-22 01:21:44 [rsn_full full] free RAM 1467 MB < 1500: page-cache drop requested
+- 2026-11-22 01:22:46 [rsn_full full] free RAM 1461 MB < 1500: page-cache drop requested
+- 2026-11-22 01:23:48 [rsn_full full] free RAM 1409 MB < 1500: page-cache drop requested
+- 2026-11-22 01:24:50 [rsn_full full] free RAM 1410 MB < 1500: page-cache drop requested
+- 2026-11-22 01:25:52 [rsn_full full] free RAM 1370 MB < 1500: page-cache drop requested
+- 2026-11-22 01:26:54 [rsn_full full] free RAM 1289 MB < 1500: page-cache drop requested
+- 2026-11-22 01:27:56 [rsn_full full] free RAM 1305 MB < 1500: page-cache drop requested
+- 2026-11-22 01:28:58 [rsn_full full] free RAM 1269 MB < 1500: page-cache drop requested
+- 2026-11-22 01:29:59 [rsn_full full] free RAM 1299 MB < 1500: page-cache drop requested
+- 2026-11-22 01:31:32 [rsn_full full] free RAM 1436 MB < 1500: page-cache drop requested
+- 2026-11-22 01:35:42 [rsn_full full] free RAM 1469 MB < 1500: page-cache drop requested
+- 2026-11-22 01:37:15 [rsn_full full] free RAM 1481 MB < 1500: page-cache drop requested
+- 2026-11-22 01:38:17 [rsn_full full] free RAM 1252 MB < 1500: page-cache drop requested
+- 2026-11-22 01:39:20 [rsn_full full] free RAM 1401 MB < 1500: page-cache drop requested
+- 2026-11-22 01:40:22 [rsn_full full] free RAM 1340 MB < 1500: page-cache drop requested
+- 2026-11-22 01:41:24 [rsn_full full] free RAM 1360 MB < 1500: page-cache drop requested
+- 2026-11-22 01:42:26 [rsn_full full] free RAM 1327 MB < 1500: page-cache drop requested
+- 2026-11-22 01:43:28 [rsn_full full] free RAM 1268 MB < 1500: page-cache drop requested
+- 2026-11-22 01:44:30 [rsn_full full] free RAM 1283 MB < 1500: page-cache drop requested
+- 2026-11-22 01:45:33 [rsn_full full] free RAM 1263 MB < 1500: page-cache drop requested
+- 2026-11-22 01:48:38 [rsn_full full] free RAM 1499 MB < 1500: page-cache drop requested
+- 2026-11-22 01:49:40 [rsn_full full] free RAM 1491 MB < 1500: page-cache drop requested
+- 2026-11-22 01:50:42 [rsn_full full] free RAM 1482 MB < 1500: page-cache drop requested
+- 2026-11-22 01:51:47 [rsn_full full] free RAM 1463 MB < 1500: page-cache drop requested
+- 2026-11-22 01:52:49 [rsn_full full] free RAM 1401 MB < 1500: page-cache drop requested
+- 2026-11-22 01:53:51 [rsn_full full] free RAM 1421 MB < 1500: page-cache drop requested
+- 2026-11-22 01:54:53 [rsn_full full] free RAM 1406 MB < 1500: page-cache drop requested
+- 2026-11-22 01:55:56 [rsn_full full] free RAM 1439 MB < 1500: page-cache drop requested
+- 2026-11-22 01:56:58 [rsn_full full] free RAM 1109 MB < 1500: page-cache drop requested
+- 2026-11-22 01:58:00 [rsn_full full] free RAM 1149 MB < 1500: page-cache drop requested
+- 2026-11-22 01:59:02 [rsn_full full] free RAM 1230 MB < 1500: page-cache drop requested
+- 2026-11-22 02:00:04 [rsn_full full] free RAM 1097 MB < 1500: page-cache drop requested
+- 2026-11-22 02:01:06 [rsn_full full] free RAM 1141 MB < 1500: page-cache drop requested
+- 2026-11-22 02:02:08 [rsn_full full] free RAM 1143 MB < 1500: page-cache drop requested
+- 2026-11-22 02:03:11 [rsn_full full] free RAM 1037 MB < 1500: page-cache drop requested
+- 2026-11-22 02:04:13 [rsn_full full] free RAM 1204 MB < 1500: page-cache drop requested
+- 2026-11-22 02:05:14 [rsn_full full] free RAM 806 MB < 1500: page-cache drop requested
+- 2026-11-22 02:06:16 [rsn_full full] free RAM 1057 MB < 1500: page-cache drop requested
+- 2026-11-22 02:07:19 [rsn_full full] free RAM 1389 MB < 1500: page-cache drop requested
+- 2026-11-22 02:08:24 [rsn_full full] free RAM 1397 MB < 1500: page-cache drop requested
+- 2026-11-22 02:09:26 [rsn_full full] free RAM 1330 MB < 1500: page-cache drop requested
+- 2026-11-22 02:10:28 [rsn_full full] free RAM 1346 MB < 1500: page-cache drop requested
+- 2026-11-22 02:11:30 [rsn_full full] free RAM 1331 MB < 1500: page-cache drop requested
+- 2026-11-22 02:12:32 [rsn_full full] free RAM 1226 MB < 1500: page-cache drop requested
+- 2026-11-22 02:13:34 [rsn_full full] free RAM 1230 MB < 1500: page-cache drop requested
+- 2026-11-22 02:14:36 [rsn_full full] free RAM 1239 MB < 1500: page-cache drop requested
+- 2026-11-22 02:15:38 [rsn_full full] free RAM 1331 MB < 1500: page-cache drop requested
+- 2026-11-22 02:16:40 [rsn_full full] free RAM 1313 MB < 1500: page-cache drop requested
+- 2026-11-22 02:17:43 [rsn_full full] free RAM 1148 MB < 1500: page-cache drop requested
+- 2026-11-22 02:18:45 [rsn_full full] free RAM 1143 MB < 1500: page-cache drop requested
+- 2026-11-22 02:19:47 [rsn_full full] free RAM 1230 MB < 1500: page-cache drop requested
+- 2026-11-22 02:20:49 [rsn_full full] free RAM 1082 MB < 1500: page-cache drop requested
+- 2026-11-22 02:21:51 [rsn_full full] free RAM 1080 MB < 1500: page-cache drop requested
+- 2026-11-22 02:22:53 [rsn_full full] free RAM 1184 MB < 1500: page-cache drop requested
+- 2026-11-22 02:23:58 [rsn_full full] free RAM 1157 MB < 1500: page-cache drop requested
+- 2026-11-22 02:25:00 [rsn_full full] free RAM 1152 MB < 1500: page-cache drop requested
+- 2026-11-22 02:26:02 [rsn_full full] free RAM 942 MB < 1500: page-cache drop requested
+- 2026-11-22 02:27:05 [rsn_full full] free RAM 919 MB < 1500: page-cache drop requested
+- 2026-11-22 02:28:07 [rsn_full full] free RAM 1135 MB < 1500: page-cache drop requested
+- 2026-11-22 02:29:08 [rsn_full full] free RAM 1118 MB < 1500: page-cache drop requested
+- 2026-11-22 02:30:11 [rsn_full full] free RAM 915 MB < 1500: page-cache drop requested
+- 2026-11-22 02:31:13 [rsn_full full] free RAM 1003 MB < 1500: page-cache drop requested
+- 2026-11-22 02:32:15 [rsn_full full] free RAM 1454 MB < 1500: page-cache drop requested
+- 2026-11-22 02:33:17 [rsn_full full] free RAM 1287 MB < 1500: page-cache drop requested
+- 2026-11-22 02:34:18 [rsn_full full] free RAM 1283 MB < 1500: page-cache drop requested
+- 2026-11-22 02:35:20 [rsn_full full] free RAM 1274 MB < 1500: page-cache drop requested
+- 2026-11-22 02:36:23 [rsn_full full] free RAM 1113 MB < 1500: page-cache drop requested
+- 2026-11-22 02:37:25 [rsn_full full] free RAM 1170 MB < 1500: page-cache drop requested
+- 2026-11-22 02:38:27 [rsn_full full] free RAM 1217 MB < 1500: page-cache drop requested
+- 2026-11-22 02:39:29 [rsn_full full] free RAM 971 MB < 1500: page-cache drop requested
+- 2026-11-22 02:40:34 [rsn_full full] free RAM 1001 MB < 1500: page-cache drop requested
+- 2026-11-22 02:41:36 [rsn_full full] free RAM 977 MB < 1500: page-cache drop requested
+- 2026-11-22 02:42:38 [rsn_full full] free RAM 974 MB < 1500: page-cache drop requested
+- 2026-11-22 02:43:40 [rsn_full full] free RAM 1001 MB < 1500: page-cache drop requested
+- 2026-11-22 02:44:42 [rsn_full full] free RAM 1129 MB < 1500: page-cache drop requested
+- 2026-11-22 02:45:44 [rsn_full full] free RAM 1135 MB < 1500: page-cache drop requested
+- 2026-11-22 02:46:47 [rsn_full full] free RAM 1154 MB < 1500: page-cache drop requested
+- 2026-11-22 02:47:48 [rsn_full full] free RAM 1277 MB < 1500: page-cache drop requested
+- 2026-11-22 02:48:50 [rsn_full full] free RAM 1331 MB < 1500: page-cache drop requested
+- 2026-11-22 02:49:53 [rsn_full full] free RAM 917 MB < 1500: page-cache drop requested
+- 2026-11-22 02:50:55 [rsn_full full] free RAM 1099 MB < 1500: page-cache drop requested
+- 2026-11-22 02:51:57 [rsn_full full] free RAM 1242 MB < 1500: page-cache drop requested
+- 2026-11-22 02:52:59 [rsn_full full] free RAM 1022 MB < 1500: page-cache drop requested
+- 2026-11-22 02:54:01 [rsn_full full] free RAM 1044 MB < 1500: page-cache drop requested
+- 2026-11-22 02:55:03 [rsn_full full] free RAM 1073 MB < 1500: page-cache drop requested
+- 2026-11-22 02:56:08 [rsn_full full] free RAM 1146 MB < 1500: page-cache drop requested
+- 2026-11-22 02:57:10 [rsn_full full] free RAM 1129 MB < 1500: page-cache drop requested
+- 2026-11-22 02:58:12 [rsn_full full] free RAM 960 MB < 1500: page-cache drop requested
+- 2026-11-22 02:59:15 [rsn_full full] free RAM 722 MB < 1500: page-cache drop requested
+- 2026-11-22 03:00:17 [rsn_full full] free RAM 807 MB < 1500: page-cache drop requested
+- 2026-11-22 03:01:19 [rsn_full full] free RAM 879 MB < 1500: page-cache drop requested
+- 2026-11-22 03:02:21 [rsn_full full] free RAM 627 MB < 1500: page-cache drop requested
+- 2026-11-22 03:03:23 [rsn_full full] free RAM 845 MB < 1500: page-cache drop requested
+- 2026-11-22 03:04:25 [rsn_full full] free RAM 1121 MB < 1500: page-cache drop requested
+- 2026-11-22 03:05:27 [rsn_full full] free RAM 1253 MB < 1500: page-cache drop requested
+- 2026-11-22 03:06:29 [rsn_full full] free RAM 1202 MB < 1500: page-cache drop requested
+- 2026-11-22 03:07:31 [rsn_full full] free RAM 1190 MB < 1500: page-cache drop requested
+- 2026-11-22 03:08:33 [rsn_full full] free RAM 1181 MB < 1500: page-cache drop requested
+- 2026-11-22 03:09:35 [rsn_full full] free RAM 1124 MB < 1500: page-cache drop requested
+- 2026-11-22 03:10:37 [rsn_full full] free RAM 1070 MB < 1500: page-cache drop requested
+- 2026-11-22 03:11:39 [rsn_full full] free RAM 1057 MB < 1500: page-cache drop requested
+- 2026-11-22 03:12:43 [rsn_full full] free RAM 1224 MB < 1500: page-cache drop requested
+- 2026-11-22 03:13:46 [rsn_full full] free RAM 1034 MB < 1500: page-cache drop requested
+- 2026-11-22 03:14:47 [rsn_full full] free RAM 1131 MB < 1500: page-cache drop requested
+- 2026-11-22 03:15:50 [rsn_full full] free RAM 1171 MB < 1500: page-cache drop requested
+- 2026-11-22 03:16:52 [rsn_full full] free RAM 1157 MB < 1500: page-cache drop requested
+- 2026-11-22 03:17:54 [rsn_full full] free RAM 1096 MB < 1500: page-cache drop requested
+- 2026-11-22 03:18:56 [rsn_full full] free RAM 1245 MB < 1500: page-cache drop requested
+- 2026-11-22 03:19:58 [rsn_full full] free RAM 1388 MB < 1500: page-cache drop requested
+- 2026-11-22 03:21:00 [rsn_full full] free RAM 1345 MB < 1500: page-cache drop requested
+- 2026-11-22 03:22:02 [rsn_full full] free RAM 1354 MB < 1500: page-cache drop requested
+- 2026-11-22 03:23:04 [rsn_full full] free RAM 1001 MB < 1500: page-cache drop requested
+- 2026-11-22 03:24:07 [rsn_full full] free RAM 1149 MB < 1500: page-cache drop requested
+- 2026-11-22 03:25:09 [rsn_full full] free RAM 1468 MB < 1500: page-cache drop requested
+- 2026-11-22 03:26:11 [rsn_full full] free RAM 1251 MB < 1500: page-cache drop requested
+- 2026-11-22 03:27:13 [rsn_full full] free RAM 1192 MB < 1500: page-cache drop requested
+- 2026-11-22 03:28:18 [rsn_full full] free RAM 1141 MB < 1500: page-cache drop requested
+- 2026-11-22 03:29:20 [rsn_full full] free RAM 1110 MB < 1500: page-cache drop requested
+- 2026-11-22 03:30:22 [rsn_full full] free RAM 1108 MB < 1500: page-cache drop requested
+- 2026-11-22 03:31:24 [rsn_full full] free RAM 1189 MB < 1500: page-cache drop requested
+- 2026-11-22 03:32:26 [rsn_full full] free RAM 1214 MB < 1500: page-cache drop requested
+- 2026-11-22 03:33:29 [rsn_full full] free RAM 1081 MB < 1500: page-cache drop requested
+- 2026-11-22 03:34:31 [rsn_full full] free RAM 985 MB < 1500: page-cache drop requested
+- 2026-11-22 03:35:33 [rsn_full full] free RAM 1420 MB < 1500: page-cache drop requested
+- 2026-11-22 03:36:35 [rsn_full full] free RAM 1307 MB < 1500: page-cache drop requested
+- 2026-11-22 03:37:37 [rsn_full full] free RAM 1263 MB < 1500: page-cache drop requested
+- 2026-11-22 03:38:39 [rsn_full full] free RAM 1249 MB < 1500: page-cache drop requested
+- 2026-11-22 03:39:42 [rsn_full full] free RAM 1279 MB < 1500: page-cache drop requested
+- 2026-11-22 03:40:44 [rsn_full full] free RAM 1197 MB < 1500: page-cache drop requested
+- 2026-11-22 03:41:46 [rsn_full full] free RAM 1158 MB < 1500: page-cache drop requested
+- 2026-11-22 03:42:48 [rsn_full full] free RAM 1189 MB < 1500: page-cache drop requested
+- 2026-11-22 03:43:50 [rsn_full full] free RAM 1410 MB < 1500: page-cache drop requested
+- 2026-11-22 03:44:55 [rsn_full full] free RAM 1397 MB < 1500: page-cache drop requested
+- 2026-11-22 03:45:57 [rsn_full full] free RAM 1147 MB < 1500: page-cache drop requested
+- 2026-11-22 03:46:59 [rsn_full full] free RAM 1214 MB < 1500: page-cache drop requested
+- 2026-11-22 03:48:01 [rsn_full full] free RAM 1333 MB < 1500: page-cache drop requested
+- 2026-11-22 03:49:04 [rsn_full full] free RAM 1119 MB < 1500: page-cache drop requested
+- 2026-11-22 03:50:06 [rsn_full full] free RAM 1238 MB < 1500: page-cache drop requested
+- 2026-11-22 03:51:08 [rsn_full full] free RAM 1384 MB < 1500: page-cache drop requested
+- 2026-11-22 03:52:10 [rsn_full full] free RAM 1236 MB < 1500: page-cache drop requested
+- 2026-11-22 03:53:12 [rsn_full full] free RAM 1266 MB < 1500: page-cache drop requested
+- 2026-11-22 03:54:14 [rsn_full full] free RAM 1236 MB < 1500: page-cache drop requested
+- 2026-11-22 03:55:16 [rsn_full full] free RAM 1338 MB < 1500: page-cache drop requested
+- 2026-11-22 03:56:18 [rsn_full full] free RAM 940 MB < 1500: page-cache drop requested
+- 2026-11-22 03:57:20 [rsn_full full] free RAM 1176 MB < 1500: page-cache drop requested
+- 2026-11-22 03:58:22 [rsn_full full] free RAM 1237 MB < 1500: page-cache drop requested
+- 2026-11-22 03:59:24 [rsn_full full] free RAM 1048 MB < 1500: page-cache drop requested
+- 2026-11-22 04:00:29 [rsn_full full] free RAM 1264 MB < 1500: page-cache drop requested
+- 2026-11-22 04:01:32 [rsn_full full] free RAM 1226 MB < 1500: page-cache drop requested
+- 2026-11-22 04:02:34 [rsn_full full] free RAM 1325 MB < 1500: page-cache drop requested
+- 2026-11-22 04:03:36 [rsn_full full] free RAM 1314 MB < 1500: page-cache drop requested
+- 2026-11-22 04:04:38 [rsn_full full] free RAM 1397 MB < 1500: page-cache drop requested
+- 2026-11-22 04:05:41 [rsn_full full] free RAM 1359 MB < 1500: page-cache drop requested
+- 2026-11-22 04:06:43 [rsn_full full] free RAM 1378 MB < 1500: page-cache drop requested
+- 2026-11-22 04:07:45 [rsn_full full] free RAM 1395 MB < 1500: page-cache drop requested
+- 2026-11-22 04:08:47 [rsn_full full] free RAM 1346 MB < 1500: page-cache drop requested
+- 2026-11-22 04:09:49 [rsn_full full] free RAM 1362 MB < 1500: page-cache drop requested
+- 2026-11-22 04:10:51 [rsn_full full] free RAM 1338 MB < 1500: page-cache drop requested
+- 2026-11-22 04:11:53 [rsn_full full] free RAM 1359 MB < 1500: page-cache drop requested
+- 2026-11-22 04:12:55 [rsn_full full] free RAM 1368 MB < 1500: page-cache drop requested
+- 2026-11-22 04:13:57 [rsn_full full] free RAM 1364 MB < 1500: page-cache drop requested
+- 2026-11-22 04:14:59 [rsn_full full] free RAM 1369 MB < 1500: page-cache drop requested
+- 2026-11-22 04:16:01 [rsn_full full] free RAM 1383 MB < 1500: page-cache drop requested
+- 2026-11-22 04:17:06 [rsn_full full] free RAM 1351 MB < 1500: page-cache drop requested
+- 2026-11-22 04:18:08 [rsn_full full] free RAM 1371 MB < 1500: page-cache drop requested
+- 2026-11-22 04:19:10 [rsn_full full] free RAM 1354 MB < 1500: page-cache drop requested
+- 2026-11-22 04:20:12 [rsn_full full] free RAM 1441 MB < 1500: page-cache drop requested
+- 2026-11-22 04:21:14 [rsn_full full] free RAM 1367 MB < 1500: page-cache drop requested
+- 2026-11-22 04:22:16 [rsn_full full] free RAM 1399 MB < 1500: page-cache drop requested
+- 2026-11-22 04:23:18 [rsn_full full] free RAM 1356 MB < 1500: page-cache drop requested
+- 2026-11-22 04:24:20 [rsn_full full] free RAM 1373 MB < 1500: page-cache drop requested
+- 2026-11-22 04:25:22 [rsn_full full] free RAM 1325 MB < 1500: page-cache drop requested
+- 2026-11-22 04:26:24 [rsn_full full] free RAM 1299 MB < 1500: page-cache drop requested
+- 2026-11-22 04:27:26 [rsn_full full] free RAM 1307 MB < 1500: page-cache drop requested
+- 2026-11-22 04:28:29 [rsn_full full] free RAM 1325 MB < 1500: page-cache drop requested
+- 2026-11-22 04:29:31 [rsn_full full] free RAM 1292 MB < 1500: page-cache drop requested
+- 2026-11-22 04:30:33 [rsn_full full] free RAM 1268 MB < 1500: page-cache drop requested
+- 2026-11-22 04:31:35 [rsn_full full] free RAM 1281 MB < 1500: page-cache drop requested
+- 2026-11-22 04:32:39 [rsn_full full] free RAM 1277 MB < 1500: page-cache drop requested
+- 2026-11-22 04:33:41 [rsn_full full] free RAM 1265 MB < 1500: page-cache drop requested
+- 2026-11-22 04:34:43 [rsn_full full] free RAM 1316 MB < 1500: page-cache drop requested
+- 2026-11-22 04:35:46 [rsn_full full] free RAM 1352 MB < 1500: page-cache drop requested
+- 2026-11-22 04:36:48 [rsn_full full] free RAM 1367 MB < 1500: page-cache drop requested
+- 2026-11-22 04:37:50 [rsn_full full] free RAM 1354 MB < 1500: page-cache drop requested
+- 2026-11-22 04:38:52 [rsn_full full] free RAM 1328 MB < 1500: page-cache drop requested
+- 2026-11-22 04:39:54 [rsn_full full] free RAM 1326 MB < 1500: page-cache drop requested
+- 2026-11-22 04:40:56 [rsn_full full] free RAM 1294 MB < 1500: page-cache drop requested
+- 2026-11-22 04:41:58 [rsn_full full] free RAM 1305 MB < 1500: page-cache drop requested
+- 2026-11-22 04:42:24 [rsn_full full] chunk 3 rc=3
+- 2026-11-22 04:44:02 [rsn_full full] free RAM 949 MB < 1500: page-cache drop requested
+- 2026-11-22 04:45:05 [rsn_full full] free RAM 912 MB < 1500: page-cache drop requested
+- 2026-11-22 04:46:07 [rsn_full full] free RAM 1006 MB < 1500: page-cache drop requested
+- 2026-11-22 04:47:08 [rsn_full full] free RAM 989 MB < 1500: page-cache drop requested
+- 2026-11-22 04:48:10 [rsn_full full] free RAM 1097 MB < 1500: page-cache drop requested
+- 2026-11-22 04:49:15 [rsn_full full] free RAM 1062 MB < 1500: page-cache drop requested
+- 2026-11-22 04:50:17 [rsn_full full] free RAM 1337 MB < 1500: page-cache drop requested
+- 2026-11-22 04:51:19 [rsn_full full] free RAM 1291 MB < 1500: page-cache drop requested
+- 2026-11-22 04:52:22 [rsn_full full] free RAM 1241 MB < 1500: page-cache drop requested
+- 2026-11-22 04:53:23 [rsn_full full] free RAM 1077 MB < 1500: page-cache drop requested
+- 2026-11-22 04:54:25 [rsn_full full] free RAM 1089 MB < 1500: page-cache drop requested
+- 2026-11-22 04:55:28 [rsn_full full] free RAM 908 MB < 1500: page-cache drop requested
+- 2026-11-22 04:56:30 [rsn_full full] free RAM 704 MB < 1500: page-cache drop requested
+- 2026-11-22 04:57:32 [rsn_full full] free RAM 888 MB < 1500: page-cache drop requested
+- 2026-11-22 04:58:34 [rsn_full full] free RAM 804 MB < 1500: page-cache drop requested
+- 2026-11-22 04:59:36 [rsn_full full] free RAM 732 MB < 1500: page-cache drop requested
+- 2026-11-22 05:00:38 [rsn_full full] free RAM 763 MB < 1500: page-cache drop requested
+- 2026-11-22 05:01:40 [rsn_full full] free RAM 860 MB < 1500: page-cache drop requested
+- 2026-11-22 05:02:42 [rsn_full full] free RAM 889 MB < 1500: page-cache drop requested
+- 2026-11-22 05:03:44 [rsn_full full] free RAM 918 MB < 1500: page-cache drop requested
+- 2026-11-22 05:04:48 [rsn_full full] free RAM 935 MB < 1500: page-cache drop requested
+- 2026-11-22 05:05:50 [rsn_full full] free RAM 948 MB < 1500: page-cache drop requested
+- 2026-11-22 05:06:52 [rsn_full full] free RAM 934 MB < 1500: page-cache drop requested
+- 2026-11-22 05:07:54 [rsn_full full] free RAM 935 MB < 1500: page-cache drop requested
+- 2026-11-22 05:08:57 [rsn_full full] free RAM 890 MB < 1500: page-cache drop requested
+- 2026-11-22 05:09:59 [rsn_full full] free RAM 896 MB < 1500: page-cache drop requested
+- 2026-11-22 05:11:01 [rsn_full full] free RAM 1003 MB < 1500: page-cache drop requested
+- 2026-11-22 05:12:03 [rsn_full full] free RAM 826 MB < 1500: page-cache drop requested
+- 2026-11-22 05:13:05 [rsn_full full] free RAM 1131 MB < 1500: page-cache drop requested
+- 2026-11-22 05:14:07 [rsn_full full] free RAM 1210 MB < 1500: page-cache drop requested
+- 2026-11-22 05:15:09 [rsn_full full] free RAM 1189 MB < 1500: page-cache drop requested
+- 2026-11-22 05:16:11 [rsn_full full] free RAM 1208 MB < 1500: page-cache drop requested
+- 2026-11-22 05:17:13 [rsn_full full] free RAM 1176 MB < 1500: page-cache drop requested
+- 2026-11-22 05:18:15 [rsn_full full] free RAM 1195 MB < 1500: page-cache drop requested
+- 2026-11-22 05:19:17 [rsn_full full] free RAM 1175 MB < 1500: page-cache drop requested
+- 2026-11-22 05:20:19 [rsn_full full] free RAM 1260 MB < 1500: page-cache drop requested
+- 2026-11-22 05:21:24 [rsn_full full] free RAM 1222 MB < 1500: page-cache drop requested
+- 2026-11-22 05:22:26 [rsn_full full] free RAM 1227 MB < 1500: page-cache drop requested
+- 2026-11-22 05:23:29 [rsn_full full] free RAM 1161 MB < 1500: page-cache drop requested
+- 2026-11-22 05:24:31 [rsn_full full] free RAM 1174 MB < 1500: page-cache drop requested
+- 2026-11-22 05:25:33 [rsn_full full] free RAM 1134 MB < 1500: page-cache drop requested
+- 2026-11-22 05:26:35 [rsn_full full] free RAM 636 MB < 1500: page-cache drop requested
+- 2026-11-22 05:27:37 [rsn_full full] free RAM 810 MB < 1500: page-cache drop requested
+- 2026-11-22 05:28:39 [rsn_full full] free RAM 1008 MB < 1500: page-cache drop requested
+- 2026-11-22 05:29:42 [rsn_full full] free RAM 1010 MB < 1500: page-cache drop requested
+- 2026-11-22 05:30:44 [rsn_full full] free RAM 1050 MB < 1500: page-cache drop requested
+- 2026-11-22 05:31:46 [rsn_full full] free RAM 1032 MB < 1500: page-cache drop requested
+- 2026-11-22 05:32:48 [rsn_full full] free RAM 1034 MB < 1500: page-cache drop requested
+- 2026-11-22 05:33:50 [rsn_full full] free RAM 1006 MB < 1500: page-cache drop requested
+- 2026-11-22 05:34:52 [rsn_full full] free RAM 1081 MB < 1500: page-cache drop requested
+- 2026-11-22 05:35:54 [rsn_full full] free RAM 1071 MB < 1500: page-cache drop requested
+- 2026-11-22 05:36:59 [rsn_full full] free RAM 1045 MB < 1500: page-cache drop requested
+- 2026-11-22 05:38:01 [rsn_full full] free RAM 992 MB < 1500: page-cache drop requested
+- 2026-11-22 05:39:03 [rsn_full full] free RAM 938 MB < 1500: page-cache drop requested
+- 2026-11-22 05:40:05 [rsn_full full] free RAM 994 MB < 1500: page-cache drop requested
+- 2026-11-22 05:41:08 [rsn_full full] free RAM 980 MB < 1500: page-cache drop requested
+- 2026-11-22 05:42:10 [rsn_full full] free RAM 906 MB < 1500: page-cache drop requested
+- 2026-11-22 05:43:12 [rsn_full full] free RAM 809 MB < 1500: page-cache drop requested
+- 2026-11-22 05:44:14 [rsn_full full] free RAM 969 MB < 1500: page-cache drop requested
+- 2026-11-22 05:45:16 [rsn_full full] free RAM 792 MB < 1500: page-cache drop requested
+- 2026-11-22 05:46:18 [rsn_full full] free RAM 838 MB < 1500: page-cache drop requested
+- 2026-11-22 05:47:20 [rsn_full full] free RAM 1000 MB < 1500: page-cache drop requested
+- 2026-11-22 05:48:23 [rsn_full full] free RAM 1068 MB < 1500: page-cache drop requested
+- 2026-11-22 05:49:25 [rsn_full full] free RAM 985 MB < 1500: page-cache drop requested
+- 2026-11-22 05:50:27 [rsn_full full] free RAM 1056 MB < 1500: page-cache drop requested
+- 2026-11-22 05:51:29 [rsn_full full] free RAM 1050 MB < 1500: page-cache drop requested
+- 2026-11-22 05:52:31 [rsn_full full] free RAM 923 MB < 1500: page-cache drop requested
+- 2026-11-22 05:53:36 [rsn_full full] free RAM 897 MB < 1500: page-cache drop requested
+- 2026-11-22 05:54:38 [rsn_full full] free RAM 967 MB < 1500: page-cache drop requested
+- 2026-11-22 05:55:41 [rsn_full full] free RAM 939 MB < 1500: page-cache drop requested
+- 2026-11-22 05:56:43 [rsn_full full] free RAM 974 MB < 1500: page-cache drop requested
+- 2026-11-22 05:57:45 [rsn_full full] free RAM 734 MB < 1500: page-cache drop requested
+- 2026-11-22 05:58:47 [rsn_full full] free RAM 851 MB < 1500: page-cache drop requested
+- 2026-11-22 05:59:49 [rsn_full full] free RAM 996 MB < 1500: page-cache drop requested
+- 2026-11-22 06:00:51 [rsn_full full] free RAM 784 MB < 1500: page-cache drop requested
+- 2026-11-22 06:01:53 [rsn_full full] free RAM 903 MB < 1500: page-cache drop requested
+- 2026-11-22 06:02:55 [rsn_full full] free RAM 867 MB < 1500: page-cache drop requested
+- 2026-11-22 06:03:58 [rsn_full full] free RAM 873 MB < 1500: page-cache drop requested
+- 2026-11-22 06:05:00 [rsn_full full] free RAM 752 MB < 1500: page-cache drop requested
+- 2026-11-22 06:06:02 [rsn_full full] free RAM 1038 MB < 1500: page-cache drop requested
+- 2026-11-22 06:07:04 [rsn_full full] free RAM 997 MB < 1500: page-cache drop requested
+- 2026-11-22 06:08:07 [rsn_full full] free RAM 909 MB < 1500: page-cache drop requested
+- 2026-11-22 06:09:12 [rsn_full full] free RAM 795 MB < 1500: page-cache drop requested
+- 2026-11-22 06:10:14 [rsn_full full] free RAM 1337 MB < 1500: page-cache drop requested
+- 2026-11-22 06:11:16 [rsn_full full] free RAM 1198 MB < 1500: page-cache drop requested
+- 2026-11-22 06:12:19 [rsn_full full] free RAM 708 MB < 1500: page-cache drop requested
+- 2026-11-22 06:13:20 [rsn_full full] free RAM 824 MB < 1500: page-cache drop requested
+- 2026-11-22 06:14:23 [rsn_full full] free RAM 957 MB < 1500: page-cache drop requested
+- 2026-11-22 06:15:25 [rsn_full full] free RAM 1135 MB < 1500: page-cache drop requested
+- 2026-11-22 06:16:27 [rsn_full full] free RAM 755 MB < 1500: page-cache drop requested
+- 2026-11-22 06:17:30 [rsn_full full] free RAM 998 MB < 1500: page-cache drop requested
+- 2026-11-22 06:18:31 [rsn_full full] free RAM 949 MB < 1500: page-cache drop requested
+- 2026-11-22 06:19:34 [rsn_full full] free RAM 915 MB < 1500: page-cache drop requested
+- 2026-11-22 06:20:36 [rsn_full full] free RAM 1137 MB < 1500: page-cache drop requested
+- 2026-11-22 06:21:38 [rsn_full full] free RAM 1073 MB < 1500: page-cache drop requested
+- 2026-11-22 06:22:40 [rsn_full full] free RAM 1101 MB < 1500: page-cache drop requested
+- 2026-11-22 06:23:42 [rsn_full full] free RAM 960 MB < 1500: page-cache drop requested
+- 2026-11-22 06:24:44 [rsn_full full] free RAM 1035 MB < 1500: page-cache drop requested
+- 2026-11-22 06:25:48 [rsn_full full] free RAM 1150 MB < 1500: page-cache drop requested
+- 2026-11-22 06:26:50 [rsn_full full] free RAM 1202 MB < 1500: page-cache drop requested
+- 2026-11-22 06:27:52 [rsn_full full] free RAM 1268 MB < 1500: page-cache drop requested
+- 2026-11-22 06:28:54 [rsn_full full] free RAM 1277 MB < 1500: page-cache drop requested
+- 2026-11-22 06:29:56 [rsn_full full] free RAM 1273 MB < 1500: page-cache drop requested
+- 2026-11-22 06:30:58 [rsn_full full] free RAM 1213 MB < 1500: page-cache drop requested
+- 2026-11-22 06:32:00 [rsn_full full] free RAM 1016 MB < 1500: page-cache drop requested
+- 2026-11-22 06:33:02 [rsn_full full] free RAM 1027 MB < 1500: page-cache drop requested
+- 2026-11-22 06:34:04 [rsn_full full] free RAM 1005 MB < 1500: page-cache drop requested
+- 2026-11-22 06:35:06 [rsn_full full] free RAM 1137 MB < 1500: page-cache drop requested
+- 2026-11-22 06:36:08 [rsn_full full] free RAM 1086 MB < 1500: page-cache drop requested
+- 2026-11-22 06:37:10 [rsn_full full] free RAM 1020 MB < 1500: page-cache drop requested
+- 2026-11-22 06:38:12 [rsn_full full] free RAM 1110 MB < 1500: page-cache drop requested
+- 2026-11-22 06:39:14 [rsn_full full] free RAM 1115 MB < 1500: page-cache drop requested
+- 2026-11-22 06:40:16 [rsn_full full] free RAM 966 MB < 1500: page-cache drop requested
+- 2026-11-22 06:41:21 [rsn_full full] free RAM 952 MB < 1500: page-cache drop requested
+- 2026-11-22 06:42:23 [rsn_full full] free RAM 1129 MB < 1500: page-cache drop requested
+- 2026-11-22 06:43:25 [rsn_full full] free RAM 1082 MB < 1500: page-cache drop requested
+- 2026-11-22 06:44:27 [rsn_full full] free RAM 874 MB < 1500: page-cache drop requested
+- 2026-11-22 06:45:29 [rsn_full full] free RAM 873 MB < 1500: page-cache drop requested
+- 2026-11-22 06:46:31 [rsn_full full] free RAM 885 MB < 1500: page-cache drop requested
+- 2026-11-22 06:47:33 [rsn_full full] free RAM 926 MB < 1500: page-cache drop requested
+- 2026-11-22 06:48:35 [rsn_full full] free RAM 1041 MB < 1500: page-cache drop requested
+- 2026-11-22 06:49:37 [rsn_full full] free RAM 1031 MB < 1500: page-cache drop requested
+- 2026-11-22 06:50:39 [rsn_full full] free RAM 961 MB < 1500: page-cache drop requested
+- 2026-11-22 06:51:41 [rsn_full full] free RAM 690 MB < 1500: page-cache drop requested
+- 2026-11-22 06:52:43 [rsn_full full] free RAM 907 MB < 1500: page-cache drop requested
+- 2026-11-22 06:53:45 [rsn_full full] free RAM 942 MB < 1500: page-cache drop requested
+- 2026-11-22 06:54:47 [rsn_full full] free RAM 875 MB < 1500: page-cache drop requested
+- 2026-11-22 06:55:49 [rsn_full full] free RAM 909 MB < 1500: page-cache drop requested
+- 2026-11-22 06:56:51 [rsn_full full] free RAM 921 MB < 1500: page-cache drop requested
+- 2026-11-22 06:57:55 [rsn_full full] free RAM 867 MB < 1500: page-cache drop requested
+- 2026-11-22 06:58:57 [rsn_full full] free RAM 966 MB < 1500: page-cache drop requested
+- 2026-11-22 07:00:00 [rsn_full full] free RAM 1038 MB < 1500: page-cache drop requested
+- 2026-11-22 07:01:02 [rsn_full full] free RAM 745 MB < 1500: page-cache drop requested
+- 2026-11-22 07:01:07 [rsn_full full] chunk 4 rc=6
+- 2026-11-22 07:01:08 [rsn_full full] after-run gate on /home/hp_srthk4370/smartcity_runs/rsn_full/ckpt_best_0000 (gate only, no deploy)
+- 2026-11-22 07:03:13 [rsn_full full] gate rc=0 (see /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-20_rsn_big/gate/GATE.md)
+- 2026-11-22 13:54:19 [claude] retrain 2: run1 early-stopped at 400 (chat 10/12->6/12: new chat had no site/refuse/unknown rows). Added beh_v2 (1,370 site + r5 chat rows from p2 data), epochs 0.375 (~751 steps), gate_full (own GGUF/dir, tools_v5), gate falls back to ckpt_latest. run1 kept at ~/smartcity_runs/rsn_full_run1_es400
+- 2026-11-22 08:24:19 [rsn_full full] nproc=8 -> 6 CPU threads, normal priority, no memory cap
+- 2026-11-22 08:26:02 [rsn_full full] nproc=8 -> 6 CPU threads, normal priority, no memory cap
+- 2026-11-22 08:28:34 [rsn_full full] nproc=8 -> 6 CPU threads, normal priority, no memory cap
+- 2026-11-22 08:38:26 [rsn_full full] free RAM 1069 MB < 1500: page-cache drop requested
+- 2026-11-22 08:39:29 [rsn_full full] free RAM 1268 MB < 1500: page-cache drop requested
+- 2026-11-22 08:40:32 [rsn_full full] free RAM 745 MB < 1500: page-cache drop requested
+- 2026-11-22 08:41:35 [rsn_full full] free RAM 531 MB < 1500: page-cache drop requested
+- 2026-11-22 08:42:37 [rsn_full full] free RAM 798 MB < 1500: page-cache drop requested
+- 2026-11-22 09:26:28 [rsn_full full] free RAM 975 MB < 1500: page-cache drop requested
+- 2026-11-22 09:27:30 [rsn_full full] free RAM 1312 MB < 1500: page-cache drop requested
+- 2026-11-22 09:30:05 [rsn_full full] free RAM 1435 MB < 1500: page-cache drop requested
+- 2026-11-22 09:32:41 [rsn_full full] free RAM 1298 MB < 1500: page-cache drop requested
+- 2026-11-22 09:33:44 [rsn_full full] free RAM 1426 MB < 1500: page-cache drop requested
+- 2026-11-22 09:34:46 [rsn_full full] free RAM 1459 MB < 1500: page-cache drop requested
+- 2026-11-22 09:35:48 [rsn_full full] free RAM 1113 MB < 1500: page-cache drop requested
+- 2026-11-22 09:36:52 [rsn_full full] free RAM 1223 MB < 1500: page-cache drop requested
+- 2026-11-22 09:37:56 [rsn_full full] free RAM 902 MB < 1500: page-cache drop requested
+- 2026-11-22 09:50:56 [rsn_full full] free RAM 1388 MB < 1500: page-cache drop requested
+- 2026-11-22 15:59:54 [claude] owner pause: GPU lag on display/Chrome (training 100% GPU). STOP set; resume on owner word
+- 2026-11-22 10:33:46 [rsn_full full] chunk 1 rc=3
+- 2026-11-22 11:14:47 [rsn_full full] nproc=6 -> 4 CPU threads, nice 10, GPU throttle via /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-21_rsn_full/THROTTLE
+- 2026-11-22 11:17:23 [rsn_full full] free RAM 1471 MB < 1500: page-cache drop requested
+- 2026-11-22 13:42:25 [rsn_full full] free RAM 1379 MB < 1500: page-cache drop requested
+- 2026-11-22 13:43:28 [rsn_full full] free RAM 1352 MB < 1500: page-cache drop requested
+- 2026-11-22 13:54:23 [rsn_full full] free RAM 1467 MB < 1500: page-cache drop requested
+- 2026-11-22 15:33:09 [rsn_full full] free RAM 1339 MB < 1500: page-cache drop requested
+- 2026-11-22 15:41:28 [rsn_full full] free RAM 1213 MB < 1500: page-cache drop requested
+- 2026-11-22 15:52:23 [rsn_full full] free RAM 1309 MB < 1500: page-cache drop requested
+- 2026-11-22 15:56:02 [rsn_full full] free RAM 1337 MB < 1500: page-cache drop requested
+- 2026-11-22 16:22:04 [rsn_full full] free RAM 1219 MB < 1500: page-cache drop requested
+- 2026-11-22 16:23:08 [rsn_full full] free RAM 593 MB < 1500: page-cache drop requested
+- 2026-11-22 16:38:15 [rsn_full full] free RAM 1009 MB < 1500: page-cache drop requested
+- 2026-11-22 16:39:17 [rsn_full full] free RAM 1461 MB < 1500: page-cache drop requested
+- 2026-11-22 17:02:14 [rsn_full full] free RAM 550 MB < 1500: page-cache drop requested
+- 2026-11-22 17:09:00 [rsn_full full] free RAM 1277 MB < 1500: page-cache drop requested
+- 2026-11-22 17:21:53 [rsn_full full] chunk 1 rc=3
+- 2026-11-22 17:24:38 [rsn_full full] free RAM 1470 MB < 1500: page-cache drop requested
+- 2026-11-22 17:25:41 [rsn_full full] free RAM 839 MB < 1500: page-cache drop requested
+- 2026-11-22 17:32:57 [rsn_full full] free RAM 1049 MB < 1500: page-cache drop requested
+- 2026-11-23 00:25:59 owner: evals every 100 steps after step 200 (run_full.sh flags; applies from next chunk ~step 250)
+- 2026-11-22 22:11:20 [rsn_full full] chunk 2 rc=1
+- 2026-11-23 04:25:36 [claude] step-200 gen eval CUDA OOM (chunk 2 rc=1, eval skipped). RSN3_GEN_TOK_BUDGET=8000; clean STOP + relaunch so evals at 300+ work
+- 2026-11-22 22:57:55 [rsn_full full] chunk 3 rc=3
+- 2026-11-22 22:58:09 [rsn_full full] nproc=6 -> 4 CPU threads, nice 10, GPU throttle via /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-21_rsn_full/THROTTLE
+- 2026-11-23 04:13:44 [rsn_full full] chunk 1 rc=1
+- 2026-11-23 10:25:50 [claude] step-300 gen eval OOM again at lm-head unpark (display shares GPU). rsn_ft_train.py gen_eval: empty_cache + 3 retries 60 s apart, then skip (no crash). Clean STOP + relaunch
+- 2026-11-23 04:57:18 [rsn_full full] chunk 2 rc=3
+- 2026-11-23 04:57:22 [rsn_full full] nproc=6 -> 4 CPU threads, nice 10, GPU throttle via /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-21_rsn_full/THROTTLE
+- 2026-11-23 06:37:53 [rsn_full full] free RAM 1370 MB < 1500: page-cache drop requested
+- 2026-11-23 11:18:02 [rsn_full full] chunk 1 rc=3
+- 2026-11-23 18:02:57 [claude] owner: behaviour block x3 for rest of run (2 of 10 new rows/step -> unseen beh_v2, replacing real_agt3 first) + reset since_best so step-400 dip does not count; step 500 cannot early-stop. Clean STOP
+- 2026-11-23 12:34:14 [rsn_full full] chunk 2 rc=3
+- 2026-11-23 12:34:37 [rsn_full full] nproc=6 -> 4 CPU threads, nice 10, GPU throttle via /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-21_rsn_full/THROTTLE
+- 2026-11-23 12:37:14 [rsn_full full] free RAM 1276 MB < 1500: page-cache drop requested
+- 2026-11-23 12:38:16 [rsn_full full] free RAM 1328 MB < 1500: page-cache drop requested
+- 2026-11-23 12:39:49 [rsn_full full] free RAM 1469 MB < 1500: page-cache drop requested
+- 2026-11-23 12:56:02 [rsn_full full] chunk 1 rc=1
+- 2026-11-23 13:09:23 [rsn_full full] free RAM 1479 MB < 1500: page-cache drop requested
+- 2026-11-23 13:11:28 [rsn_full full] free RAM 1466 MB < 1500: page-cache drop requested
+- 2026-11-23 13:25:28 [rsn_full full] chunk 2 rc=143
+- 2026-11-23 18:56:33 [claude] crash loop after reweight: KeyError on 32 beh ids dropped by max_len; reweight_fix.py swapped them for loadable unseen beh ids (571 beh rows kept). Relaunch
+- 2026-11-23 13:26:36 [rsn_full full] nproc=6 -> 4 CPU threads, nice 10, GPU throttle via /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-21_rsn_full/THROTTLE
+- 2026-11-23 13:29:12 [rsn_full full] free RAM 1467 MB < 1500: page-cache drop requested
+- 2026-11-23 13:30:14 [rsn_full full] free RAM 1306 MB < 1500: page-cache drop requested
+- 2026-11-23 14:30:49 [rsn_full full] free RAM 1103 MB < 1500: page-cache drop requested
+- 2026-11-23 14:33:58 [rsn_full full] free RAM 1491 MB < 1500: page-cache drop requested
+- 2026-11-23 14:51:09 [rsn_full full] free RAM 1306 MB < 1500: page-cache drop requested
+- 2026-11-23 14:52:12 [rsn_full full] free RAM 1308 MB < 1500: page-cache drop requested
+- 2026-11-23 15:27:25 [rsn_full full] free RAM 1383 MB < 1500: page-cache drop requested
+- 2026-11-23 15:33:07 [rsn_full full] free RAM 1457 MB < 1500: page-cache drop requested
+- 2026-11-23 18:38:47 [rsn_full full] free RAM 1495 MB < 1500: page-cache drop requested
+- 2026-11-23 18:39:49 [rsn_full full] free RAM 1287 MB < 1500: page-cache drop requested
+- 2026-11-23 18:41:54 [rsn_full full] free RAM 1468 MB < 1500: page-cache drop requested
+- 2026-11-23 18:44:00 [rsn_full full] free RAM 1449 MB < 1500: page-cache drop requested
+- 2026-11-23 18:45:02 [rsn_full full] free RAM 1383 MB < 1500: page-cache drop requested
+- 2026-11-23 19:05:45 [rsn_full full] free RAM 1446 MB < 1500: page-cache drop requested
+- 2026-11-23 19:45:48 [rsn_full full] chunk 1 rc=3
+- 2026-11-23 19:48:02 [rsn_full full] free RAM 1310 MB < 1500: page-cache drop requested
+- 2026-11-23 19:49:05 [rsn_full full] free RAM 1187 MB < 1500: page-cache drop requested
+- 2026-11-23 19:50:07 [rsn_full full] free RAM 1197 MB < 1500: page-cache drop requested
+- 2026-11-23 19:51:09 [rsn_full full] free RAM 1287 MB < 1500: page-cache drop requested
+- 2026-11-23 19:52:11 [rsn_full full] free RAM 1307 MB < 1500: page-cache drop requested
+- 2026-11-23 19:53:13 [rsn_full full] free RAM 1401 MB < 1500: page-cache drop requested
+- 2026-11-23 19:54:15 [rsn_full full] free RAM 1394 MB < 1500: page-cache drop requested
+- 2026-11-23 19:55:18 [rsn_full full] free RAM 1496 MB < 1500: page-cache drop requested
+- 2026-11-23 20:12:23 [rsn_full full] free RAM 1417 MB < 1500: page-cache drop requested
+- 2026-11-24 01:42:35 [claude] owner: chat plateau, reports up -> reweight2 (max 4 report rows of 10 new per step, rest unseen beh_v2 chat; report share ~73% -> ~60%). Clean STOP + relaunch
+- 2026-11-23 20:14:30 [rsn_full full] chunk 2 rc=3
+- 2026-11-24 01:44:35 [claude] owner: step 600 cannot early-stop (since_best reset 0; backup best.json.bak_600)
+- 2026-11-24 01:46:26 [claude] reweight2 applied (round-robin over all chat families: site, fog, tools, agentic, multi-domain...), relaunch
+- 2026-11-23 20:16:26 [rsn_full full] nproc=6 -> 4 CPU threads, nice 10, GPU throttle via /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-21_rsn_full/THROTTLE
+- 2026-11-24 01:47:39 [claude] owner: report share just under 50% -> KEEP=2 report rows of 10 new per step (backup schedule.json.bak_keep4), relaunch
+- 2026-11-23 20:17:39 [rsn_full full] nproc=6 -> 4 CPU threads, nice 10, GPU throttle via /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-21_rsn_full/THROTTLE
+- 2026-11-23 20:19:15 [rsn_full full] free RAM 1183 MB < 1500: page-cache drop requested
+- 2026-11-23 20:20:17 [rsn_full full] free RAM 1159 MB < 1500: page-cache drop requested
+- 2026-11-23 20:21:20 [rsn_full full] free RAM 1416 MB < 1500: page-cache drop requested
+- 2026-11-23 20:23:24 [rsn_full full] free RAM 1377 MB < 1500: page-cache drop requested
+- 2026-11-23 20:24:26 [rsn_full full] free RAM 1435 MB < 1500: page-cache drop requested
+- 2026-11-23 20:28:38 [rsn_full full] free RAM 1195 MB < 1500: page-cache drop requested
+- 2026-11-23 23:03:08 [rsn_full full] free RAM 1496 MB < 1500: page-cache drop requested
+- 2026-11-24 01:37:10 [rsn_full full] free RAM 1409 MB < 1500: page-cache drop requested
+- 2026-11-24 01:38:15 [rsn_full full] free RAM 1185 MB < 1500: page-cache drop requested
+- 2026-11-24 01:39:17 [rsn_full full] free RAM 1461 MB < 1500: page-cache drop requested
+- 2026-11-24 01:40:19 [rsn_full full] free RAM 1399 MB < 1500: page-cache drop requested
+- 2026-11-24 01:42:55 [rsn_full full] free RAM 1372 MB < 1500: page-cache drop requested
+- 2026-11-24 01:44:29 [rsn_full full] free RAM 1473 MB < 1500: page-cache drop requested
+- 2026-11-24 01:51:15 [rsn_full full] free RAM 1031 MB < 1500: page-cache drop requested
+- 2026-11-24 02:28:05 [rsn_full full] chunk 1 rc=3
+- 2026-11-24 02:30:40 [rsn_full full] free RAM 752 MB < 1500: page-cache drop requested
+- 2026-11-24 02:31:42 [rsn_full full] free RAM 1024 MB < 1500: page-cache drop requested
+- 2026-11-24 02:32:45 [rsn_full full] free RAM 1080 MB < 1500: page-cache drop requested
+- 2026-11-24 02:34:27 [rsn_full full] free RAM 1126 MB < 1500: page-cache drop requested
+- 2026-11-24 02:35:30 [rsn_full full] free RAM 903 MB < 1500: page-cache drop requested
+- 2026-11-24 02:36:32 [rsn_full full] free RAM 1111 MB < 1500: page-cache drop requested
+- 2026-11-24 12:52:39 [claude] owner: more chat -> KEEP=1 report row of 10 new per step (backup schedule.json.bak_keep2). Clean STOP + relaunch
+- 2026-11-24 07:28:00 [rsn_full full] chunk 2 rc=3
+- 2026-11-24 07:28:43 [rsn_full full] nproc=6 -> 4 CPU threads, nice 10, GPU throttle via /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-21_rsn_full/THROTTLE
+- 2026-11-24 07:30:51 [rsn_full full] free RAM 1000 MB < 1500: page-cache drop requested
+- 2026-11-24 07:31:53 [rsn_full full] free RAM 1229 MB < 1500: page-cache drop requested
+- 2026-11-24 07:32:56 [rsn_full full] free RAM 1019 MB < 1500: page-cache drop requested
+- 2026-11-24 07:34:33 [rsn_full full] free RAM 1105 MB < 1500: page-cache drop requested
+- 2026-11-24 07:35:37 [rsn_full full] free RAM 1127 MB < 1500: page-cache drop requested
+- 2026-11-24 13:35:15 [claude] owner pause (needs CPU/RAM ~1 h): clean STOP, then WSL shutdown; resume only on owner word
+- 2026-11-24 08:06:05 [rsn_full full] free RAM 1461 MB < 1500: page-cache drop requested
+- 2026-11-24 08:06:48 [rsn_full full] chunk 1 rc=3
+- 2026-11-24 14:38:37 [claude] owner: run stopped at 640 (cool-down tail skipped); gate ckpt_0640 vs p2 -> failure analysis -> targeted chat rows -> 200-step top-up
+- 2026-11-24 09:08:38 [rsn_full_gate] gate: export new GGUF from /home/hp_srthk4370/smartcity_runs/rsn_full/ckpt_0640 (CPU)
+- 2026-11-24 09:25:39 [rsn_full_gate] gate: p2 done in 63 s
+- 2026-11-24 09:49:25 [rsn_full_gate] gate: new done in 1426 s
+- 2026-11-24 09:49:25 [rsn_full_gate] gate: GATE.md written (scores only, no auto-deploy)
+- 2026-11-24 15:30:20 [claude] chat top-up launch: topup/run_topup.sh from ckpt_0640; data 900 targeted + 760 unseen chat + 420 report new rows, replay 4480; lr 1e-5, 200 steps, evals 100/200 (24 rows), then gate
+- 2026-11-25 03:40:42 [claude] topup stopped; final run prep
+- 2026-11-25 13:48:58 [rsn_full_gate] gate: export new GGUF from /home/hp_srthk4370/smartcity_runs/rsn_fix/ckpt_best_0060 (CPU)
+- 2026-11-25 14:07:45 [rsn_full_gate] gate: p2 done in 63 s
+- 2026-11-25 14:29:43 [rsn_full_gate] gate: new done in 1318 s
+- 2026-11-25 14:29:43 [rsn_full_gate] gate: GATE.md written (scores only, no auto-deploy)
+- 2026-11-25 18:52:42 [rsn_full_gate] gate: export new GGUF from /home/hp_srthk4370/smartcity_runs/rsn_rep/ckpt_best_0050 (CPU)
+- 2026-11-25 20:08:56 [rsn_full_gate] gate: p2 done in 67 s
+- 2026-11-25 20:31:26 [rsn_full_gate] gate: new done in 1350 s
+- 2026-11-25 20:31:26 [rsn_full_gate] gate: GATE.md written (scores only, no auto-deploy)

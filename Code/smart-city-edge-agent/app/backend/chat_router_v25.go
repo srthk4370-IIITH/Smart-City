@@ -155,6 +155,12 @@ var (
 	chatFollowStRe  = regexp.MustCompile(`(?i)^\s*(and|also|then|so|ok(ay)?|aur|what\s+about|how\s+about|same\s+for|is\s+that|was\s+it|is\s+it|are\s+they)\b`)
 )
 
+var (
+	chatThisTimeRe   = regexp.MustCompile(`(?i)\bthis\s+(week|month|year|morning|afternoon|evening|hour|weekend|quarter)\b`)
+	chatStrongBackRe = regexp.MustCompile(`(?i)\b(those|them|these|that\s+(sensor|room|incident|alert|one|node|building|level|floor)|the\s+same|same\s+(sensor|room|one|place)|wahan|waha|wahaan|unme|unmein|inme|inmein|uska|uski)\b`)
+	chatNewTopicRe   = regexp.MustCompile(`(?i)\bfalse\s+(alarms?|alerts?|positives?)\b|\bwhen\s+(will|would)\b|\b(cross|reach|exceed)\s+\d|\bforecast\b|\bwhich\b[^.?!]*\bfirst\b|\bnot\s+(sending|reporting)\b`)
+)
+
 const (
 	intModel    = ""
 	intAction   = "action"
@@ -646,7 +652,16 @@ func chatRefOfMsg(m ChatMsg) *chatRef {
 
 // chatIsFollowUp: q leans on the previous answer (pronoun, "and ...", or a short question without its own subject).
 func chatIsFollowUp(q string, p chatPlace, metrics []string, span chatSpan) bool {
-	if chatBackRefRe.MatchString(q) || chatFollowStRe.MatchString(q) {
+	// "this week" / "this month" is a period, not a reference to the previous answer (2026-11-20 context bleed)
+	q2 := chatThisTimeRe.ReplaceAllString(q, " ")
+	if chatStrongBackRe.MatchString(q2) {
+		return true
+	}
+	// a question about a new topic (false alarms, a forecast, which critical first, silent sensors) starts fresh
+	if chatNewTopicRe.MatchString(q2) {
+		return false
+	}
+	if chatBackRefRe.MatchString(q2) || chatFollowStRe.MatchString(q2) {
 		return true
 	}
 	return len(strings.Fields(q)) <= 4 && !p.Words && !span.Found()
@@ -702,6 +717,9 @@ func (t chatTools) chatRouteV25(q string, history []ChatMsg) (chatV25, bool) {
 	for _, p := range picks {
 		sensorIDs = append(sensorIDs, p.Node)
 	}
+	if r, ok := t.chatPolishRoutes(q, history, place, metrics, span, dom, nodes, picks); ok && r.Text != "" {
+		return r, true
+	}
 	ref := chatRefOf(history)
 	follow := ref != nil && chatIsFollowUp(q, place, metrics, span)
 	intent := chatIntentOf(q, span, sensorIDs, metrics, follow || ref != nil)
@@ -720,7 +738,7 @@ func (t chatTools) chatRouteV25(q string, history []ChatMsg) (chatV25, bool) {
 		res, _ := t.run("open_incidents", map[string]any{})
 		text := "I can't do that: my tools only read the device's data, so I cannot change a device, a setpoint, a threshold or an incident. An operator has to do it."
 		if total, _ := res["total_pending_review"].(int); total > 0 && chatIncWordRe.MatchString(q) {
-			text += fmt.Sprintf(" %s waiting for a decision; open each one under Incidents and approve or dismiss it there.", plural(total, "incident is", "incidents are"))
+			text += fmt.Sprintf(" %s waiting for a decision; open each one under Incidents and tap I'm on it or Dismiss there.", plural(total, "incident is", "incidents are"))
 		}
 		if len(picks) > 0 && t.r.eng != nil {
 			if s := t.chatReadingLine(picks[0]); s != "" {
@@ -1679,7 +1697,7 @@ func (t chatTools) chatIncidentFacts(id, q string) chatV25 {
 		case len(who) > 0:
 			text += " Steps done: " + strings.Join(who, "; ") + "."
 		default:
-			text += " Nobody has approved or dismissed it yet (approval pending)."
+			text += " Nobody has tapped I'm on it or Dismiss yet (waiting for a decision)."
 		}
 	}
 	return chatV25{strings.TrimSpace(text), []ChatTool{tool}}
@@ -1727,8 +1745,8 @@ func (t chatTools) chatScenario(q string, place chatPlace, metrics []string, dom
 	v, tl := t.chatValues(picks, false)
 	text += v
 	text += fmt.Sprintf(" The device reads every sensor every 5 minutes. A reading beyond a CRITICAL limit opens an incident after %d readings (about %d minutes); "+
-		"other abnormal patterns (a steady drop, a flat line, a step) are reported after %d abnormal readings (about %d minutes), and the AI report follows.",
-		trigRules().FastReadings, trigRules().FastReadings*5, trigRules().PersistReadings, trigRules().PersistReadings*5)
+		"other abnormal patterns (a steady drop, a flat line, a step) are reported when %d of the last %d readings are abnormal, and the AI report follows.",
+		trigRules().FastReadings, trigRules().FastReadings*5, trigRules().AbnormalOfWindow, trigRules().PersistReadings)
 	if dom == "water" || dom == "power" {
 		text += " Water level, flow and power have no fixed limits, so for them the pattern rule applies."
 	}
@@ -1784,7 +1802,7 @@ func (t chatTools) chatWhatIfLimit(q string, place chatPlace, metrics []string, 
 	case "critical":
 		text += fmt.Sprintf(" and open a critical incident after %d readings (about %d minutes).", trigRules().FastReadings, trigRules().FastReadings*5)
 	case "warning":
-		text += fmt.Sprintf(" and report a warning after %d abnormal readings (about %d minutes).", trigRules().PersistReadings, trigRules().PersistReadings*5)
+		text += fmt.Sprintf(" and report a warning when %d of the last %d readings are abnormal.", trigRules().AbnormalOfWindow, trigRules().PersistReadings)
 	default:
 		text += ", so no alert would be raised."
 	}

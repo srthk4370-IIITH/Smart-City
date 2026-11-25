@@ -434,6 +434,9 @@ func superviseHtpd(g *GenieRunner, workDir string) {
 				time.Sleep(w)
 			}
 		}
+		if !htpdLoop.allow() { // restart-loop cap (hardening.go): rules-only until the backoff ends
+			return
+		}
 		cmd := exec.Command(bin, args...)
 		cmd.Env = append(os.Environ(), "LD_LIBRARY_PATH="+lib, "ADSP_LIBRARY_PATH="+lib,
 			"GGML_HEXAGON_FA_STREAMS=1", "HTPD_SPEC=0",
@@ -461,6 +464,7 @@ func superviseHtpd(g *GenieRunner, workDir string) {
 			log.Printf("htpd: start failed: %v", err)
 			return
 		}
+		htpdLoop.note()
 		go func() { cmd.Wait(); exitedAt.Store(time.Now().UnixNano()) }()
 		startedAt = time.Now()
 		// the kernel kills htpd before any system process if memory runs out (the eval script did this; the
@@ -489,6 +493,7 @@ func superviseHtpd(g *GenieRunner, workDir string) {
 	start()
 	kick()
 	go func() {
+		defer recoverLog("htpd supervisor")
 		for range time.Tick(15 * time.Second) {
 			if !htpdEnabled() {
 				continue

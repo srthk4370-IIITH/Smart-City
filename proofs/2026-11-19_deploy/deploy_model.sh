@@ -16,7 +16,7 @@ sh_ "grep -E '^(model|reasoner_model|agent_ctx|agent_tools)=' $W/htpd_profile; g
 rollback(){ st "ROLLBACK $KIND: $1"; stop_app >/dev/null; sh_ "cp $W/htpd_profile.before_$KIND.$TS $W/htpd_profile"; start_app; exit 2; }
 start_app || rollback "app not up"
 sleep 120
-sh_ "curl -s -m 150 -X POST -d '{\"node\":\"SR-AQ-KH03-03\",\"metric\":\"co2\",\"mode\":3}' http://127.0.0.1:8000/api/analyze" > /dev/null; sleep 90
+sh_ "curl -s -m 150 -X POST -d '{\"node\":\"SR-AQ-KH03-03\",\"metric\":\"co2\",\"mode\":3,\"system_check\":true}' http://127.0.0.1:8000/api/analyze" > /dev/null; sleep 90
 id=$(sh_ "curl -s -m 20 'http://127.0.0.1:8000/api/incidents?limit=1'" | python3 -c "import json,sys;L=json.load(sys.stdin);L=L if isinstance(L,list) else L['incidents'];print(L[0]['id'])")
 chk=$(sh_ "curl -s -m 20 http://127.0.0.1:8000/api/incidents/$id" | python3 -c "
 import json,sys;d=json.load(sys.stdin);a=[x for x in d.get('agents') or [] if x.get('gen_tokens')]

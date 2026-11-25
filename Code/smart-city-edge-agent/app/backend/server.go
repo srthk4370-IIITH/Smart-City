@@ -336,7 +336,7 @@ func (s *Server) routes() http.Handler {
 		s.eng.mu.RUnlock()
 		s.rsn.mu.RLock()
 		mode := s.rsn.Mode
-		n := len(s.rsn.incidents)
+		n := s.rsn.visibleCountLocked()
 		s.rsn.mu.RUnlock()
 		writeJSON(w, map[string]any{
 			"sim_time": sim, "sim_time_ist": time.Unix(sim, 0).In(IST).Format("Mon 02 Jan 2006 15:04"),
@@ -379,7 +379,7 @@ func (s *Server) routes() http.Handler {
 			ht = NewHealthTracker()
 		}
 		hv, _ := ht.Update(s.eng, s.rsn)
-		writeJSON(w, hv)
+		writeJSON(w, s.healthResponse(hv)) // + event_mode, restarts_7d (polish_engine.go)
 	})
 	mux.HandleFunc("/api/series", func(w http.ResponseWriter, r *http.Request) {
 		h, _ := strconv.Atoi(r.URL.Query().Get("hours"))
@@ -463,7 +463,9 @@ func (s *Server) routes() http.Handler {
 				"workflow": wfOf(i), "owner": i.Owner, "acked_at": i.AckedAt, "resolved_at": i.ResolvedAt, "closed_at": i.ClosedAt,
 				"outcome": i.Outcome, "suggest_outcome": i.SuggestOutcome, "worse_at": i.WorseAt, "reminded": i.Reminded,
 				"steps_open": open, "steps_total": total, "sensors": sensors, "pattern": pattern,
-				"group": g.Lead, "group_size": g.Size})
+				"group": g.Lead, "group_size": g.Size,
+				// safe decisions + demo watermark (workflow_ext.go, reason.go)
+				"watermark": i.Watermark, "undo_until": undoUntil(i), "undo_kind": undoKind(i), "dismiss_unconfirmed": i.DismissUnconfirmed})
 		}
 		s.rsn.mu.RUnlock()
 		writeJSON(w, out)
@@ -473,6 +475,10 @@ func (s *Server) routes() http.Handler {
 		inc := s.rsn.Get(parts[0])
 		if inc == nil {
 			http.Error(w, "not found", 404)
+			return
+		}
+		if len(parts) == 2 && parts[1] == "qr" && r.Method == http.MethodGet { // signed QR report (qr_report.go)
+			s.serveIncidentQR(w, inc)
 			return
 		}
 		// GET {id}/events: the append-only decision log; GET {id}/history: earlier incidents, steps,
@@ -493,6 +499,45 @@ func (s *Server) routes() http.Handler {
 			writeJSON(w, map[string]any{"id": inc.ID, "sensors": h})
 			return
 		}
+		// POST {id}/undo: take back the last decision within 10 min; POST {id}/confirm_dismiss: a second person confirms
+		if len(parts) == 2 && (parts[1] == "undo" || parts[1] == "confirm_dismiss") && r.Method == http.MethodPost {
+			var body struct {
+				Operator string `json:"operator"`
+			}
+			readBody(r, &body)
+			var err error
+			if parts[1] == "undo" {
+				_, err = s.rsn.Undo(inc.ID, body.Operator)
+			} else {
+				_, err = s.rsn.ConfirmDismiss(inc.ID, body.Operator)
+			}
+			if err != nil {
+				wfHTTPError(w, err)
+				return
+			}
+			writeJSON(w, map[string]any{"ok": true, "incident": s.rsn.Snapshot(inc.ID)})
+			return
+		}
+		if len(parts) == 2 && parts[1] == "reopen" && r.Method == http.MethodPost { // undo an auto-close or a close
+			var body struct {
+				Note     string `json:"note"`
+				Operator string `json:"operator"`
+			}
+			readBody(r, &body)
+			if strings.TrimSpace(body.Operator) == "" {
+				body.Operator = "operator"
+			}
+			if strings.TrimSpace(body.Note) == "" {
+				http.Error(w, "reopen needs a reason (note)", 400)
+				return
+			}
+			if _, err := s.rsn.Reopen(inc.ID, body.Operator, body.Note); err != nil {
+				wfHTTPError(w, err)
+				return
+			}
+			writeJSON(w, map[string]any{"ok": true, "incident": s.rsn.Snapshot(inc.ID)})
+			return
+		}
 		if (len(parts) == 2 || (len(parts) == 3 && parts[1] == "steps")) && r.Method == http.MethodPost {
 			var body struct {
 				Note     string `json:"note"`
@@ -500,6 +545,8 @@ func (s *Server) routes() http.Handler {
 				Outcome  string `json:"outcome"`
 				State    string `json:"state"`
 				Text     string `json:"text"`
+				// dismissing a CRITICAL incident needs this second confirmation (workflow_ext.go)
+				ConfirmCritical bool `json:"confirm_critical"`
 			}
 			readBody(r, &body)
 			if len(body.Note) > 500 {
@@ -517,7 +564,7 @@ func (s *Server) routes() http.Handler {
 				case parts[1] == "steps":
 					_, err = s.rsn.AddStep(inc.ID, body.Operator, body.Text)
 				default:
-					_, err = s.rsn.Close(inc.ID, body.Operator, body.Outcome, body.Note, false)
+					_, err = s.rsn.CloseChecked(inc.ID, body.Operator, body.Outcome, body.Note, false, body.ConfirmCritical)
 				}
 				if err != nil {
 					wfHTTPError(w, err)
@@ -533,7 +580,7 @@ func (s *Server) routes() http.Handler {
 				http.Error(w, "this analysis was interrupted and has no report - rerun it first (dismiss is allowed)", http.StatusConflict)
 				return
 			}
-			if (parts[1] == "approve" || parts[1] == "dismiss") && inc.State == "running" {
+			if (parts[1] == "approve" || parts[1] == "dismiss") && s.rsn.runningBlocksDecision(inc) {
 				http.Error(w, "analysis still running - decide once the report is ready", http.StatusConflict)
 				return
 			}
@@ -549,7 +596,7 @@ func (s *Server) routes() http.Handler {
 					http.Error(w, "dismiss needs a note", 400)
 					return
 				}
-				if _, err := s.rsn.Close(inc.ID, body.Operator, body.Outcome, body.Note, true); err != nil {
+				if _, err := s.rsn.CloseChecked(inc.ID, body.Operator, body.Outcome, body.Note, true, body.ConfirmCritical); err != nil {
 					wfHTTPError(w, err)
 					return
 				}
@@ -694,7 +741,10 @@ func (s *Server) routes() http.Handler {
 			http.Error(w, "at most 5000 readings per batch", 400)
 			return
 		}
-		if body.Ts != 0 || len(body.Readings) > 0 {
+		// 2026-11-19 hands-on: a single {"node","metric","value"} without ts used to go to the slider bank
+		// (SetSensor): clamped to the sensor range, reported "stored", and ignored by a live campus feed. It now
+		// takes the device path (range / NaN / duplicate checks, ts = receive time) unless it is a slider-only engine.
+		if body.Ts != 0 || len(body.Readings) > 0 || s.eng.isLive() {
 			if body.Value != nil {
 				body.Readings = append(body.Readings, body.Reading)
 			}
@@ -792,6 +842,7 @@ func (s *Server) routes() http.Handler {
 			Node   string `json:"node"`
 			Metric string `json:"metric"`
 			Mode   int    `json:"mode"`
+			Check  bool   `json:"system_check"` // the forced deploy check: hidden from the operator, auto-closed
 		}
 		readBody(r, &body)
 		s.eng.mu.RLock()
@@ -814,6 +865,9 @@ func (s *Server) routes() http.Handler {
 		}
 		f := RuleFinding(info.Role, body.Metric, body.Node, xs, sim)
 		ahead := s.rsn.QueueAhead()
+		if body.Check {
+			s.rsn.ExpectSystemCheck(body.Node, body.Metric)
+		}
 		if !s.rsn.Submit([]Candidate{{body.Node, body.Metric, info.Role, f, xs, sim, false, false, false}}, body.Mode) {
 			http.Error(w, "analysis queue full, try again shortly", http.StatusTooManyRequests)
 			return
@@ -825,6 +879,7 @@ func (s *Server) routes() http.Handler {
 		w.Header().Set("Cache-Control", "no-store")
 		writeJSON(w, s.hub.Streams(r.URL.Query().Get("incident")))
 	})
+	s.polishRoutes(mux) // snooze (polish_engine.go)
 	s.chatRoutes(mux)   // operator chat (chat.go), frontend web/chat/
 	s.phase1Routes(mux) // site, health, export, daily, campus (phase1.go, site.go)
 	web := http.FileServer(http.Dir(filepath.Join(s.dir, "web")))

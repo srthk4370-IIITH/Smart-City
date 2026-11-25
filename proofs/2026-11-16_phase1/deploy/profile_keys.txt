@@ -1,0 +1,25 @@
+reasoner_model=/data/local/tmp/gpu/rsn_v3_4b_r3c1_q4_0.gguf
+chat_think=adaptive
+chat_prompt=r3
+reason_ctx=8192
+reasoner_prompt=r3
+agents=b50
+bin=/data/local/tmp/llama.cpp/bin/htpd_v9h
+env=HTPD_AGENT_MAX_NEW=160 HTPD_JSON_ABORT=2 HTPD_SYNTH_PREFIX_CACHE=1 GGML_HEXAGON_OPPOLL=1 HTPD_REASON_IDLE_MS=3000 LD_LIBRARY_PATH=/data/local/tmp/llama.cpp/lib_rp29 ADSP_LIBRARY_PATH=/data/local/tmp/llama.cpp/lib_rp29 GGML_HEXAGON_REPACK_THREADS=8 GGML_HEXAGON_REPACK_STATS=1 HTPD_REASON_SPLIT_SPEC=8 HTPD_REASON_SPEC_MIN=2 HTPD_REASON_SPEC_ALIGN=1 HTPD_REASON_CORPUS=/data/local/tmp/smart_city_edge/reason_corpus_v2.jsonl HTPD_REASON_CORPUS_LIVE=/data/local/tmp/smart_city_edge/reason_corpus_live.jsonl HTPD_REASON_SPEC_KLONG=16 HTPD_REASON_SPEC_ROWS=48 HTPD_AGENT_NGMAX=8 HTPD_AGENT_RECENT_MAX=500 HTPD_AGENT_CORPUS=/data/local/tmp/smart_city_edge/agent_corpus.txt HTPD_CHAT_SPEC=8 HTPD_CHAT_SPEC_MIN=4 HTPD_CHAT_CORPUS=/data/local/tmp/smart_city_edge/chat_corpus.jsonl HTPD_REASON_POOL=12544 HTPD_REASON_CHAIN=1 HTPD_REASON_DISK_KEEP=6
+site_group=1
+daily_summary=1
+daily_summary_hour=8
+health_stale_min=30
+mqtt_url=tcp://127.0.0.1:1883
+mqtt_topics=sce/#
+time_sync=1
+heartbeat_url=http://127.0.0.1:8787/heartbeat
+heartbeat_s=60
+board_id=qidk-1
+site_id=iiith
+alert_webhook=http://127.0.0.1:8094/alert
+alert_webhook_format=json
+fog_upload=1
+fog_url=http://127.0.0.1:8092
+fog_sync_s=60
+warm_idle_min=30

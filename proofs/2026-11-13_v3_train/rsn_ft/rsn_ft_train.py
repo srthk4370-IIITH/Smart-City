@@ -94,6 +94,10 @@ def gen_score_r4_inc(model, tok, tools, rows, dev):
             out[1] += 1
             out[2] += float(p.get("severity") == g.get("severity"))
             out[3] += float(p.get("label") == g.get("label"))
+        T.gen_rowlog({"slice": "r4_inc", "id": r.get("id"), "family": r.get("family"), "parse": isinstance(p, dict),
+                      "gold": {"severity": g.get("severity"), "label": g.get("label")},
+                      "pred": {"severity": p.get("severity"), "label": p.get("label")} if isinstance(p, dict) else None,
+                      "think_ok": bool(pth) == bool(gth), "out": rest[:400]})
     return out
 
 
@@ -256,6 +260,36 @@ def main():
     import bitsandbytes as bnb
     opt = (torch.optim.AdamW if CPU else bnb.optim.AdamW8bit)(params, lr=a.lr, weight_decay=a.wd, betas=(0.9, 0.999))
 
+    # 2026-11-24 GPU duty cycle without signals: the RTX 4050 also drives a display. SIGSTOP/SIGCONT throttling from outside
+    # interrupted WSL dxg ioctls (dmesg "Ioctl failed: -512", "did not find packet to complete") and stalled the display.
+    # Here every decoder-layer forward (also the checkpoint recompute in backward) checks the busy time: after ON ms of GPU
+    # work it synchronises and sleeps OFF ms. $GPU_DUTY_FILE holds "ON OFF" (ms), re-read every 5 s; "1000 0" = off.
+    duty_file = os.environ.get("GPU_DUTY_FILE", "")
+    if duty_file and not CPU:
+        dst = {"t": time.time(), "read": 0.0, "on": 1000.0, "off": 0.0}
+
+        def _duty_hook(*_):
+            now = time.time()
+            if now - dst["read"] > 5:
+                dst["read"] = now
+                try:
+                    dst["on"], dst["off"] = (float(x) for x in open(duty_file).read().split()[:2])
+                except Exception:
+                    dst["on"], dst["off"] = 1000.0, 0.0
+            if dst["off"] <= 0:
+                dst["t"] = now
+                return
+            if (now - dst["t"]) * 1000 >= dst["on"]:
+                torch.cuda.synchronize()
+                time.sleep(dst["off"] / 1000)
+                dst["t"] = time.time()
+        nl = 0
+        for _n, m in model.named_modules():
+            if type(m).__name__.endswith("DecoderLayer"):
+                m.register_forward_hook(_duty_hook)
+                nl += 1
+        log("GPU duty hook on %d decoder layers (file %s)" % (nl, duty_file))
+
     # ---- schedule (deterministic, resumable)
     spath = os.path.join(a.out, "schedule.json")
     if os.path.exists(spath):
@@ -349,7 +383,33 @@ def main():
     best = json.load(open(bpath)) if os.path.exists(bpath) else {"start": None, "top": [], "best": None, "since_best": 0, "evals": 0}
 
     def gen_eval():
-        """returns True = early stop"""
+        """returns True = early stop. 2026-11-23: the GPU also drives the laptop display, so the head unpark / generation can hit a
+        transient CUDA OOM; free the cache and retry (3 tries, 60 s apart), then skip this eval instead of crashing the run."""
+        import gc
+        for k in range(3):
+            try:
+                gc.collect()
+                torch.cuda.empty_cache()
+                return _gen_eval()
+            except (torch.OutOfMemoryError, RuntimeError) as e:
+                if "out of memory" not in str(e) and "INTERNAL ASSERT" not in str(e):   # + CUDA allocator assert (2026-11-25)
+                    raise
+                log("GEN step %d: CUDA OOM/allocator error (try %d/3): %s" % (step, k + 1, str(e)[:120]))
+                try:
+                    if T.HEAD is not None:
+                        T.HEAD.park()
+                except Exception:
+                    pass
+                model.config.use_cache = False
+                model.train()
+                gc.collect()
+                torch.cuda.empty_cache()
+                time.sleep(60)
+        log("GEN step %d skipped after 3 OOM tries (no early-stop change)" % step)
+        return False
+
+    def _gen_eval():
+        os.environ["RSN3_GEN_STEP"] = str(step)          # per-row diagnostics -> $RSN3_GEN_ROWS (train_rsn3.gen_rowlog)
         model.eval()
         model.config.use_cache = True
         if T.HEAD is not None:
@@ -420,6 +480,12 @@ def main():
         log("scoring the START adapter (step 0)")
         dev_eval()
         gen_eval()
+    elif step > 0 and has_gen and step % a.gen_every == 0 and step not in {h.get("step") for h in best.get("history", [])}:
+        log("resumed on an eval step whose gen eval is missing (crash/stop during eval): running it now")   # 2026-11-25
+        if gen_eval():
+            log("EARLY STOP at step %d" % step)
+            status({"stopped": "early_stop"})
+            return 6
     model.train()
     t0, tok_count, run_loss, run_n = time.time(), 0, 0.0, 0
     deadline = time.time() + a.hours * 3600

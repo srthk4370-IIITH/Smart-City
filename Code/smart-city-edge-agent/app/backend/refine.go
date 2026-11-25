@@ -49,15 +49,16 @@ const (
 
 // Revision is one analysis of an incident, kept so the operator can see how the view changed.
 type Revision struct {
-	Stage    string      `json:"stage"`   // early | 1.5h | 3h
-	SimEnd   int64       `json:"sim_end"` // sensor time the windows ended
-	Wall     string      `json:"wall"`    // when the analysis finished (device clock, IST)
-	Severity string      `json:"severity"`
-	Title    string      `json:"title"`
-	Label    string      `json:"label"`
-	NPUCalls int         `json:"npu_calls"`
-	Ms       float64     `json:"ms"`
-	Sensors  []RevSensor `json:"sensors"` // flagged sensors only
+	Stage       string      `json:"stage"`   // early | 1.5h | 3h
+	SimEnd      int64       `json:"sim_end"` // sensor time the windows ended
+	Wall        string      `json:"wall"`    // when the analysis finished (device clock, IST)
+	Severity    string      `json:"severity"`
+	Title       string      `json:"title"`
+	Label       string      `json:"label"`
+	NPUCalls    int         `json:"npu_calls"`
+	Ms          float64     `json:"ms"`
+	Sensors     []RevSensor `json:"sensors"`                // flagged sensors only
+	SeverityWhy string      `json:"severity_why,omitempty"` // why the severity changed at this revision
 }
 
 // RevSensor is one flagged sensor's finding at a revision.
@@ -293,7 +294,7 @@ func (r *Reasoner) RefineTick(sim int64) {
 		r.notify("incident", map[string]any{"id": inc.ID, "state": inc.State})
 	}
 	if start {
-		go r.loop(w)
+		safeGo("analysis loop", func() { r.loop(w) })
 	}
 }
 
@@ -306,7 +307,7 @@ func (r *Reasoner) refineHeld() bool {
 	if hot, _, _ := ThermalHot(); hot {
 		if !r.coolWait {
 			r.coolWait = true
-			go r.runWhenCool()
+			safeGo("cool wait", r.runWhenCool)
 		}
 		return true
 	}
@@ -553,12 +554,14 @@ func (r *Reasoner) runRefine(id string) {
 	sh.State = "done"
 	surfaceDisagreements(sh)
 	finaliseSeverity(sh)
+	keptCrit := guardCriticalDrop(inc.Severity, sh) // polish_severity.go: a drop from critical needs the rules to agree
 	prev := revisionOf(inc, inc.RefineStage, 0, nil, 0, 0)
 	inc.Sensors, inc.Agents, inc.Final, inc.Mode1 = sh.Sensors, sh.Agents, sh.Final, sh.Mode1
 	inc.Severity, inc.SeverityFinal, inc.Title = sh.Severity, true, sh.Title
 	if inc.RuleTitle == "" {
 		inc.RuleTitle = ruleTitle
 	}
+	consistentTitle(inc)
 	inc.State = "done"
 	if inc.Final == nil || !inc.Final.Valid {
 		inc.State = "done_with_errors"
@@ -568,6 +571,7 @@ func (r *Reasoner) runRefine(id string) {
 	inc.RefineStage = stage
 	inc.RefineNote = ""
 	rev := revisionOf(inc, stage, end, notes, sh.NPUCalls, ms)
+	why := r.noteSeverityChangeLocked(inc, prev, &rev, keptCrit)
 	inc.Revisions = append(inc.Revisions, rev)
 	r.advance(inc, stage, end, shift)
 	msg := fmt.Sprintf("Refined at %s (windows to %s sensor time, %d NPU call(s), %.1fs): %s", stageText(stage),
@@ -577,6 +581,9 @@ func (r *Reasoner) runRefine(id string) {
 	r.mu.Unlock()
 	r.persist(inc)
 	ev := map[string]any{"id": inc.ID, "state": inc.State, "msg": msg, "refined": stage}
+	if why != "" {
+		ev["severity_why"], ev["severity_kept"] = why, keptCrit
+	}
 	for k, v := range wfEv {
 		ev[k] = v
 	}

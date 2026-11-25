@@ -1257,3 +1257,264 @@
 - 2026-11-19 10:18:22 [ft_chunk v3ft] rsn3_4b_v3ft_p2 heartbeat: [10:13:13] step 215/220 loss 0.0208 lr 2.02e-06 478 tok/s ETA 0.2 h
 - 2026-11-19 11:10:53 [ft_chunk v3ft] rsn3_4b_v3ft_p2 heartbeat: [10:22:59] step 220/220 loss 0.0163 lr 2.00e-06 485 tok/s ETA 0.0 h
 - 2026-11-19 11:44:06 [ft_chunk v3ft] rsn3_4b_v3ft_p2 heartbeat: [10:22:59] step 220/220 loss 0.0163 lr 2.00e-06 485 tok/s ETA 0.0 h
+- 2026-11-19 12:17:10 [ft_chunk v3ft] rsn3_4b_v3ft_p2 heartbeat: [10:22:59] step 220/220 loss 0.0163 lr 2.00e-06 485 tok/s ETA 0.0 h
+- 2026-11-19 12:50:38 [ft_chunk v3ft] rsn3_4b_v3ft_p2 heartbeat: [10:22:59] step 220/220 loss 0.0163 lr 2.00e-06 485 tok/s ETA 0.0 h
+- 2026-11-19 13:17:27 [ft_chunk v3ft] rsn3_4b_v3ft_p2 chunk end rc=0: [13:17:00] TRAINING DONE step 220 (start 0.7984, top [[0.80985, 220]])
+- 2026-11-21 02:24:22 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 7424)
+- 2026-11-21 02:57:16 [ft_chunk v3ft] rsn_full heartbeat: [02:34:37] scoring the START adapter (step 0)
+- 2026-11-21 03:17:15 [ft_chunk v3ft] rsn_full chunk end rc=1: [03:16:20] step 5/1864 loss 0.1284 lr 2.18e-06 483 tok/s ETA 55.8 h
+- 2026-11-21 03:23:00 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 7424)
+- 2026-11-21 03:55:53 [ft_chunk v3ft] rsn_full heartbeat: [03:33:30] scoring the START adapter (step 0)
+- 2026-11-21 04:16:39 [ft_chunk v3ft] rsn_full chunk end rc=1: [04:15:45] step 5/802 loss 0.1277 lr 5.00e-06 482 tok/s ETA 23.9 h
+- 2026-11-21 04:26:40 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 7424)
+- 2026-11-21 04:39:37 [ft_chunk v3ft] rsn_full chunk end rc=1: [04:38:45] step 5/802 loss 0.1279 lr 5.00e-06 473 tok/s ETA 24.4 h
+- 2026-11-21 04:49:39 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 7424)
+- 2026-11-21 04:53:58 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 7424)
+- 2026-11-21 05:06:53 [ft_chunk v3ft] rsn_full chunk end rc=1: [05:06:01] step 5/802 loss 0.1277 lr 5.00e-06 469 tok/s ETA 24.6 h
+- 2026-11-21 05:16:55 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 7424)
+- 2026-11-21 05:29:50 [ft_chunk v3ft] rsn_full chunk end rc=1: [05:28:58] step 5/802 loss 0.1278 lr 5.00e-06 469 tok/s ETA 24.6 h
+- 2026-11-21 05:39:51 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 7424)
+- 2026-11-21 05:52:50 [ft_chunk v3ft] rsn_full chunk end rc=1: [05:51:57] step 5/802 loss 0.1279 lr 5.00e-06 469 tok/s ETA 24.6 h
+- 2026-11-21 05:53:17 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 7424)
+- 2026-11-21 06:26:20 [ft_chunk v3ft] rsn_full heartbeat: [05:56:20] start top-up from /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-20_rsn_big/best/ckpt_best_0242: 18639 new + 4480 replay rows, 802 s
+- 2026-11-21 06:53:08 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6144)
+- 2026-11-21 07:00:26 [ft_chunk v3ft] rsn_full chunk end rc=9: [07:00:24] DATA CHECK FAILED: dropped 14.08 % of --new (limit 2.00 %) or an empty file
+- 2026-11-21 07:10:27 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6144)
+- 2026-11-21 07:10:51 [ft_chunk v3ft] rsn_full chunk end rc=9: [07:10:49] DATA CHECK FAILED: dropped 14.08 % of --new (limit 2.00 %) or an empty file
+- 2026-11-21 07:20:52 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6144)
+- 2026-11-21 07:21:14 [ft_chunk v3ft] rsn_full chunk end rc=9: [07:21:12] DATA CHECK FAILED: dropped 14.08 % of --new (limit 2.00 %) or an empty file
+- 2026-11-21 07:22:55 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6656)
+- 2026-11-21 07:30:54 [ft_chunk v3ft] rsn_full chunk end rc=9: [07:30:52] DATA CHECK FAILED: dropped 6.34 % of --new (limit 6.00 %) or an empty file
+- 2026-11-21 07:31:30 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6656)
+- 2026-11-21 08:04:58 [ft_chunk v3ft] rsn_full heartbeat: [07:43:46] scoring the START adapter (step 0)
+- 2026-11-21 08:29:31 [ft_chunk v3ft] rsn_full chunk end rc=3: [08:29:18] EXIT (hours limit / STOP / max-steps) at step 2
+- 2026-11-21 08:40:23 [ft_chunk v3ft] waiting: Windows free RAM ? MB < 800 MB
+- 2026-11-21 08:41:24 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6656)
+- 2026-11-21 08:42:54 [ft_chunk v3ft] rsn_full paused #1 (gpu 43C, ram 381 MB)
+- 2026-11-21 08:43:28 [ft_chunk v3ft] rsn_full paused #2 (gpu 43C, ram 104 MB)
+- 2026-11-21 08:46:00 [ft_chunk v3ft] rsn_full chunk end rc=3: [08:45:56] EXIT (hours limit / STOP / max-steps) at step 2
+- 2026-11-21 08:54:24 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6656)
+- 2026-11-21 08:56:17 [ft_chunk v3ft] rsn_full paused #1 (gpu 42C, ram 335 MB)
+- 2026-11-21 09:08:28 [ft_chunk v3ft] rsn_full chunk end rc=1: [09:05:27] step 5/751 loss 0.0477 lr 5.45e-06 401 tok/s ETA 28.3 h
+- 2026-11-21 09:18:29 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6656)
+- 2026-11-21 09:31:31 [ft_chunk v3ft] rsn_full chunk end rc=1: [09:28:33] step 5/751 loss 0.0476 lr 5.45e-06 395 tok/s ETA 28.7 h
+- 2026-11-21 09:41:33 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6656)
+- 2026-11-21 09:54:23 [ft_chunk v3ft] rsn_full chunk end rc=1: [09:51:17] step 5/751 loss 0.0477 lr 5.45e-06 403 tok/s ETA 28.1 h
+- 2026-11-21 10:04:25 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6656)
+- 2026-11-21 10:06:38 [ft_chunk v3ft] rsn_full paused #1 (gpu 42C, ram 396 MB)
+- 2026-11-21 10:18:21 [ft_chunk v3ft] rsn_full chunk end rc=1: [10:15:17] step 5/751 loss 0.0479 lr 5.45e-06 393 tok/s ETA 28.9 h
+- 2026-11-21 10:25:49 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6656)
+- 2026-11-21 10:59:14 [ft_chunk v3ft] rsn_full heartbeat: [10:53:46] step 10/751 loss 0.0796 lr 1.00e-05 290 tok/s ETA 37.4 h
+- 2026-11-21 11:32:34 [ft_chunk v3ft] rsn_full heartbeat: [11:22:37] step 20/751 loss 0.0592 lr 1.91e-05 290 tok/s ETA 34.3 h
+- 2026-11-21 12:05:36 [ft_chunk v3ft] rsn_full heartbeat: [11:52:20] step 30/751 loss 0.0591 lr 1.99e-05 295 tok/s ETA 36.1 h
+- 2026-11-21 12:38:45 [ft_chunk v3ft] rsn_full heartbeat: [12:34:24] step 45/751 loss 0.0543 lr 1.98e-05 295 tok/s ETA 33.4 h
+- 2026-11-21 13:12:08 [ft_chunk v3ft] rsn_full heartbeat: [13:05:20] step 55/751 loss 0.0499 lr 1.98e-05 291 tok/s ETA 34.5 h
+- 2026-11-21 13:45:43 [ft_chunk v3ft] rsn_full heartbeat: [13:34:05] step 65/751 loss 0.0590 lr 1.97e-05 287 tok/s ETA 31.6 h
+- 2026-11-21 14:18:45 [ft_chunk v3ft] rsn_full heartbeat: [14:17:11] step 80/751 loss 0.0442 lr 1.95e-05 295 tok/s ETA 33.7 h
+- 2026-11-21 14:52:05 [ft_chunk v3ft] rsn_full heartbeat: [14:45:07] step 90/751 loss 0.0464 lr 1.94e-05 296 tok/s ETA 30.6 h
+- 2026-11-21 15:25:44 [ft_chunk v3ft] rsn_full heartbeat: [15:13:06] checkpoint step 100
+- 2026-11-21 15:59:05 [ft_chunk v3ft] rsn_full heartbeat: [15:56:43] step 115/751 loss 0.0364 lr 1.90e-05 291 tok/s ETA 32.9 h
+- 2026-11-21 16:29:55 [ft_chunk v3ft] rsn_full chunk end rc=3: [16:29:45] EXIT (hours limit / STOP / max-steps) at step 127
+- 2026-11-21 16:29:58 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6656)
+- 2026-11-21 16:55:27 [ft_chunk v3ft] rsn_full paused #1 (gpu 84C, ram 79 MB)
+- 2026-11-21 17:03:53 [ft_chunk v3ft] rsn_full heartbeat: [16:58:09] step 135/751 loss 0.0362 lr 1.86e-05 283 tok/s ETA 31.5 h
+- 2026-11-21 17:37:55 [ft_chunk v3ft] rsn_full heartbeat: [17:27:07] step 145/751 loss 0.0386 lr 1.84e-05 284 tok/s ETA 27.9 h
+- 2026-11-21 18:11:20 [ft_chunk v3ft] rsn_full heartbeat: [18:10:40] step 160/751 loss 0.0396 lr 1.81e-05 293 tok/s ETA 28.7 h
+- 2026-11-21 18:44:23 [ft_chunk v3ft] rsn_full heartbeat: [18:39:51] step 170/751 loss 0.0335 lr 1.78e-05 295 tok/s ETA 28.0 h
+- 2026-11-21 19:17:22 [ft_chunk v3ft] rsn_full heartbeat: [19:08:38] step 180/751 loss 0.0366 lr 1.76e-05 295 tok/s ETA 27.1 h
+- 2026-11-21 19:50:33 [ft_chunk v3ft] rsn_full heartbeat: [19:37:56] step 190/751 loss 0.0314 lr 1.73e-05 294 tok/s ETA 28.6 h
+- 2026-11-21 20:23:47 [ft_chunk v3ft] rsn_full heartbeat: [20:06:55] checkpoint step 200
+- 2026-11-21 20:56:52 [ft_chunk v3ft] rsn_full heartbeat: [20:43:48] GEN step 200 {"step": 200, "t": 1795291615.4079401, "r4": {"n_inc": 12, "parse": 1.0, "severity": 1.0, "label": 1.0, "think_ok": 
+- 2026-11-21 21:34:14 [ft_chunk v3ft] rsn_full heartbeat: [21:27:56] step 215/751 loss 0.0349 lr 1.66e-05 275 tok/s ETA 25.2 h
+- 2026-11-21 22:07:55 [ft_chunk v3ft] rsn_full heartbeat: [21:57:17] step 225/751 loss 0.0373 lr 1.63e-05 285 tok/s ETA 24.3 h
+- 2026-11-21 22:35:28 [ft_chunk v3ft] rsn_full chunk end rc=3: [22:35:18] EXIT (hours limit / STOP / max-steps) at step 238
+- 2026-11-21 22:35:30 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6656)
+- 2026-11-21 23:08:32 [ft_chunk v3ft] rsn_full heartbeat: [23:01:08] step 245/751 loss 0.0272 lr 1.57e-05 295 tok/s ETA 25.4 h
+- 2026-11-21 23:41:31 [ft_chunk v3ft] rsn_full heartbeat: [23:29:32] step 255/751 loss 0.0351 lr 1.53e-05 294 tok/s ETA 22.6 h
+- 2026-11-22 00:14:22 [ft_chunk v3ft] rsn_full heartbeat: [00:13:17] step 270/751 loss 0.0349 lr 1.48e-05 295 tok/s ETA 22.3 h
+- 2026-11-22 00:47:17 [ft_chunk v3ft] rsn_full heartbeat: [00:41:48] step 280/751 loss 0.0344 lr 1.45e-05 293 tok/s ETA 24.2 h
+- 2026-11-22 01:20:20 [ft_chunk v3ft] rsn_full heartbeat: [01:10:39] step 290/751 loss 0.0315 lr 1.42e-05 293 tok/s ETA 21.9 h
+- 2026-11-22 01:53:15 [ft_chunk v3ft] rsn_full heartbeat: [01:52:14] step 305/751 loss 0.0383 lr 1.36e-05 293 tok/s ETA 21.2 h
+- 2026-11-22 02:26:09 [ft_chunk v3ft] rsn_full heartbeat: [02:20:58] step 315/751 loss 0.0284 lr 1.33e-05 294 tok/s ETA 20.4 h
+- 2026-11-22 02:59:07 [ft_chunk v3ft] rsn_full heartbeat: [02:48:49] step 325/751 loss 0.0314 lr 1.29e-05 294 tok/s ETA 20.5 h
+- 2026-11-22 03:32:10 [ft_chunk v3ft] rsn_full heartbeat: [03:17:12] step 335/751 loss 0.0310 lr 1.25e-05 291 tok/s ETA 20.3 h
+- 2026-11-22 04:05:07 [ft_chunk v3ft] rsn_full heartbeat: [04:01:26] checkpoint step 350
+- 2026-11-22 04:38:00 [ft_chunk v3ft] rsn_full heartbeat: [04:29:22] step 360/751 loss 0.0282 lr 1.16e-05 293 tok/s ETA 18.3 h
+- 2026-11-22 04:42:24 [ft_chunk v3ft] rsn_full chunk end rc=3: [04:42:18] EXIT (hours limit / STOP / max-steps) at step 365
+- 2026-11-22 04:42:25 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6656)
+- 2026-11-22 05:15:25 [ft_chunk v3ft] rsn_full heartbeat: [05:01:18] step 370/751 loss 0.0282 lr 1.12e-05 286 tok/s ETA 20.2 h
+- 2026-11-22 05:48:22 [ft_chunk v3ft] rsn_full heartbeat: [05:43:19] step 385/751 loss 0.0306 lr 1.06e-05 294 tok/s ETA 16.6 h
+- 2026-11-22 06:21:22 [ft_chunk v3ft] rsn_full heartbeat: [06:10:27] step 395/751 loss 0.0317 lr 1.03e-05 292 tok/s ETA 15.8 h
+- 2026-11-22 06:54:15 [ft_chunk v3ft] rsn_full heartbeat: [06:25:02] checkpoint step 400
+- 2026-11-22 07:01:07 [ft_chunk v3ft] rsn_full chunk end rc=6: [07:01:02] EARLY STOP at step 400: combined score not better for 2 evals (start 0.9326, top [])
+- 2026-11-22 08:24:24 [ft_chunk v3ft] waiting: Windows free RAM ? MB < 800 MB
+- 2026-11-22 08:25:25 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6656)
+- 2026-11-22 08:26:05 [ft_chunk v3ft] waiting for an idle GPU (lock: none, 278 MiB used)
+- 2026-11-22 08:28:37 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6656)
+- 2026-11-22 09:02:13 [ft_chunk v3ft] rsn_full heartbeat: [08:42:56] scoring the START adapter (step 0)
+- 2026-11-22 09:35:31 [ft_chunk v3ft] rsn_full heartbeat: [09:34:44] step 5/703 loss 0.0678 lr 5.71e-06 288 tok/s ETA 32.8 h
+- 2026-11-22 10:33:45 [ft_chunk v3ft] rsn_full chunk end rc=3: [10:33:24] EXIT (hours limit / STOP / max-steps) at step 21
+- 2026-11-22 11:14:49 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6656)
+- 2026-11-22 11:48:13 [ft_chunk v3ft] rsn_full heartbeat: [11:34:26] step 25/703 loss 0.0597 lr 1.99e-05 245 tok/s ETA 41.3 h
+- 2026-11-22 12:21:37 [ft_chunk v3ft] rsn_full heartbeat: [12:09:50] step 35/703 loss 0.0728 lr 1.99e-05 254 tok/s ETA 38.9 h
+- 2026-11-22 12:56:18 [ft_chunk v3ft] rsn_full heartbeat: [12:45:54] step 45/703 loss 0.0599 lr 1.98e-05 234 tok/s ETA 38.6 h
+- 2026-11-22 13:29:45 [ft_chunk v3ft] rsn_full heartbeat: [13:19:29] step 55/703 loss 0.0390 lr 1.97e-05 247 tok/s ETA 36.1 h
+- 2026-11-22 14:06:20 [ft_chunk v3ft] rsn_full heartbeat: [13:55:30] step 65/703 loss 0.0365 lr 1.96e-05 223 tok/s ETA 40.2 h
+- 2026-11-22 14:41:30 [ft_chunk v3ft] rsn_full heartbeat: [14:31:47] step 75/703 loss 0.0609 lr 1.95e-05 236 tok/s ETA 37.4 h
+- 2026-11-22 15:14:44 [ft_chunk v3ft] rsn_full heartbeat: [15:05:13] step 85/703 loss 0.0412 lr 1.94e-05 251 tok/s ETA 34.2 h
+- 2026-11-22 15:50:39 [ft_chunk v3ft] rsn_full heartbeat: [15:41:45] step 95/703 loss 0.0458 lr 1.92e-05 228 tok/s ETA 37.4 h
+- 2026-11-22 16:27:38 [ft_chunk v3ft] rsn_full heartbeat: [16:19:16] step 105/703 loss 0.0361 lr 1.90e-05 227 tok/s ETA 37.0 h
+- 2026-11-22 17:07:55 [ft_chunk v3ft] rsn_full heartbeat: [16:59:17] step 115/703 loss 0.0387 lr 1.88e-05 224 tok/s ETA 36.1 h
+- 2026-11-22 17:21:53 [ft_chunk v3ft] rsn_full chunk end rc=3: [17:21:29] EXIT (hours limit / STOP / max-steps) at step 121
+- 2026-11-22 17:21:54 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6656)
+- 2026-11-22 17:58:58 [ft_chunk v3ft] rsn_full heartbeat: [17:44:33] step 125/703 loss 0.0420 lr 1.86e-05 226 tok/s ETA 38.2 h
+- 2026-11-22 18:36:41 [ft_chunk v3ft] rsn_full heartbeat: [18:21:10] step 135/703 loss 0.0358 lr 1.84e-05 231 tok/s ETA 36.7 h
+- 2026-11-22 19:11:13 [ft_chunk v3ft] rsn_full heartbeat: [18:56:06] step 145/703 loss 0.0315 lr 1.82e-05 241 tok/s ETA 31.9 h
+- 2026-11-22 19:48:31 [ft_chunk v3ft] rsn_full heartbeat: [19:32:19] step 155/703 loss 0.0409 lr 1.79e-05 239 tok/s ETA 31.4 h
+- 2026-11-22 20:28:59 [ft_chunk v3ft] rsn_full heartbeat: [20:26:53] step 170/703 loss 0.0340 lr 1.75e-05 232 tok/s ETA 34.0 h
+- 2026-11-22 21:07:03 [ft_chunk v3ft] rsn_full heartbeat: [21:04:44] step 180/703 loss 0.0342 lr 1.72e-05 230 tok/s ETA 33.7 h
+- 2026-11-22 21:40:15 [ft_chunk v3ft] rsn_full heartbeat: [21:37:47] step 190/703 loss 0.0342 lr 1.69e-05 254 tok/s ETA 28.3 h
+- 2026-11-22 22:11:20 [ft_chunk v3ft] rsn_full chunk end rc=1: [22:10:48] checkpoint step 200
+- 2026-11-22 22:21:21 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6656)
+- 2026-11-22 22:54:24 [ft_chunk v3ft] rsn_full heartbeat: [22:41:55] step 205/703 loss 0.0320 lr 1.65e-05 252 tok/s ETA 27.4 h
+- 2026-11-22 22:57:55 [ft_chunk v3ft] rsn_full chunk end rc=3: [22:57:23] EXIT (hours limit / STOP / max-steps) at step 209
+- 2026-11-22 22:58:11 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6656)
+- 2026-11-22 23:31:15 [ft_chunk v3ft] rsn_full heartbeat: [23:23:25] step 215/703 loss 0.0377 lr 1.62e-05 260 tok/s ETA 28.5 h
+- 2026-11-23 00:04:22 [ft_chunk v3ft] rsn_full heartbeat: [23:57:23] step 225/703 loss 0.0283 lr 1.58e-05 253 tok/s ETA 26.9 h
+- 2026-11-23 00:37:28 [ft_chunk v3ft] rsn_full heartbeat: [00:33:39] step 235/703 loss 0.0393 lr 1.55e-05 253 tok/s ETA 28.0 h
+- 2026-11-23 01:10:35 [ft_chunk v3ft] rsn_full heartbeat: [01:08:36] step 245/703 loss 0.0260 lr 1.51e-05 252 tok/s ETA 26.9 h
+- 2026-11-23 01:43:43 [ft_chunk v3ft] rsn_full heartbeat: [01:42:22] step 255/703 loss 0.0309 lr 1.48e-05 251 tok/s ETA 25.8 h
+- 2026-11-23 02:17:01 [ft_chunk v3ft] rsn_full heartbeat: [02:15:44] step 265/703 loss 0.0319 lr 1.44e-05 252 tok/s ETA 24.0 h
+- 2026-11-23 02:50:17 [ft_chunk v3ft] rsn_full heartbeat: [02:32:49] step 270/703 loss 0.0329 lr 1.42e-05 252 tok/s ETA 24.7 h
+- 2026-11-23 03:23:36 [ft_chunk v3ft] rsn_full heartbeat: [03:22:54] step 285/703 loss 0.0326 lr 1.36e-05 253 tok/s ETA 22.9 h
+- 2026-11-23 03:56:54 [ft_chunk v3ft] rsn_full heartbeat: [03:55:56] step 295/703 loss 0.0319 lr 1.32e-05 254 tok/s ETA 22.0 h
+- 2026-11-23 04:13:44 [ft_chunk v3ft] rsn_full chunk end rc=1: [04:13:04] checkpoint step 300
+- 2026-11-23 04:23:45 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6656)
+- 2026-11-23 04:56:53 [ft_chunk v3ft] rsn_full heartbeat: [04:43:37] step 305/703 loss 0.0323 lr 1.29e-05 250 tok/s ETA 20.5 h
+- 2026-11-23 04:57:18 [ft_chunk v3ft] rsn_full chunk end rc=3: [04:57:02] EXIT (hours limit / STOP / max-steps) at step 309
+- 2026-11-23 04:57:24 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6656)
+- 2026-11-23 05:36:15 [ft_chunk v3ft] rsn_full heartbeat: [05:22:58] step 315/703 loss 0.0285 lr 1.25e-05 251 tok/s ETA 22.7 h
+- 2026-11-23 06:20:10 [ft_chunk v3ft] rsn_full heartbeat: [06:17:46] step 330/703 loss 0.0311 lr 1.19e-05 233 tok/s ETA 22.4 h
+- 2026-11-23 07:01:34 [ft_chunk v3ft] rsn_full heartbeat: [06:57:05] step 340/703 loss 0.0240 lr 1.15e-05 225 tok/s ETA 24.3 h
+- 2026-11-23 07:39:46 [ft_chunk v3ft] rsn_full heartbeat: [07:30:38] checkpoint step 350
+- 2026-11-23 08:16:31 [ft_chunk v3ft] rsn_full heartbeat: [08:06:04] step 360/703 loss 0.0285 lr 1.07e-05 241 tok/s ETA 20.0 h
+- 2026-11-23 08:52:36 [ft_chunk v3ft] rsn_full heartbeat: [08:40:36] step 370/703 loss 0.0304 lr 1.03e-05 241 tok/s ETA 19.4 h
+- 2026-11-23 09:25:54 [ft_chunk v3ft] rsn_full heartbeat: [09:14:44] step 380/703 loss 0.0352 lr 9.86e-06 249 tok/s ETA 17.4 h
+- 2026-11-23 09:59:13 [ft_chunk v3ft] rsn_full heartbeat: [09:48:49] step 390/703 loss 0.0321 lr 9.46e-06 252 tok/s ETA 17.4 h
+- 2026-11-23 10:32:34 [ft_chunk v3ft] rsn_full heartbeat: [10:23:03] checkpoint step 400
+- 2026-11-23 11:05:34 [ft_chunk v3ft] rsn_full heartbeat: [10:23:03] checkpoint step 400
+- 2026-11-23 11:18:02 [ft_chunk v3ft] rsn_full chunk end rc=3: [11:17:25] EXIT (hours limit / STOP / max-steps) at step 400
+- 2026-11-23 11:18:04 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6656)
+- 2026-11-23 11:51:34 [ft_chunk v3ft] rsn_full heartbeat: [11:39:35] step 405/703 loss 0.0378 lr 8.87e-06 251 tok/s ETA 16.3 h
+- 2026-11-23 12:25:11 [ft_chunk v3ft] rsn_full heartbeat: [12:12:24] step 415/703 loss 0.0313 lr 8.48e-06 252 tok/s ETA 15.9 h
+- 2026-11-23 12:34:14 [ft_chunk v3ft] rsn_full chunk end rc=3: [12:33:24] EXIT (hours limit / STOP / max-steps) at step 421
+- 2026-11-23 12:34:39 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6656)
+- 2026-11-23 12:56:01 [ft_chunk v3ft] rsn_full chunk end rc=1: [12:55:22] step 425/703 loss 0.0267 lr 8.10e-06 230 tok/s ETA 18.4 h
+- 2026-11-23 13:06:03 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6656)
+- 2026-11-23 13:25:28 [ft_chunk v3ft] rsn_full chunk end rc=143: [13:11:49] resumed at step 421/703
+- 2026-11-23 13:26:38 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6656)
+- 2026-11-23 14:01:13 [ft_chunk v3ft] rsn_full heartbeat: [13:46:49] step 425/703 loss 0.0266 lr 8.10e-06 241 tok/s ETA 17.5 h
+- 2026-11-23 14:47:37 [ft_chunk v3ft] rsn_full heartbeat: [14:45:54] step 440/703 loss 0.0240 lr 7.53e-06 234 tok/s ETA 17.3 h
+- 2026-11-23 15:29:54 [ft_chunk v3ft] rsn_full heartbeat: [15:26:50] checkpoint step 450
+- 2026-11-23 16:04:21 [ft_chunk v3ft] rsn_full heartbeat: [15:46:25] step 455/703 loss 0.0229 lr 6.98e-06 238 tok/s ETA 16.3 h
+- 2026-11-23 16:44:46 [ft_chunk v3ft] rsn_full heartbeat: [16:26:06] step 465/703 loss 0.0253 lr 6.63e-06 239 tok/s ETA 15.4 h
+- 2026-11-23 17:20:05 [ft_chunk v3ft] rsn_full heartbeat: [17:05:00] step 475/703 loss 0.0232 lr 6.28e-06 247 tok/s ETA 14.0 h
+- 2026-11-23 18:03:37 [ft_chunk v3ft] rsn_full heartbeat: [17:44:47] step 485/703 loss 0.0248 lr 5.94e-06 225 tok/s ETA 14.7 h
+- 2026-11-23 18:41:19 [ft_chunk v3ft] rsn_full heartbeat: [18:24:17] step 495/703 loss 0.0262 lr 5.62e-06 245 tok/s ETA 13.1 h
+- 2026-11-23 19:15:34 [ft_chunk v3ft] rsn_full heartbeat: [18:43:54] checkpoint step 500
+- 2026-11-23 19:45:48 [ft_chunk v3ft] rsn_full chunk end rc=3: [19:45:00] EXIT (hours limit / STOP / max-steps) at step 500
+- 2026-11-23 19:45:49 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6656)
+- 2026-11-23 20:14:30 [ft_chunk v3ft] rsn_full chunk end rc=3: [20:13:52] EXIT (hours limit / STOP / max-steps) at step 506
+- 2026-11-23 20:16:29 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6656)
+- 2026-11-23 20:17:42 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6656)
+- 2026-11-23 20:56:48 [ft_chunk v3ft] rsn_full heartbeat: [20:43:03] step 510/703 loss 0.0161 lr 5.15e-06 236 tok/s ETA 16.5 h
+- 2026-11-23 21:30:13 [ft_chunk v3ft] rsn_full heartbeat: [21:06:50] step 515/703 loss 0.0178 lr 4.99e-06 251 tok/s ETA 14.9 h
+- 2026-11-23 22:03:30 [ft_chunk v3ft] rsn_full heartbeat: [21:53:55] step 525/703 loss 0.0168 lr 4.70e-06 251 tok/s ETA 13.8 h
+- 2026-11-23 22:37:05 [ft_chunk v3ft] rsn_full heartbeat: [22:16:46] step 530/703 loss 0.0168 lr 4.56e-06 255 tok/s ETA 13.2 h
+- 2026-11-23 23:10:52 [ft_chunk v3ft] rsn_full heartbeat: [23:01:53] step 540/703 loss 0.0192 lr 4.28e-06 252 tok/s ETA 12.1 h
+- 2026-11-23 23:44:39 [ft_chunk v3ft] rsn_full heartbeat: [23:25:37] step 545/703 loss 0.0201 lr 4.15e-06 251 tok/s ETA 12.5 h
+- 2026-11-24 00:18:08 [ft_chunk v3ft] rsn_full heartbeat: [00:12:36] step 555/703 loss 0.0164 lr 3.90e-06 258 tok/s ETA 11.5 h
+- 2026-11-24 00:51:48 [ft_chunk v3ft] rsn_full heartbeat: [00:36:08] step 560/703 loss 0.0185 lr 3.78e-06 253 tok/s ETA 11.2 h
+- 2026-11-24 01:25:35 [ft_chunk v3ft] rsn_full heartbeat: [01:23:12] step 570/703 loss 0.0147 lr 3.54e-06 254 tok/s ETA 10.6 h
+- 2026-11-24 02:13:53 [ft_chunk v3ft] rsn_full heartbeat: [02:12:18] step 580/703 loss 0.0187 lr 3.33e-06 238 tok/s ETA 10.3 h
+- 2026-11-24 02:28:05 [ft_chunk v3ft] rsn_full chunk end rc=3: [02:27:27] EXIT (hours limit / STOP / max-steps) at step 583
+- 2026-11-24 02:28:06 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6656)
+- 2026-11-24 03:06:38 [ft_chunk v3ft] rsn_full heartbeat: [02:43:35] step 585/703 loss 0.0169 lr 3.22e-06 235 tok/s ETA 10.0 h
+- 2026-11-24 03:40:24 [ft_chunk v3ft] rsn_full heartbeat: [03:31:42] step 595/703 loss 0.0130 lr 3.03e-06 256 tok/s ETA 8.4 h
+- 2026-11-24 04:13:37 [ft_chunk v3ft] rsn_full heartbeat: [03:54:51] checkpoint step 600
+- 2026-11-24 04:46:39 [ft_chunk v3ft] rsn_full heartbeat: [03:54:51] checkpoint step 600
+- 2026-11-24 05:20:08 [ft_chunk v3ft] rsn_full heartbeat: [05:11:56] step 605/703 loss 0.0173 lr 2.85e-06 77 tok/s ETA 25.2 h
+- 2026-11-24 05:53:51 [ft_chunk v3ft] rsn_full heartbeat: [05:35:07] step 610/703 loss 0.0147 lr 2.77e-06 258 tok/s ETA 7.2 h
+- 2026-11-24 06:28:13 [ft_chunk v3ft] rsn_full heartbeat: [06:21:36] step 620/703 loss 0.0175 lr 2.61e-06 255 tok/s ETA 6.4 h
+- 2026-11-24 07:02:48 [ft_chunk v3ft] rsn_full heartbeat: [06:45:39] step 625/703 loss 0.0129 lr 2.54e-06 252 tok/s ETA 6.3 h
+- 2026-11-24 07:28:00 [ft_chunk v3ft] rsn_full chunk end rc=3: [07:27:12] EXIT (hours limit / STOP / max-steps) at step 634
+- 2026-11-24 07:28:45 [ft_chunk v3ft] rsn_full chunk start (6 h, max_len 6656)
+- 2026-11-24 08:06:48 [ft_chunk v3ft] rsn_full chunk end rc=3: [08:06:04] EXIT (hours limit / STOP / max-steps) at step 640
+- 2026-11-24 10:00:32 [ft_chunk v3ft] rsn_topup chunk start (6 h, max_len 6656)
+- 2026-11-24 10:35:34 [ft_chunk v3ft] rsn_topup heartbeat: [10:06:34] scoring the START adapter (step 0)
+- 2026-11-24 11:11:09 [ft_chunk v3ft] rsn_topup heartbeat: [10:06:34] scoring the START adapter (step 0)
+- 2026-11-24 11:50:13 [ft_chunk v3ft] rsn_topup chunk end rc=3: [11:49:40] EXIT (hours limit / STOP / max-steps) at step 5
+- 2026-11-24 11:52:28 [ft_chunk v3ft] rsn_topup chunk start (6 h, max_len 6656)
+- 2026-11-24 12:40:46 [ft_chunk v3ft] rsn_topup heartbeat: [12:22:33] step 5/400 loss 0.0959 lr 3.00e-06 246 tok/s ETA 31.0 h
+- 2026-11-24 13:53:16 [ft_chunk v3ft] rsn_topup heartbeat: [13:28:57] step 20/400 loss 0.0680 lr 9.94e-06 247 tok/s ETA 29.8 h
+- 2026-11-24 14:36:05 [ft_chunk v3ft] rsn_topup heartbeat: [14:17:46] step 30/400 loss 0.0719 lr 9.88e-06 241 tok/s ETA 29.5 h
+- 2026-11-24 15:12:31 [ft_chunk v3ft] rsn_topup heartbeat: [15:05:58] step 40/400 loss 0.0338 lr 9.78e-06 229 tok/s ETA 28.6 h
+- 2026-11-24 15:30:06 [ft_chunk v3ft] rsn_topup chunk end rc=3: [15:29:26] EXIT (hours limit / STOP / max-steps) at step 45
+- 2026-11-24 15:31:02 [ft_chunk v3ft] rsn_topup chunk start (6 h, max_len 6656)
+- 2026-11-24 16:37:16 [ft_chunk v3ft] rsn_topup chunk start (6 h, max_len 6656)
+- 2026-11-24 16:39:01 [ft_chunk v3ft] rsn_topup chunk start (6 h, max_len 6656)
+- 2026-11-24 16:40:22 [ft_chunk v3ft] rsn_topup paused #1 (gpu 47C, ram 394 MB)
+- 2026-11-24 17:13:35 [ft_chunk v3ft] rsn_topup heartbeat: [17:06:31] checkpoint step 50
+- 2026-11-24 17:48:10 [ft_chunk v3ft] rsn_topup heartbeat: [17:29:33] step 55/400 loss 0.0315 lr 9.59e-06 236 tok/s ETA 26.5 h
+- 2026-11-24 18:22:52 [ft_chunk v3ft] rsn_topup heartbeat: [18:15:33] step 65/400 loss 0.0315 lr 9.43e-06 244 tok/s ETA 26.4 h
+- 2026-11-24 18:57:58 [ft_chunk v3ft] rsn_topup heartbeat: [18:40:18] step 70/400 loss 0.0222 lr 9.34e-06 230 tok/s ETA 27.2 h
+- 2026-11-24 19:32:19 [ft_chunk v3ft] rsn_topup heartbeat: [19:27:55] step 80/400 loss 0.0192 lr 9.14e-06 239 tok/s ETA 23.9 h
+- 2026-11-24 20:07:20 [ft_chunk v3ft] rsn_topup heartbeat: [19:50:47] step 85/400 loss 0.0216 lr 9.03e-06 227 tok/s ETA 24.0 h
+- 2026-11-24 20:42:18 [ft_chunk v3ft] rsn_topup heartbeat: [20:39:48] step 95/400 loss 0.0186 lr 8.80e-06 235 tok/s ETA 25.0 h
+- 2026-11-24 21:16:33 [ft_chunk v3ft] rsn_topup heartbeat: [21:04:04] checkpoint step 100
+- 2026-11-24 21:50:57 [ft_chunk v3ft] rsn_topup heartbeat: [21:04:04] checkpoint step 100
+- 2026-11-24 22:10:25 [ft_chunk v3ft] rsn_topup chunk end rc=3: [22:09:55] EXIT (hours limit / STOP / max-steps) at step 103
+- 2026-11-24 22:13:08 [ft_chunk v3ft] rsn_final chunk start (12 h, max_len 6656)
+- 2026-11-24 22:14:47 [ft_chunk v3ft] rsn_final chunk start (12 h, max_len 6656)
+- 2026-11-24 22:48:42 [ft_chunk v3ft] rsn_final heartbeat: [22:36:22] step 5/130 loss 0.0227 lr 7.97e-06 287 tok/s ETA 7.8 h
+- 2026-11-24 23:22:48 [ft_chunk v3ft] rsn_final heartbeat: [23:14:03] step 15/130 loss 0.0288 lr 7.77e-06 291 tok/s ETA 7.5 h
+- 2026-11-24 23:56:49 [ft_chunk v3ft] rsn_final heartbeat: [23:52:46] checkpoint step 25
+- 2026-11-25 00:31:07 [ft_chunk v3ft] rsn_final heartbeat: [00:29:36] step 35/130 loss 0.0203 lr 6.79e-06 288 tok/s ETA 6.1 h
+- 2026-11-25 01:05:28 [ft_chunk v3ft] rsn_final heartbeat: [00:48:34] step 40/130 loss 0.0465 lr 6.45e-06 290 tok/s ETA 5.7 h
+- 2026-11-25 01:36:27 [ft_chunk v3ft] rsn_final chunk end rc=1: [01:25:42] checkpoint step 50
+- 2026-11-25 01:47:03 [ft_chunk v3ft] rsn_final chunk start (12 h, max_len 6656)
+- 2026-11-25 02:03:23 [ft_chunk v3ft] rsn_final chunk start (12 h, max_len 6656)
+- 2026-11-25 02:37:40 [ft_chunk v3ft] rsn_final heartbeat: [02:33:00] GEN step 50 {"step": 50, "t": 1795572344.9629314, "r4": {"n_inc": 12, "parse": 1.0, "severity": 0.917, "label": 0.917, "think_ok"
+- 2026-11-25 03:12:05 [ft_chunk v3ft] rsn_final heartbeat: [03:09:19] step 60/130 loss 0.0188 lr 4.83e-06 293 tok/s ETA 4.1 h
+- 2026-11-25 03:46:30 [ft_chunk v3ft] rsn_final heartbeat: [03:28:12] step 65/130 loss 0.0163 lr 4.40e-06 291 tok/s ETA 4.1 h
+- 2026-11-25 04:20:56 [ft_chunk v3ft] rsn_final heartbeat: [04:05:09] checkpoint step 75
+- 2026-11-25 04:55:18 [ft_chunk v3ft] rsn_final heartbeat: [04:44:11] step 85/130 loss 0.0193 lr 2.73e-06 290 tok/s ETA 2.8 h
+- 2026-11-25 05:29:39 [ft_chunk v3ft] rsn_final heartbeat: [05:22:23] step 95/130 loss 0.0294 lr 2.01e-06 289 tok/s ETA 2.2 h
+- 2026-11-25 06:03:43 [ft_chunk v3ft] rsn_final heartbeat: [05:41:27] checkpoint step 100
+- 2026-11-25 06:38:05 [ft_chunk v3ft] rsn_final heartbeat: [06:29:22] step 105/130 loss 0.0486 lr 1.44e-06 123 tok/s ETA 4.0 h
+- 2026-11-25 07:12:34 [ft_chunk v3ft] rsn_final heartbeat: [07:07:05] step 115/130 loss 0.0491 lr 1.03e-06 290 tok/s ETA 1.0 h
+- 2026-11-25 07:47:02 [ft_chunk v3ft] rsn_final heartbeat: [07:45:46] checkpoint step 125
+- 2026-11-25 07:53:29 [ft_chunk v3ft] rsn_final chunk end rc=3: [07:53:24] EXIT (hours limit / STOP / max-steps) at step 127
+- 2026-11-25 08:08:44 [ft_chunk v3ft] rsn_fix chunk start (12 h, max_len 6656)
+- 2026-11-25 08:43:11 [ft_chunk v3ft] rsn_fix heartbeat: [08:31:27] step 5/60 loss 0.0945 lr 4.92e-06 260 tok/s ETA 3.5 h
+- 2026-11-25 09:18:23 [ft_chunk v3ft] rsn_fix heartbeat: [09:18:00] step 15/60 loss 0.0733 lr 4.34e-06 237 tok/s ETA 3.5 h
+- 2026-11-25 09:53:02 [ft_chunk v3ft] rsn_fix heartbeat: [09:37:37] step 20/60 loss 0.0561 lr 3.88e-06 250 tok/s ETA 2.6 h
+- 2026-11-25 10:28:00 [ft_chunk v3ft] rsn_fix heartbeat: [10:20:33] step 30/60 loss 0.0556 lr 2.75e-06 247 tok/s ETA 2.0 h
+- 2026-11-25 11:03:03 [ft_chunk v3ft] rsn_fix heartbeat: [10:55:47] GEN step 30 {"step": 30, "t": 1795602046.5248163, "r4": {"n_inc": 12, "parse": 1.0, "severity": 0.917, "label": 0.917, "think_ok"
+- 2026-11-25 11:38:40 [ft_chunk v3ft] rsn_fix heartbeat: [11:16:07] step 35/60 loss 0.0473 lr 2.17e-06 90 tok/s ETA 4.6 h
+- 2026-11-25 12:12:31 [ft_chunk v3ft] rsn_fix heartbeat: [12:03:40] step 45/60 loss 0.0372 lr 1.16e-06 237 tok/s ETA 1.2 h
+- 2026-11-25 12:46:09 [ft_chunk v3ft] rsn_fix heartbeat: [12:26:10] checkpoint step 50
+- 2026-11-25 13:19:42 [ft_chunk v3ft] rsn_fix heartbeat: [13:11:24] step 60/60 loss 0.0342 lr 5.00e-07 237 tok/s ETA 0.0 h
+- 2026-11-25 13:48:57 [ft_chunk v3ft] rsn_fix chunk end rc=0: [13:48:19] TRAINING DONE step 60 (start 0.0, top [[0.8458000000000001, 60], [0.8208, 30]])
+- 2026-11-25 14:50:19 [ft_chunk v3ft] rsn_rep chunk start (12 h, max_len 6656)
+- 2026-11-25 14:52:34 [ft_chunk v3ft] rsn_rep paused #1 (gpu 45C, ram 273 MB)
+- 2026-11-25 14:54:26 [ft_chunk v3ft] rsn_rep paused #2 (gpu 44C, ram 361 MB)
+- 2026-11-25 14:55:36 [ft_chunk v3ft] rsn_rep paused #3 (gpu 44C, ram 231 MB)
+- 2026-11-25 15:23:37 [ft_chunk v3ft] rsn_rep heartbeat: [15:13:19] step 5/50 loss 0.0324 lr 3.91e-06 257 tok/s ETA 2.5 h
+- 2026-11-25 15:56:45 [ft_chunk v3ft] rsn_rep heartbeat: [15:46:10] step 15/50 loss 0.0354 lr 3.26e-06 261 tok/s ETA 1.9 h
+- 2026-11-25 16:30:21 [ft_chunk v3ft] rsn_rep heartbeat: [16:22:02] checkpoint step 25
+- 2026-11-25 17:03:18 [ft_chunk v3ft] rsn_rep heartbeat: [16:52:42] GEN step 25 {"step": 25, "t": 1795623734.8802161, "r4": {"n_inc": 12, "parse": 1.0, "severity": 1.0, "label": 1.0, "think_ok": 1.
+- 2026-11-25 17:36:18 [ft_chunk v3ft] rsn_rep heartbeat: [17:27:58] step 35/50 loss 0.0305 lr 1.14e-06 256 tok/s ETA 0.9 h
+- 2026-11-25 18:09:43 [ft_chunk v3ft] rsn_rep heartbeat: [18:04:58] step 45/50 loss 0.0365 lr 4.88e-07 246 tok/s ETA 0.3 h
+- 2026-11-25 18:42:53 [ft_chunk v3ft] rsn_rep heartbeat: [18:21:04] checkpoint step 50
+- 2026-11-25 18:52:41 [ft_chunk v3ft] rsn_rep chunk end rc=0: [18:52:12] TRAINING DONE step 50 (start 0.0, top [[0.90832, 50], [0.90832, 25]])

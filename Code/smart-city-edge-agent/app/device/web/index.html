@@ -29,13 +29,13 @@
   <div class="bar-in wrap">
     <div class="brand"><img src="icon.svg" alt="" width="30" height="30"><b>Smart City Edge</b></div>
     <div class="bar-r">
-      <span class="clk" id="c-time" title="Sensor time (IST)">-</span>
-      <a class="askai" href="/chat/" aria-label="Open the Campus Assistant chat" title="Ask the on-device AI">✦ Ask AI</a>
+      <span class="clk" id="c-time" title="Current time (IST)">-</span>
+      <a class="askai" href="/chat/" aria-label="Open the Campus Assistant chat" >✦ Ask AI</a>
       <button class="ibtn opbtn" id="op" type="button" aria-label="Choose who is using this device"></button>
-      <button class="ibtn" id="eng" type="button" aria-pressed="false" aria-label="Engineering view: show modes, models and evidence" title="Engineering view"></button>
+      <button class="ibtn" id="eng" type="button" aria-pressed="false" aria-label="Technical view: show modes, models and evidence"></button>
       <button class="ibtn" id="theme" type="button" aria-label="Switch between light and dark mode"></button>
       <div class="gear-wrap">
-        <button class="ibtn" id="gear" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="gear-menu" aria-label="Settings and more" title="Settings"></button>
+        <button class="ibtn" id="gear" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="gear-menu" aria-label="Settings and more"></button>
         <div class="gear-menu" id="gear-menu" role="menu" aria-label="Settings" hidden>
           <a href="#about" role="menuitem">About</a>
           <a href="#cards" role="menuitem">Cards &amp; rules</a>
@@ -65,6 +65,7 @@
 </div>
 
 <main class="wrap" id="main">
+  <div id="pbanners" class="pbanners"></div>
   <div id="shift" class="shift" role="status" aria-live="polite" hidden></div>
   <section id="view-sensors" class="view">
     <div class="ltitle"><h1>Sensors</h1><p>Live readings from the campus API. The agents check every sensor.</p></div>
@@ -96,7 +97,7 @@
     <div id="inc-list" class="inc-list"></div>
   </section>
   <section id="view-map" class="view">
-    <div class="ltitle"><h1>Map</h1><p>Site tree, typed links, sensor spec cards and the campus map.</p></div>
+    <div class="ltitle"><h1>Map</h1><p>The campus as a tree: buildings, floors, rooms and their sensors.</p></div>
     <div id="site"><div class="empty">Loading the site ...</div></div>
     <details class="card p1-card" id="map-det"><summary><b>Building schematic</b></summary><div id="map"></div></details>
   </section>
@@ -113,24 +114,24 @@
 <div id="scrim" class="scrim"></div>
 
 <section id="sheet" class="sheet" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Sensor detail">
-  <div class="sheet-hd"><i class="grab"></i><div class="sheet-row"><div class="sheet-t" id="sheet-t">Sensor</div><button type="button" class="btn plain" data-close="sheet">Done</button></div></div>
+  <div class="sheet-hd"><i class="grab"></i><div class="sheet-row"><div class="sheet-t" id="sheet-t">Sensor</div><button type="button" class="ibtn x" aria-label="Close" data-close="sheet"></button></div></div>
   <div class="sheet-bd" id="sheet-bd"></div>
   <div class="sheet-ft" id="sheet-ft"></div>
 </section>
 
 <section id="dsheet" class="sheet" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="dsheet-t">
-  <div class="sheet-hd"><i class="grab"></i><div class="sheet-row"><div class="sheet-t" id="dsheet-t">Area</div><button type="button" class="btn plain" data-close="dsheet">Done</button></div></div>
+  <div class="sheet-hd"><i class="grab"></i><div class="sheet-row"><div class="sheet-t" id="dsheet-t">Area</div><button type="button" class="ibtn x" aria-label="Close" data-close="dsheet"></button></div></div>
   <div class="sheet-bd" id="dsheet-bd"></div>
 </section>
 
 <section id="isheet" class="sheet" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Incident detail">
-  <div class="sheet-hd"><i class="grab"></i><div class="sheet-row"><div class="sheet-t" id="isheet-t">Incident</div><button type="button" class="btn plain" data-close="isheet">Done</button></div></div>
+  <div class="sheet-hd"><i class="grab"></i><div class="sheet-row"><div class="sheet-t" id="isheet-t">Incident</div><button type="button" class="ibtn x" aria-label="Close" data-close="isheet"></button></div></div>
   <div class="sheet-bd" id="inc-detail"></div>
   <div class="sheet-ft" id="inc-foot"></div>
 </section>
 
 <section id="opsheet" class="sheet" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="opsheet-t">
-  <div class="sheet-hd"><i class="grab"></i><div class="sheet-row"><div class="sheet-t" id="opsheet-t">Who is using this device?</div><button type="button" class="btn plain" data-close="opsheet">Done</button></div></div>
+  <div class="sheet-hd"><i class="grab"></i><div class="sheet-row"><div class="sheet-t" id="opsheet-t">Who is using this device?</div><button type="button" class="ibtn x" aria-label="Close" data-close="opsheet"></button></div></div>
   <div class="sheet-bd" id="opsheet-bd"></div>
 </section>
 
@@ -138,7 +139,7 @@
 <div id="fs" class="fs" hidden>
   <div class="fs-back"></div>
   <section class="fs-panel" role="dialog" aria-modal="true" aria-labelledby="fs-t">
-    <div class="fs-hd"><div class="fs-t" id="fs-t">Sensor</div><button type="button" class="btn plain" id="fs-x" aria-label="Close sensor detail">Done</button></div>
+    <div class="fs-hd"><div class="fs-t" id="fs-t">Sensor</div><button type="button" class="ibtn x" id="fs-x" aria-label="Close"></button></div>
     <div class="fs-bd" id="fs-bd"></div>
   </section>
 </div>
@@ -158,5 +159,6 @@
 </div>
 <script src="app.js"></script>
 <script src="phase1.js"></script>
+<script src="qr.js"></script>
 </body>
 </html>

@@ -178,6 +178,23 @@ func zeroCrossings(xs []float64) int {
 	return c
 }
 
+// rawFlatRun (2026-11-19 board audit): the flat run on the raw readings, not on the card's display
+// resolution. A live idle meter reading 0.00264, 0.00268, 0.00271 kW is not stuck, but rounded to the 4-decimal
+// cap it showed a 32-point flat run and the rules called it a sensor_fault in 11 of 25 incidents (the agent and
+// the reasoner said normal every time). A stuck sensor repeats its raw value, so it still counts: the tolerance
+// is the display half-step or 0.1% of the window's mean level, whichever is smaller.
+func rawFlatRun(xs []float64, dec int) int {
+	eps := math.Max(1e-9, math.Pow(10, float64(-effDec(xs, dec)))*0.5)
+	m := 0.0
+	for _, v := range xs {
+		m += math.Abs(v)
+	}
+	if len(xs) > 0 {
+		eps = math.Min(eps, math.Max(1e-9, 1e-3*m/float64(len(xs))))
+	}
+	return longestFlatRun(xs, eps)
+}
+
 func longestFlatRun(xs []float64, eps float64) int {
 	best, cur := 1, 1
 	for i := 1; i < len(xs); i++ {
@@ -536,7 +553,7 @@ func rulePatternM(m Metric, role string, xs []float64, end int64) string {
 	m.Dec = effDec(xs, m.Dec)
 	st := ComputeStats(xs, m.Dec)
 	s := windowScale(m, st)
-	if st.FlatRun >= 16 {
+	if st.FlatRun >= 16 && rawFlatRun(xs, m.Dec) >= 16 {
 		return "flatline"
 	}
 	srt := append([]float64(nil), xs...)

@@ -35,18 +35,24 @@ func promotionHost(inc *Incident, c Candidate) (int, bool) {
 		return 0, false
 	}
 	switch inc.State {
-	case "running", "done", "done_with_errors":
+	case "running", "done", "done_with_errors", "failed": // failed = the process died mid-run: it hosts its sensor again and is re-run (polish_events.go)
 	default:
 		return 0, false
 	}
-	if w := wfOf(inc); w == wfResolved || w == wfClosed || inc.ClosedAt != 0 {
+	if w := wfOf(inc); w == wfClosed || inc.ClosedAt != 0 { // a resolved incident is still open: the sensor turning abnormal again reopens it
 		return 0, false
 	}
-	if age := c.End - inc.CreatedSim; age < 0 || age > promoMaxAge*bucketSec {
+	age := c.End - inc.CreatedSim
+	if age < 0 {
 		return 0, false
 	}
 	for i, s := range inc.Sensors {
 		if s.Node == c.Node && s.Metric == c.Metric {
+			// the 6 h cap is for late context sensors; a sensor that is already one of the incident's own flagged
+			// sensors joins it however old the (still open) incident is, instead of opening a duplicate
+			if s.Context && age > promoMaxAge*bucketSec {
+				return 0, false
+			}
 			return i, true
 		}
 	}
@@ -180,7 +186,7 @@ func (r *Reasoner) releasePromos(sim int64) {
 	}
 	r.mu.Unlock()
 	if start {
-		go r.loop(w)
+		safeGo("analysis loop", func() { r.loop(w) })
 	}
 }
 
@@ -196,6 +202,7 @@ func (r *Reasoner) runPromote(id string) {
 	}
 	if job == nil || inc == nil {
 		r.mu.Unlock()
+		r.nextEventZone(id, 0)
 		return
 	}
 	delete(r.promos, id)
@@ -220,8 +227,10 @@ func (r *Reasoner) runPromote(id string) {
 	}
 	if len(flagged) == 0 {
 		r.mu.Unlock()
+		r.nextEventZone(id, 0)
 		return
 	}
+	wasFailed := inc.State == "failed" // re-run after a restart (polish_events.go)
 	prevSev, ruleTitle := inc.Severity, inc.RuleTitle
 	if ruleTitle == "" {
 		ruleTitle = inc.Title
@@ -259,7 +268,11 @@ func (r *Reasoner) runPromote(id string) {
 					notes[cur[i].Ref] = RevSensor{Note: "agent re-run after the rule status rose"}
 					said = append(said, fmt.Sprintf("Sensor %s rose to %s (agent had said %s): agent re-run, report updated", name, sevWord(c.Finding.Status), sevWord(had)))
 				} else {
-					said = append(said, fmt.Sprintf("Sensor %s turned %s: %s, report updated", name, sevWord(c.Finding.Status), how))
+					again := ""
+					if !was {
+						again = " again (new episode)"
+					}
+					said = append(said, fmt.Sprintf("Sensor %s turned %s%s: %s, report updated", name, sevWord(c.Finding.Status), again, how))
 				}
 			}
 		}
@@ -318,28 +331,52 @@ func (r *Reasoner) runPromote(id string) {
 			sh.Final.Parsed.Severity = prevSev
 		}
 	}
+	if inc.EventMode && reportRank[normSeverity(prevSev)] > reportRank[normSeverity(sh.Severity)] && r.zonesLeftLocked(id) {
+		sh.Severity = prevSev // event mode: the other zones have not been read by the AI yet
+		if sh.Final != nil && sh.Final.Parsed != nil {
+			sh.Final.Parsed.Severity = prevSev
+		}
+	}
 	prev := revisionOf(inc, inc.RefineStage, 0, nil, 0, 0)
 	inc.Sensors, inc.Agents, inc.Final, inc.Mode1, inc.Roles, inc.Injected = sh.Sensors, sh.Agents, sh.Final, sh.Mode1, sh.Roles, sh.Injected
 	inc.Severity, inc.SeverityFinal, inc.Title = sh.Severity, true, sh.Title
 	if inc.RuleTitle == "" {
 		inc.RuleTitle = ruleTitle
 	}
+	consistentTitle(inc)
 	inc.State = "done"
 	if inc.Final == nil || !inc.Final.Valid {
 		inc.State = "done_with_errors"
 	}
 	inc.NPUCalls += sh.NPUCalls
 	inc.promoSim = end
+	if inc.ShortRunAt != 0 && !inc.shortFull {
+		inc.shortFull = true
+		inc.Timeline = append(inc.Timeline, TimelineItem{time.Now().Format("15:04:05"), "Full 8-reading analysis replaces the early one"})
+	}
 	rev := revisionOf(inc, "promotion", end, notes, sh.NPUCalls, ms)
+	why := r.noteSeverityChangeLocked(inc, prev, &rev, false)
 	inc.Revisions = append(inc.Revisions, rev)
 	for _, m := range said {
 		inc.Timeline = append(inc.Timeline, TimelineItem{time.Now().Format("15:04:05"), m})
 	}
 	msg := strings.Join(said, "; ")
-	wfEv := r.wfAfterRecheckLocked(inc, prev.Severity, rev)
+	var wfEv map[string]any
+	if wasFailed {
+		inc.Workflow = wfAnalysing
+		r.wfAnalysedLocked(inc, inc.LiveEpoch)
+		inc.Timeline = append(inc.Timeline, TimelineItem{time.Now().Format("15:04:05"), "Re-run automatically after a restart: the earlier analysis did not finish"})
+		wfEv = map[string]any{"workflow": inc.Workflow}
+	} else {
+		wfEv = r.wfAfterRecheckLocked(inc, prev.Severity, rev)
+		r.reopenAgainLocked(inc, wfEv, said)
+	}
 	r.mu.Unlock()
 	r.persist(inc)
 	ev := map[string]any{"id": inc.ID, "state": inc.State, "msg": msg, "promoted": true}
+	if why != "" {
+		ev["severity_why"] = why
+	}
 	for k, v := range wfEv {
 		ev[k] = v
 	}
@@ -347,7 +384,8 @@ func (r *Reasoner) runPromote(id string) {
 		ev["change"] = "elevated"
 	}
 	r.notify("incident", ev)
-	r.releasePromos(end) // sensors that turned abnormal meanwhile
+	r.nextEventZone(id, end) // event mode: the next zone
+	r.releasePromos(end)     // sensors that turned abnormal meanwhile
 }
 
 // promoCritical: a domain sensor of the incident is critical now (its agent, or its rule when it has none).

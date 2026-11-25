@@ -701,7 +701,7 @@ func v3Escalation(valid bool, wanted, maxCalls int, toolResults []string, needsD
 // toReport maps a gated v3 answer onto the Report the dashboard, workflow and store already use.
 func (r *reportV3Raw) toReport(source string) Report {
 	rep := Report{RootCause: r.RootCause, Label: r.Label, AffectedDomains: r.AffectedDomains, Evidence: r.Evidence,
-		Explanation: r.Explanation, RequiresHuman: true, Severity: r.Severity, Title: r.Title,
+		Explanation: r.Explanation, RequiresHuman: true, Severity: r.Severity, Title: cleanTitleRefs(r.Title),
 		CausalChain: r.CausalChain, Observations: r.Observations, AgentChecks: r.AgentChecks, Checklist: r.Checklist,
 		SuspectSensors: r.SuspectSensors, MonitorNext: r.MonitorNext, NeedsMoreData: r.NeedsMoreData,
 		NeedsDeeper: r.NeedsDeeper, Source: source}
@@ -712,6 +712,19 @@ func (r *reportV3Raw) toReport(source string) Report {
 		rep.Action = r.Checklist[0].Action
 	}
 	return rep
+}
+
+var titleRefRe = regexp.MustCompile(`\bS\d+(?:\s*(?:,|and|&)\s*S\d+)*\b`)
+var titleRefCountRe = regexp.MustCompile(`S\d+`)
+
+// cleanTitleRefs: internal sensor refs ("S1 warns") never reach an operator-facing title: "one sensor warns".
+func cleanTitleRefs(t string) string {
+	return strings.TrimSpace(titleRefRe.ReplaceAllStringFunc(t, func(m string) string {
+		if n := len(titleRefCountRe.FindAllString(m, -1)); n > 1 {
+			return fmt.Sprintf("%d sensors", n)
+		}
+		return "one sensor"
+	}))
 }
 
 // v3StreamTitle: the title as soon as it is complete in a streamed answer (title-first streaming).
@@ -1184,7 +1197,7 @@ func (r *Reasoner) memoryLines(self string, nodes []string, n int) []string {
 	var out []string
 	for i := len(r.incidents) - 1; i >= 0 && len(out) < n; i-- {
 		p := r.incidents[i]
-		if p.ID == self || p.Outcome == "" {
+		if p.ID == self || p.Outcome == "" || p.SystemCheck {
 			continue
 		}
 		hit := ""
@@ -1224,7 +1237,7 @@ func (t incidentTools) Exec(ctx context.Context, name string, args map[string]an
 		var items []map[string]any
 		for i := len(t.r.incidents) - 1; i >= 0 && len(items) < 10; i-- {
 			p := t.r.incidents[i]
-			if p.ID == t.inc.ID {
+			if p.ID == t.inc.ID || p.SystemCheck {
 				continue
 			}
 			match := node == "" && dom == ""
@@ -1314,9 +1327,9 @@ func (r *Reasoner) reasonV3Fallback(ctx context.Context, inc *Incident, findings
 		if t, ok := v3StreamTitle(buf.String()); ok && !titled { // title-first: shown while the rest is still decoding
 			titled = true
 			r.mu.Lock()
-			inc.Title = t
+			inc.Title = cleanTitleRefs(t)
 			r.mu.Unlock()
-			r.log(inc, "Reasoner title: "+t)
+			r.log(inc, "Reasoner title: "+cleanTitleRefs(t))
 		}
 		if sv, ok := v3StreamSeverity(buf.String()); ok && !sevd {
 			// the reasoner's severity (2nd key) replaces the rule's provisional one at once; it stays provisional
@@ -1352,6 +1365,7 @@ func (r *Reasoner) reasonV3Fallback(ctx context.Context, inc *Incident, findings
 				rc.Repairs = append(rc.Repairs, "pH wording set to the readings: "+phDirWord(phDirection(inc.Sensors)))
 			}
 			r.severityGuard(inc, &rep)
+			r.faultGuard(inc, &rep, findings)
 			rep.Escalation = v3Escalation(true, run.Wanted, maxCalls, run.Results, parsed.NeedsDeeper)
 			rc.Parsed, rc.Valid = &rep, true
 			r.log(inc, fmt.Sprintf("Reasoner v3 report in %.1fs (%d completion(s), %d tool call(s)%s), policy ok",
@@ -1427,6 +1441,7 @@ type SeverityBasis struct {
 }
 
 var v3CalmTitleRe = regexp.MustCompile(`(?i)\b(normal|no fault|nothing abnormal|all clear)\b`)
+var v3FaultTitleRe = regexp.MustCompile(`(?i)\b(fault|faulty|broken|malfunction\w*|stuck|frozen|dead)\b`)
 
 // severityGuard: LIGHT app-side guard against the one dangerous run-to-run flip seen on the board (INC-0362:
 // warning <-> normal between identical runs). When the rules put a flagged sensor at warning or critical, the
@@ -1436,7 +1451,12 @@ var v3CalmTitleRe = regexp.MustCompile(`(?i)\b(normal|no fault|nothing abnormal|
 func (r *Reasoner) severityGuard(inc *Incident, rep *Report) {
 	rule := ruleSeverity(inc.Sensors)
 	b := &SeverityBasis{Rule: rule, Reasoner: rep.Severity, Final: rep.Severity}
-	if rep.Severity == "normal" && reportRank[rule] >= reportRank["warning"] {
+	if trend, ok := trendOnlyWarning(inc.Sensors); ok && rep.Severity == "normal" && rule == "warning" {
+		// owner 2026-11-20: the rules' warning is a trend inside the card limits and the AI judged normal: the AI wins
+		b.Guard = "the rules warned only about a trend inside the limits (" + trend + "); the AI judged normal: kept normal"
+		rep.Title = "Watching: " + trend + ", AI judged normal"
+		r.log(inc, "Severity guard: "+b.Guard)
+	} else if rep.Severity == "normal" && reportRank[rule] >= reportRank["warning"] {
 		rep.Severity, b.Final = "warning", "warning"
 		b.Guard = "the reasoner said normal, the rules say " + rule + ": kept at warning"
 		if v3CalmTitleRe.MatchString(rep.Title) {
@@ -1450,6 +1470,94 @@ func (r *Reasoner) severityGuard(inc *Incident, rep *Report) {
 			"final": b.Final, "label": rep.Label, "guard": b.Guard != ""})
 		log.Printf("severity-disagreement %s", j)
 	}
+}
+
+// trendOnlyWarning: true when every flagged sensor is normal or only a rule warning whose latest reading is inside its
+// card's warning limits (a trend, not a crossing). Returns the first trend as words. A metric without limits, a critical
+// or sensor_fault status, or a reading beyond a limit is not trend-only.
+func trendOnlyWarning(sensors []SensorRef) (string, bool) {
+	trend := ""
+	for _, s := range sensors {
+		if s.Context {
+			continue
+		}
+		switch normSeverity(s.Rule.Status) {
+		case "normal":
+			continue
+		case "warning":
+		default:
+			return "", false
+		}
+		m, ok := effectiveMetricOK(s.Role, s.Metric, s.Node)
+		if !ok || !m.HasLimits || len(s.Xs) == 0 {
+			return "", false
+		}
+		last := s.Xs[len(s.Xs)-1]
+		beyond := valueCriticalM(m, last)
+		if m.HasLoSide && last < m.WarnLo {
+			beyond = true
+		}
+		switch m.Dir {
+		case "high", "both":
+			beyond = beyond || last >= m.Warn
+		case "low":
+			beyond = beyond || last < m.Warn
+		}
+		if beyond {
+			return "", false
+		}
+		if trend == "" {
+			t := strings.ReplaceAll(s.Rule.Pattern, "_", " ")
+			if t == "" {
+				t = "a trend"
+			}
+			trend = metricWord(s.Metric) + " " + t
+		}
+	}
+	return trend, trend != ""
+}
+
+// faultGuard (owner 2026-11-19, reasoner p2 gate): the reasoner may report sensor_fault only with a second,
+// independent line of evidence: the rules (range / glitch / erratic checks) or a domain agent must have called
+// some flagged sensor of the incident a sensor_fault. A flat, step or plateau the reasoner alone reads as a
+// fault (the gate's main error, and the "Sensor Fault when it clearly is not" incidents) is reported at the
+// rules' level, at least warning, with the guard recorded on the severity basis and in the timeline.
+func (r *Reasoner) faultGuard(inc *Incident, rep *Report, calls []AgentCall) {
+	if rep.Severity != "sensor_fault" {
+		return
+	}
+	for _, s := range inc.Sensors {
+		if !s.Context && normSeverity(s.Rule.Status) == "sensor_fault" {
+			return
+		}
+	}
+	for _, c := range calls {
+		if c.Valid && c.Parsed != nil && normSeverity(c.Parsed.Status) == "sensor_fault" {
+			return
+		}
+	}
+	to := ruleSeverity(inc.Sensors)
+	if reportRank[to] < reportRank["warning"] || to == "sensor_fault" {
+		to = "warning"
+	}
+	why := "the reasoner said sensor_fault without a second evidence (no rule or agent fault finding): reported as " + to + " for checking"
+	rep.Severity = to
+	if v3FaultTitleRe.MatchString(rep.Title) {
+		rep.Title = "" // a "sensor fault" headline on a warning report: the findings title is used instead
+	}
+	if rep.Label == "sensor_fault" {
+		rep.Label = "unknown"
+	}
+	if b := rep.SeverityBasis; b != nil {
+		b.Final = to
+		if b.Guard != "" {
+			b.Guard += "; "
+		}
+		b.Guard += why
+	}
+	r.log(inc, "Fault guard: "+why)
+	j, _ := json.Marshal(map[string]any{"incident": inc.ID, "stage": inc.RefineStage, "reasoner": "sensor_fault", "final": to, "guard": "fault"})
+	log.Printf("severity-disagreement %s", j)
 }
 
 // v3Split: htpd v8x split decoding. The answer head (keys up to After) is decoded once, then each group of the

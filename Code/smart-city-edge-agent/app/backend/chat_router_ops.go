@@ -228,6 +228,18 @@ func (t chatTools) chatAugment(rt chatRoute, res map[string]any) {
 					open = append(open, strings.TrimRight(strings.TrimSpace(st.Text), "."))
 				}
 			}
+			var flagged []string
+			for _, s := range p.Sensors {
+				if !s.Context {
+					flagged = append(flagged, s.Node)
+				}
+			}
+			if t.r.eng != nil {
+				var dropped bool
+				if open, dropped = chatOutdoorSteps(open, flagged, t.r.eng.Meta.Nodes); dropped {
+					res["_outdoor"] = true
+				}
+			}
 			res["_open_steps"] = open
 		}
 	}
@@ -269,7 +281,7 @@ func chatSayOps(rt chatRoute, res map[string]any, v int) string {
 	case rt.Act == "refuse":
 		text := "I can't do that: my tools only read the device's data, and changing an incident or a device needs an operator."
 		if total, _ := res["total_pending_review"].(int); total > 0 {
-			text += fmt.Sprintf(" %s waiting for a decision; open each one under Incidents and approve or dismiss it there.", plural(total, "incident is", "incidents are"))
+			text += fmt.Sprintf(" %s waiting for a decision; open each one under Incidents and tap I'm on it or Dismiss there.", plural(total, "incident is", "incidents are"))
 		} else {
 			text += " No incident is waiting for a decision right now."
 		}
@@ -362,8 +374,8 @@ func chatSayIncident(rt chatRoute, res map[string]any) string {
 	if len(sens) > 0 {
 		why += " Flagged: " + strings.Join(sens, "; ") + "."
 	}
-	state := map[string]string{wfNeeds: "It is waiting for your decision (approve or dismiss on the incident page).",
-		wfInProgress: "It was approved and its checklist is in progress.", wfResolved: "Readings went back to normal; it waits to be closed.",
+	state := map[string]string{wfNeeds: "It is waiting for your decision (tap I'm on it or Dismiss on the incident page).",
+		wfInProgress: "Someone tapped I'm on it and its checklist is in progress.", wfResolved: "Readings went back to normal; it waits to be closed.",
 		wfClosed: "It is closed.", wfAnalysing: "The AI is still analysing it.", wfInterrupted: "Its analysis was interrupted."}[fmt.Sprint(res["workflow"])]
 	if o, _ := res["outcome"].(string); o != "" {
 		if t, ok := outcomeText[o]; ok {
@@ -374,6 +386,9 @@ func chatSayIncident(rt chatRoute, res map[string]any) string {
 	stepText := ""
 	if len(steps) > 0 {
 		stepText = " Open checklist: " + strings.Join(steps[:min(3, len(steps))], "; ") + "."
+	}
+	if res["_outdoor"] == true {
+		stepText += " This is an outdoor station, so the building's ventilation and air-handling steps do not apply; check the sensor and the outdoor conditions instead."
 	}
 	switch rt.Act {
 	case "realfault":

@@ -37,7 +37,7 @@ func earlyAIConfig() (int, map[string]bool) {
 	}
 	p := htpdProfile()
 	k, _ := strconv.Atoi(strings.TrimSpace(p["ai_early_k"]))
-	if k < 0 || k >= trigRules().PersistReadings {
+	if k < 0 || k >= trigRules().AbnormalOfWindow {
 		k = 0
 	}
 	sh := map[string]bool{}
@@ -122,7 +122,7 @@ func (r *Reasoner) queueEarly(cands []Candidate) {
 	}
 	r.mu.Unlock()
 	if start {
-		go r.loop(w)
+		safeGo("analysis loop", func() { r.loop(w) })
 	}
 }
 

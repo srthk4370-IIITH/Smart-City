@@ -30,6 +30,8 @@ button{font:inherit;color:inherit;cursor:pointer}
 .btn:hover{background:var(--fill2)}
 .btn.new{background:var(--accent);color:var(--accent-ink)}
 .btn.new:hover{filter:brightness(1.05)}
+.btn.clr{min-height:44px;margin-top:8px;background:transparent;border:1px solid var(--sep,#8884);color:var(--tx2,inherit);font-size:13px}
+.btn.new,.icon-btn{min-height:44px}
 .hist{flex:1;overflow:auto;padding:4px 8px}
 .hist h4{margin:14px 8px 6px;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--tx2);font-weight:600}
 .hi{display:block;width:100%;border:0;background:none;text-align:left;padding:9px 10px;border-radius:10px;color:var(--tx)}
@@ -104,3 +106,10 @@ textarea{flex:1;border:0;outline:0;resize:none;background:none;color:var(--tx);f
   .bub{max-width:92%}
 }
 .home{display:grid;place-items:center;text-decoration:none;color:var(--tx)}
+.mic{border:0;width:44px;height:44px;border-radius:50%;background:transparent;color:var(--fg,inherit);font-size:20px;flex:none}
+.mic.rec{background:#d93025;color:#fff;animation:micpulse 1.2s infinite}
+.mic:disabled{opacity:.4}
+.voicenote{max-width:760px;width:calc(100% - 32px);margin:6px auto 0;font-size:13px;opacity:.85}
+.speakstop{display:block;margin:6px auto 0;min-height:44px;padding:0 16px;border-radius:22px;border:1px solid var(--sep);background:var(--card);color:inherit;font-size:14px}
+@keyframes micpulse{50%{opacity:.6}}
+@media (prefers-reduced-motion:reduce){.mic.rec{animation:none}}

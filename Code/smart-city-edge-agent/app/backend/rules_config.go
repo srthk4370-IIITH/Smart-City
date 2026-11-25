@@ -158,15 +158,21 @@ func effectiveMetric(role, metric, node string) Metric {
 // TriggerRules are the event-gate counts (readings = 5-minute buckets of sensor time). The constants of the same names in
 // engine.go are the defaults.
 type TriggerRules struct {
-	PersistReadings  int `json:"persist_readings"`   // abnormal readings in a row before the AI is called
+	PersistReadings  int `json:"persist_readings"`   // size of the reading window the AI gate looks at (default 8)
 	BatchReadings    int `json:"batch_readings"`     // extra readings the batch stays open for co-occurring sensors
 	BatchMaxReadings int `json:"batch_max_readings"` // an alert is never held longer than this after the batch opened
 	FastReadings     int `json:"fast_readings"`      // critical fast path: readings beyond the critical limit
 	FastCooldown     int `json:"fast_cooldown"`      // readings before a sensor may open another fast incident
 	TransientMax     int `json:"transient_max"`      // a spike / dip this many readings wide or less is a transient
+	AbnormalOfWindow int `json:"abnormal_of_window"` // abnormal readings out of the last persist_readings before the AI is called (default 4)
+	EventAlarms      int `json:"event_mode_alarms"`  // event mode: this many sensors alarming in one building within 10 min (polish_events.go)
 }
 
-var defaultTrigger = TriggerRules{persistReadings, batchReadings, batchMaxReadings, fastReadings, fastCooldown, transientMax}
+const defaultEventAlarms = 5
+
+const defaultAbnormalOfWindow = 4
+
+var defaultTrigger = TriggerRules{persistReadings, batchReadings, batchMaxReadings, fastReadings, fastCooldown, transientMax, defaultAbnormalOfWindow, defaultEventAlarms}
 
 type intRange struct {
 	Min int `json:"min"`
@@ -174,9 +180,9 @@ type intRange struct {
 }
 
 var triggerRanges = map[string]intRange{"persist_readings": {2, 24}, "batch_readings": {1, 24}, "batch_max_readings": {1, 24},
-	"fast_readings": {1, 23}, "fast_cooldown": {1, 72}, "transient_max": {1, 12}}
+	"fast_readings": {1, 23}, "fast_cooldown": {1, 72}, "transient_max": {1, 12}, "event_mode_alarms": {2, 100}, "abnormal_of_window": {2, 24}}
 
-var triggerConstraints = []string{"fast_readings < persist_readings", "batch_readings <= batch_max_readings"}
+var triggerConstraints = []string{"fast_readings < persist_readings", "batch_readings <= batch_max_readings", "abnormal_of_window <= persist_readings"}
 
 // Validate returns the reasons a TriggerRules value is not acceptable (empty = ok).
 func (t TriggerRules) Validate() []string {
@@ -192,6 +198,11 @@ func (t TriggerRules) Validate() []string {
 	in("fast_readings", t.FastReadings)
 	in("fast_cooldown", t.FastCooldown)
 	in("transient_max", t.TransientMax)
+	in("event_mode_alarms", t.EventAlarms)
+	in("abnormal_of_window", t.AbnormalOfWindow)
+	if t.AbnormalOfWindow > t.PersistReadings {
+		bad = append(bad, fmt.Sprintf("abnormal_of_window %d must not exceed persist_readings %d", t.AbnormalOfWindow, t.PersistReadings))
+	}
 	if t.FastReadings >= t.PersistReadings {
 		bad = append(bad, fmt.Sprintf("fast_readings %d must be below persist_readings %d", t.FastReadings, t.PersistReadings))
 	}
@@ -243,11 +254,7 @@ func (s *triggerStore) Save(t TriggerRules) error {
 	defer s.mu.Unlock()
 	if s.dir != "" {
 		b, _ := json.MarshalIndent(t, "", " ")
-		_ = os.MkdirAll(filepath.Dir(s.path()), 0o755)
-		if err := os.WriteFile(s.path()+".part", b, 0o644); err != nil {
-			return err
-		}
-		if err := os.Rename(s.path()+".part", s.path()); err != nil {
+		if err := atomicWrite(s.path(), b, 0o644); err != nil {
 			return err
 		}
 	}

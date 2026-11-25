@@ -8,6 +8,8 @@ for l in open(sys.argv[1], encoding="utf-8"):
 
 
 def rep_of(final):
+    if isinstance(final, dict) and "severity" not in final:
+        final = final.get("content") or ""
     if isinstance(final, dict):
         return final
     t = final or ""
@@ -31,8 +33,8 @@ def score(path):
         s = bool(p) and p.get("severity") == g["severity"]
         ids = []
         if p:
-            ids = list(p.get("evidence") or []) + [i for ob in (p.get("observations") or []) for i in (ob.get("src") or [])] + \
-                  [i for c in (p.get("agent_checks") or []) for i in (c.get("src") or [])]
+            ids = list(p.get("evidence") or []) + [i for ob in (p.get("observations") or []) if isinstance(ob, dict) for i in (ob.get("src") or [])] + \
+                  [i for c in (p.get("agent_checks") or []) if isinstance(c, dict) for i in (c.get("src") or [])]
         h = bool(p) and all(re.fullmatch(r"S\d+\.E\d+", str(i)) and (str(i) + " ") in u for i in ids) and (p.get("severity") != "sensor_fault" or g["severity"] == "sensor_fault")
         sev += s; hyg += h; ok += (s and h)
         f = r.get("p2_family", "?"); a = per[f]; a[0] += 1; a[1] += s; a[2] += h; a[3] += (s and h)

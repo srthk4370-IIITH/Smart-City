@@ -38,16 +38,16 @@ func earlySplit(ev []fpEvent) (early, ai []fpEvent) {
 	return
 }
 
-// A warning step with ai_early_k=4: provisional AI at reading 4, the full AI at 8 updates the SAME incident -> one
+// A warning step with ai_early_k=3: provisional AI at reading 4, the full AI at 8 updates the SAME incident -> one
 // incident, two AI revisions (provisional, then the early-alert stage the refinements continue from).
 func TestEarlyAIOneIncidentTwoRevisions(t *testing.T) {
-	earlyProfile(t, "ai_early_k=4\nai_early_shapes=step,trend\n")
+	earlyProfile(t, "ai_early_k=3\nai_early_shapes=step,trend\n")
 	e := dqEngine(t)
 	early, ai := earlySplit(feedCO2(t, e, 60, 600, rep(1200, 14)))
-	if len(early) != 1 || early[0].reading != 4 {
-		t.Fatalf("provisional candidates %+v, want one at reading 4", early)
+	if len(early) != 1 || early[0].reading != 3 {
+		t.Fatalf("provisional candidates %+v, want one at reading 3", early)
 	}
-	if len(ai) != 1 || ai[0].reading < persistReadings {
+	if len(ai) != 1 || ai[0].reading < defaultAbnormalOfWindow {
 		t.Fatalf("AI gate moved: %+v", ai)
 	}
 	dir := t.TempDir()
@@ -78,13 +78,13 @@ func TestEarlyAIOneIncidentTwoRevisions(t *testing.T) {
 func TestEarlyAIGateUnchanged(t *testing.T) {
 	e := dqEngine(t)
 	early, ai := earlySplit(feedCO2(t, e, 60, 600, rep(1200, 14)))
-	if len(early) != 0 || len(ai) != 1 || ai[0].reading < persistReadings {
+	if len(early) != 0 || len(ai) != 1 || ai[0].reading < defaultAbnormalOfWindow {
 		t.Fatalf("default (off): early %+v ai %+v", early, ai)
 	}
-	earlyProfile(t, "ai_early_k=4\nai_early_shapes=flatline\n")
+	earlyProfile(t, "ai_early_k=3\nai_early_shapes=flatline\n")
 	e2 := dqEngine(t)
 	early, ai = earlySplit(feedCO2(t, e2, 60, 600, rep(1200, 14)))
-	if len(early) != 0 || len(ai) != 1 || ai[0].reading < persistReadings {
+	if len(early) != 0 || len(ai) != 1 || ai[0].reading < defaultAbnormalOfWindow {
 		t.Fatalf("uncleared shape: early %+v ai %+v", early, ai)
 	}
 }

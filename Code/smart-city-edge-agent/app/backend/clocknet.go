@@ -13,7 +13,6 @@ package main
 import (
 	"log"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"sync"
@@ -119,9 +118,8 @@ func netPersist(want time.Duration) {
 	if netClock.dir == "" || (netClock.stored != 0 && sec-netClock.stored < 5 && netClock.stored-sec < 5) {
 		return
 	}
-	os.MkdirAll(netClock.dir, 0o755)
 	p := filepath.Join(netClock.dir, "clock_offset_s")
-	if os.WriteFile(p+".tmp", []byte(strconv.FormatInt(sec, 10)), 0o644) == nil && os.Rename(p+".tmp", p) == nil {
+	if atomicWrite(p, []byte(strconv.FormatInt(sec, 10)), 0o644) == nil {
 		netClock.stored = sec
 	}
 }

@@ -1,0 +1,30 @@
+# rsn_v3 local pipeline status (append-only)
+
+- 2026-11-19 13:17:29 [rsn_ft_export] export: waiting before merge: C: free 24668 MB (need 41250), Windows avail 4100 MB (need 1000), WSL avail 5224 MB (need 2500)
+- 2026-11-19 14:34:27 [rsn_ft_export] export: merge /home/hp_srthk4370/smartcity_runs/rsn3_4b_v3ft/ckpt_best_0400 into /mnt/c/Users/hp/qidk_models/r3_edit_C1 -> /mnt/c/Users/hp/AppData/Local/Temp/post_ft_rsn_v3_4b_ft400/hf (C: free 82710 MB)
+- 2026-11-19 14:34:31 [rsn_ft_export] FAIL: export: merge failed (/mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-13_v3_train/rsn_ft/post/export_rsn_v3_4b_ft400/merge.log: )
+- 2026-11-19 14:34:39 [rsn_ft_export] export: merge /home/hp_srthk4370/smartcity_runs/rsn3_4b_v3ft_p2/ckpt_best_0220 into /mnt/c/Users/hp/qidk_models/r3_edit_C1 -> /mnt/c/Users/hp/AppData/Local/Temp/post_ft_rsn_v3_4b_p2/hf (C: free 82710 MB)
+- 2026-11-19 14:38:43 [rsn_ft_export] export: merged 248/248 LoRA modules (scale 2.00) -> /mnt/c/Users/hp/AppData/Local/Temp/post_ft_rsn_v3_4b_p2/hf
+- 2026-11-19 14:42:41 [rsn_ft_export] export: bf16 GGUF 8.1G
+- 2026-11-19 14:48:15 [rsn_ft_export] export: DONE /mnt/c/Users/hp/Desktop/qidk/Code/models_stage/rsn_v3_4b_p2_q4_0.gguf (2.5G, md5 6ffc648bd5aff0a30083ae92ef9a83be, 13 min)
+- 2026-11-19 14:52:05 [rsn_ft_export] export: /mnt/c/Users/hp/Desktop/qidk/Code/models_stage/rsn_v3_4b_p2_q4_0.gguf already made by this chain (md5 6ffc648bd5aff0a30083ae92ef9a83be): skip
+- 2026-11-19 15:29:55 [rsn_ft_export] export: /mnt/c/Users/hp/Desktop/qidk/Code/models_stage/rsn_v3_4b_p2_q4_0.gguf already made by this chain (md5 6ffc648bd5aff0a30083ae92ef9a83be): skip
+- 2026-11-20 20:17:37 [rsn_ft_export] export: waiting before merge: C: free 69098 MB (need 41250), Windows avail ? MB (need 1000), WSL avail 5217 MB (need 2500)
+- 2026-11-20 20:18:38 [rsn_ft_export] export: merge /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-20_rsn_big/best/ckpt_best_0242 into /mnt/c/Users/hp/qidk_models/r3_edit_C1 -> /mnt/c/Users/hp/AppData/Local/Temp/post_ft_rsn_v3_4b_big/hf (C: free 68516 MB)
+- 2026-11-20 20:22:55 [rsn_ft_export] export: merged 248/248 LoRA modules (scale 2.00) -> /mnt/c/Users/hp/AppData/Local/Temp/post_ft_rsn_v3_4b_big/hf
+- 2026-11-20 20:27:14 [rsn_ft_export] export: bf16 GGUF 8.1G
+- 2026-11-20 20:33:16 [rsn_ft_export] export: DONE /mnt/c/Users/hp/Desktop/qidk/Code/models_stage/rsn_v3_4b_big_q4_0.gguf (2.5G, md5 982fdd35e8e2146bfce0f2b72595d9cc, 16 min)
+- 2026-11-22 07:01:09 [rsn_ft_export] export: /mnt/c/Users/hp/Desktop/qidk/Code/models_stage/rsn_v3_4b_big_q4_0.gguf already made by this chain (md5 982fdd35e8e2146bfce0f2b72595d9cc): skip
+- 2026-11-24 09:08:45 [rsn_ft_export] export: merge /home/hp_srthk4370/smartcity_runs/rsn_full/ckpt_0640 into /mnt/c/Users/hp/qidk_models/r3_edit_C1 -> /mnt/c/Users/hp/AppData/Local/Temp/post_ft_rsn_v3_4b_full/hf (C: free 56385 MB)
+- 2026-11-24 09:13:31 [rsn_ft_export] export: merged 248/248 LoRA modules (scale 2.00) -> /mnt/c/Users/hp/AppData/Local/Temp/post_ft_rsn_v3_4b_full/hf
+- 2026-11-24 09:19:46 [rsn_ft_export] export: bf16 GGUF 8.1G
+- 2026-11-24 09:24:36 [rsn_ft_export] export: DONE /mnt/c/Users/hp/Desktop/qidk/Code/models_stage/rsn_v3_4b_full_q4_0.gguf (2.5G, md5 4c17c1d83d05d991827606c5d535b5a9, 15 min)
+- 2026-11-25 13:48:59 [rsn_ft_export] export: merge /home/hp_srthk4370/smartcity_runs/rsn_fix/ckpt_best_0060 into /mnt/c/Users/hp/qidk_models/r3_edit_C1 -> /mnt/c/Users/hp/AppData/Local/Temp/post_ft_rsn_v3_4b_full/hf (C: free 46549 MB)
+- 2026-11-25 13:54:07 [rsn_ft_export] export: merged 248/248 LoRA modules (scale 2.00) -> /mnt/c/Users/hp/AppData/Local/Temp/post_ft_rsn_v3_4b_full/hf
+- 2026-11-25 14:00:29 [rsn_ft_export] export: bf16 GGUF 8.1G
+- 2026-11-25 14:06:42 [rsn_ft_export] export: DONE /mnt/c/Users/hp/Desktop/qidk/Code/models_stage/rsn_v3_4b_full_q4_0.gguf (2.5G, md5 659e506f910f9cf8d04925d9bdf57b55, 17 min)
+- 2026-11-25 18:52:43 [rsn_ft_export] export: waiting before merge: C: free 40160 MB (need 41250), Windows avail 1751 MB (need 1000), WSL avail 4274 MB (need 2500)
+- 2026-11-25 19:50:08 [rsn_ft_export] export: merge /home/hp_srthk4370/smartcity_runs/rsn_rep/ckpt_best_0050 into /mnt/c/Users/hp/qidk_models/r3_edit_C1 -> /mnt/c/Users/hp/AppData/Local/Temp/post_ft_rsn_v3_4b_full/hf (C: free 45101 MB)
+- 2026-11-25 19:55:55 [rsn_ft_export] export: merged 248/248 LoRA modules (scale 2.00) -> /mnt/c/Users/hp/AppData/Local/Temp/post_ft_rsn_v3_4b_full/hf
+- 2026-11-25 20:02:15 [rsn_ft_export] export: bf16 GGUF 8.1G
+- 2026-11-25 20:07:49 [rsn_ft_export] export: DONE /mnt/c/Users/hp/Desktop/qidk/Code/models_stage/rsn_v3_4b_full_q4_0.gguf (2.5G, md5 afdae45267f6ba45bdd0c31a74929bf2, 75 min)

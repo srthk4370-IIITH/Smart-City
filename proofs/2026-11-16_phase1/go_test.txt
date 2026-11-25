@@ -1,0 +1,28 @@
+gofmt -l (new files): 
+go vet: ok
+--- PASS: TestParseValue (0.00s)
+--- PASS: TestCampusBackfillLiveOffline (9.59s)
+--- PASS: TestSiteGroupingAndExport (0.03s)
+--- PASS: TestChatHeaderR3MatchesTraining (0.04s)
+--- PASS: TestChatR3OffIsDeploy32 (0.00s)
+    chat_site_test.go:83: 280 site tool calls on 7 sites: 0 mismatches
+--- PASS: TestSiteToolsParity (0.12s)
+    chat_site_test.go:118: 420 relations, 105 suspect sets: 0 mismatches
+--- PASS: TestSiteRelationAndSuspectParity (0.13s)
+--- PASS: TestChatHeaderR5MatchesTraining (0.01s)
+--- PASS: TestBuildSiteFromAPI (0.02s)
+    features_v2_test.go:112: 275 v2 fixtures map[air_quality:44 hvac:75 occupancy:29 power:39 water:53 weather:35] (tank 37, E9 findings 65, E10 >1 48): 0 prompt mismatches, 0 HVAC rule mismatches
+--- PASS: TestPromptParityV2 (0.07s)
+    features_v3_test.go:89: 20 existing + 96 synthetic cards rendered, 7 broken cards validated: 0 mismatches
+--- PASS: TestCardRenderParity (0.03s)
+--- PASS: TestCardsMatchMetrics (0.00s)
+    features_v3_test.go:221: 275 v2 fixtures -> agt_v3 map[binary_state:29 continuous:171 hvac_unit:75]: 0 conversion mismatches; generic builder 0/275 mismatches
+--- PASS: TestAgentV3ParityFromV2 (0.19s)
+    features_v3_test.go:252: 270 rows map[binary_state:47 continuous:173 count:12 hvac_unit:38] (73 synthetic-card rows): 0 mismatches
+--- PASS: TestAgentV3ParityRows (0.08s)
+--- PASS: TestAgentV3FieldsChecked (0.00s)
+    reasoner_v4_test.go:152: 136 v4 rows (agent data 94, suspect 40, card sensors 30): 0 mismatches
+--- PASS: TestSitePromptParity (0.03s)
+--- PASS: TestReasonerPromptV4OffByDefault (0.00s)
+ok  	edgeagent	10.393s
+ok  	edgeagent	187.540s

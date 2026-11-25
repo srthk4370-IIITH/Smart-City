@@ -20,7 +20,9 @@ func TestProdOffByDefault(t *testing.T) {
 	h := s.routes()
 	for _, p := range []string{"/api/prod/status", "/api/prod/time", "/api/prod/selftest"} {
 		w := httptest.NewRecorder()
-		h.ServeHTTP(w, httptest.NewRequest(http.MethodGet, p, nil))
+		req := httptest.NewRequest(http.MethodGet, p, nil)
+		req.RemoteAddr = "127.0.0.1:40000" // /api/prod/* is a sensitive read: loopback or the read token
+		h.ServeHTTP(w, req)
 		if w.Code != http.StatusNotFound {
 			t.Errorf("%s: %d", p, w.Code)
 		}
@@ -51,7 +53,9 @@ func TestProdAlertThroughPersist(t *testing.T) {
 	}
 	h := s.routes()
 	w := httptest.NewRecorder()
-	h.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/prod/status", nil))
+	preq := httptest.NewRequest(http.MethodGet, "/api/prod/status", nil)
+	preq.RemoteAddr = "127.0.0.1:40000"
+	h.ServeHTTP(w, preq)
 	if w.Code != 200 {
 		t.Fatalf("status %d", w.Code)
 	}
@@ -60,7 +64,9 @@ func TestProdAlertThroughPersist(t *testing.T) {
 	}
 	time.Sleep(10 * time.Millisecond)
 	w = httptest.NewRecorder()
-	h.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/prod/selftest", nil))
+	sreq := httptest.NewRequest(http.MethodGet, "/api/prod/selftest", nil)
+	sreq.RemoteAddr = "127.0.0.1:40000"
+	h.ServeHTTP(w, sreq)
 	if w.Code != 200 {
 		t.Fatalf("selftest %d %s", w.Code, w.Body.String())
 	}

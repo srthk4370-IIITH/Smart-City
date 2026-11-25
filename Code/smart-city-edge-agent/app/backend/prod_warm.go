@@ -131,7 +131,7 @@ func (w *idleWarmer) Check() bool {
 	if next, ok := r.next(); ok { // something queued during the warm-up: run it now, as loop would have
 		r.lastNPU = time.Now()
 		r.mu.Unlock()
-		go r.loop(next)
+		safeGo("analysis loop", func() { r.loop(next) })
 		return true
 	}
 	r.active = false

@@ -36,6 +36,20 @@ const istParts = (e) => new Date((e + 19800) * 1000);
 const hm = (e) => { const d = istParts(e); return pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()); };
 const dhm = (e) => { const d = istParts(e); return pad(d.getUTCDate()) + ' ' + MON[d.getUTCMonth()] + ' ' + hm(e); };
 const nice = (s) => (s == null || s === '' ? '-' : String(s).replace(/_/g, ' '));
+/* ONE time helper (POLISH #24): the operator sees real time with its zone ("22:40 IST"), plus how long ago.
+   Sensor time shows only in Technical details. */
+const ZONE = 'IST';
+const nowS = () => Date.now() / 1000;
+const tAt = (e) => (e ? hm(e) + ' ' + ZONE : '-');
+const tDay = (e) => { if (!e) return '-'; const d = istParts(e), t = istParts(nowS()); return (d.getUTCDate() === t.getUTCDate() && d.getUTCMonth() === t.getUTCMonth() ? '' : pad(d.getUTCDate()) + ' ' + MON[d.getUTCMonth()] + ' ') + tAt(e); };
+const tAgo = (e) => { if (!e) return ''; const s = nowS() - e; return s < -120 ? '' : s < 60 ? 'just now' : dhAgo(s) + ' ago'; };
+const tBoth = (e) => (e ? tDay(e) + (tAgo(e) ? ' (' + tAgo(e) + ')' : '') : '-');
+const realOf = (simT) => { const sn = Math.max(S.simNow || 0, (S.health && S.health.sim_time) || 0, (S.status && S.status.sim_time) || 0); return sn && simT ? nowS() - (sn - simT) : simT; };
+const tipify = (el, text, click) => {
+  if (!el) return; el.classList.add('htip'); el.dataset.tip = text; el.title = text;
+  if (click !== false) el.addEventListener('click', () => { el.classList.add('tip-on'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('tip-on'), 1600); });
+};
+const whyText = (v) => (Array.isArray(v) ? v.map(whyText).filter(Boolean).join('; ') : v && typeof v === 'object' ? (v.text || v.why || v.reason || '') : v ? String(v) : '');
 function fmt(v) {
   if (v == null || typeof v !== 'number' || !isFinite(v)) return '-';
   const a = Math.abs(v);
@@ -63,6 +77,7 @@ function toast(msg, err) {
   setTimeout(() => t.remove(), err ? 6000 : 3000);
 }
 async function api(path, opt) {
+  if (opt && opt.method && opt.method.toUpperCase() !== 'GET') opt = Object.assign({}, opt, { headers: Object.assign({ 'Content-Type': 'application/json', 'X-Requested-With': 'sce' }, opt.headers || {}) });
   const r = await fetch(path, opt);
   if (!r.ok) { const t = await r.text().catch(() => ''); throw new Error((t || r.statusText || 'HTTP ' + r.status).trim()); }
   return (r.headers.get('content-type') || '').includes('json') ? r.json() : r.text();
@@ -144,13 +159,14 @@ function applyTheme(t) {
 }
 function bindTheme() {
   applyTheme(document.documentElement.getAttribute('data-theme') || 'light');
+  tipify($('#theme'), 'Switch light or dark mode');
   $('#theme').onclick = () => {
     const t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
     try { localStorage.setItem('sce-theme', t); } catch (e) { /* private mode */ }
     applyTheme(t);
   };
 }
-/* Engineering view: modes, NPU/model badges, evidence ids, prompts and pipeline steps for evaluators and
+/* Technical view: modes, NPU/model badges, evidence ids, prompts and pipeline steps for evaluators and
    engineers. Off by default so an operator sees plain language; one tap (header or About) shows it all. */
 function applyEng(on) {
   S.eng = !!on;
@@ -164,11 +180,11 @@ function setEng(on) {
   if (S.inc) renderIncDetail();
   if (FS.ref) renderSensorSheet(true);
   if (S.drawer && S.drawer.data) renderDrawer();
-  toast(on ? 'Engineering view on: modes, models and evidence shown' : 'Engineering view off');
+  toast(on ? 'Technical view on: modes, models and evidence shown' : 'Technical view off');
 }
 function bindEng() {
   let on = false; try { on = localStorage.getItem('sce-eng') === '1'; } catch (e) { /* private mode */ }
-  $('#eng').replaceChildren(icon('eng'));
+  $('#eng').replaceChildren(icon('eng')); tipify($('#eng'), 'Technical details on or off');
   $('#eng').onclick = () => setEng(!S.eng);
   const sw = $('#eng-sw'); if (sw) sw.onclick = () => setEng(!S.eng);
   applyEng(on);
@@ -229,7 +245,7 @@ async function refreshStatus() {
 let liveBusy = false;
 async function refreshLive() {
   if (liveBusy) return; liveBusy = true;
-  try { S.live = await api('/api/live'); S.lastLive = Date.now(); indexLive(); renderLive(); renderMapColors(); updateHero(); } catch (e) { /* ignore */ }
+  try { S.live = await api('/api/live'); S.lastLive = Date.now(); indexLive(); renderLive(); renderMapColors(); updateHero(); updateSub(); } catch (e) { /* ignore */ }
   liveBusy = false;
 }
 function indexLive() {
@@ -243,7 +259,7 @@ async function refreshIncidents() {
     // older incidents stay in the store and the archive.
     S.incs = (Array.isArray(l) ? l : []).sort((a, b) => (+b.id.slice(4) || 0) - (+a.id.slice(4) || 0));
     S.lastIncList = Date.now();
-    renderIncList();
+    renderIncList(); renderBanners(); updateHero();
     shiftSummary(); // "Since 14:05: 2 new · 1 got worse · 1 resolved" (once per opening)
     renderHealth(); // tiles count decisions still owed per domain
     if (S.pendingNewest) {
@@ -269,14 +285,47 @@ async function refreshIncDetail(force) {
 function renderStatus() {
   const st = S.status; if (!st) return;
   const rp = st.replay || {};
-  setText($('#c-time'), (st.sim_time_ist || '-').replace(/^\w+ \d+ \w+ \d+ /, '') + ' IST');
-  setAttr($('#c-time'), 'title', 'Sensor time: ' + (st.sim_time_ist || '-'));
-  setText($('#l-sub'), 'Sensor time ' + (st.sim_time_ist || '-') + ' IST');
+  tickClock(); updateSub(); renderBanners();
   if (rp.poll_ms && SN.pollSeg && rp.poll_ms !== SN.pollMs) { SN.pollMs = rp.poll_ms; setSeg(SN.pollSeg, rp.poll_ms); }
   renderMode();
   updateHero();
   setBadge();
   renderAboutModel();
+}
+function renderBanners() {
+  const box = $('#pbanners'); if (!box) return;
+  const hv = S.health || {}, st = S.status || {}, flag = (k) => (hv[k] != null ? hv[k] : st[k]);
+  const items = [];
+  const em = flag('event_mode');
+  if (em === true || (em && typeof em === 'object' && em.active !== false && Object.keys(em).length)) {
+    const d = em && typeof em === 'object' ? [em.building ? 'in ' + em.building : '', em.count ? em.count + ' alarms' : ''].filter(Boolean).join(', ') : '';
+    items.push({ k: 'crit', id: 'event', t: 'Event mode' + (d ? ' (' + d + ')' : '') + ': many alarms at once. One incident per building; critical alerts go out immediately.' });
+  }
+  if (flag('no_alert_channel')) items.push({ k: 'crit', id: 'nochan', t: 'No alert channel is set up: critical alerts will not reach anyone outside this screen.', href: '#about', btn: 'Set up' });
+  if (flag('demo_active') || flag('demo') || flag('demo_mode')) items.push({ k: 'warn', id: 'demo', t: 'Demo mode active: some readings may be injected, not real.' });
+  const dk = hv.disk || st.disk;
+  if (dk && dk.alert) { const pc = dk.used_pct != null ? dk.used_pct : dk.used_percent != null ? dk.used_percent : dk.pct; items.push({ k: 'warn', id: 'disk', t: 'Storage almost full' + (pc != null ? ': ' + Math.round(pc) + '% used' : '') + '.' }); }
+  if (flag('htpd_rules_only')) items.push({ k: 'warn', id: 'rules', t: 'AI paused, rules only' + (flag('htpd_rules_only_min') != null ? ' for ' + Math.round(flag('htpd_rules_only_min')) + ' min' : '') + '.' });
+  const need = openCritIncs().filter((i) => wfOfI(i) === 'needs_decision');
+  need.slice(0, 2).forEach((i) => items.push({ k: 'crit', id: 'c' + i.id, t: 'Critical: ' + plainTitle(i.title) + ' - waiting for someone to take it.', inc: i }));
+  if (need.length > 2) items.push({ k: 'crit', id: 'cmore', t: (need.length - 2) + ' more critical incidents need a decision.', href: '#incidents', btn: 'See all' });
+  const sig = items.map((x) => x.id + x.t).join('|');
+  if (box.dataset.sig === sig) return; box.dataset.sig = sig;
+  fill(box, items.map((x) => h('div', { class: 'pban ' + x.k, role: x.k === 'crit' ? 'alert' : 'status' },
+    h('span', { class: 'pt', text: x.t }),
+    x.inc ? [h('button', { type: 'button', class: 'btn sm', onclick: () => selectIncident(x.inc.id) }, 'Open'),
+      h('button', { type: 'button', class: 'btn sm', onclick: () => wfAct(x.inc, '/ack', {}, 'Recorded: you are on it') }, 'I\'m on it')] : null,
+    x.href ? h('a', { class: 'btn sm', href: x.href }, x.btn) : null)));
+}
+function tickClock() { setText($('#c-time'), tAt(nowS())); setAttr($('#c-time'), 'title', 'Current time (' + ZONE + ')'); }
+function updateSub() {
+  const e = $('#l-sub'); if (!e) return;
+  let newest = 0;
+  if (S.live) for (const r in S.live.roles) for (const s of S.live.roles[r].sensors) if (s.updated > newest) newest = s.updated;
+  const parts = [];
+  if (newest) { parts.push('Latest reading ' + tBoth(newest)); if (nowS() - newest > 900) parts.push('the data is old'); } else parts.push('Waiting for readings');
+  const u = S.lastLive ? (Date.now() - S.lastLive) / 1000 : 0; if (u > 90) parts.push('screen updated ' + dhAgo(u) + ' ago');
+  setText(e, parts.join(' · '));
 }
 // the Incidents tab badge counts decisions waiting (what the operator owes), not every incident ever
 function setBadge() {
@@ -301,6 +350,38 @@ function buildHero() {
     h('div', { class: 'hero-stats' }, stat('sCrit', 'Critical'), stat('sWarn', 'Warnings'), stat('sFault', 'Faults'), stat('sTot', 'Sensors')),
     h('div', { class: 'hero-sys eng-only' }, H.npu, H.model, H.therm, H.run, H.mem)));
 }
+const decisionsWaiting = () => (S.incs || []).filter((i) => (i.workflow ? i.workflow === 'needs_decision' : i.approval === 'pending' && i.state !== 'running')).length;
+const openCritIncs = () => (S.incs || []).filter((i) => i.severity === 'critical' && i.state !== 'running' && wfOfI(i) !== 'closed' && wfOfI(i) !== 'resolved');
+const sensorNote = (s) => {
+  if (!s) return '';
+  if (s.snoozed) return 'Snoozed' + (s.snooze_until ? ' until ' + tAt(s.snooze_until) : '') + (s.snooze_reason ? ' - ' + s.snooze_reason : '');
+  if (s.warming_up) return s.warming_min_left != null ? 'Warming up, ' + Math.max(1, Math.round(s.warming_min_left)) + ' min' : 'Warming up';
+  return '';
+};
+/* ONE honest headline (POLISH #15/#16): the worst true state wins - open critical > warning > data problems >
+   starting up > all clear; decisions waiting are part of it. */
+function headline(crit, warn, fault) {
+  const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+  const doms = S.health && Array.isArray(S.health.domains) ? S.health.domains.filter((d) => !d.context_only) : [];
+  const nDec = decisionsWaiting(), oc = openCritIncs().length;
+  const stale = doms.reduce((n, d) => n + (d.fresh === false && d.headline !== 'insufficient_data' ? (d.stale || []).length : 0), 0);
+  const dq = doms.reduce((n, d) => n + (d.data_quality || []).filter((x) => x.quality && x.quality !== 'good' && x.quality !== 'maintenance').length, 0);
+  const starting = doms.filter((d) => d.headline === 'insufficient_data').length;
+  const warm = S.live ? Array.from(S.sensorMap.values()).filter((s) => s.warming_up).length : 0;
+  const dec = nDec ? plural(nDec, 'decision') + ' waiting' : '';
+  const out = (k, title, sub) => ({ k, title, sub: [sub, dec].filter(Boolean).join(' · ') });
+  if (!S.live) return { k: 'normal', title: 'Checking campus ...', sub: '' };
+  if (crit || oc) return out('critical', 'Action needed', crit ? plural(crit, 'critical reading') + ' right now' : plural(oc, 'critical incident') + ' still open');
+  // 2026-11-20 board: say which flagged sensors are only being watched (the AI opens an incident after
+  // abnormal_of_window of the last persist_readings readings are abnormal), so "3 flagged, 1 incident" is not a mystery
+  const watching = S.live ? Array.from(S.sensorMap.values()).filter((s) => +s.abnormal_in_window > 0 && !s.reported && s.status !== 'normal').length : 0;
+  const s0 = (S.live && S.sensorMap.values().next().value) || {};
+  if (warn) return out('warning', 'A few things to watch', plural(warn, 'reading') + ' above normal' + (watching ? ' · ' + watching + ' being watched (the AI checks when ' + (+s0.abnormal_of_window || 4) + ' of the last ' + (+s0.persist_readings || 8) + ' readings are abnormal)' : ''));
+  if (fault || stale || dq) return out('sensor_fault', 'Some data needs a check', [fault ? plural(fault, 'sensor') + ' faulty or stuck' : '', stale ? plural(stale, 'sensor') + ' not reporting' : '', dq ? plural(dq, 'sensor') + ' with uncertain data' : ''].filter(Boolean).join(', '));
+  if (starting || warm) return out('insufficient_data', 'Starting up', warm ? plural(warm, 'sensor') + ' warming up; no alarms judged yet' : 'Collecting the first readings; no alarms judged yet');
+  if (nDec) return out('normal', 'Nothing urgent', 'Readings are normal');
+  return out('normal', 'All clear', 'Everything is within normal range');
+}
 function updateHero() {
   if (!H.ico) return;
   let crit = 0, warn = 0, fault = 0, tot = 0, worst = 'normal';
@@ -314,11 +395,10 @@ function updateHero() {
       if (s.status === 'critical') crit++; else if (s.status === 'warning') warn++; else if (s.status === 'sensor_fault') fault++;
     }
   }
-  if (crit) worst = 'critical'; else if (warn) worst = 'warning'; else if (fault) worst = 'sensor_fault';
-  const title = !S.live ? 'Checking campus ...' : crit ? 'Action needed' : warn ? 'A few things to watch' : fault ? 'Some sensors need a check' : 'All clear';
-  const sub = !S.live ? '' : crit ? crit + ' critical reading' + (crit === 1 ? '' : 's') + ' right now' : warn ? warn + ' reading' + (warn === 1 ? '' : 's') + ' above normal' : fault ? fault + ' sensor' + (fault === 1 ? ' looks' : 's look') + ' faulty or stuck' : 'Everything is within normal range';
+  const hl = headline(crit, warn, fault); worst = hl.k;
+  const title = hl.title, sub = hl.sub;
   setCls(H.ico, 'hero-ico ' + stClass(worst));
-  const want = worst === 'normal' ? 'shield' : worst === 'critical' ? 'bell' : 'alert';
+  const want = worst === 'normal' ? 'shield' : worst === 'critical' ? 'bell' : worst === 'insufficient_data' ? 'info' : 'alert';
   if (H.ico.dataset.i !== want) { H.ico.dataset.i = want; H.ico.replaceChildren(icon(want)); }
   setText(H.t, title); setText(H.s, sub);
   setText(H.sCrit, crit); setText(H.sWarn, warn); setText(H.sFault, fault); setText(H.sTot, tot);
@@ -347,14 +427,14 @@ function updateHero() {
 /* ----- plain language ----- */
 /* Operator wording (proofs/2026-10-21_ux/UX_RESEARCH.md). Every screen leads with plain words; the
    engineering terms (patterns, evidence ids, modes, NPU, agents) stay available behind "Technical
-   details" or the Engineering view. These maps only translate enums the backend already emits. */
+   details" or the Technical view. These maps only translate enums the backend already emits. */
 const METRIC_NAME = { co2: 'CO2', pm25: 'PM2.5', pm10: 'PM10', temp: 'Temperature', rh: 'Humidity', level: 'Tank level', flow: 'Water flow',
   tds: 'Water TDS', ph: 'Water pH', power_kw: 'Power', pf: 'Power factor', wind: 'Wind speed', occ: 'Occupancy', ac_units_on: 'AC units on',
   room_temp: 'Room temperature', setpoint: 'AC setpoint', ac_on: 'AC running' };
 const metricName = (m) => METRIC_NAME[m] || nice(m);
 // "KH building, level 98, water tank level sensor 00" -> "KH-98 tank"; the full location stays in title / detail
 function placeShort(loc) {
-  const s = String(loc || '');
+  const s = String(loc || '').replace(/\s*\((?:api|API)\)/g, '');
   let m = /^(\w+) substation/i.exec(s);
   if (m) return m[1] + ' substation';
   m = /^(\w+) building(?:, level (\w+))?(?:, (.*))?$/i.exec(s);
@@ -442,7 +522,8 @@ function joinSentences(list) {
 }
 // the reasoner/rule title -> one plain headline ("Tank level falling slowly · KH-98 tank")
 function plainTitle(t) {
-  const s = String(t || '');
+  // no internal sensor refs in titles ("...level 03: S1 warns" -> "...level 03: warning"), 2026-11-20 hands-on
+  const s = String(t || '').replace(/\s*\((?:api|API)\)/g, '').replace(/:\s*S\d+\s+warns/g, ': warning').replace(/(?:S\d+(?:\.E\d+)?)\s*(?:,\s*)?/g, '').replace(/\s{2,}/g, ' ').replace(/\s+([:.,])/g, '$1').trim();
   let m = /^(\d+) sensors (?:alarming|confirmed): (.*)$/.exec(s);
   if (m) return m[1] + ' sensors need attention: ' + m[2];
   m = /^All clear: (\d+) sensors checked/.exec(s);
@@ -508,7 +589,8 @@ function healthModel(d, now) {
   if (d.out_of_service) parts.push(d.out_of_service + ' out of service');
   const counts = d.context_only ? d.context_sensors + ' sensor' + (d.context_sensors === 1 ? '' : 's') + ' shown for context'
     : parts.length ? parts.join(', ') + ' of ' + n + ' sensor' + (n === 1 ? '' : 's') : (n === 1 ? 'Its sensor is normal' : 'All ' + n + ' sensors normal');
-  const tr = d.trend === 'elevated' || d.trend === 'curbed' ? d.trend : 'steady';
+  const realFrom = d.trend_from && d.trend_from !== 'insufficient_data' && d.trend_from !== 'none' && lv !== 'insufficient_data';
+  const tr = (d.trend === 'elevated' || d.trend === 'curbed') && realFrom ? d.trend : 'steady';
   const from = DH_WORD[d.trend_from] || nice(d.trend_from);
   const changed = tr === 'elevated' ? '↑ Got worse (was ' + from + ')' : tr === 'curbed' ? (lv === 'normal' ? '✓ Back to normal (was ' + from + ')' : '↓ Improving (was ' + from + ')') : '';
   const trendText = tr === 'elevated' ? '↑ Elevated from ' + from : tr === 'curbed' ? '↓ Curbed from ' + from : 'Steady';
@@ -536,7 +618,7 @@ function healthModel(d, now) {
   const fromAI = abnormal && (d.steps || []).some((s) => s.source !== 'playbook');
   const src = !steps.length ? '' : fromAI ? 'Suggested by the AI analysis. You decide; nothing is switched automatically.' : 'Standard playbook steps (no AI recommendation yet).';
   const ago = dhAgo(now - d.since);
-  const since = d.since ? 'since ' + hm(d.since) + ' (' + ago + ')' : '';
+  const since = d.since ? 'since ' + tAt(realOf(d.since)) + ' (' + ago + ')' : '';
   const todo = steps[0] || '';
   const aria = [title + ': ' + word + (hint ? ', ' + hint : ''), changed.replace(/^[↑↓✓] /, ''), since, counts, data, ai,
     incs.length ? incs.length + ' open incident' + (incs.length === 1 ? '' : 's') + (wfSum ? ': ' + wfSum : '') : '', qual ? 'Sensor data: ' + qual : '', todo ? 'Do now: ' + todo : '', 'Open details'].filter(Boolean).join('. ');
@@ -595,7 +677,8 @@ function renderHealth() {
   });
   if (said.length) setText($('#dh-live'), said.join('. '));
   const bad = ms.filter((m) => m.abnormal);
-  setText($('#dh-sub'), !bad.length ? 'All ' + ms.length + ' areas normal'
+  const nStart = ms.filter((m) => m.lv === 'insufficient_data').length, nData = ms.filter((m) => m.lv !== 'insufficient_data' && (m.data || m.qual)).length, ocN = openCritIncs().length;
+  setText($('#dh-sub'), !bad.length ? (ocN ? 'Live readings are normal, but ' + ocN + ' critical incident' + (ocN === 1 ? ' is' : 's are') + ' still open' : nStart ? nStart + ' of ' + ms.length + ' areas still starting up' : nData ? nData + ' of ' + ms.length + ' areas have data problems' : 'All ' + ms.length + ' areas normal')
     : bad.length + ' of ' + ms.length + ' areas ' + (bad.length === 1 ? 'needs' : 'need') + ' attention: ' + bad.map((m) => m.title + ' (' + m.word.toLowerCase() + ')').join(', '));
   setCls($('#dh-sub'), 'dh-sum0' + (bad.length ? ' ' + bad[0].cls + ' bad' : ''));
   renderHealthConn();
@@ -652,7 +735,7 @@ function renderDomainSheet() {
     h('span', { class: 'ds-g', 'aria-hidden': 'true', text: STATUS_GLYPH[s.status] || '○' }),
     h('span', { class: 'ds-n' }, h('b', { text: metricName(s.metric) }), h('span', { text: placeShort(s.location) })),
     h('span', { class: 'ds-v', text: s.metric === 'occ' ? (s.last ? 'Occupied' : 'Vacant') : s.metric === 'ac_on' ? (s.last >= 0.5 ? 'On' : 'Off') : fmt(s.last) + (s.unit && s.unit !== '0/1' ? ' ' + s.unit : '') }),
-    s.quality === 'maintenance' ? h('span', { class: 'ds-s', text: '⊘ Out of service' }) : h('span', { class: 'ds-s', text: STATUS_LABEL[s.status] || nice(s.status) }),
+    s.quality === 'maintenance' ? h('span', { class: 'ds-s', text: '⊘ Out of service' }) : h('span', { class: 'ds-s', text: sensorNote(s) || STATUS_LABEL[s.status] || nice(s.status) }),
     s.quality !== 'maintenance' ? qualityChip(s) : null);
   const staleNames = (d.stale || []).map((k) => { const [node, metric] = k.split(' '); const s = live.find((x) => x.node === node && x.metric === metric); return s ? sensorLabel(metric, s.location) : k; });
   const kv = (rows) => h('dl', { class: 'kv' }, rows.map(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })]));
@@ -678,21 +761,21 @@ function renderDomainSheet() {
     older.length ? h('section', { class: 'op-sec' }, h('h3', { text: 'Earlier, still awaiting your decision (' + older.length + ')' }),
       h('div', { class: 'ds-incs' }, older.slice(0, 5).map((i) => h('button', { type: 'button', class: 'ds-inc sev-' + (SEV_LABEL[i.severity] ? (i.severity === 'info' ? 'normal' : i.severity) : 'pending'), onclick: () => openIncidentFromHealth(i.id),
         'aria-label': 'Open incident ' + i.id + ': ' + plainTitle(i.title) },
-        h('b', { text: plainTitle(i.title) }), h('span', { text: i.id + ' · ' + (SEV_LABEL[i.severity] || nice(i.severity)) + ' · ' + (i.created_sim_ist || '') })))),
+        h('b', { text: plainTitle(i.title) }), h('span', { text: i.id + ' · ' + (SEV_LABEL[i.severity] || nice(i.severity)) + ' · ' + (i.created_unix ? tDay(i.created_unix) : (i.created_sim_ist || '')) })))),
       older.length > 5 ? h('a', { class: 'dh-dec', href: '#incidents', onclick: () => closeSheet('dsheet'), text: 'All ' + older.length + ' in Incidents ›' }) : null) : null,
     h('section', { class: 'op-sec' }, h('h3', { text: 'Sensors (' + live.length + ')' }),
       live.length ? h('div', { class: 'ds-list' }, sorted.map(sensRow)) : h('p', { class: 'op-note', text: 'Loading sensors ...' }),
       h('p', { class: 'op-note', text: 'Tap a sensor for its chart.' })),
     h('details', { class: 'tech eng-open' }, h('summary', { text: 'Technical details' }),
       h('div', { class: 'tech-bd' }, kv([['Headline', d.headline], ['Process status', d.status + (d.raised_by_ai ? ' (raised by AI review)' : '')], ['Live status', d.live_status],
-        ['Trend', m.trendText], ['Since (sensor time)', d.since ? dhm(d.since) + ' IST' : '-'], ['Counts', JSON.stringify(d.counts || {})],
+        ['Trend', m.trendText], ['Since (sensor time)', d.since ? dhm(d.since) + ' IST' : '-'], ['Restarts in 7 days', S.health && S.health.restarts_7d != null ? String(S.health.restarts_7d) : '-'], ['Store write errors', S.health && S.health.store_write_errors != null ? String(S.health.store_write_errors) : '-'], ['Panics recovered', S.health && S.health.panics_recovered != null ? String(S.health.panics_recovered) : '-'], ['Counts', JSON.stringify(d.counts || {})],
         ['Judged / context sensors', d.sensors + ' / ' + d.context_sensors], ['Fresh', d.fresh ? 'yes' : 'no' + (d.stale ? ' (' + d.stale.join(', ') + ')' : '')],
         ['Step sources', (d.steps || []).map((s) => (DH_SRC[s.source] || s.source) + (s.action ? ' ' + s.action : '') + (s.incident ? ' ' + s.incident : '')).join('; ') || '-']]))));
   if (S.eng) $$('details.eng-open', bd).forEach((x) => { x.open = true; });
   bd.scrollTop = sc;
 }
 async function refreshHealth() {
-  try { S.health = await api('/api/health'); S.lastHealth = Date.now(); renderHealth(); updateHero(); } catch (e) { /* offline */ }
+  try { S.health = await api('/api/health'); S.lastHealth = Date.now(); renderHealth(); updateHero(); renderBanners(); } catch (e) { /* offline */ }
 }
 function refreshHealthSoon() { clearTimeout(DH.t); DH.t = setTimeout(refreshHealth, 400); }
 // A refinement moved an incident's severity: a toast that opens it when raised, a quiet note when lowered.
@@ -826,7 +909,7 @@ function updateTile(t, s) {
   const pat = s.pattern && s.pattern !== '-' ? s.pattern : null;
   t.pat.style.display = pat ? '' : 'none';
   if (pat && t.pat.dataset.p !== pat) { t.pat.dataset.p = pat; t.pat.innerHTML = patIcon(pat) + esc(patternPlain(pat)); }
-  setText(t.cause, isGrey(s.status) ? (s.status === 'insufficient_data' ? 'Starting up: waiting for enough readings' : 'No data yet') : causePlain(s.likely_cause));
+  setText(t.cause, sensorNote(s) || (isGrey(s.status) ? (s.status === 'insufficient_data' ? 'Starting up: waiting for enough readings' : 'No data yet') : causePlain(s.likely_cause)));
 }
 
 /* sparklines: visible rows only, one row at most every 10 s, two requests at a time */
@@ -1065,11 +1148,13 @@ function renderDrawer() {
       try { S.pendingNewest = new Set(S.incs.map((i) => i.id)); const r = await post('/api/analyze', { node: d.node, metric: d.metric }); toast(r && r.queued_ahead ? 'Queued: ' + r.queued_ahead + ' analysis ahead on the NPU' : 'AI agents are on it (mode ' + (S.status ? S.status.mode : '?') + ')'); setTimeout(refreshIncidents, 500); setTimeout(refreshIncidents, 1500); }
       catch (e) { S.pendingNewest = null; toast('Analyse: ' + e.message, true); btn.disabled = false; }
     } }, icon('multi'), 'Ask the AI to check this sensor');
+  if (!canAnalyze) btn.title = s.role === 'hvac' ? 'Disabled: HVAC nodes are context only and have no AI window' : 'Disabled: not enough history for this sensor yet';
   const body = [
     h('div', { class: 'rep-h', style: 'margin-bottom:10px' }, live.quality === 'maintenance' ? h('span', { class: 'pill st-none', text: '⊘ Out of service' }) : live.status ? pill(live.status) : null,
       live.quality !== 'maintenance' ? qualityBtn(live, 'drawer:' + d.node + ':' + d.metric) : null),
     h('div', { class: 'sheet-big' }, occ ? (live.last ? 'Occupied' : 'Vacant') : fmt(live.last) + ' ' + (s.unit || '')),
     h('p', { class: 'muted', style: 'margin:2px 0 14px', text: live.location || d.node }),
+    sensorNote(live) ? h('p', { class: 'snz', text: sensorNote(live) }) : null,
     chart,
     h('div', { class: 'card', style: 'margin-top:14px' }, kv),
     maintSec(d, live),
@@ -1079,7 +1164,7 @@ function renderDrawer() {
         h('div', { class: 'rep-h', style: 'margin-bottom:8px' }, pill(rf.status), h('span', { class: 'chip', html: patIcon(rf.pattern) + esc(patternPlain(rf.pattern)) })),
         h('dl', { class: 'kv' },
           h('dt', { text: 'Likely cause' }), h('dd', { text: causePlain(rf.likely_cause) }),
-          h('dt', { text: 'Confidence' }), h('dd', { text: confWord(rf.confidence).w + (S.eng ? ' (' + pct(rf.confidence) + ')' : '') }),
+          S.eng ? [h('dt', { text: 'Confidence' }), h('dd', { text: confWord(rf.confidence).w + ' (' + pct(rf.confidence) + ') - rules only' })] : null,
           h('dt', { text: 'Suggested action' }), h('dd', { text: actionText(rf.action) })),
         h('ul', { class: 'obs' }, (rf.observations || []).map((o) => h('li', {}, S.eng ? evChipsInText(o, win.evidence) : stripRefs(o)))))
         : h('div', { class: 'muted', text: s.role === 'hvac' ? 'HVAC nodes are context only: no agent window.' : 'Not enough history yet for this sensor.' })),
@@ -1203,7 +1288,7 @@ function renderIncList() {
         // Seeded from S.cardStream because the card is rebuilt whenever the incident JSON changes.
         running ? h('pre', { class: 'cstream', 'data-cs': i.id, text: S.cardStream[i.id] || '' }) : null,
         h('div', { class: 'foot' },
-          h('span', { text: i.id + (doms ? ' · ' + doms : '') + ' · ' + (i.created_sim_ist || '-') }),
+          h('span', { text: (i.watermark ? 'Demo · ' : '') + i.id + (doms ? ' · ' + doms : '') + ' · ' + (i.created_unix ? tDay(i.created_unix) : (i.created_sim_ist || '-')) }),
           h('span', { class: 'eng-only', text: i.npu_calls + ' NPU call' + (i.npu_calls === 1 ? '' : 's') + (running ? '' : ' · ' + (i.total_ms / 1000).toFixed(1) + ' s') }),
           wfChip(i)),
         (i.steps_total && wf !== 'closed') || etaEl(i) ? h('div', { class: 'foot2' },
@@ -1495,28 +1580,35 @@ let footNoteOpen = null; // incident id whose note is expanded (survives footer 
 function toggleFootNote(e) { const n = e.currentTarget, on = !n.classList.contains('open'); n.classList.toggle('open', on); n.setAttribute('aria-expanded', String(on)); footNoteOpen = on ? n.dataset.id : null; }
 function renderIncFoot(inc, force) {
   const f = $('#inc-foot'), wf = wfOfI(inc), ff = S.footForm && S.footForm.id === inc.id ? S.footForm : null;
-  const sig = [inc.id, inc.approval, inc.state, wf, inc.owner, inc.suggest_outcome, inc.outcome, ff ? ff.kind + ff.outcome : '', opName(), prelimOpen(inc)].join('|');
+  const sig = [inc.undo_until > nowS() ? 'u' : '', inc.dismiss_unconfirmed ? 'd' : '', ff && ff.confirm ? 'c' : '', inc.id, inc.approval, inc.state, wf, inc.owner, inc.suggest_outcome, inc.outcome, ff ? ff.kind + ff.outcome : '', opName(), prelimOpen(inc)].join('|');
   if (!force && f.dataset.sig === sig) return; f.dataset.sig = sig;
   if (wf === 'closed') {
     const by = inc.closed_by === 'system' ? 'automatically' : inc.closed_by ? 'by ' + inc.closed_by : '';
     const note = (inc.outcome ? (OUTCOME_TEXT[inc.outcome] || nice(inc.outcome)) : 'Decision recorded') + (by ? ' · ' + by : '') + (inc.closed_at ? ' · ' + dclock(inc.closed_at) : '') +
       ((inc.outcome_note || inc.approval_note) && (inc.outcome_note || inc.approval_note) !== 'auto' ? ' · Note: ' + (inc.outcome_note || inc.approval_note) : '') + '. Nothing was switched automatically.';
-    f.replaceChildren(h('div', { class: 'foot-row' }, h('span', { class: 'pill ghost', text: '◻ CLOSED' }), h('span', { class: 'muted foot-note' + (footNoteOpen === inc.id ? ' open' : ''), 'data-id': inc.id, role: 'button', tabindex: '0', 'aria-expanded': String(footNoteOpen === inc.id), title: 'Tap to show the whole note', text: note, onclick: toggleFootNote, onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleFootNote(e); } } })));
+    const canUndo = (inc.undo_until || 0) > nowS(), unconf = !!inc.dismiss_unconfirmed;
+    if (ff && ff.kind === 'reopen') { f.replaceChildren(reopenForm(inc)); return; }
+    f.replaceChildren(h('div', { class: 'foot-row' }, h('span', { class: 'pill ghost', text: '◻ CLOSED' }), unconf ? h('span', { class: 'pill st-warning', text: 'Dismissed by one person - needs a second check' }) : null, h('span', { class: 'muted foot-note' + (footNoteOpen === inc.id ? ' open' : ''), 'data-id': inc.id, role: 'button', tabindex: '0', 'aria-expanded': String(footNoteOpen === inc.id), title: 'Tap to show the whole note', text: note, onclick: toggleFootNote, onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleFootNote(e); } } })),
+      h('div', { class: 'foot-row', style: 'margin-top:8px' },
+        canUndo ? h('button', { type: 'button', class: 'btn', onclick: () => undoDecision(inc) }, 'Undo' + (inc.undo_kind ? ' ' + nice(inc.undo_kind) : '') + ' (' + Math.max(1, Math.ceil((inc.undo_until - nowS()) / 60)) + ' min left)') : null,
+        unconf ? h('button', { type: 'button', class: 'btn primary', onclick: () => wfAct(inc, '/confirm_dismiss', {}, 'Dismissal confirmed') }, 'Confirm the dismissal') : null,
+        h('button', { type: 'button', class: 'btn', onclick: () => openFootForm(inc, 'reopen') }, 'Reopen')));
     return;
   }
   if (ff) { f.replaceChildren(footForm(inc)); return; }
   const pre = prelimOpen(inc), busy = inc.state === 'running'; // preliminary shown: act now, the AI report merges in
   const running = wf === 'analysing' && !pre, failed = wf === 'interrupted', owned = wf === 'in_progress' || (wf === 'resolved' && inc.owner);
-  const hint = running ? 'Waiting for the analysis to finish ...' : pre && !owned ? 'Preliminary report: you can take this and tick steps now. The AI report will update the list; your ticks stay.' : failed ? 'No report: re-run this incident (Technical details), or dismiss it with a note.'
+  const hint = running ? 'Dismiss and Close wait until the analysis has finished. You can already say "I\'m on it".' : pre && !owned ? 'Preliminary report: you can take this and tick steps now. The AI report will update the list; your ticks stay.' : failed ? 'The analysis was interrupted and there is no report. Tap Retry, or dismiss it with a note.'
     : owned ? (inc.owner ? inc.owner + ' is on it' + (inc.acked_at ? ' since ' + dclock(inc.acked_at) : '') + '. ' : '') + 'Tick the steps above, then close it with how it ended.'
       : 'I\'m on it = you take this and work through the steps. Dismiss = not needed (note required). Nothing switches automatically.';
   const me = opName();
   fill(f, h('p', { class: 'foot-hint', text: hint }),
     h('div', { class: 'foot-row' },
-      h('button', { class: 'btn danger', type: 'button', disabled: running || busy ? true : null, text: 'Dismiss…', onclick: () => openFootForm(inc, 'dismiss') }),
+      h('button', { class: 'btn danger', type: 'button', disabled: running || busy ? true : null, title: running || busy ? 'Disabled: the analysis is still running' : null, text: 'Dismiss…', onclick: () => openFootForm(inc, 'dismiss') }),
+      failed ? h('button', { class: 'btn', type: 'button', onclick: () => retryIncident(inc) }, 'Retry') : null,
       owned || wf === 'resolved'
-        ? h('button', { class: 'btn primary', type: 'button', disabled: busy ? true : null, title: busy ? 'Close once the AI report is in' : null, text: 'Close…', onclick: () => openFootForm(inc, 'close') })
-        : h('button', { class: 'btn primary', type: 'button', disabled: running || failed ? true : null, onclick: () => wfAct(inc, '/ack', {}, 'Recorded: you are on it') },
+        ? h('button', { class: 'btn primary', type: 'button', disabled: busy ? true : null, title: busy ? 'Disabled: close once the AI report is in' : null, text: 'Close…', onclick: () => openFootForm(inc, 'close') })
+        : h('button', { class: 'btn primary', type: 'button', onclick: () => wfAct(inc, '/ack', {}, 'Recorded: you are on it') },
           'I\'m on it' + (me ? ' (' + me + ')' : ''))),
     owned && inc.owner && me && inc.owner !== me && !running ? h('button', { type: 'button', class: 'btn sm plain', onclick: () => wfAct(inc, '/ack', {}, 'You took this over') }, 'Take over as ' + me) : null);
 }
@@ -1624,7 +1716,7 @@ function renderSensorSheet(force) {
   if (p) {
     const cw = confWord(p.confidence);
     sec.append(h('div', { class: 'rep-h', style: 'margin-top:8px' }, pill(p.status), patChip(p)), earlyNote(inc, s, p) || '',
-      kv([['Likely cause', causePlain(p.likely_cause)], ['Confidence', cw.w + (S.eng ? ' (' + pct(p.confidence) + ')' : '')], ['Suggested action', actionText(p.action)]]
+      kv([['Likely cause', causePlain(p.likely_cause)], ['Confidence', ctxA ? 'Rules only - no AI yet' : cw.w + (S.eng ? ' (' + pct(p.confidence) + ')' : '')], ['Suggested action', actionText(p.action)]]
         // agt_v3 fields (Phase 1): data quality, the card rule behind the severity, cited evidence ids
         .concat(p.data_quality ? [['Data quality', p.data_quality.verdict + (p.data_quality.why ? ' - ' + p.data_quality.why : '') + (S.eng && (p.data_quality.src || []).length ? ' [' + p.data_quality.src.join(',') + ']' : '')]] : [])
         .concat(p.severity_reason ? [['Why this severity', p.severity_reason]] : [])
@@ -1838,7 +1930,8 @@ function opSummary(inc, main, flagged) {
   const causes = [];
   for (const sr of flagged) { const v = sensorVerdict(inc, sr), f = v.f || sr.rule_finding; if (f && f.likely_cause && !/^normal|sensor_fault$/.test(f.likely_cause) && !causes.includes(causePlain(f.likely_cause))) causes.push(causePlain(f.likely_cause)); }
   out.push(h('section', { class: 'op-sec' }, h('h3', { text: 'Why it matters' }),
-    h('p', { text: (r && LABEL_IMPACT[r.label]) || DOMAIN_IMPACT[role] || 'A person should take a look.' }),
+    // a warning/critical never reads "nothing abnormal ... dismiss it" (2026-11-19 hands-on: critical pH 11.25 did)
+    h('p', { text: (r && LABEL_IMPACT[r.label] && !(r.label === 'normal_operation' && /^(warning|critical)$/.test(inc.severity)) && LABEL_IMPACT[r.label]) || DOMAIN_IMPACT[role] || 'A person should take a look.' }),
     causes.length ? h('p', { class: 'op-more', text: 'Likely cause: ' + causes.slice(0, 2).join('; ') + '.' }) : null));
   // what to do: the recommended action, then the domain playbook (de-duplicated)
   const steps = [];
@@ -1851,7 +1944,10 @@ function opSummary(inc, main, flagged) {
     steps.length && (sev > 0 || (r && r.action && r.action !== 'none')) ? h('ol', { class: 'op-steps' }, steps.map((t) => h('li', { text: t })))
       : h('p', { text: 'Nothing to do on site. Dismiss it with a short note if you agree.' })));
   // how sure (a word; the number one tap away)
-  if (r && typeof r.confidence === 'number') {
+  if (main && main.src === 'rules') {
+    out.push(h('section', { class: 'op-sec op-row' }, h('h3', { text: 'How sure the AI is' }), h('span', { class: 'op-note', text: 'Rules only - no AI yet' }),
+      h('p', { class: 'op-note', text: 'This result comes from the automatic rules. The AI has not confirmed it.' })));
+  } else if (r && typeof r.confidence === 'number') {
     out.push(h('section', { class: 'op-sec op-row' }, h('h3', { text: 'How sure the AI is' }), confButton(inc, r.confidence),
       h('p', { class: 'op-note', text: main.src === 'rules' ? 'From the automatic rules (no AI).' : 'Based on ' + flagged.length + ' flagged sensor' + (flagged.length === 1 ? '' : 's') + ' and the related ones it checked. The evidence is under Technical details.' })));
   }
@@ -1888,9 +1984,11 @@ function renderIncDetail() {
   parts.push(h('div', { class: 'op-head' },
     h('div', { class: 'rep-h', style: 'margin-bottom:8px' }, sevTag(inc),
       wfChip(inc),
-      stageTag(inc), running ? h('span', { class: 'livepill', text: 'LIVE' }) : null, multiFlag(inc)),
+      stageTag(inc), running ? h('span', { class: 'livepill', text: 'LIVE' }) : null, multiFlag(inc), inc.watermark ? h('span', { class: 'pill st-none', text: 'Demo' }) : null,
+      inc.dismiss_unconfirmed ? h('span', { class: 'pill st-warning', text: 'Dismissed by one person - needs a second check' }) : null),
     h('h1', { class: 'inc-title', text: plainTitle(inc.title), title: inc.title }),
-    h('p', { class: 'op-meta', text: (doms.join(', ') || 'Campus') + ' · detected ' + (inc.created_sim ? dhm(inc.created_sim) : '-') + ' (sensor time)' }),
+    whyText(inc.severity_why) ? h('p', { class: 'why-sev', text: 'Why the severity changed: ' + whyText(inc.severity_why) }) : null,
+    h('p', { class: 'op-meta', text: (doms.join(', ') || 'Campus') + ' · detected ' + tBoth(inc.created_unix || realOf(inc.created_sim)) }),
     wfOfI(inc) !== 'closed' && etaEl(inc) ? h('p', { class: 'op-meta' }, etaEl(inc)) : null));
   const bn = wfBanner(inc); if (bn) parts.push(bn);
   // 2. while the AI works: the progress steps (plain), its live text is under Technical details (open)
@@ -1910,7 +2008,7 @@ function renderIncDetail() {
     h('p', { class: 'op-note', text: 'Tap a sensor for its chart and what the AI found.' })));
   if (!running) { const hs = historySec(inc); if (hs) parts.push(hs); const tl = evTimeline(inc); if (tl) parts.push(tl); }
   if (!running) { const rf = refiningCard(inc); if (rf) parts.push(rf); }
-  // 5. Technical details: the full engineering record (open while the AI works, or in Engineering view)
+  // 5. Technical details: the full engineering record (open while the AI works, or in Technical view)
   const tech = [];
   tech.push(h('dl', { class: 'kv tech-kv' },
     h('dt', { text: 'Incident' }), h('dd', { text: inc.id + ' · Mode ' + inc.mode + ' (' + ['Rules', 'Single model', 'Multi-agent'][inc.mode - 1] + ')' }),
@@ -1998,8 +2096,8 @@ const EV_TEXT = { created: 'Alert raised', analysed: 'Report ready', interrupted
   recheck_resolved: 'Re-check: back to normal', recheck_after_close: 'Re-check after closing', resolved: 'Back to normal', abnormal_again: 'Abnormal again',
   reminder: 'Reminder: still needs a decision', closed: 'Closed', dismissed: 'Dismissed', auto_closed: 'Closed automatically' };
 const wfOfI = (i) => i.workflow || (i.state === 'running' ? 'analysing' : i.state === 'failed' ? 'interrupted' : i.approval === 'approved' ? 'in_progress' : i.approval === 'dismissed' ? 'closed' : 'needs_decision');
-const clock = (u) => { if (!u) return ''; const d = new Date(u * 1000); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
-const dclock = (u) => { if (!u) return ''; const d = new Date(u * 1000), t = new Date(); return (d.toDateString() === t.toDateString() ? '' : pad(d.getDate()) + ' ' + MON[d.getMonth()] + ' ') + clock(u); };
+const clock = (u) => (u ? tAt(u) : '');
+const dclock = (u) => (u ? tDay(u) : '');
 function wfChip(i) {
   const w = wfOfI(i), m = WF_WORD[w] || { g: '○', w: nice(w) };
   const extra = (w === 'in_progress' || w === 'resolved') && i.owner ? ' · ' + i.owner : w === 'closed' && i.outcome ? ' · ' + (OUTCOME_TEXT[i.outcome] || nice(i.outcome)) : '';
@@ -2025,6 +2123,7 @@ function renderOpBtn() {
   const b = $('#op'); if (!b) return;
   fill(b, icon('occupancy', 18), h('span', { class: 'op-n', text: OP.cur || 'Who?' }));
   setAttr(b, 'aria-label', OP.cur ? 'Operator: ' + OP.cur + '. Change' : 'Choose who is using this device');
+  if (!b.dataset.tip) tipify(b, 'Who is using this device?'); else b.dataset.tip = OP.cur ? 'Using: ' + OP.cur + ' (tap to change)' : 'Who is using this device?';
 }
 function withOperator(fn) {
   const n = opName();
@@ -2084,7 +2183,7 @@ async function wfAct(inc, path, body, okMsg) {
       await Promise.all([refreshIncidents(), refreshIncDetail(true)]);
       refreshHealthSoon();
       return r || true;
-    } catch (e) { toast(e.message, true); return false; }
+    } catch (e) { if (/confirm_required:/.test(e.message)) return { confirm: e.message.replace(/^[\s\S]*?confirm_required:\s*/, '').trim() || 'Nobody has confirmed this yet.' }; toast(e.message, true); return false; }
   });
 }
 
@@ -2156,7 +2255,7 @@ function wfBanner(inc) {
       h('span', { text: 'Got worse since ' + inc.owner + ' acknowledged it (' + (lastWorse.detail || 're-check') + '). Please look again and acknowledge.' }));
   }
   if (wf === 'resolved') {
-    const since = inc.resolved_sim ? hm(inc.resolved_sim) + ' sensor time' : clock(inc.resolved_at);
+    const since = inc.resolved_sim ? tAt(realOf(inc.resolved_sim)) : clock(inc.resolved_at);
     return h('div', { class: 'banner wfb ok', role: 'status' }, h('span', { 'aria-hidden': 'true', text: '✓' }),
       h('span', { text: 'Back to normal since ' + since + (inc.owner ? '' : ', not yet reviewed') + '. Close it' + (inc.suggest_outcome ? ' as “' + (OUTCOME_TEXT[inc.suggest_outcome] || nice(inc.suggest_outcome)) + '”' : '') + '?' }),
       h('button', { type: 'button', class: 'btn sm primary', onclick: () => openFootForm(inc, 'close') }, 'Close…'));
@@ -2195,7 +2294,7 @@ function historySec(inc) {
   const secs = (d.sensors || []).map((sh) => {
     const items = (sh.incidents || []).map((x) => h('li', { class: 'hs-i' },
       h('button', { type: 'button', class: 'hs-open', onclick: () => selectIncident(x.id), 'aria-label': 'Open ' + x.id + ': ' + plainTitle(x.title) },
-        h('b', { text: x.id }), ' · ' + (x.created_wall || '').slice(5, 16) + ' · ' + (SEV_LABEL[x.severity] || nice(x.severity))),
+        h('b', { text: x.id }), ' · ' + (x.created_unix ? tDay(x.created_unix) : (x.created_wall || '').slice(5, 16)) + ' · ' + (SEV_LABEL[x.severity] || nice(x.severity))),
       h('div', { class: 'hs-o', text: (WF_WORD[x.workflow] || { w: nice(x.workflow) }).w + (x.outcome ? ': ' + (OUTCOME_TEXT[x.outcome] || nice(x.outcome)) : '') +
         (x.closed_by ? ' · ' + (x.closed_by === 'system' ? 'automatically' : 'by ' + x.closed_by) : x.owner ? ' · ' + x.owner : '') + (x.outcome_note && x.outcome_note !== 'auto' ? ' · “' + x.outcome_note + '”' : '') + (x.legacy_decision ? ' (before checklists)' : '') }),
       (x.steps || []).length ? h('ul', { class: 'hs-steps' }, x.steps.map((s) => h('li', { text: (STEP_GLYPH[s.state] || '') + ' ' + s.text + (s.by ? ' (' + s.by + ')' : '') + (s.note ? ': “' + s.note + '”' : '') }))) : null,
@@ -2208,6 +2307,33 @@ function historySec(inc) {
 }
 
 /* ----- footer: I'm on it / Dismiss / Close with an outcome ----- */
+async function undoDecision(inc) {
+  const ok = await wfAct(inc, '/undo', {}, 'Undone' + (inc.undo_kind ? ': ' + nice(inc.undo_kind) : ''));
+  if (ok) S.footForm = null;
+}
+function undoToast(inc, msg) {
+  const t = h('div', { class: 'toast act', role: 'status' }, h('span', { class: 'tmsg', text: msg }),
+    h('button', { type: 'button', text: 'Undo', onclick: () => { t.remove(); undoDecision(inc); } }));
+  const box = $('#toasts'); while (box.children.length >= 2) box.firstElementChild.remove();
+  box.append(t); setTimeout(() => t.remove(), 10000);
+}
+function reopenForm(inc) {
+  const dk = 'reopen:' + inc.id;
+  const ta = h('input', { class: 'note-in', type: 'text', maxlength: '500', 'data-k': dk, placeholder: 'Why reopen? (needed)', 'aria-label': 'Reason for reopening (needed)', oninput: (e) => { S.draft[dk] = e.target.value; ta.classList.remove('need'); } });
+  ta.value = S.draft[dk] || '';
+  const go = async () => {
+    const reason = ta.value.trim(); if (!reason) { ta.classList.add('need'); ta.focus(); toast('Add a reason to reopen', true); return; }
+    const ok = await wfAct(inc, '/reopen', { note: reason }, 'Reopened ' + inc.id);
+    if (ok) { S.footForm = null; delete S.draft[dk]; renderIncFoot(S.inc || inc, true); }
+  };
+  return h('div', { class: 'ffm' }, h('p', { class: 'foot-hint', text: 'Reopen this incident: the reason is recorded.' }), ta,
+    h('div', { class: 'foot-row', style: 'margin-top:10px' }, h('button', { type: 'button', class: 'btn', onclick: () => { S.footForm = null; renderIncFoot(inc, true); } }, 'Cancel'),
+      h('button', { type: 'button', class: 'btn primary', onclick: go }, 'Reopen')));
+}
+async function retryIncident(inc) {
+  try { S.pendingNewest = new Set(S.incs.map((i) => i.id)); await post('/api/incidents/' + inc.id + '/rerun?mode=' + (inc.mode || 3)); toast('Retrying the analysis ...'); setTimeout(refreshIncidents, 400); setTimeout(refreshIncidents, 1500); }
+  catch (e) { S.pendingNewest = null; toast('Retry: ' + e.message, true); }
+}
 function openFootForm(inc, kind) { S.footForm = { id: inc.id, kind, outcome: kind === 'dismiss' ? 'no_action_needed' : (inc.suggest_outcome || '') }; renderIncFoot(inc, true); const n = $('#inc-foot .note-in'); if (n && kind === 'dismiss') n.focus(); }
 function footForm(inc) {
   const ff = S.footForm, dismiss = ff.kind === 'dismiss', opts = dismiss ? ['false_alarm', 'no_action_needed'] : OUTCOMES;
@@ -2219,9 +2345,13 @@ function footForm(inc) {
     const note = ta.value.trim();
     if (!ff.outcome) { toast('Choose how it ended', true); return; }
     if (NOTE_NEEDED[ff.outcome] && !note) { ta.classList.add('need'); ta.focus(); toast('Add a short note for ' + OUTCOME_TEXT[ff.outcome].toLowerCase(), true); return; }
-    const ok = await wfAct(inc, dismiss ? '/dismiss' : '/close', { outcome: ff.outcome, note }, dismiss ? 'Dismissed: ' + OUTCOME_TEXT[ff.outcome] : 'Closed: ' + OUTCOME_TEXT[ff.outcome]);
-    if (ok) { S.footForm = null; delete S.draft[dk]; renderIncFoot(S.inc || inc, true); }
+    const ok = await wfAct(inc, dismiss ? '/dismiss' : '/close', Object.assign({ outcome: ff.outcome, note }, ff.confirm ? { confirm_critical: true } : {}), dismiss ? 'Dismissed: ' + OUTCOME_TEXT[ff.outcome] : 'Closed: ' + OUTCOME_TEXT[ff.outcome]);
+    if (ok && ok.confirm) { ff.confirm = ok.confirm; renderIncFoot(inc, true); return; }
+    if (ok) { S.footForm = null; delete S.draft[dk]; renderIncFoot(S.inc || inc, true); undoToast(inc, (dismiss ? 'Dismissed ' : 'Closed ') + inc.id); }
   };
+  if (ff.confirm) return h('div', { class: 'ffm' }, h('p', { class: 'foot-hint', role: 'alert', text: 'This incident is critical. ' + ff.confirm + ' Are you sure?' }),
+    h('div', { class: 'foot-row', style: 'margin-top:10px' }, h('button', { type: 'button', class: 'btn', onclick: () => { ff.confirm = null; renderIncFoot(inc, true); } }, 'Go back'),
+      h('button', { type: 'button', class: 'btn danger', onclick: go }, 'Yes, ' + (dismiss ? 'dismiss' : 'close') + ' it')));
   return h('div', { class: 'ffm' },
     h('p', { class: 'foot-hint', id: 'ffm-q', text: dismiss ? 'Dismiss: why is nothing needed?' : 'Close: how did it end?' + (inc.suggest_outcome ? ' (pre-filled from what happened)' : '') }),
     h('div', { class: 'ffm-opts', role: 'radiogroup', 'aria-labelledby': 'ffm-q' }, opts.map((o) => h('button', { type: 'button', role: 'radio', 'aria-checked': ff.outcome === o ? 'true' : 'false',
@@ -2268,7 +2398,7 @@ function shiftSummary() {
   const worse = incs.filter((i) => (i.worse_at || 0) > s).length;
   const res = incs.filter((i) => (i.resolved_at || 0) > s || ((i.closed_at || 0) > s && (i.outcome === 'resolved_on_its_own' || i.outcome === 'fixed_by_action' || i.outcome === 'sensor_repaired' || i.outcome === 'sensor_replaced'))).length;
   const box = $('#shift'); if (!box) return;
-  const d = new Date(last), since = (Date.now() - last > 864e5 ? pad(d.getDate()) + ' ' + MON[d.getMonth()] + ' ' : '') + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  const since = tDay(last / 1000);
   const parts = [nw + ' new', worse + ' got worse', res + ' resolved'];
   fill(box, h('span', { class: 'sh-t' }, h('b', { text: 'Since ' + since + ': ' }), parts.join(' · ')),
     nw || worse ? h('a', { class: 'sh-go', href: '#incidents', text: 'See incidents ›' }) : null,
@@ -2288,10 +2418,10 @@ async function maintPost(d, body, msg) {
 }
 function maintSec(d, live) {
   const out = live.quality === 'maintenance';
-  const until = live.maint_until ? hm(live.maint_until) : '';
+  const until = live.maint_until ? tAt(realOf(live.maint_until)) : '';
   let body;
   if (d.mform === 'oos') {
-    const t = h('input', { class: 'note-in', type: 'time', 'aria-label': 'Out of service until (sensor time, optional)', 'data-k': 'm-until' });
+    const t = h('input', { class: 'note-in', type: 'time', 'aria-label': 'Out of service until (IST, optional)', 'data-k': 'm-until' });
     const why = h('input', { class: 'note-in', type: 'text', maxlength: '200', placeholder: 'Reason (optional)', 'aria-label': 'Reason (optional)', 'data-k': 'm-why' });
     const go = () => {
       let min = 24 * 60;
@@ -2302,9 +2432,23 @@ function maintSec(d, live) {
       }
       maintPost(d, { minutes: min, reason: why.value.trim(), replaced: false }, 'Out of service for ' + dhAgo(min * 60) + ': no alarms from this sensor');
     };
-    body = h('div', { class: 'mform' }, h('label', { class: 'mlbl' }, 'Until (sensor time, empty = 24 h)', t), why,
+    body = h('div', { class: 'mform' }, h('label', { class: 'mlbl' }, 'Until (IST, empty = 24 h)', t), why,
       h('div', { class: 'foot-row' }, h('button', { type: 'button', class: 'btn', onclick: () => { d.mform = null; renderDrawer(); } }, 'Cancel'),
         h('button', { type: 'button', class: 'btn primary', onclick: go }, 'Mark out of service')));
+  } else if (d.mform === 'snz') {
+    const hrs = h('select', { class: 'sel', 'aria-label': 'Snooze for' }, [1, 4, 8, 24, 48, 72].map((n) => h('option', { value: n, text: n + ' h' })));
+    const why = h('input', { class: 'note-in', type: 'text', maxlength: '200', placeholder: 'Reason (needed)', 'aria-label': 'Reason (needed)', 'data-k': 'm-snz' });
+    const go = () => {
+      const reason = why.value.trim(); if (!reason) { why.classList.add('need'); why.focus(); toast('Add a reason for the snooze', true); return; }
+      withOperator(async (op) => {
+        try { await post('/api/snooze', { node: d.node, metric: d.metric, hours: Math.min(72, +hrs.value || 1), reason, operator: op }); toast('Snoozed for ' + hrs.value + ' h: ' + reason); d.mform = null; await refreshLive(); refreshHealthSoon(); await loadDrawer(true); }
+        catch (e) { toast('Snooze: ' + e.message, true); }
+      });
+    };
+    body = h('div', { class: 'mform' }, h('p', { class: 'op-note', text: 'Maintenance snooze: no warning alerts from this sensor until it ends (max 72 h). Critical alerts still notify.' }),
+      h('label', { class: 'mlbl' }, 'Snooze for', hrs), why,
+      h('div', { class: 'foot-row' }, h('button', { type: 'button', class: 'btn', onclick: () => { d.mform = null; renderDrawer(); } }, 'Cancel'),
+        h('button', { type: 'button', class: 'btn primary', onclick: go }, 'Snooze')));
   } else if (d.mform === 'repl') {
     body = h('div', { class: 'mform' }, h('p', { class: 'op-note', text: 'Replaced: the old sensor\'s readings are dropped so the new one is never compared with them. The AI waits for a full 4 h window of new readings.' }),
       h('div', { class: 'foot-row' }, h('button', { type: 'button', class: 'btn', onclick: () => { d.mform = null; renderDrawer(); } }, 'Cancel'),
@@ -2313,10 +2457,12 @@ function maintSec(d, live) {
     body = h('div', { class: 'foot-row mbtns' },
       out ? h('button', { type: 'button', class: 'btn tint', onclick: () => maintPost(d, { minutes: 0, replaced: false }, 'Back in service') }, 'Back in service')
         : h('button', { type: 'button', class: 'btn', onclick: () => { d.mform = 'oos'; renderDrawer(); } }, 'Mark out of service'),
+      live.snoozed ? h('button', { type: 'button', class: 'btn tint', onclick: () => withOperator(async (op) => { try { await post('/api/snooze', { node: d.node, metric: d.metric, hours: 0, reason: 'snooze ended', operator: op }); toast('Snooze ended'); await refreshLive(); await loadDrawer(true); } catch (e) { toast('Snooze: ' + e.message, true); } }) }, 'End snooze')
+        : h('button', { type: 'button', class: 'btn', onclick: () => { d.mform = 'snz'; renderDrawer(); } }, 'Snooze alerts'),
       h('button', { type: 'button', class: 'btn', onclick: () => { d.mform = 'repl'; renderDrawer(); } }, 'Sensor replaced'));
   }
   return h('div', { class: 'card msec' }, h('h3', { style: 'margin-bottom:8px;font-size:17px', text: 'Maintenance' }),
-    out ? h('p', { class: 'oos', text: '⊘ Out of service' + (until ? ' until ' + until + ' (sensor time)' : '') + (live.quality_reason ? ' · ' + live.quality_reason.replace(/^out of service:?\s*/, '') : '') + '. Its readings are shown but never raise an alarm.' }) : null,
+    out ? h('p', { class: 'oos', text: '⊘ Out of service' + (until ? ' until ' + until : '') + (live.quality_reason ? ' · ' + live.quality_reason.replace(/^out of service:?\s*/, '') : '') + '. Its readings are shown but never raise an alarm.' }) : null,
     body);
 }
 /* ----- end approval lifecycle ----- */
@@ -2387,7 +2533,7 @@ function snBuild() {
   const d = SN.data, box = $('#sens');
   const ids = d.sensors.map((s) => s.node + '  ' + s.metric + '  (' + s.label + ', ' + s.location + ')').join('\n');
   const ctl = h('div', { class: 'card sn-top-card' },
-    h('div', { class: 'sn-banner' }, icon('info'), h('p', { text: 'Live input: the campus smart-city API is read every 5 s (only changed readings) and the last 12 h are loaded at start, so every agent window is full at once. Only warning, critical or stuck readings call the AI, after they last 8 readings; site-linked alarms become one incident group.' })),
+    h('div', { class: 'sn-banner' }, icon('info'), h('p', { text: 'Live input: the campus smart-city API is read every 5 s (only changed readings) and the last 12 h are loaded at start, so every agent window is full at once. Only warning, critical or stuck readings call the AI, once 4 of the last 8 readings are abnormal (Cards & rules); site-linked alarms become one incident group.' })),
     h('div', { class: 'sn-btns' }, h('a', { class: 'btn', href: '#sensors' }, icon('info'), 'Data health'), h('a', { class: 'btn', href: '#map' }, icon('map'), 'Site map and cards')));
   const conn = h('details', { class: 'card sn-conn' }, h('summary', { text: 'Sensor ids' }),
     h('p', { class: 'muted', text: 'MQTT (sce/#) and POST /api/ingest with a device timestamp use the same ids (node, metric):' }), h('pre', { class: 'sn-pre', text: ids }));
@@ -2419,10 +2565,10 @@ function snLiveRow(k) {
   r.pat.style.display = pat ? '' : 'none';
   if (pat && r.pat.dataset.p !== pat) { r.pat.dataset.p = pat; r.pat.innerHTML = patIcon(pat) + esc(nice(pat)); }
   setCls(r.root, 'sn-row ' + stClass(st));
-  const af = +u.abnormal_for || 0, pr = +u.persist_readings || 8;
+  const af = +u.abnormal_for || 0, iw = +u.abnormal_in_window || 0, kk = +u.abnormal_of_window || 4, pr = +u.persist_readings || 8;
   let ai = '';
-  if (af > 0 && u.reported) ai = 'Reported to AI';
-  else if (af > 0) ai = pr - af > 0 ? 'AI check in ' + (pr - af) + ' reading' + (pr - af === 1 ? '' : 's') : 'AI checking…';
+  if ((af > 0 || iw > 0) && u.reported) ai = 'Reported to AI';
+  else if (iw > 0) ai = kk - iw > 0 ? 'AI check after ' + (kk - iw) + ' more abnormal reading' + (kk - iw === 1 ? '' : 's') + ' (' + iw + ' of last ' + pr + ')' : 'AI checking…';
   r.ai.hidden = !ai; setText(r.ai, ai);
   const html = snSparkSvg(SN.buf.get(k) || []);
   if (r.spark.dataset.h !== html) { r.spark.dataset.h = html; r.spark.innerHTML = html; }
@@ -2486,7 +2632,7 @@ function renderMapColors() {
 function buildAbout() {
   const gi = (n, t, s) => `<div class="gi"><div class="gn">${n}</div><div class="gk"><b>${t}</b><span>${s}</span></div></div>`;
   $('#about').innerHTML =
-    `<div class="card eng-card"><div class="sn-top"><div class="sn-nm"><b>Engineering view</b><span class="loc">Shows reasoning modes, AI models, NPU status, evidence ids, prompts and the full pipeline on every screen. Off: plain language for operators. Also in the header (&lt;/&gt; button).</span></div><button type="button" id="eng-sw" class="sn-sw" role="switch" aria-checked="false" aria-label="Engineering view"><i></i></button></div></div>
+    `<div class="card eng-card"><div class="sn-top"><div class="sn-nm"><b>Technical view</b><span class="loc">Shows reasoning modes, AI models, NPU status, evidence ids, prompts and the full pipeline on every screen. Off: plain language for operators. Also in the header (&lt;/&gt; button).</span></div><button type="button" id="eng-sw" class="sn-sw" role="switch" aria-checked="false" aria-label="Technical view"><i></i></button></div></div>
     <div class="card"><h3 style="font-size:19px;margin-bottom:6px">Everything runs on this device</h3><p class="muted">You set the sensor values on the Sensors tab (or a real device posts them) and a Qualcomm QIDK board analyses them. Statistics, rules, language-model calls and policy checks are all computed locally on the Hexagon NPU. <b style="color:var(--tx)">No cloud, no laptop, no internet connection is used for inference.</b></p></div>
     <div class="sec-h">The pipeline</div>
     <div class="glist">${[['Poll sensors', 'Every poll, each current sensor value becomes its next 5-minute reading.'], ['Stats and rules', 'SMA, EMA, trend, Bollinger bands and a rule-based pattern per sensor.'], ['Event gate', 'Only warning, critical or stuck sensors wake the AI, so the NPU stays free and cool.'], ['Domain agents on the NPU', 'One small agent per flagged sensor reads its evidence (E1..E8) and writes a finding.'], ['Synthesizer', 'Combines the agent findings into one cross-domain report.'], ['Safety check', 'The policy gate rejects bad JSON, unknown labels and made-up evidence ids.'], ['Human approval', 'Nothing is actuated automatically. You approve or dismiss every recommendation.']].map((x, i) => gi(i + 1, x[0], x[1])).join('')}</div>
@@ -2494,8 +2640,8 @@ function buildAbout() {
     <div class="card"><p class="muted">A sensor calls the AI only when its status is warning, critical or stuck (sensor fault) and stays that way for 8 readings in a row. Every sensor that is alarming at that moment, plus any that join within 3 more readings, goes into one incident with one batch of NPU agent calls. A sensor reports once per episode and re-arms after it returns to normal.</p></div>
     <div class="sec-h">The three modes</div>
     <div class="glist">${gi('1', 'Rules', 'Deterministic statistics and rules. No AI. Always computed as the shadow baseline.')}${gi('2', 'Single', 'One AI call reads all flagged sensors and writes the report.')}${gi('3', 'Multi-Agent', 'One agent call per sensor (fine-tuned model when deployed), then a synthesizer.')}</div>
-    <div class="sec-h">Model in use</div>
-    <div class="glist" id="about-model"><div class="gi"><div class="gk"><span>Loading ...</span></div></div></div>
+    <details class="tech"><summary>Technical details</summary><div class="tech-bd"><div class="sec-h">Model in use</div>
+    <div class="glist" id="about-model"><div class="gi"><div class="gk"><span>Loading ...</span></div></div></div></div></details>
     <div class="sec-h">Speed on the Hexagon NPU</div>
     <div class="glist">${gi('⚡', 'Model init 0.7 s · prompt 1,160 tok/s · generation ~19 tok/s', 'Measured on this board with the Genie runtime.')}${gi('1', 'One NPU job at a time', 'Parallel NPU jobs are unsafe on this device, so agents run one after another.')}</div>
     <div class="sec-h">Status key</div>
@@ -2506,14 +2652,16 @@ function renderAboutModel() {
   const e = $('#about-model'); if (!e || !S.status) return;
   const m = S.status.models || {};
   const row = (lbl, x) => x ? `<div class="gi"><div class="gk"><b>${lbl}</b><span>${esc(x.name || '-')} · ${x.fine_tuned ? 'fine-tuned' : 'base'} · ${x.available ? 'available' : 'not available'}${x.note ? ' · ' + esc(x.note) : ''}</span></div></div>` : '';
-  const html = row('Agents use', m.agent) + row('Synthesizer', m.reasoner) + row('Base fallback', m.base) + row('Fine-tuned bundle', m.tuned) + `<div class="gi"><div class="gk"><b>Running on</b><span>${esc(S.status.running_on || '-')}</span></div></div>`;
+  const html = row('Agents use', m.agent) + row('Synthesizer', m.reasoner) + row('Base fallback', m.base) + row('Fine-tuned bundle', m.tuned) + `<div class="gi"><div class="gk"><b>Running on</b><span>${esc(S.status.running_on || '-')}</span></div></div>`
+    + `<div class="gi"><div class="gk"><b>Store write errors / panics recovered</b><span>${esc(String(S.health && S.health.store_write_errors != null ? S.health.store_write_errors : '-'))} / ${esc(String(S.health && S.health.panics_recovered != null ? S.health.panics_recovered : '-'))}</span></div></div>`
+    + `<div class="gi"><div class="gk"><b>Restarts in the last 7 days</b><span>${esc(String(S.status.restarts_7d != null ? S.status.restarts_7d : (S.health && S.health.restarts_7d != null ? S.health.restarts_7d : '-')))}</span></div></div>`;
   if (e.dataset.h !== html) { e.dataset.h = html; e.innerHTML = html; }
 }
 
 /* ============================== settings menu ============================== */
 function bindGear() {
   const b = $('#gear'), m = $('#gear-menu'); if (!b || !m) return;
-  b.append(icon('settings'));
+  b.append(icon('settings')); tipify(b, 'Settings', false);
   const set = (on) => { m.hidden = !on; b.setAttribute('aria-expanded', on ? 'true' : 'false'); };
   b.onclick = (e) => { e.stopPropagation(); const on = m.hidden; set(on); if (on) { const f = m.querySelector('a'); if (f) f.focus(); } };
   m.addEventListener('click', () => set(false));
@@ -2568,7 +2716,7 @@ function connect() {
   const J = (e) => { try { return JSON.parse(e.data); } catch (x) { return {}; } };
   es.addEventListener('tick', (e) => {
     const d = J(e);
-    if (d.sim_time_ist) { setText($('#c-time'), d.sim_time_ist.replace(/^\w+ \d+ \w+( \d+)? /, '') + ' IST'); setText($('#l-sub'), 'Sensor time ' + d.sim_time_ist + ' IST'); }
+    tickClock(); updateSub();
     if (d.npu && S.status) { S.status.npu = d.npu; updateHero(); }
     if (d.sim_time) { S.simNow = d.sim_time; renderHealth(); } // time-in-state on the domain tiles
     const now = Date.now();
@@ -2609,6 +2757,7 @@ function boot() {
   $('#op').onclick = () => openOpSheet(null);
   window.addEventListener('hashchange', () => setView(location.hash.slice(1)));
   $('#scrim').onclick = () => { closeSheet('opsheet'); closeSheet('sheet'); closeSheet('isheet'); closeSheet('dsheet'); };
+  $$('[data-close],#fs-x').forEach((b) => { b.replaceChildren(icon('x')); b.setAttribute('aria-label', 'Close'); b.title = 'Close'; });
   $$('[data-close]').forEach((b) => b.onclick = () => closeSheet(b.dataset.close));
   $('#fs-x').onclick = () => closeSensorSheet();
   $('#fs .fs-back').onclick = () => closeSensorSheet();
@@ -2627,6 +2776,8 @@ function boot() {
   setInterval(() => { if (!document.hidden && Date.now() - SN.lastFetch > 4500) snFetch(); }, 1000);
   post('/api/replay', {}).then((r) => { if (r && r.poll_ms) { SN.pollMs = r.poll_ms; if (SN.pollSeg) setSeg(SN.pollSeg, r.poll_ms); } }).catch(() => {});
   setInterval(updateElapsed, 500);
+  setInterval(() => { tickClock(); updateSub(); }, 20000);
+  tickClock();
   setInterval(tickEtas, 2000); // "Next check at 1.5 h · in 23 min"
   setInterval(() => { if (OP.cur && !opName()) toast('Name cleared after 30 min idle: choose who you are before the next decision'); }, 60000);
   setInterval(() => {
@@ -2708,10 +2859,11 @@ function applyDotTitles() {
   document.querySelectorAll('.ltitle h1:not(.inc-title)').forEach((el) => {
     if (!el.dataset.txt) el.dataset.txt = el.textContent.trim();
     if (!dark) { el.textContent = el.dataset.txt; el.classList.remove('is-dots'); return; }
-    const step = Math.max(3, Math.min(5, Math.floor((el.clientWidth || 320) / (el.dataset.txt.length * 6))));
+    const step = Math.max(2, Math.min(innerWidth < 560 ? 3 : 5, Math.floor((el.clientWidth || 320) / (el.dataset.txt.length * 6))));
     el.innerHTML = dotTextSvg(el.dataset.txt, step);
     el.classList.add('is-dots');
   });
 }
 addEventListener('DOMContentLoaded', applyDotTitles);
 addEventListener('hashchange', () => setTimeout(applyDotTitles, 0));
+let dotRz = 0; addEventListener('resize', () => { clearTimeout(dotRz); dotRz = setTimeout(applyDotTitles, 200); });

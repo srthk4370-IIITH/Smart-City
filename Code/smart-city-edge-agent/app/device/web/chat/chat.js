@@ -3,6 +3,7 @@
 'use strict';
 const $ = (s) => document.querySelector(s);
 const S = { id: null, sessions: [], session: null, busy: false };
+window.S = S;
 const SUGG = [
   ['Counts', 'How many incidents were there today?'],
   ['Search', 'Which CO2 incidents happened this week?'],
@@ -21,7 +22,7 @@ function h(tag, attrs, ...kids) {
   return e;
 }
 async function api(path, opts) {
-  const r = await fetch(path, Object.assign({ headers: { 'Content-Type': 'application/json' } }, opts));
+  const r = await fetch(path, Object.assign({ headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'sce' } }, opts));
   if (!r.ok) throw new Error((await r.text()) || r.statusText);
   return r.json();
 }
@@ -32,6 +33,7 @@ const when = (t) => {
 
 /* answer text -> nodes: [INC-0123] and bare INC-0123 become chips linking to the dashboard */
 function richText(s) {
+  s = String(s || '').replace(/approve(?:d)? or dismiss(?:ed)?/gi, "I'm on it or Dismiss").replace(/approve(?:d)?/gi, "taken (I'm on it)");
   const out = []; const re = /\[?(INC-\d{3,})\]?/g; let last = 0, m;
   while ((m = re.exec(s))) {
     if (m.index > last) out.push(s.slice(last, m.index));
@@ -123,13 +125,15 @@ function typing() {
 }
 async function ask(q) {
   q = (q || '').trim(); if (!q || S.busy) return;
+  const spoken = window.SPOKEN === true; window.SPOKEN = false; // set by voice.js only for a spoken question
   S.busy = true; $('#send').disabled = true; $('#q').value = ''; grow();
   const box = $('#msgs');
   if (!S.session) box.replaceChildren();
   box.append(msgNode({ role: 'user', text: q })); const ty = typing(); box.append(ty); box.scrollTop = box.scrollHeight;
   try {
-    const s = await api('/api/chat', { method: 'POST', body: JSON.stringify({ session: S.id || '', message: q }) });
+    const s = await api('/api/chat', { method: 'POST', body: JSON.stringify({ session: S.id || '', message: q, spoken }) });
     S.session = s; S.id = s.id;
+    if (spoken && window.speakAnswer) { const m = (s.messages || []).filter((x) => x.role === 'assistant' && !x.error).pop(); if (m) window.speakAnswer(m.text); }
   } catch (e) {
     ty.remove(); box.append(msgNode({ role: 'assistant', text: 'Could not reach the board: ' + e.message, error: true }));
   } finally {
@@ -149,6 +153,13 @@ $('#q').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKe
 $('#new').addEventListener('click', () => { newChat(); closeSide(); });
 $('#menu').addEventListener('click', openSide);
 $('#scrim').addEventListener('click', closeSide);
+$('#clear').addEventListener('click', async () => {
+  const b = $('#clear');
+  if (b.dataset.arm !== '1') { b.dataset.arm = '1'; b.textContent = 'Tap again to delete all chats'; setTimeout(() => { b.dataset.arm = ''; b.textContent = 'Clear history'; }, 4000); return; }
+  b.dataset.arm = ''; b.textContent = 'Clear history';
+  try { await api('/api/chat/sessions/clear', { method: 'POST', body: '{}' }); } catch (e) { b.textContent = 'Could not clear: ' + e.message.slice(0, 40); setTimeout(() => { b.textContent = 'Clear history'; }, 3000); return; }
+  newChat(); loadSessions();
+});
 $('#del').addEventListener('click', async () => {
   if (!S.id) return;
   try { await api('/api/chat/sessions/' + encodeURIComponent(S.id), { method: 'DELETE' }); } catch { /* already gone */ }
@@ -158,7 +169,7 @@ api('/api/status').then((st) => { if (st && st.running_on) $('#sub').textContent
 renderChat(); loadSessions(); setTimeout(() => $("#q").focus(), 300);
 /* keep the reasoner warm on the NPU while this page is in use (backend Warm: ~60 s after the last activity) */
 let lastWarm = 0;
-function warm() { if (Date.now() - lastWarm < 15000) return; lastWarm = Date.now(); fetch('/api/chat/warm', { method: 'POST' }).catch(() => {}); }
+function warm() { if (Date.now() - lastWarm < 15000) return; lastWarm = Date.now(); fetch('/api/chat/warm', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'sce' }, body: '{}' }).catch(() => {}); }
 warm();
 addEventListener('focus', warm);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) warm(); });

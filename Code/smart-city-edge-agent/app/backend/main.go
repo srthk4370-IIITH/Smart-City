@@ -71,8 +71,10 @@ func main() {
 			live = append(live, map[string]any{"node": st.Node, "metric": st.Metric, "role": st.Role, "last": st.Last,
 				"sma_1h": st.SMA1h, "ema_1h": st.EMA1h, "slope_per_h": st.SlopePerH, "pattern": st.Pattern,
 				"status": st.Status, "injected": st.Injected, "data_ok": st.DataOK, "updated": st.Updated,
-				"abnormal_for": st.AbnormalFor, "reported": st.Reported, "persist_readings": trigRules().PersistReadings,
-				"quality": st.Quality, "quality_reason": st.QualityWhy, "maint_until": st.MaintUntil})
+				"abnormal_for": st.AbnormalFor, "abnormal_in_window": st.AbnormalInWindow, "abnormal_of_window": trigRules().AbnormalOfWindow, "reported": st.Reported, "persist_readings": trigRules().PersistReadings,
+				"quality": st.Quality, "quality_reason": st.QualityWhy, "maint_until": st.MaintUntil,
+				"snoozed": st.Snoozed, "snooze_until": st.SnoozeUntil, "snooze_reason": st.SnoozeWhy,
+				"warming_up": st.WarmingUp, "warming_min_left": st.WarmMinLeft})
 		}
 		hub.Publish("live", map[string]any{"sim_time": sim, "sensors": live})
 		// per-domain health tiles (domainhealth.go): pushed only when something on them changed
@@ -80,17 +82,24 @@ func main() {
 			hub.Publish("health", hv)
 		}
 	}
-	go func() {
+	safeGo("tick loop", func() {
 		for {
 			eng.mu.RLock()
 			ms := eng.PollMs
 			eng.mu.RUnlock()
 			time.Sleep(time.Duration(ms) * time.Millisecond)
-			eng.Tick()
+			safeIter("tick", eng.Tick) // a panic costs one tick, not the loop
 		}
-	}()
+	})
 	rsn.StartWatchdog()
+	if b := recordBoot(*dir); b.PrevUptimeS > 0 { // state/boots.jsonl (polish_engine.go)
+		log.Printf("boot recorded: previous run lasted about %d min", b.PrevUptimeS/60)
+	}
+	eng.StartStateSaver(*dir) // bank + episode flags every 5 min, restored after a restart if < 2 h old
+	rsn.StartRerunFailed()    // interrupted incidents are re-run once the first readings are in
+	rsn.RestorePending()      // alerts that were waiting for the NPU when the board went down (pendingq.go)
 	srv := &Server{eng: eng, rsn: rsn, genie: genie, hub: hub, health: health, dir: *dir, start: time.Now()}
+	srv.StartHousekeeping() // hourly file rotation + disk alarm (hardening.go)
 	log.Printf("edge-agent: %d live sensors (sliders / %s), clock from %s, agent model: %s (available=%v, agent %s), listening on %s",
 		len(eng.states), "/api/ingest", eng.Meta.StartIST, genie.AgentModel().Name, genie.AgentModel().Available, agentVer, *port)
 	// header and idle timeouts stop slow or abandoned clients holding connections open; no write
@@ -99,7 +108,7 @@ func main() {
 	startPhase1(srv) // campus API input, daily summary (phase1.go)
 	startProd(srv)   // production features (prod.go): each off unless its htpd_profile key is set
 	if *fogAddr != "" {
-		go serveFog(*fogAddr, rsn, *dir)
+		safeGo("fog server", func() { serveFog(*fogAddr, rsn, *dir) })
 	}
 	hsrv := &http.Server{Addr: *port, Handler: srv.routes(), ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout: 120 * time.Second, MaxHeaderBytes: 64 << 10}

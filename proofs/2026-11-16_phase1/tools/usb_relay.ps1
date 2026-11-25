@@ -10,7 +10,7 @@ if ($args -contains '-Watch') {
     try {
       if ((& $A get-state 2>$null) -eq 'device') {
         $have = (& $A reverse --list 2>$null) -join ' '
-        foreach ($p in 9999,8787,8094,8092,1883) {
+        foreach ($p in 9999,8787,8094,8092,1883,8095) {
           if ($have -notmatch "tcp:$p\b") { & $A reverse "tcp:$p" "tcp:$p" | Out-Null; Add-Content $log ("{0} repaired tcp:{1}" -f (Get-Date -Format s), $p) }
         }
       }
@@ -23,5 +23,5 @@ Start-Process -WindowStyle Hidden wsl.exe -ArgumentList "-u root mosquitto -c /e
 Start-Process -WindowStyle Hidden python -ArgumentList "$Q\proofs\2026-11-16_phase1\tools\tcp_proxy.py 9999 10.2.203.214 9999"
 Start-Process -WindowStyle Hidden python -ArgumentList "$Q\Code\smart-city-edge-agent\app\tools\heartbeat_monitor.py --port 8787 --dead-s 300"
 Start-Process -WindowStyle Hidden python -ArgumentList "$Q\proofs\2026-11-16_phase1\tools\alert_sink.py 8094"
-foreach ($p in 9999,8787,8094,8092,1883) { & $A reverse "tcp:$p" "tcp:$p" | Out-Null }
+foreach ($p in 9999,8787,8094,8092,1883,8095) { & $A reverse "tcp:$p" "tcp:$p" | Out-Null }
 & $A reverse --list

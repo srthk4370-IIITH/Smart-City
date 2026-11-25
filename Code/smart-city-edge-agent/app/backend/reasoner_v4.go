@@ -336,7 +336,7 @@ func (r *Reasoner) buildV4Ctx(inc *Incident, in V3Input) V4Ctx {
 			cx.NearbyTitle = ix.Name(b)
 			r.mu.RLock()
 			for _, o := range r.incidents {
-				if o.ID == inc.ID || incClosed(o) || inc.CreatedSim-o.CreatedSim > 3600 || o.CreatedSim > inc.CreatedSim {
+				if o.ID == inc.ID || o.SystemCheck || incClosed(o) || inc.CreatedSim-o.CreatedSim > 3600 || o.CreatedSim > inc.CreatedSim {
 					continue
 				}
 				for _, s := range o.Sensors {

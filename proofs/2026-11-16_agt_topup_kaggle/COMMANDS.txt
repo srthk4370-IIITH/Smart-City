@@ -1,0 +1,18 @@
+# agt_v3 top-up on Kaggle: exact commands (WSL, user hp_srthk4370). Nothing here has been run against Kaggle.
+D=/mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-16_agt_topup_kaggle
+
+# 0. (done) data built:  python3 $D/build_mix.py 10000 0.75      -> ~/smartcity_runs/agt_topup_k/{mixdata,local}; $D/mix_manifest.json, $D/REAL_APPROVED.json
+#    re-run the whole pipeline on a tiny subset at any time (no Kaggle, no GPU):  bash $D/dryrun.sh
+
+# 1. UPLOAD + PUSH (creates PRIVATE datasets agt3-topup-data [REAL rows, owner exception] and agt3-topup-run [snap_1750 adapter as
+#    lineage.bin], then pushes the private kernel agt3-topup-train, T4x2, budget 6 h, cap 8 h). One command:
+bash $D/push_topup.sh
+#    exit 0 pushed | 10 no token | 20 quota | 21 push error | 22 upload error | 23 data check refused. Log: $D/STATUS.md, $D/REAL_EXCEPTION.log
+
+# 2. WAIT + PULL (poll until the kernel ends, install ckpt_latest + snap_0050..snap_0300 into ~/smartcity_runs/agt_topup_k/run):
+bash $D/pull_topup.sh            # or: bash $D/pull_topup.sh --once   (exit 30 = still running)
+#    If it stops early (budget/quota) and steps < ~313, run push_topup.sh again: it continues from state.pt (same lineage).
+
+# 3. SELECT + NO-HARM (laptop; waits for the GPU lock, never takes it over; ~25 min per snapshot incl. export):
+bash $D/select_topup.sh          # -> ~/smartcity_runs/agt_topup/FINAL_K (gguf, md5, adapter, step), $TOPUP/post/selection_k.json
+#    exit 0 winner | 3 no snapshot beats snap_1750 on REAL VAL without harm (snap_1750 stays) | 2 export/eval failed

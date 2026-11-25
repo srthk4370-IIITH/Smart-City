@@ -265,6 +265,7 @@ func superviseDaemon(g *GenieRunner, workDir string) {
 	}
 	start()
 	go func() {
+		defer recoverLog("genied supervisor")
 		for range time.Tick(15 * time.Second) { // one loopback dial; a dead daemon is back within ~15 s
 			// never restart it underneath an in-flight NPU call
 			if !g.busy.Load() {

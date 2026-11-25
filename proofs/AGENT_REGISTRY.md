@@ -308,3 +308,153 @@ FileNotFoundError: [Errno 2] No such file or directory: '/mnt/c/Users/hp/Desktop
 - rsn_p2 4 top-up train 2026-11-19T03:08:02+00:00
 - 2026-11-19 board: adb reverse dropped again (restored); app clock 2026-11-16 because RTC stopped while board slept -> clock_offset_s rewritten from laptop (fix_clock.sh), corrected now 2026-11-19. FT p2 chunk 2 resumed at step 185/220.
 - 2026-11-19 phase1i built (md5 33e28cb9; clock network-sync via campus/heartbeat Date header, injection fixes); relay watchdog (-Watch) started; after_reasoner.sh started: installs phase1i after the reasoner deploy result.
+- rsn_p2 5 gate 2026-11-19T13:17:27+00:00
+- rsn_p2 5 gate 2026-11-19T14:34:17+00:00
+- rsn_p2 FAILED gate script 2026-11-19T14:34:31+00:00
+- rsn_p2 5 gate 2026-11-19T14:34:38+00:00
+- go_1j 1 build phase1j 2026-11-19T15:35:26+00:00
+- go_1j 2 reasoner p2 2026-11-19T15:46:19+00:00
+- go_1j reasoner rc=1 21:18:55 ABORT: push failed 2026-11-19T15:49:03+00:00
+- go_1j 3 APK phase1j 2026-11-19T15:49:03+00:00
+- go_1j apk rc=0 DEPLOY1J_DONE 2026-11-19T15:52:47+00:00
+- go_1j DONE 2026-11-19T15:52:47+00:00
+- go_1k 1 build phase1k 2026-11-19T16:19:32+00:00
+- go_1k === phase1 done ok faa8ef0fb0f5c645ad8a27112e03eb41  SmartCityEdge.phase1k.apk 2026-11-19T16:27:21+00:00
+- go_1k 2 APK phase1k 2026-11-19T16:27:21+00:00
+- go_1l 1 build phase1l 2026-11-19T18:23:14+00:00
+- go_1l === phase1 done ok 4e54bc409c7f61c2cdc00be4e4de0e9e  SmartCityEdge.phase1l.apk 2026-11-19T18:30:49+00:00
+- go_1l 2 APK phase1l 2026-11-19T18:30:49+00:00
+- go_1l apk rc=0  2026-11-19T18:34:37+00:00
+- go_1l DONE 2026-11-19T18:34:37+00:00
+- polish-chat: item 1 sensor lookup KH level 03 done 2026-11-20
+- polish-chat: item 2 context bleed done 2026-11-20
+- polish-chat: item 3 not-sending sensors done 2026-11-20
+- polish-chat: item 4 forecast crossing done 2026-11-20
+- polish-chat: item 5 false alarms done 2026-11-20
+- polish-chat: item 6 which critical first done 2026-11-20
+- polish-chat: item 7 asked format done 2026-11-20
+- polish-chat: item 8 open questions to reasoner done 2026-11-20
+- polish-chat: item 9 plain words and outdoor advice done 2026-11-20
+- polish-chat: item 10 on-board knowledge first done 2026-11-20
+- polish-chat: item 11 session archive and clear done 2026-11-20
+- polish-engine: item 1 short/rare events AI on last 4 h done 2026-11-20
+- polish-engine: item 2 swallowed events join + fine auto-close 2 h + reopen done 2026-11-20
+- polish-engine: item 3 reboot persist engine.json + boots.jsonl + failed re-host/re-run done 2026-11-20
+- polish-engine: item 4 severity change reason + critical-drop guard done 2026-11-20
+- polish-engine: item 5 playbook per metric and indoor/outdoor done 2026-11-20
+- polish-engine: item 6 event mode per building + health + editable threshold done 2026-11-20
+- polish-engine: item 7 maintenance snooze (/api/snooze) done 2026-11-20
+- polish-engine: item 8 deploy-check system_check incidents done 2026-11-20
+- polish-hardening: security core (demo off by default + /api/health demo_active + watermark, read token, fog ingest fail-closed, CSRF origin/content-type, token 0600, APK SCE_RELEASE flag) done 2026-11-20
+- polish-hardening: robustness (recover everywhere, watchdog hard cap, bounded persisted critical-first queue, fsync + write errors, atomicWrite, compaction lock, rotation caps, disk in health, htpd restart-loop cap) done 2026-11-20
+- polish-hardening: alerts (re-notify 15/30/60 + backup email, no_alert_channel flag, ack + decide criticals on the rules report while AI runs) done 2026-11-20
+- polish-hardening: undo/reopen/safe dismiss (10-min undo, reopen needs reason, critical dismiss confirm_critical, unconfirmed dismissals out of retrieval memory) done 2026-11-20
+- polish-hardening: leftovers (system_check filtered in chat/reasoner_v3/v4, per-sensor warming_up + warming_min_left in /api/live) done 2026-11-20
+- polish-ui: item 1 home headline done 2026-11-20
+- polish-ui: item 2 layout done 2026-11-20
+- polish-ui: item 3 plain words done 2026-11-20
+- polish-ui: item 4 time helper done 2026-11-20
+- polish-ui: item 5 header tooltips + close X done 2026-11-20
+- polish-ui: item 6 banners/retry/disabled reasons/dark sizes/glyphs done 2026-11-20
+- polish-ui: item 7 botanical map tree done 2026-11-20
+- polish-ui: item 8 chat clear history done 2026-11-20
+- polish-ui: item 9 new backend fields (defensive) done 2026-11-20
+- polish-voice: whisper-cli+tiny.en built (models_stage/voice), backend voice.go (+test pass), web voice.js/chat hooks, Android mic permission; not deployed, push_voice.sh not run; see 2026-11-20_voice/NOTES.md. done 2026-11-20
+- rsn-big: block A (6414 replay rows) + frozen gate set + dev_hole slice built; base upload to Kaggle started (2026-11-20 01:20)
+- polish-qr: GET /api/incidents/{id}/qr (qr_report.go, qr_encode.go, tests pass), device/web/qr.js "Share as QR", report-viewer/dist + README (not deployed, not committed) done 2026-11-20
+- go_1m 1 build phase1m 2026-11-19T21:03:49+00:00
+- rsn-big: B (4800) + C (4424 +dups) built, audit PASS on B/C (0 bad); run_big.sh launched detached: waits agent rows (2681/4500) -> D -> audit -> Kaggle rsn-big-train
+- rsn-big: owner plan applied: prioritised selection (~2500 new hole/tool/agent + ~1500 replay balanced over every block = 37.5% replay, ~4k rows seen); run_big.sh uses it via assemble/plan
+- go_1m === phase1 done ok 591a0d7011fc0b8b70c070f01564213f  SmartCityEdge.phase1m.apk 2026-11-19T21:13:48+00:00
+- go_1m 2 voice files 2026-11-19T21:13:48+00:00
+- go_1m 3 APK phase1m 2026-11-19T21:14:29+00:00
+- rsn-big: fog added: gold fog chat rows (all fog_* tool formats, online/offline/timeout, non-empty finals) + 400 fog twin rows (incl. fog-down + follow-ups) = 14% of the prioritised new sample
+- go_1m apk rc=0 DEPLOY1M_DONE 2026-11-19T21:18:17+00:00
+- go_1m DONE 2026-11-19T21:18:17+00:00
+- polish-fog: supabase_sync.go+test (reports-only queue, /api/health supabase), live_check.py (insert 201, anon select blocked), fleet-viewer/dist (not deployed), enable_fog.sh (not run); 2026-11-20
+- go_1n 1 build phase1n 2026-11-19T21:23:38+00:00
+- go_1n === phase1 done ok 1c753b023cf371f0270f605323c7a011  SmartCityEdge.phase1n.apk 2026-11-19T21:32:08+00:00
+- go_1n 2 profile fog keys 2026-11-19T21:32:08+00:00
+- go_1n profile keys: 2 2026-11-19T21:32:42+00:00
+- go_1n 3 APK phase1n 2026-11-19T21:32:42+00:00
+- go_1n apk rc=0 DEPLOY1N_DONE 2026-11-19T21:36:25+00:00
+- go_1n DONE 2026-11-19T21:36:25+00:00
+- go_1o 1 build phase1o 2026-11-19T21:48:31+00:00
+- go_1o === phase1 done ok a4d5b8d967b01f153f20bf06b6f42f99  SmartCityEdge.phase1o.apk 2026-11-19T21:57:24+00:00
+- go_1o 2 profile 2026-11-19T21:57:24+00:00
+- go_1o 3 APK phase1o 2026-11-19T21:57:58+00:00
+- go_1o apk rc=0 DEPLOY1O_DONE 2026-11-19T22:01:41+00:00
+- go_1o DONE 2026-11-19T22:01:41+00:00
+- go_1p 1 build phase1p 2026-11-19T22:01:55+00:00
+- go_1p === phase1 done (tests failed) 2026-11-19T22:03:22+00:00
+- go_1p build FAILED 2026-11-19T22:03:22+00:00
+- 2026-11-20 kofwindow-gate agent: AI gate = abnormal_of_window (4) of last persist_readings (8) via SensorState.abTimes/winCount (engine.go), rules_config.go field, /api/live abnormal_in_window, app.js+phase1.js text, kofwindow_test.go; no board/deploy/commit.
+- go_1q 1 build phase1q 2026-11-19T22:20:47+00:00
+- rsn-big: agent rows in (4500): building block D + final data (2026-11-19 22:26)
+- rsn-big: data audit PASS; launching Kaggle (rsn-big-train) (2026-11-19 22:30)
+- after_kaggle.sh stopped (owner 2026-11-20: no automatic gate/deploy; gate scores discussed with owner first)
+- after_kaggle launch FAIL seen, no gate (see STATUS.md) 2026-11-19T22:31:02+00:00
+- after_kaggle.sh restarted: automatic gate only, no deploy (owner 2026-11-20)
+- go_1q === phase1 done ok ad91cc7f4617ed4376ccbdc979d628fe  SmartCityEdge.phase1q.apk 2026-11-19T22:32:11+00:00
+- go_1q 2 profile 2026-11-19T22:32:11+00:00
+- go_1q 3 APK phase1q 2026-11-19T22:32:45+00:00
+- go_1q apk rc=0 DEPLOY1Q_DONE 2026-11-19T22:36:29+00:00
+- go_1q DONE 2026-11-19T22:36:29+00:00
+- go_1r 1 build phase1r 2026-11-19T22:39:17+00:00
+- rsn-big: Kaggle session 1 pushed (kernel srthk4370/rsn-big-train v1, budget 11.30 h) (2026-11-19 22:42)
+- go_1r === phase1 done ok 99ae42f6d21a23666d539b00fff070d8  SmartCityEdge.phase1r.apk 2026-11-19T22:47:19+00:00
+- go_1r 2 APK phase1r 2026-11-19T22:47:19+00:00
+- go_1r apk rc=0 DEPLOY1R_DONE 2026-11-19T22:51:02+00:00
+- go_1r DONE 2026-11-19T22:51:02+00:00
+- after_kaggle launch FAIL seen, no gate (see STATUS.md) 2026-11-19T23:00:03+00:00
+- go_1s 1 build phase1s 2026-11-20T06:54:10+00:00
+- rsn-big: Kaggle session 1 pushed (kernel srthk4370/rsn-big-train v2, budget 11.30 h) (2026-11-20 07:02)
+- go_1s === phase1 done ok 80397ccdfdd92baeeb700417cfa14bed  SmartCityEdge.phase1s.apk 2026-11-20T07:02:56+00:00
+- go_1s 2 APK phase1s 2026-11-20T07:02:56+00:00
+- go_1s apk rc=0  2026-11-20T07:06:38+00:00
+- go_1s DONE 2026-11-20T07:06:38+00:00
+- incident_fixes_4 (app-side: sparse-window early AI, trend-only severity guard, report checklist steps, title refs) 2026-11-20T12:40:29+05:30 DONE pending go test
+- after_kaggle launch FAIL seen, no gate (see STATUS.md) 2026-11-20T07:10:53+00:00
+- go_1t 1 build phase1t 2026-11-20T07:22:13+00:00
+- go_1t === phase1 done (tests failed) 2026-11-20T07:28:03+00:00
+- go_1t build FAILED 2026-11-20T07:28:03+00:00
+- go_1t 1 build phase1t 2026-11-20T07:43:28+00:00
+- go_1t === phase1 done (tests failed) 2026-11-20T07:49:32+00:00
+- go_1t build FAILED 2026-11-20T07:49:32+00:00
+- go_1t 1 build phase1t 2026-11-20T07:59:46+00:00
+- go_1t === phase1 done ok 7c8d826427ed19ec3cdcafaf336c8b31  SmartCityEdge.phase1t.apk 2026-11-20T08:08:25+00:00
+- go_1t 2 APK phase1t 2026-11-20T08:08:25+00:00
+- go_1t apk rc=0  2026-11-20T08:12:13+00:00
+- go_1t DONE 2026-11-20T08:12:13+00:00
+- rsn-big: Kaggle session 1 pulled: step 65 done=0 (2026-11-20 10:34)
+- rsn-big: Kaggle session 2 pushed (kernel srthk4370/rsn-big-train v3, budget 11.30 h) (2026-11-20 10:39)
+- rsn-big: Kaggle session 2 pulled: step 65 done=0 (2026-11-20 11:01)
+- rsn-big: Kaggle session 3 pushed (kernel srthk4370/rsn-big-train v4, budget 11.30 h) (2026-11-20 11:06)
+-  rsn_big fix agent: seq3 cancelled, lineage kept step 65; trimming data
+- go_1u 1 build phase1u 2026-11-20T11:16:13+00:00
+- 2026-11-20 11:17:06 rsn_big fix agent: trimmed train_new 490 + replay 53 rows (list items not cited by answer cut), audit PASS 0 bad, orig in data/orig_pre_trim; floor: tools schema 5029 tok so <=5800 infeasible, max now train 6307 replay 6569
+- go_1u === phase1 done (tests failed) 2026-11-20T11:22:08+00:00
+- go_1u build FAILED 2026-11-20T11:22:08+00:00
+- rsn-big: Kaggle session 4 pushed (kernel srthk4370/rsn-big-train v5, budget 11.30 h) (2026-11-20 11:25)
+- go_1u 1 build phase1u 2026-11-20T11:38:52+00:00
+- go_1u === phase1 done ok 7a08713b40819e3582c9c637dac743d1  SmartCityEdge.phase1u.apk 2026-11-20T11:47:53+00:00
+- go_1u 2 APK phase1u 2026-11-20T11:47:53+00:00
+- 2026-11-20 11:50:36 rsn_big fix agent: seq 4 (v5, trimmed data) pushed 11:25, still RUNNING at 11:50 (25 min, past the ~20 min point where seq 2/3 OOMed); auto loop + after_kaggle.sh running
+- go_1u apk rc=0  2026-11-20T11:51:41+00:00
+- go_1u DONE 2026-11-20T11:51:41+00:00
+- rsn-big: Kaggle session 4 pulled: step 242 done=1 (2026-11-20 20:08)
+- after_kaggle FAIL: no best adapter in /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-20_rsn_big/best 2026-11-20T20:14:13+00:00
+- rsn-full: laptop full-pool continuation script prepared, HOLD (no GO file; prep_data.py not built) 2026-11-21 03:25
+- rsn-full-data: gen5_multidomain 1500 + gen5_domain 1200 built+audited (data/); real rows NOT built: 4200 real windows ready (agent_rows/windows_real.jsonl), agent run on GPU stopped by owner order, resume: build/run_agent.sh then build/build_real.py 2026-11-21
+- rsn-full: prep_data.py built+tested (CPU, 1 run on existing data; rerun when gen5/real_rows land), run_full.sh updated to owner rules (normal prio, nproc-2, no mem cap, 30 s RAM watchdog), still HOLD no GO 2026-11-21 03:42
+- rsn_full chain 1 real rows: agent s0450 on pre-cutoff windows (GPU, after speed test) 2026-11-20T22:13:41+00:00
+speed_test 2026-11-21 done: winner = A (p2 flags), B OOM, C/D skipped, ~33-37 s/step per 4 rows; see 2026-11-21_rsn_full/SPEED.md
+- rsn-full: prep_data.py rerun with gen5_tools/multidomain/domain: train_new 12480 (real 1204), replay 6720 (real 1574), dev 295; check_big FAIL only gen5_tools 5.3% bad (CO2 ppm/verdict missing) -> generator fix; still HOLD no GO 2026-11-21 04:03
+2026-11-20 22:59 tools-agent: gen5_tools.jsonl 4984 rows (14+2 tools x240/160, 1464 agentic, 21% recovery), audit 0.04% bad, tools_v5.json chat_r6, TOOLS_DIFF.md + AUDIT_TOOLS.md in proofs/2026-11-21_rsn_full; DONE
+- rsn_full chain 2 build + audit real rows 2026-11-21T01:01:37+00:00
+- rsn_full chain 3 wait tools + speed test 2026-11-21T01:03:37+00:00
+- rsn_full chain 4 prep_data (~19.2k rows seen) 2026-11-21T01:03:37+00:00
+- rsn_full chain FAIL prep_data (logs/prep.log) 2026-11-21T01:03:55+00:00
+- rsn_full chain2 4 prep_data (12.8k rows seen, 800 steps, owner speed) 2026-11-21T01:52:41+00:00
+- rsn_full chain2 5 launch: --eval-every 200 --patience 2  2026-11-21T01:58:22+00:00
+- rsn_full chain2 launched pid 988 2026-11-21T01:58:23+00:00

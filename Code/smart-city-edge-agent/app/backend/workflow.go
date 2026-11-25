@@ -131,6 +131,9 @@ type WorkflowState struct {
 	Legacy         bool       `json:"legacy_decision,omitempty"` // decided before the lifecycle existed
 	Steps          []Step     `json:"steps,omitempty"`
 	Events         []IncEvent `json:"events,omitempty"`
+	// safe decisions (workflow_ext.go)
+	Undo               *UndoSnap `json:"undo,omitempty"`                // the last decision, undoable for 10 min
+	DismissUnconfirmed bool      `json:"dismiss_unconfirmed,omitempty"` // closed as false alarm by one person; out of AI memory until a second confirms
 }
 
 // wfNow is the people clock (tests replace it).
@@ -246,6 +249,22 @@ func suggestedSteps(inc *Incident) []Step {
 		add(inc.Final.Parsed.Action, "report", "", oneLine(inc.Final.Parsed.RootCause))
 	}
 	ff := finalFindings(inc)
+	if ai && normSeverity(inc.Final.Parsed.Severity) != "normal" {
+		// the reasoner's own checklist (final or refined report) is part of the steps (owner 2026-11-20); an item aimed at a
+		// sensor that has since read normal is not suggested
+		normalNode := map[string]bool{}
+		for _, s := range inc.Sensors {
+			if f, ok := ff[s.Ref]; ok && !s.Context && normSeverity(f.Status) == "normal" {
+				normalNode[s.Node] = true
+			}
+		}
+		for _, c := range inc.Final.Parsed.Checklist {
+			if normalNode[c.Target] {
+				continue
+			}
+			add(c.Action, "report", c.Target, oneLine(c.Why))
+		}
+	}
 	for _, s := range inc.Sensors {
 		if s.Context {
 			continue
@@ -278,6 +297,9 @@ func suggestedSteps(inc *Incident) []Step {
 		if level != "sensor_fault" {
 			list = healthPlaybook[inc.Roles[0]][level]
 			why = fmt.Sprintf("Standard steps for a %s %s alarm (no specific AI recommendation)", level, strings.ReplaceAll(inc.Roles[0], "_", " "))
+			if pl, w := metricPlaybook(inc, level); pl != nil { // per metric and indoor/outdoor (polish_playbook.go)
+				list, why = pl, w
+			}
 		}
 		for _, t := range list {
 			if len(out) < maxSuggested {
@@ -328,7 +350,7 @@ func mergeSteps(inc *Incident, stage string) {
 		case !want[stepKey(*s)] && s.State == "open":
 			s.State = "withdrawn"
 			if stage != "preliminary" {
-				inc.event("system", "step_withdrawn", s.ID, "", "", "no longer suggested after "+what)
+				inc.event("system", "step_withdrawn", s.ID, "", "", "no longer suggested after "+what+stepNormalNote(inc, s.Target))
 			}
 		case want[stepKey(*s)] && s.State == "withdrawn":
 			s.State = "open"
@@ -347,6 +369,20 @@ func mergeSteps(inc *Incident, stage string) {
 			inc.event("system", "step_added", s.ID, "", "", "suggested by "+what)
 		}
 	}
+}
+
+// stepNormalNote: " (the <metric> sensor is back to normal)" when the step's target sensor now reads normal.
+func stepNormalNote(inc *Incident, target string) string {
+	if target == "" {
+		return ""
+	}
+	ff := finalFindings(inc)
+	for _, s := range inc.Sensors {
+		if f, ok := ff[s.Ref]; ok && !s.Context && s.Node == target && normSeverity(f.Status) == "normal" {
+			return " (" + metricWord(s.Metric) + " is back to normal)"
+		}
+	}
+	return ""
 }
 
 // openSteps counts steps still to do (withdrawn ones are not).
@@ -425,7 +461,10 @@ func (r *Reasoner) wfAnalysedLocked(inc *Incident, epoch int64) {
 func (r *Reasoner) wfAfterRecheckLocked(inc *Incident, prevSev string, rev Revision) map[string]any {
 	ev := map[string]any{}
 	a, b := reportRank[normSeverity(prevSev)], reportRank[normSeverity(inc.Severity)]
-	normal := len(rev.Sensors) > 0
+	// 2026-11-20 INC-0004: "back to normal" needs the AI AND the rules: a re-check where the agents read a still
+	// flagged sensor as normal resolved the incident and the same tick reopened it ("abnormal again").
+	// refine stages already require the fresh rule to agree (Curbed); a promotion re-check reads the agents only
+	normal := len(rev.Sensors) > 0 && (rev.Stage != "promotion" || ruleSeverity(inc.Sensors) == "normal")
 	for _, s := range rev.Sensors {
 		if normSeverity(s.Status) != "normal" {
 			normal = false
@@ -572,7 +611,7 @@ func (r *Reasoner) mutate(id string, f func(inc *Incident) error) (*Incident, er
 // is shown (owner 2026-10-29: act on the preliminary checklist; the AI report then merges into it). Close, dismiss and
 // approve-all still wait for the AI report.
 func decidableEarly(inc *Incident) error {
-	if inc.State == "running" && inc.Final != nil && inc.Final.Preliminary && inc.Final.Parsed != nil && wfOf(inc) != wfClosed {
+	if inc.State == "running" && wfOf(inc) != wfClosed && (criticalOnRulesReport(inc) || (inc.Final != nil && inc.Final.Preliminary && inc.Final.Parsed != nil)) {
 		return nil
 	}
 	return decidable(inc, false)
@@ -581,6 +620,8 @@ func decidableEarly(inc *Incident) error {
 // decidable: the shared refusals of every decision (the report must exist and the record be open).
 func decidable(inc *Incident, allowFailed bool) error {
 	switch {
+	case inc.State == "running" && criticalOnRulesReport(inc):
+		return nil // a critical may be decided on the rules report while the AI still runs (owner 2026-11-19)
 	case inc.State == "running":
 		return wfErr(409, "analysis still running - decide once the report is ready")
 	case inc.State == "failed" && !allowFailed:
@@ -607,10 +648,13 @@ func (r *Reasoner) Ack(id, op string) (*Incident, error) {
 		return nil, err
 	}
 	return r.mutate(id, func(inc *Incident) error {
-		if err := decidableEarly(inc); err != nil {
-			return err
+		// "I am on it" is always possible on an open incident, whatever the analysis is doing (owner 2026-11-19)
+		if wfOf(inc) == wfClosed {
+			return wfErr(409, "this incident is closed; a recurrence opens a new incident")
 		}
+		u := takeUndoLocked(inc, "ack", op)
 		ackLocked(inc, op, "")
+		u.EventsAt, inc.Undo = len(inc.Events), u
 		return nil
 	})
 }
@@ -628,6 +672,7 @@ func (r *Reasoner) ApproveAll(id, op, note string) (*Incident, error) {
 		if err := decidable(inc, false); err != nil {
 			return err
 		}
+		u := takeUndoLocked(inc, "approve_all", op)
 		inc.Approval, inc.ApprovalNote = "approved", note
 		if inc.Owner != op || wfOf(inc) == wfNeeds {
 			ackLocked(inc, op, "approve")
@@ -636,10 +681,12 @@ func (r *Reasoner) ApproveAll(id, op, note string) (*Incident, error) {
 		for i := range inc.Steps {
 			if inc.Steps[i].State == "open" && !inc.Steps[i].Accepted {
 				inc.Steps[i].Accepted = true
+				u.Accepted = append(u.Accepted, inc.Steps[i].ID)
 				n++
 			}
 		}
 		inc.event(op, "approve_all", "", "", note, fmt.Sprintf("%d step(s) accepted", n))
+		u.EventsAt, inc.Undo = len(inc.Events), u
 		return nil
 	})
 }
@@ -748,9 +795,14 @@ func (r *Reasoner) Close(id, op, outcome, note string, dismiss bool) (*Incident,
 		if err := decidable(inc, dismiss || outcome == "false_alarm" || outcome == "no_action_needed"); err != nil {
 			return err
 		}
+		u := takeUndoLocked(inc, "close", op)
+		if dismiss {
+			u.Kind = "dismiss"
+		}
 		inc.Workflow, inc.Outcome, inc.OutcomeNote, inc.ClosedAt, inc.ClosedBy = wfClosed, outcome, note, wfNow().Unix(), op
 		if outcome == "false_alarm" || outcome == "no_action_needed" {
 			inc.Approval, inc.ApprovalNote = "dismissed", note
+			inc.DismissUnconfirmed = true // one person decided: not AI memory until a second confirms (workflow_ext.go)
 		} else if inc.Approval == "" || inc.Approval == "pending" {
 			inc.Approval = "approved"
 		}
@@ -759,6 +811,7 @@ func (r *Reasoner) Close(id, op, outcome, note string, dismiss bool) (*Incident,
 			ev = "dismissed"
 		}
 		inc.event(op, ev, "", outcome, note, outcomeText[outcome])
+		u.EventsAt, inc.Undo = len(inc.Events), u
 		return nil
 	})
 }
@@ -792,6 +845,12 @@ func (r *Reasoner) workflowTick(sim, epoch int64, states []SensorState) {
 			continue
 		}
 		ev := map[string]any{}
+		if r.fineAutoCloseLocked(inc, sim, now) { // polish_events.go: fine, nothing new for 2 h
+			ev["workflow_change"] = "auto_closed"
+			ev["id"], ev["state"], ev["workflow"], ev["approval"] = inc.ID, inc.State, inc.Workflow, inc.Approval
+			changed = append(changed, out{inc, ev})
+			continue
+		}
 		// an unacknowledged critical incident re-alerts once after 15 min (sound + Android notification)
 		if wf == wfNeeds && !inc.Reminded && normSeverity(inc.Severity) == "critical" && inc.NeedsSince > 0 &&
 			now.Sub(time.Unix(inc.NeedsSince, 0)) >= remindAfter {

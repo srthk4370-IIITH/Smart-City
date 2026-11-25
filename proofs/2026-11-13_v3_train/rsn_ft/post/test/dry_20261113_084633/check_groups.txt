@@ -1,0 +1,52 @@
+verdict FAIL checks 48 failed 6
+groups H1 H10 H11 H2 H3 H4 H6 H7 H8 H9
+missing ['test_taxonomy: no chain_direct items scored', 'test_taxonomy: no three_way items scored', 'test_fog online: no common items', 'test_fog offline: no common items', 'test_fog timeout: no common items']
+  FAIL H1 19 checks     rwh                                  severity                           new=0.333 base=1.0
+  ok   H1 19 checks     rwh                                  label                              new=1.0 base=1.0
+  ok   H1 19 checks     rwh                                  check_recall                       new=1.0 base=1.0
+  ok   H1 19 checks     rwh                                  check_prec                         new=1.0 base=1.0
+  ok   H1 19 checks     rwh                                  req                                new=1.0 base=1.0
+  ok   H1 19 checks     rwh                                  schema_err                         new=0.0 base=0.0
+  FAIL H1 19 checks     rwh2                                 severity                           new=0.333 base=1.0
+  ok   H1 19 checks     rwh2                                 label                              new=1.0 base=1.0
+  ok   H1 19 checks     rwh2                                 check_recall                       new=1.0 base=1.0
+  ok   H1 19 checks     rwh2                                 check_prec                         new=1.0 base=1.0
+  ok   H1 19 checks     rwh2                                 req                                new=1.0 base=1.0
+  ok   H1 19 checks     rwh2                                 schema_err                         new=0.0 base=0.0
+  ok   H1 19 checks     dev                                  severity                           new=1.0 base=1.0
+  ok   H1 19 checks     dev                                  label                              new=1.0 base=1.0
+  ok   H1 19 checks     dev                                  check_recall                       new=None base=None
+  ok   H1 19 checks     dev                                  check_prec                         new=None base=None
+  ok   H1 19 checks     dev                                  req                                new=1.0 base=1.0
+  ok   H1 19 checks     dev                                  schema_err                         new=0.0 base=0.0
+  FAIL H1 19 checks     chatdev3                             pass_rate                          new=0.333 base=0.813
+  ok   H2 r3 test slices chat_test_r3 (minus ambiguous)       fog=online (n 1)                   new=1.0 base=1.0
+  ok   H2 r3 test slices chat_test_r3 (minus ambiguous)       fog=offline (n 2)                  new=1.0 base=0.5
+  ok   H2 r3 test slices incidents_test_r2                    severity                           new=1.0 base=1.0
+  ok   H2 r3 test slices incidents_test_r2                    label                              new=1.0 base=1.0
+  ok   H2 r3 test slices incidents_test_r2                    check_recall                       new=1.0 base=1.0
+  ok   H2 r3 test slices incidents_test_r2                    check_prec                         new=1.0 base=1.0
+  ok   H2 r3 test slices incidents_test_r2                    req                                new=1.0 base=0.667
+  ok   H2 r3 test slices incidents_test_r2                    schema_err                         new=0.0 base=0.0
+  ok   H3 r4 tests      test_inc_r4                          item score (n 3)                   new=0.7111 base=0.7111
+  ok   H3 r4 tests      test_inc_r4                          type=chain_direct (n 1)            new=0.6667 base=0.6667
+  ok   H3 r4 tests      test_inc_r4                          type=pair_relation (n 1)           new=0.6667 base=0.6667
+  ok   H3 r4 tests      test_inc_r4                          type=transitive (n 1)              new=0.8 base=0.8
+  ok   H3 r4 tests      test_chat_r4                         pass (n 3)                         new=1.0 base=1.0
+  ok   H3 r4 tests      test_chat_r4                         type=pair_relation (n 1)           new=1.0 base=1.0
+  ok   H3 r4 tests      test_chat_r4                         type=pair_who (n 1)                new=1.0 base=1.0
+  ok   H3 r4 tests      test_chat_r4                         type=pairwise (n 1)                new=1.0 base=1.0
+  FAIL H4 P0            P0                                   G1                                 new=0.0 base=r3-2800 G1 True
+  FAIL H6 campus        test_campus_inc                      severity                           new=0.6667 base=1.0
+  ok   H6 campus        test_campus_inc                      label                              new=1.0 base=1.0
+  ok   H7 unseen        test_unseen_metric                   severity                           new=1.0 base=0.9
+  FAIL H7 unseen        test_unseen_layout                   severity                           new=0.6667 base=0.9
+  ok   H8 taxonomy      test_taxonomy                        acc pair_relation (n 2)            new=1.0 base=0.85
+  ok   H9 site          v4 tests (2+ flagged domains)        root_domain_ok (n 6)               new=1.0 base=1.0
+  ok   H11 think        v4 incident tests                    think_empty_single (n 9)           new=1.0 base=0.98
+  ok   H11 think        v4 incident tests                    think_ok_multi (n 6)               new=1.0 base=0.95
+  ok   H10 real agent   test_real_agent (cleaned)            catch recall (claims 1)            new=1.0 base=0.6
+  ok   H10 real agent   test_real_agent (cleaned)            survived-and-wrong                 new=0.0 base=0.02
+  ok   H6 campus        test_campus_chat (SiteTools)         pass (n 3)                         new=0.6667 base=0.6667
+  ok   H11 think        test_campus_chat + test_fog (easy)   easy chat think rate (n 2)         new=0.0 base=0.0
+info r3_suites chatdev3 chat_test_r3_ambiguous_excluded chat_test_r3 test_r2_by_slice test_inc_r4_plus1_item r4_root_domain_level p0 v4 taxonomy_by_type_hops taxonomy_by_type taxonomy_by_type_r3_2800_ref v4_all_by_type think_present_multi real_agent_claims real_agent_claims_r3_2800_ref text_v4_incidents latency_v4_p50_s test_fog_base_source test_fog test_campus_chat text_chat text_test_inc_r4 latency_host_p50_s (info, §5.4.5: within +20 %)

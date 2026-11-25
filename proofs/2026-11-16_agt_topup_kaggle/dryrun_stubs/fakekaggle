@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# fake kaggle CLI for the dry run: no network. Records what would be pushed under $DRY.
+D=${DRY:?}
+case "$1 $2" in
+  "config view") echo "- username: dryuser" ;;
+  "datasets status") echo "ready" ;;
+  "datasets create"|"datasets version")
+    p=$(echo "$*" | sed -n 's/.*-p \([^ ]*\).*/\1/p'); echo "$(date -Is) $* " >> $D/fake_calls.log
+    mkdir -p $D/pushed/$(basename "$p")_$$; cp -rL "$p"/. $D/pushed/$(basename "$p")_$$/ 2>/dev/null
+    [ -f "$p/agt3_cfg.json" ] && cp "$p/agt3_cfg.json" $D/live_cfg.json
+    echo "Dataset ok" ;;
+  "datasets download") p=$(echo "$*" | sed -n 's/.*-p \([^ ]*\).*/\1/p'); cp $D/live_cfg.json "$p/agt3_cfg.json" ;;
+  "kernels push") echo "$(date -Is) $*" >> $D/fake_calls.log; p=$(echo "$*" | sed -n 's/.*-p \([^ ]*\).*/\1/p'); rm -rf $D/kernel_pushed; cp -r "$p" $D/kernel_pushed; echo "Kernel version 1 successfully pushed" ;;
+  "kernels status") echo 'x has status "complete"' ;;
+  "kernels output") p=$(echo "$*" | sed -n 's/.*-p \([^ ]*\).*/\1/p'); cp -r $D/fake_out/. "$p/" ;;
+  quota*) : ;;
+  *) echo "fake kaggle: unhandled $*" >&2; exit 1 ;;
+esac

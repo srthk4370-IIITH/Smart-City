@@ -1,0 +1,10 @@
+- 2026-11-25 13:37:27 [claude] fix run launch: 60 steps from rsn_final ckpt_0127, 360 sensor_fault-boundary reports + 360 targeted_v2 chat, lr 5e-6, evals 30/60, work settings, gate after
+- 2026-11-25 08:07:37 [rsn_fix fix] nproc=6 -> 4 CPU threads, nice 10, no throttle (owner working)
+- 2026-11-25 08:07:40 [rsn_fix fix] waiting: Windows free RAM ? MB < 1536 MB
+- 2026-11-25 08:52:03 [rsn_fix fix] free RAM 1002 MB < 1500: page-cache drop requested
+- 2026-11-25 08:53:09 [rsn_fix fix] free RAM 1494 MB < 1500: page-cache drop requested
+- 2026-11-25 08:56:26 [rsn_fix fix] free RAM 1440 MB < 1500: page-cache drop requested
+- 2026-11-25 09:03:01 [rsn_fix fix] free RAM 1499 MB < 1500: page-cache drop requested
+- 2026-11-25 13:48:57 [rsn_fix fix] chunk 1 rc=0
+- 2026-11-25 13:48:57 [rsn_fix fix] after-run gate on /home/hp_srthk4370/smartcity_runs/rsn_fix/ckpt_best_0060 (gate only, no deploy)
+- 2026-11-25 14:29:44 [rsn_fix fix] gate rc=0 (see /mnt/c/Users/hp/Desktop/qidk/proofs/2026-11-21_rsn_full/gate_full/GATE.md; step 640 = GATE_0640.md)

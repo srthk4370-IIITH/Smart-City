@@ -100,29 +100,35 @@ func startProd(s *Server) {
 	}
 	if u := profStr("mqtt_url"); u != "" {
 		prod.mqtt = newMQTTBridge(mqttConfigFromProfile(), s.eng)
-		go prod.mqtt.Run(nil)
+		safeGo("mqtt", func() { prod.mqtt.Run(nil) })
 		log.Printf("prod: MQTT bridge on %s topics %v", redactURL(u), prod.mqtt.cfg.Topics)
 	}
 	if a := newAlerterFromProfile(s.dir); a != nil {
 		prod.alert = a
 		addPersistHook(s.rsn, a.OnIncident)
-		go a.Run(nil)
+		safeGo("prod feature", func() { a.Run(nil) })
 		log.Printf("prod: alert delivery on (%d channels)", len(a.chans))
 	}
 	if f := newFogUploaderFromProfile(s.dir, s.eng); f != nil {
 		prod.fog = f
 		addPersistHook(s.rsn, f.OnIncident)
-		go f.Run(nil)
+		safeGo("prod feature", func() { f.Run(nil) })
 		log.Printf("prod: fog uploader to %s every %v", redactURL(fogURL()), f.every)
+	}
+	if x := newSupaSync(s.dir); x != nil {
+		x.s, supa = s, x
+		addPersistHook(s.rsn, x.OnIncident)
+		safeGo("supabase sync", func() { x.Run(nil) })
+		log.Printf("prod: supabase fog (reports only) board %s", x.board)
 	}
 	if h := newHeartbeatFromProfile(s); h != nil {
 		prod.hb = h
-		go h.Run(nil)
+		safeGo("prod feature", func() { h.Run(nil) })
 		log.Printf("prod: heartbeat every %v", h.every)
 	}
 	if w := newIdleWarmerFromProfile(s); w != nil {
 		prod.warm = w
-		go w.Run(nil)
+		safeGo("prod feature", func() { w.Run(nil) })
 		log.Printf("prod: NPU warm-up after %v idle", w.idle)
 	}
 }
@@ -157,7 +163,7 @@ func (s *Server) prodRoutes(mux *http.ServeMux) {
 }
 
 func prodAny() bool {
-	return prod.mqtt != nil || prod.alert != nil || prod.fog != nil || prod.hb != nil || prod.warm != nil || timeSyncEnabled()
+	return prod.mqtt != nil || prod.alert != nil || prod.fog != nil || prod.hb != nil || prod.warm != nil || supa != nil || timeSyncEnabled()
 }
 
 func prodStatus(s *Server) map[string]any {

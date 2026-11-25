@@ -142,6 +142,7 @@ func (e *Engine) ContextFor(flagged []Candidate, max int) []contextPick {
 		wg.Add(1)
 		go func(i int, o option) {
 			defer wg.Done()
+			defer recoverLog("orchestrator option")
 			f := contextFinding(o.role, o.metric, o.node, o.xs, o.end)
 			score := o.score
 			if informative(f) {

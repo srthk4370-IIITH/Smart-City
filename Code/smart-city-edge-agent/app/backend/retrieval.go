@@ -155,6 +155,11 @@ func retFeatures(sensors []SensorRef) (d retDoc, ok bool) {
 
 // retDocOf indexes a finished AI incident; ok=false when it has no usable AI report.
 func retDocOf(inc *Incident) (retDoc, bool) {
+	// a dismissal only one person has made is not yet memory: it must not teach the next incident that this pattern is a
+	// false alarm (owner 2026-11-19, safe dismiss) until a second person confirms it
+	if inc != nil && inc.DismissUnconfirmed {
+		return retDoc{}, false
+	}
 	if inc == nil || inc.Mode == 1 || inc.Final == nil || inc.Final.Preliminary || !inc.Final.Valid || inc.Final.Parsed == nil ||
 		(inc.State != "done" && inc.State != "done_with_errors") {
 		return retDoc{}, false
@@ -482,4 +487,19 @@ func (ix *retIndex) loadSeed(path string) int {
 		n++
 	}
 	return n
+}
+
+// remove drops an incident from the index (a dismissal that is not confirmed yet, hardening).
+func (ix *retIndex) remove(id string) {
+	ix.mu.Lock()
+	defer ix.mu.Unlock()
+	for i := range ix.docs {
+		if ix.docs[i].ID == id {
+			for w := range ix.docs[i].tf {
+				ix.df[w]--
+			}
+			ix.docs = append(ix.docs[:i], ix.docs[i+1:]...)
+			return
+		}
+	}
 }

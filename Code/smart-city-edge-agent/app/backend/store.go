@@ -27,6 +27,8 @@ import (
 var (
 	storeMu    sync.Mutex  // serialises appends against compaction
 	compacting atomic.Bool // one background compaction at a time
+
+	storeWriteErrors atomic.Int64 // failed store writes since start (shown in /api/health)
 )
 
 func maxIncidents() int {
@@ -87,17 +89,21 @@ func (r *Reasoner) load() {
 }
 
 func (r *Reasoner) persist(inc *Incident) {
+	// Marshal INSIDE storeMu: a version marshalled before a compaction but appended after it would put an older
+	// copy after the newer one (newest line wins on load = lost update). Lock order is storeMu, then r.mu - as in
+	// compact().
+	storeMu.Lock()
 	r.mu.RLock() // operator clicks and the workflow tick change incidents under r.mu
 	b, err := json.Marshal(inc)
 	r.mu.RUnlock()
 	if err != nil {
+		storeMu.Unlock()
 		return
 	}
-	storeMu.Lock()
-	f, err := os.OpenFile(r.store, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
-	if err == nil {
-		f.Write(append(b, '\n'))
-		f.Close()
+	if werr := appendSync(r.store, append(append([]byte(nil), b...), '\n')); werr != nil {
+		storeWriteErrors.Add(1)
+		log.Printf("store: WRITE FAILED for %s (%v) - the change is in memory only; check the disk", inc.ID, werr)
+	} else {
 		r.storeLines++
 	}
 	lines := r.storeLines
@@ -110,10 +116,10 @@ func (r *Reasoner) persist(inc *Incident) {
 	n := len(r.incidents)
 	r.mu.RUnlock()
 	if (lines > 2*n+200 || n > maxIncidents()+100) && compacting.CompareAndSwap(false, true) {
-		go func() {
+		safeGo("store compaction", func() {
 			defer compacting.Store(false)
 			r.compact()
-		}()
+		})
 	}
 }
 
@@ -125,7 +131,8 @@ func (r *Reasoner) compact() {
 	r.mu.RLock()
 	var old []*Incident
 	for i, extra := 0, len(r.incidents)-maxIncidents(); i < len(r.incidents) && extra > 0; i++ {
-		if inc := r.incidents[i]; inc.State != "running" {
+		// never an open incident: only a closed one with its analysis finished leaves memory (audit 2026-11-19 #3)
+		if inc := r.incidents[i]; inc.State != "running" && wfOf(inc) == wfClosed {
 			old = append(old, inc)
 			extra--
 		}
@@ -176,18 +183,11 @@ func (r *Reasoner) compact() {
 	n := len(r.incidents)
 	r.mu.Unlock()
 
-	tmp := r.store + ".tmp"
-	f, err := os.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
-	if err != nil {
-		log.Printf("store: compaction skipped: %v", err)
-		return
-	}
-	_, werr := f.Write(buf)
-	serr := f.Sync()
-	f.Close()
-	if werr != nil || serr != nil || os.Rename(tmp, r.store) != nil {
-		os.Remove(tmp)
-		log.Printf("store: compaction failed (write=%v sync=%v), old store kept", werr, serr)
+	// storeMu is held from the snapshot above to the rename below, so no append can land between them (persist
+	// takes storeMu before it marshals): nothing is lost and no older copy lands after a newer one.
+	if err := atomicWrite(r.store, buf, 0o644); err != nil {
+		storeWriteErrors.Add(1)
+		log.Printf("store: compaction failed (%v), old store kept", err)
 		return
 	}
 	r.storeLines = n
