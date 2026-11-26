@@ -1,0 +1,2372 @@
+{
+ "incidents": [
+  {
+   "id": "INC-0016",
+   "state": "done",
+   "mode": 3,
+   "total_ms": 37847,
+   "npu_calls": 11,
+   "n_sensors": 4,
+   "n_primary": 3,
+   "agents": [
+    {
+     "ref": "S1",
+     "role": "power",
+     "latency_ms": 2292.255,
+     "ttft_ms": 648.2,
+     "gen_tokens": 171,
+     "valid": true
+    },
+    {
+     "ref": "S2",
+     "role": "air_quality",
+     "latency_ms": 2556.43,
+     "ttft_ms": 613.1,
+     "gen_tokens": 171,
+     "valid": true
+    },
+    {
+     "ref": "S3",
+     "role": "weather",
+     "latency_ms": 2123.857,
+     "ttft_ms": 641,
+     "gen_tokens": 170,
+     "valid": true
+    }
+   ],
+   "reasoner": {
+    "model": "qwen3.5-4b rsn_v3 (htpd)",
+    "latency_ms": 23646,
+    "ttft_ms": 2694.7,
+    "gen_tokens": 548,
+    "valid": true,
+    "label": "sensor_fault",
+    "severity": "sensor_fault",
+    "domains": [
+     "power",
+     "air_quality",
+     "weather"
+    ]
+   },
+   "timeline": [
+    [
+     "03:55:03",
+     "Site grouping: joined INC-0015: outdoor-for link, window 60 min"
+    ],
+    [
+     "09:00:00",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "09:00:00",
+     "Critical fast path: SR-AQ-KH03-03 temp beyond its critical limit for 1 readings - incident opened at once with the rules report; the AI analysis follows when the event has lasted 8 readings and updates this incident"
+    ],
+    [
+     "09:00:06",
+     "Early AI on history: the real readings that exist; the event is shorter than 8 readings (0 min so far)"
+    ],
+    [
+     "09:00:07",
+     "AI analysis of the fast-path incident: 2 sensor(s) at 8 readings"
+    ],
+    [
+     "09:00:07",
+     "Event gated: 4 sensor(s) flagged, mode 3"
+    ],
+    [
+     "09:00:07",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "09:00:07",
+     "Orchestrator: 3 sensor(s) to NPU agents, 1 related sensor(s) checked by context agents in parallel"
+    ],
+    [
+     "09:00:07",
+     "Power agent analysing EM-CR-SB00-00 pf on NPU (fine-tuned)"
+    ],
+    [
+     "09:00:12",
+     "Power agent done in 4.9s (first token 0.8s, 169 tokens): step_decrease / sensor_fault (policy PASSED)"
+    ],
+    [
+     "09:00:12",
+     "Power agent asked for more data (data quality fault): re-run with 8 h window"
+    ],
+    [
+     "09:00:15",
+     "Power agent more-data answer kept: step_decrease / sensor_fault, confidence 0.83"
+    ],
+    [
+     "09:00:15",
+     "Power agent unsure (data quality fault): the larger prompt would not fit the NPU agent context, answer kept"
+    ],
+    [
+     "09:00:15",
+     "Air Quality agent analysing SR-AQ-KH03-03 temp on NPU (fine-tuned)"
+    ],
+    [
+     "09:00:18",
+     "Air Quality agent done in 3.1s (first token 0.5s, 171 tokens): step_increase / sensor_fault (policy PASSED)"
+    ],
+    [
+     "09:00:18",
+     "Air Quality agent asked for more data (data quality fault): re-run with 6 h window"
+    ],
+    [
+     "09:00:21",
+     "Air Quality agent more-data answer kept: step_increase / sensor_fault, confidence 0.94"
+    ],
+    [
+     "09:00:21",
+     "Air Quality agent unsure (data quality fault): the larger prompt would not fit the NPU agent context, answer kept"
+    ],
+    [
+     "09:00:21",
+     "Weather agent analysing WE-VN04-00 temp on NPU (fine-tuned)"
+    ],
+    [
+     "09:00:23",
+     "Weather agent done in 2.6s (first token 0.7s, 173 tokens): step_increase / sensor_fault (policy PASSED)"
+    ],
+    [
+     "09:00:23",
+     "Reasoner v3 combining 2 domains"
+    ],
+    [
+     "09:00:23",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "09:00:30",
+     "Reasoner title: Outdoor temperature sensor offset: 47.0 C at VN building, level 04"
+    ],
+    [
+     "09:00:30",
+     "Reasoner severity (provisional): sensor_fault"
+    ],
+    [
+     "09:00:45",
+     "Reasoner v3 report in 21.6s (1 completion(s), 0 tool call(s)), policy ok"
+    ],
+    [
+     "09:00:45",
+     "Finished in 37.8s, 6 NPU call(s)"
+    ],
+    [
+     "04:00:36",
+     "Full 8-reading analysis replaces the early one"
+    ],
+    [
+     "04:00:36",
+     "Sensor Temperature turned critical: promoted to domain agent, report updated"
+    ]
+   ],
+   "test_incident": true
+  },
+  {
+   "id": "INC-0015",
+   "state": "done",
+   "mode": 3,
+   "total_ms": 19136,
+   "npu_calls": 5,
+   "n_sensors": 2,
+   "n_primary": 2,
+   "agents": [
+    {
+     "ref": "S1",
+     "role": "air_quality",
+     "latency_ms": 0,
+     "ttft_ms": 523.7,
+     "gen_tokens": 181,
+     "valid": true
+    },
+    {
+     "ref": "S2",
+     "role": "weather",
+     "latency_ms": 5380.574,
+     "ttft_ms": 987.3,
+     "gen_tokens": 167,
+     "valid": true
+    }
+   ],
+   "reasoner": {
+    "model": "qwen3.5-4b rsn_v3 (htpd)",
+    "latency_ms": 21269,
+    "ttft_ms": 1672.1,
+    "gen_tokens": 521,
+    "valid": true,
+    "label": "sensor_fault",
+    "severity": "critical",
+    "domains": [
+     "air_quality"
+    ]
+   },
+   "timeline": [
+    [
+     "08:55:00",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "08:55:00",
+     "Critical fast path: AQ-KN00-00 pm10 beyond its critical limit for 1 readings - incident opened at once with the rules report; the AI analysis follows when the event has lasted 24 readings and updates this incident"
+    ],
+    [
+     "08:55:05",
+     "Early AI on history: the real readings that exist; the event is shorter than 8 readings (0 min so far)"
+    ],
+    [
+     "08:55:06",
+     "AI analysis of the fast-path incident: 1 sensor(s) at 8 readings"
+    ],
+    [
+     "08:55:06",
+     "Event gated: 2 sensor(s) flagged, mode 3"
+    ],
+    [
+     "08:55:06",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "08:55:06",
+     "Orchestrator: 1 sensor(s) to NPU agents, 1 related sensor(s) checked by context agents in parallel"
+    ],
+    [
+     "08:55:06",
+     "Air Quality agent analysing AQ-KN00-00 pm10 on NPU (fine-tuned)"
+    ],
+    [
+     "08:55:10",
+     "Air Quality agent done in 4.6s (first token 0.5s, 181 tokens): step_increase / critical (policy PASSED)"
+    ],
+    [
+     "08:55:10",
+     "Related domains checked and steady (1 context agents): reasoner v3 writes the report"
+    ],
+    [
+     "08:55:10",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "08:55:16",
+     "Reasoner title: PM10 gaps fill in, no rise: KN building, outdoor air station"
+    ],
+    [
+     "08:55:16",
+     "Reasoner severity (provisional): normal"
+    ],
+    [
+     "08:55:25",
+     "Severity guard: the reasoner said normal, the rules say critical: kept at warning"
+    ],
+    [
+     "08:55:25",
+     "Reasoner v3 report in 14.6s (1 completion(s), 0 tool call(s)), policy ok"
+    ],
+    [
+     "08:55:25",
+     "Finished in 19.1s, 2 NPU call(s)"
+    ],
+    [
+     "03:56:06",
+     "Full 8-reading analysis replaces the early one"
+    ],
+    [
+     "03:56:06",
+     "Severity warning -> critical: Wind speed: exponential increase/critical (last reading 22)"
+    ],
+    [
+     "03:56:06",
+     "Sensor Wind speed turned critical: promoted to domain agent, report updated"
+    ],
+    [
+     "04:05:57",
+     "Sensor Wind speed turned critical again (new episode): domain agent re-run on its current window, report updated"
+    ]
+   ],
+   "test_incident": true
+  },
+  {
+   "id": "INC-0014",
+   "state": "done",
+   "mode": 3,
+   "total_ms": 19158,
+   "npu_calls": 10,
+   "n_sensors": 4,
+   "n_primary": 2,
+   "agents": [
+    {
+     "ref": "S1",
+     "role": "air_quality",
+     "latency_ms": 0,
+     "ttft_ms": 512.1,
+     "gen_tokens": 177,
+     "valid": true
+    },
+    {
+     "ref": "S2",
+     "role": "weather",
+     "latency_ms": 3198.672,
+     "ttft_ms": 485.8,
+     "gen_tokens": 169,
+     "valid": true
+    },
+    {
+     "ref": "S3",
+     "role": "weather",
+     "latency_ms": 2097.495,
+     "ttft_ms": 615.2,
+     "gen_tokens": 169,
+     "valid": true
+    },
+    {
+     "ref": "S4",
+     "role": "weather",
+     "latency_ms": 0,
+     "ttft_ms": 590.3,
+     "gen_tokens": 173,
+     "valid": true
+    }
+   ],
+   "reasoner": {
+    "model": "qwen3.5-4b rsn_v3 (htpd)",
+    "latency_ms": 19560,
+    "ttft_ms": 2435.5,
+    "gen_tokens": 466,
+    "valid": true,
+    "label": "unknown",
+    "severity": "critical",
+    "domains": [
+     "air_quality"
+    ]
+   },
+   "timeline": [
+    [
+     "08:30:01",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "08:30:01",
+     "Critical fast path: AQ-KN00-00 pm25 beyond its critical limit for 1 readings - incident opened at once with the rules report; the AI analysis follows when the event has lasted 8 readings and updates this incident"
+    ],
+    [
+     "08:30:05",
+     "Early AI on history: the real readings that exist; the event is shorter than 8 readings (0 min so far)"
+    ],
+    [
+     "08:30:05",
+     "AI analysis of the fast-path incident: 1 sensor(s) at 8 readings"
+    ],
+    [
+     "08:30:05",
+     "Event gated: 3 sensor(s) flagged, mode 3"
+    ],
+    [
+     "08:30:05",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "08:30:05",
+     "Orchestrator: 1 sensor(s) to NPU agents, 2 related sensor(s) checked by context agents in parallel"
+    ],
+    [
+     "08:30:05",
+     "Air Quality agent analysing AQ-KN00-00 pm25 on NPU (fine-tuned)"
+    ],
+    [
+     "08:30:11",
+     "Air Quality agent done in 5.2s (first token 0.5s, 162 tokens): erratic / sensor_fault (policy PASSED)"
+    ],
+    [
+     "08:30:11",
+     "Air Quality agent asked for more data (data quality fault): re-run with 6 h window"
+    ],
+    [
+     "08:30:14",
+     "Air Quality agent more-data answer kept: erratic / sensor_fault, confidence 0.52"
+    ],
+    [
+     "08:30:14",
+     "Air Quality agent unsure (data quality fault): the larger prompt would not fit the NPU agent context, answer kept"
+    ],
+    [
+     "08:30:14",
+     "Related domains checked and steady (2 context agents): reasoner v3 writes the report"
+    ],
+    [
+     "08:30:14",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "08:30:20",
+     "Reasoner title: PM2.5 data unreliable (KN building, outdoor air station)"
+    ],
+    [
+     "08:30:20",
+     "Reasoner severity (provisional): sensor_fault"
+    ],
+    [
+     "08:30:25",
+     "Reasoner v3 report in 10.5s (1 completion(s), 0 tool call(s)), policy ok"
+    ],
+    [
+     "08:30:25",
+     "Finished in 19.2s, 3 NPU call(s)"
+    ],
+    [
+     "03:56:37",
+     "Full 8-reading analysis replaces the early one"
+    ],
+    [
+     "03:56:37",
+     "Severity sensor fault -> critical: PM2.5: erratic/sensor_fault -> spike/critical (last reading 250); Humidity: step increase/sensor_fault (last reading 99)"
+    ],
+    [
+     "03:56:37",
+     "Sensor Humidity turned critical: promoted to domain agent, report updated"
+    ],
+    [
+     "04:05:31",
+     "Sensor Humidity turned critical again (new episode): domain agent re-run on its current window, report updated"
+    ]
+   ],
+   "test_incident": true
+  },
+  {
+   "id": "INC-0013",
+   "state": "done",
+   "mode": 3,
+   "total_ms": 15587,
+   "npu_calls": 10,
+   "n_sensors": 5,
+   "n_primary": 2,
+   "agents": [
+    {
+     "ref": "S1",
+     "role": "air_quality",
+     "latency_ms": 0,
+     "ttft_ms": 407.6,
+     "gen_tokens": 164,
+     "valid": true
+    },
+    {
+     "ref": "S5",
+     "role": "weather",
+     "latency_ms": 2516.676,
+     "ttft_ms": 1011.2,
+     "gen_tokens": 170,
+     "valid": true
+    }
+   ],
+   "reasoner": {
+    "model": "qwen3.5-4b rsn_v3 (htpd)",
+    "latency_ms": 22510,
+    "ttft_ms": 2760.1,
+    "gen_tokens": 565,
+    "valid": true,
+    "label": "unknown",
+    "severity": "warning",
+    "domains": [
+     "air_quality",
+     "weather"
+    ]
+   },
+   "timeline": [
+    [
+     "07:05:00",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "07:05:00",
+     "Critical fast path: SR-AQ-KH03-03 co2 beyond its critical limit for 2 readings - incident opened at once with the rules report; the AI analysis follows when the event has lasted 8 readings and updates this incident"
+    ],
+    [
+     "07:05:05",
+     "Early AI on history: the real readings that exist; the event is shorter than 8 readings (0 min so far)"
+    ],
+    [
+     "07:05:05",
+     "AI analysis of the fast-path incident: 1 sensor(s) at 8 readings"
+    ],
+    [
+     "07:05:05",
+     "Event gated: 1 sensor(s) flagged, mode 3"
+    ],
+    [
+     "07:05:05",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "07:05:05",
+     "Orchestrator: 1 sensor(s) to NPU agents, 0 related sensor(s) checked by context agents in parallel"
+    ],
+    [
+     "07:05:05",
+     "Air Quality agent analysing SR-AQ-KH03-03 co2 on NPU (fine-tuned)"
+    ],
+    [
+     "07:05:09",
+     "Air Quality agent done in 3.5s (first token 0.8s, 163 tokens): exponential_increase / critical (policy PASSED)"
+    ],
+    [
+     "07:05:09",
+     "Related domains checked and steady (0 context agents): reasoner v3 writes the report"
+    ],
+    [
+     "07:05:09",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "07:05:14",
+     "Reasoner title: CO2 rising fast, critical (KH building, level 03)"
+    ],
+    [
+     "07:05:14",
+     "Reasoner severity (provisional): critical"
+    ],
+    [
+     "07:05:21",
+     "Reasoner v3 report in 12.1s (1 completion(s), 0 tool call(s)), policy ok"
+    ],
+    [
+     "07:05:21",
+     "Finished in 15.6s, 2 NPU call(s)"
+    ],
+    [
+     "03:15:25",
+     "Full 8-reading analysis replaces the early one"
+    ],
+    [
+     "03:15:25",
+     "Sensor CO2 turned critical again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "03:30:23",
+     "Severity critical -> warning: CO2: oscillation/critical -> level shift (12 h view)/warning (last reading 450) [curbed critical -> normal: refined view (oscillation normal) and rule (normal) both read lower; beyond limits last at 08:25]"
+    ],
+    [
+     "03:30:23",
+     "Refined at 1.5 h (windows to 08:35 sensor time, 3 NPU call(s), 19.3s): severity critical -> warning; CO2: curbed critical -> normal: refined view (oscillation normal) and rule (normal) both read lower; beyond limits last at 08:25"
+    ],
+    [
+     "03:35:29",
+     "Severity warning -> critical: Temperature: exponential increase/critical (last reading 46)"
+    ],
+    [
+     "03:35:29",
+     "Sensor Temperature turned critical: promoted to domain agent, report updated"
+    ],
+    [
+     "03:45:50",
+     "Severity critical -> warning: Temperature: exponential increase/critical -> step increase/sensor_fault (last reading 46)"
+    ],
+    [
+     "03:45:50",
+     "Sensor Temperature turned critical again (new episode): domain agent re-run on its current window, report updated"
+    ]
+   ],
+   "test_incident": true
+  },
+  {
+   "id": "INC-0012",
+   "state": "done",
+   "mode": 3,
+   "total_ms": 24236,
+   "npu_calls": 3,
+   "n_sensors": 3,
+   "n_primary": 1,
+   "agents": [
+    {
+     "ref": "S1",
+     "role": "air_quality",
+     "latency_ms": 2537.781,
+     "ttft_ms": 1032.9,
+     "gen_tokens": 167,
+     "valid": true
+    }
+   ],
+   "reasoner": {
+    "model": "qwen3.5-4b rsn_v3 (htpd)",
+    "latency_ms": 16041,
+    "ttft_ms": 1753.1,
+    "gen_tokens": 393,
+    "valid": true,
+    "label": "sensor_fault",
+    "severity": "sensor_fault",
+    "domains": [
+     "air_quality"
+    ]
+   },
+   "timeline": [
+    [
+     "20:44:50",
+     "Event gated: 3 sensor(s) flagged, mode 3"
+    ],
+    [
+     "20:44:50",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "20:44:50",
+     "Orchestrator: 1 sensor(s) to NPU agents, 2 related sensor(s) checked by context agents in parallel"
+    ],
+    [
+     "20:44:50",
+     "Air Quality agent analysing SR-AQ-KH03-03 rh on NPU (fine-tuned)"
+    ],
+    [
+     "20:44:55",
+     "Air Quality agent done in 5.6s (first token 0.8s, 170 tokens): step_increase / sensor_fault (policy PASSED)"
+    ],
+    [
+     "20:44:55",
+     "Air Quality agent asked for more data (data quality fault): re-run with 11 h window"
+    ],
+    [
+     "20:44:58",
+     "Air Quality agent more-data answer kept: step_increase / sensor_fault, confidence 0.97"
+    ],
+    [
+     "20:44:58",
+     "Air Quality agent unsure (data quality fault): the larger prompt would not fit the NPU agent context, answer kept"
+    ],
+    [
+     "20:44:58",
+     "Reasoner v3 combining 2 domains"
+    ],
+    [
+     "20:44:58",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "20:45:04",
+     "Reasoner title: Room humidity stepped up after a sensor offset: KH building, level 03"
+    ],
+    [
+     "20:45:04",
+     "Reasoner severity (provisional): sensor_fault"
+    ],
+    [
+     "20:45:14",
+     "Reasoner v3 report in 16.0s (1 completion(s), 0 tool call(s)), policy ok"
+    ],
+    [
+     "20:45:14",
+     "Finished in 24.2s, 3 NPU call(s)"
+    ]
+   ],
+   "test_incident": false
+  },
+  {
+   "id": "INC-0011",
+   "state": "done",
+   "mode": 3,
+   "total_ms": 16893,
+   "npu_calls": 2,
+   "n_sensors": 5,
+   "n_primary": 1,
+   "agents": [
+    {
+     "ref": "S1",
+     "role": "air_quality",
+     "latency_ms": 2207.405,
+     "ttft_ms": 509.3,
+     "gen_tokens": 159,
+     "valid": true
+    }
+   ],
+   "reasoner": {
+    "model": "qwen3.5-4b rsn_v3 (htpd)",
+    "latency_ms": 15284,
+    "ttft_ms": 2248.6,
+    "gen_tokens": 340,
+    "valid": true,
+    "label": "normal_operation",
+    "severity": "normal",
+    "domains": [
+     "air_quality",
+     "occupancy"
+    ]
+   },
+   "timeline": [
+    [
+     "09:50:01",
+     "Event gated: 5 sensor(s) flagged, mode 3"
+    ],
+    [
+     "09:50:01",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "09:50:01",
+     "Orchestrator: 1 sensor(s) to NPU agents, 4 related sensor(s) checked by context agents in parallel"
+    ],
+    [
+     "09:50:01",
+     "Air Quality agent analysing SR-AQ-KH03-03 co2 on NPU (fine-tuned)"
+    ],
+    [
+     "09:50:04",
+     "Air Quality agent done in 3.0s (first token 0.5s, 157 tokens): gradual_increase / normal (policy PASSED)"
+    ],
+    [
+     "09:50:04",
+     "Reasoner v3 combining 3 domains"
+    ],
+    [
+     "09:50:04",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "09:50:11",
+     "Reasoner title: CO2 rising steadily, within normal range: KH building, level 03"
+    ],
+    [
+     "09:50:11",
+     "Reasoner severity (provisional): normal"
+    ],
+    [
+     "09:50:18",
+     "Severity guard: the rules warned only about a trend inside the limits (CO2 exponential increase); the AI judged normal: kept normal"
+    ],
+    [
+     "09:50:18",
+     "Reasoner v3 report in 13.9s (1 completion(s), 0 tool call(s)), policy ok"
+    ],
+    [
+     "09:50:18",
+     "Finished in 16.9s, 2 NPU call(s)"
+    ],
+    [
+     "07:00:15",
+     "Refined at 1.5 h (windows to 11:20 sensor time, 2 NPU call(s), 15.7s): CO2: curbed warning -> normal: refined view (gradual increase normal) and rule (normal) both read lower; beyond limits last at 11:20"
+    ],
+    [
+     "11:50:01",
+     "Auto-closed: fine, nothing new for 2 h (reopen it if you disagree)"
+    ],
+    [
+     "08:30:17",
+     "Refined at 3 h (windows to 12:50 sensor time, 2 NPU call(s), 17.5s): no change"
+    ]
+   ],
+   "test_incident": false
+  },
+  {
+   "id": "INC-0010",
+   "state": "done",
+   "mode": 3,
+   "total_ms": 16951,
+   "npu_calls": 2,
+   "n_sensors": 5,
+   "n_primary": 1,
+   "agents": [
+    {
+     "ref": "S1",
+     "role": "air_quality",
+     "latency_ms": 2247.878,
+     "ttft_ms": 475,
+     "gen_tokens": 159,
+     "valid": true
+    }
+   ],
+   "reasoner": {
+    "model": "qwen3.5-4b rsn_v3 (htpd)",
+    "latency_ms": 11553,
+    "ttft_ms": 2202.7,
+    "gen_tokens": 332,
+    "valid": true,
+    "label": "normal_operation",
+    "severity": "normal",
+    "domains": [
+     "air_quality",
+     "occupancy"
+    ]
+   },
+   "timeline": [
+    [
+     "09:40:01",
+     "Event gated: 5 sensor(s) flagged, mode 3"
+    ],
+    [
+     "09:40:01",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "09:40:01",
+     "Orchestrator: 1 sensor(s) to NPU agents, 4 related sensor(s) checked by context agents in parallel"
+    ],
+    [
+     "09:40:01",
+     "Air Quality agent analysing SR-AQ-KH03-03 co2 on NPU (fine-tuned)"
+    ],
+    [
+     "09:40:04",
+     "Air Quality agent done in 2.8s (first token 0.8s, 159 tokens): gradual_increase / normal (policy PASSED)"
+    ],
+    [
+     "09:40:04",
+     "Reasoner v3 combining 3 domains"
+    ],
+    [
+     "09:40:04",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "09:40:10",
+     "Reasoner title: CO2 rising steadily, within normal range: KH building, level 03"
+    ],
+    [
+     "09:40:10",
+     "Reasoner severity (provisional): normal"
+    ],
+    [
+     "09:40:18",
+     "Severity guard: the rules warned only about a trend inside the limits (CO2 exponential increase); the AI judged normal: kept normal"
+    ],
+    [
+     "09:40:18",
+     "Reasoner v3 report in 14.1s (1 completion(s), 0 tool call(s)), policy ok"
+    ],
+    [
+     "09:40:18",
+     "Finished in 17.0s, 2 NPU call(s)"
+    ],
+    [
+     "06:50:15",
+     "Refined at 1.5 h (windows to 11:10 sensor time, 2 NPU call(s), 16.2s): CO2: curbed warning -> normal: refined view (gradual increase normal) and rule (normal) both read lower; beyond limits last at 11:10"
+    ],
+    [
+     "11:40:01",
+     "Auto-closed: fine, nothing new for 2 h (reopen it if you disagree)"
+    ],
+    [
+     "08:20:13",
+     "Refined at 3 h (windows to 12:40 sensor time, 2 NPU call(s), 13.8s): no change"
+    ]
+   ],
+   "test_incident": false
+  },
+  {
+   "id": "INC-0009",
+   "state": "done",
+   "mode": 3,
+   "total_ms": 35838,
+   "npu_calls": 28,
+   "n_sensors": 7,
+   "n_primary": 3,
+   "agents": [
+    {
+     "ref": "S1",
+     "role": "weather",
+     "latency_ms": 5510.867,
+     "ttft_ms": 1125.2,
+     "gen_tokens": 148,
+     "valid": true
+    },
+    {
+     "ref": "S2",
+     "role": "water",
+     "latency_ms": 5582.372,
+     "ttft_ms": 961.9,
+     "gen_tokens": 171,
+     "valid": true
+    },
+    {
+     "ref": "S3",
+     "role": "weather",
+     "latency_ms": 2758.326,
+     "ttft_ms": 576.9,
+     "gen_tokens": 165,
+     "valid": true
+    },
+    {
+     "ref": "S5",
+     "role": "power",
+     "latency_ms": 3805.8540000000003,
+     "ttft_ms": 538.2,
+     "gen_tokens": 154,
+     "valid": true
+    }
+   ],
+   "reasoner": {
+    "model": "qwen3.5-4b rsn_v3 (htpd)",
+    "latency_ms": 27792,
+    "ttft_ms": 4510.8,
+    "gen_tokens": 532,
+    "valid": true,
+    "label": "water_leak_or_overuse",
+    "severity": "critical",
+    "domains": [
+     "water",
+     "occupancy"
+    ]
+   },
+   "timeline": [
+    [
+     "16:20:29",
+     "Event gated: 7 sensor(s) flagged, mode 3"
+    ],
+    [
+     "16:20:29",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "16:20:29",
+     "Orchestrator: 3 sensor(s) to NPU agents, 4 related sensor(s) checked by context agents in parallel"
+    ],
+    [
+     "16:20:29",
+     "Weather agent analysing WE-VN04-00 temp on NPU (fine-tuned)"
+    ],
+    [
+     "16:20:33",
+     "Weather agent done in 3.3s (first token 0.8s, 150 tokens): gradual_increase / normal (policy PASSED)"
+    ],
+    [
+     "16:20:33",
+     "Water agent analysing WM-WL-KH98-00 level on NPU (fine-tuned)"
+    ],
+    [
+     "16:20:37",
+     "Water agent done in 3.9s (first token 0.8s, 170 tokens): exponential_increase / normal (policy PASSED)"
+    ],
+    [
+     "16:20:37",
+     "Water agent unsure (onset at the window start): no longer window in the history, skipping to related sensors"
+    ],
+    [
+     "16:20:37",
+     "Water agent unsure (onset at the window start): the larger prompt would not fit the NPU agent context, answer kept"
+    ],
+    [
+     "16:20:37",
+     "Weather agent analysing WE-VN04-00 wind on NPU (fine-tuned)"
+    ],
+    [
+     "16:20:39",
+     "Weather agent done in 2.7s (first token 0.4s, 152 tokens): gradual_increase / normal (policy PASSED)"
+    ],
+    [
+     "16:20:39",
+     "Reasoner v3 combining 3 domains"
+    ],
+    [
+     "16:20:39",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "16:20:47",
+     "Reasoner title: Tank level rising steadily, no fault: KH building, level 98"
+    ],
+    [
+     "16:20:47",
+     "Reasoner severity (provisional): normal"
+    ],
+    [
+     "16:20:54",
+     "Severity guard: the reasoner said normal, the rules say warning: kept at warning"
+    ],
+    [
+     "16:20:54",
+     "Reasoner v3 report in 14.5s (1 completion(s), 0 tool call(s)), policy ok"
+    ],
+    [
+     "16:20:54",
+     "Coverage check: the report does not mention S1; reasoner asked once more"
+    ],
+    [
+     "16:21:05",
+     "Severity guard: the reasoner said normal, the rules say warning: kept at warning"
+    ],
+    [
+     "16:21:05",
+     "Reasoner v3 report in 11.5s (1 completion(s), 0 tool call(s)), policy ok"
+    ],
+    [
+     "16:21:05",
+     "Coverage check: the retry covers every alerting sensor"
+    ],
+    [
+     "16:21:05",
+     "Finished in 35.8s, 5 NPU call(s)"
+    ],
+    [
+     "15:45:45",
+     "Refined at 1.5 h (windows to 10:05 sensor time, 7 NPU call(s), 84.7s): Tank level: warning kept from early: the rule on the fresh window still reads warning (refined view: gradual increase normal); Wind speed: gradual increase/normal -> stable/normal"
+    ],
+    [
+     "15:49:57",
+     "Severity warning -> critical: Tank level: gradual increase/warning -> gradual increase/warning (last reading 86) [warning kept from 1.5 h: the rule on the fresh window still reads warning (refined view: gradual increase normal)]"
+    ],
+    [
+     "15:49:57",
+     "Refined at 3 h (windows to 11:35 sensor time, 5 NPU call(s), 36.9s): severity warning -> critical; Tank level: warning kept from 1.5 h: the rule on the fresh window still reads warning (refined view: gradual increase normal)"
+    ],
+    [
+     "15:41:32",
+     "Severity critical -> warning: Tank level: gradual increase/warning -> gradual increase/normal (last reading 155)"
+    ],
+    [
+     "15:41:32",
+     "Sensor Tank level turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "05:25:25",
+     "Sensor Tank level turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "12:10:28",
+     "Sensor Tank level turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "05:35:20",
+     "Sensor Tank level turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "12:10:21",
+     "Sensor Tank level turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "15:42:22",
+     "Severity warning -> critical: no sensor pattern changed; the reasoner weighed the same readings differently"
+    ],
+    [
+     "15:42:22",
+     "Sensor Tank level turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ]
+   ],
+   "test_incident": false
+  },
+  {
+   "id": "INC-0008",
+   "state": "done",
+   "mode": 3,
+   "total_ms": 16199,
+   "npu_calls": 2,
+   "n_sensors": 3,
+   "n_primary": 1,
+   "agents": [
+    {
+     "ref": "S1",
+     "role": "water",
+     "latency_ms": 3785.268,
+     "ttft_ms": 413.2,
+     "gen_tokens": 175,
+     "valid": true
+    }
+   ],
+   "reasoner": {
+    "model": "qwen3.5-4b rsn_v3 (htpd)",
+    "latency_ms": 9681,
+    "ttft_ms": 1598.2,
+    "gen_tokens": 341,
+    "valid": true,
+    "label": "normal_operation",
+    "severity": "normal",
+    "domains": [
+     "water",
+     "occupancy",
+     "weather"
+    ]
+   },
+   "timeline": [
+    [
+     "09:40:01",
+     "Event gated: 3 sensor(s) flagged, mode 3"
+    ],
+    [
+     "09:40:01",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "09:40:01",
+     "Orchestrator: 1 sensor(s) to NPU agents, 2 related sensor(s) checked by context agents in parallel"
+    ],
+    [
+     "09:40:01",
+     "Water agent analysing WM-WL-KH98-00 level on NPU (fine-tuned)"
+    ],
+    [
+     "09:40:05",
+     "Water agent done in 3.7s (first token 0.4s, 174 tokens): gradual_increase / normal (policy PASSED)"
+    ],
+    [
+     "09:40:05",
+     "Reasoner v3 combining 3 domains"
+    ],
+    [
+     "09:40:05",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "09:40:10",
+     "Reasoner title: Tank level rising steadily, no fault: KH building, level 98"
+    ],
+    [
+     "09:40:10",
+     "Reasoner severity (provisional): normal"
+    ],
+    [
+     "09:40:17",
+     "Severity guard: the reasoner said normal, the rules say warning: kept at warning"
+    ],
+    [
+     "09:40:17",
+     "Reasoner v3 report in 12.5s (1 completion(s), 0 tool call(s)), policy ok"
+    ],
+    [
+     "09:40:17",
+     "Consistency check: AI severity warning differs from 3 of 3 similar past incident(s) (seed:train-05376=critical, seed:train-03467=critical, seed:train-03028=critical)"
+    ],
+    [
+     "09:40:17",
+     "Finished in 16.2s, 2 NPU call(s)"
+    ],
+    [
+     "04:49:05",
+     "Refined at 1.5 h (windows to 11:10 sensor time, 2 NPU call(s), 15.9s): no change"
+    ],
+    [
+     "06:19:03",
+     "Severity warning -> normal: no sensor pattern changed; the reasoner weighed the same readings differently"
+    ],
+    [
+     "06:19:03",
+     "Refined at 3 h (windows to 12:40 sensor time, 2 NPU call(s), 13.5s): severity warning -> normal"
+    ],
+    [
+     "12:45:01",
+     "Auto-closed: fine, nothing new for 2 h (reopen it if you disagree)"
+    ]
+   ],
+   "test_incident": false
+  },
+  {
+   "id": "INC-0007",
+   "state": "done",
+   "mode": 3,
+   "total_ms": 23978,
+   "npu_calls": 3,
+   "n_sensors": 3,
+   "n_primary": 1,
+   "agents": [
+    {
+     "ref": "S1",
+     "role": "weather",
+     "latency_ms": 3089.484,
+     "ttft_ms": 549.1,
+     "gen_tokens": 165,
+     "valid": true
+    }
+   ],
+   "reasoner": {
+    "model": "qwen3.5-4b rsn_v3 (htpd)",
+    "latency_ms": 11987,
+    "ttft_ms": 1608.7,
+    "gen_tokens": 307,
+    "valid": true,
+    "label": "weather_driven",
+    "severity": "normal",
+    "domains": [
+     "weather"
+    ]
+   },
+   "timeline": [
+    [
+     "06:10:00",
+     "Event gated: 3 sensor(s) flagged, mode 3"
+    ],
+    [
+     "06:10:00",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "06:10:00",
+     "Orchestrator: 1 sensor(s) to NPU agents, 2 related sensor(s) checked by context agents in parallel"
+    ],
+    [
+     "06:10:00",
+     "Weather agent analysing WE-VN04-00 rh on NPU (fine-tuned)"
+    ],
+    [
+     "06:10:04",
+     "Weather agent done in 3.4s (first token 0.5s, 159 tokens): stable / warning (policy PASSED)"
+    ],
+    [
+     "06:10:04",
+     "Weather agent asked for more data (onset at the window start): re-run with 6 h window"
+    ],
+    [
+     "06:10:06",
+     "Weather agent more-data answer less confident (0.63 < 0.68): previous kept"
+    ],
+    [
+     "06:10:06",
+     "Weather agent unsure (onset at the window start): the larger prompt would not fit the NPU agent context, answer kept"
+    ],
+    [
+     "06:10:06",
+     "Reasoner v3 combining 2 domains"
+    ],
+    [
+     "06:10:06",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "06:10:12",
+     "Reasoner title: Outdoor humidity sensor offset after a warm night: VN building, level 04"
+    ],
+    [
+     "06:10:13",
+     "Reasoner severity (provisional): sensor_fault"
+    ],
+    [
+     "06:10:24",
+     "Fault guard: the reasoner said sensor_fault without a second evidence (no rule or agent fault finding): reported as warning for checking"
+    ],
+    [
+     "06:10:24",
+     "Reasoner v3 report in 18.1s (1 completion(s), 0 tool call(s)), policy ok"
+    ],
+    [
+     "06:10:24",
+     "Finished in 24.0s, 3 NPU call(s)"
+    ],
+    [
+     "01:19:16",
+     "Refined at 1.5 h (windows to 07:40 sensor time, 3 NPU call(s), 26.2s): no change"
+    ],
+    [
+     "02:49:06",
+     "Severity warning -> normal: Humidity: stable/warning -> gradual decrease/normal (last reading 79.5) [curbed warning -> normal: refined view (gradual decrease normal) and rule (normal) both read lower; beyond limits last at 07:45]"
+    ],
+    [
+     "02:49:06",
+     "Refined at 3 h (windows to 09:10 sensor time, 2 NPU call(s), 15.1s): severity warning -> normal; Humidity: curbed warning -> normal: refined view (gradual decrease normal) and rule (normal) both read lower; beyond limits last at 07:45"
+    ],
+    [
+     "09:15:00",
+     "Auto-closed: fine, nothing new for 2 h (reopen it if you disagree)"
+    ]
+   ],
+   "test_incident": false
+  },
+  {
+   "id": "INC-0006",
+   "state": "done",
+   "mode": 3,
+   "total_ms": 19619,
+   "npu_calls": 2,
+   "n_sensors": 3,
+   "n_primary": 1,
+   "agents": [
+    {
+     "ref": "S1",
+     "role": "weather",
+     "latency_ms": 3452.36,
+     "ttft_ms": 525.5,
+     "gen_tokens": 146,
+     "valid": true
+    }
+   ],
+   "reasoner": {
+    "model": "qwen3.5-4b rsn_v3 (htpd)",
+    "latency_ms": 11978,
+    "ttft_ms": 1518.2,
+    "gen_tokens": 296,
+    "valid": true,
+    "label": "normal_operation",
+    "severity": "normal",
+    "domains": [
+     "weather"
+    ]
+   },
+   "timeline": [
+    [
+     "01:05:00",
+     "Event gated: 3 sensor(s) flagged, mode 3"
+    ],
+    [
+     "01:05:00",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "01:05:00",
+     "Orchestrator: 1 sensor(s) to NPU agents, 2 related sensor(s) checked by context agents in parallel"
+    ],
+    [
+     "01:05:00",
+     "Weather agent analysing WE-VN04-00 rh on NPU (fine-tuned)"
+    ],
+    [
+     "01:05:03",
+     "Weather agent done in 3.3s (first token 0.8s, 146 tokens): step_increase / normal (policy PASSED)"
+    ],
+    [
+     "01:05:03",
+     "Related domains checked and steady (2 context agents): reasoner v3 writes the report"
+    ],
+    [
+     "01:05:03",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "01:05:09",
+     "Reasoner title: Outdoor humidity rising with rain: VN building, level 04"
+    ],
+    [
+     "01:05:09",
+     "Reasoner severity (provisional): normal"
+    ],
+    [
+     "01:05:20",
+     "Severity guard: the rules warned only about a trend inside the limits (Humidity exponential increase); the AI judged normal: kept normal"
+    ],
+    [
+     "01:05:20",
+     "Reasoner v3 report in 16.3s (1 completion(s), 0 tool call(s)), policy ok"
+    ],
+    [
+     "01:05:20",
+     "Finished in 19.6s, 2 NPU call(s)"
+    ],
+    [
+     "20:14:07",
+     "Severity normal -> warning: Humidity: step increase/normal -> step increase/warning (last reading 91.6)"
+    ],
+    [
+     "20:14:07",
+     "Refined at 1.5 h (windows to 02:35 sensor time, 2 NPU call(s), 17.8s): severity normal -> warning; Humidity: step increase/normal -> step increase/warning"
+    ],
+    [
+     "21:44:04",
+     "Severity warning -> normal: Humidity: step increase/warning -> stable/normal (last reading 86.6) [curbed warning -> normal: refined view (stable normal) and rule (normal) both read lower; beyond limits last at 02:50]"
+    ],
+    [
+     "21:44:04",
+     "Refined at 3 h (windows to 04:05 sensor time, 2 NPU call(s), 15.4s): severity warning -> normal; Humidity: curbed warning -> normal: refined view (stable normal) and rule (normal) both read lower; beyond limits last at 02:50"
+    ],
+    [
+     "04:10:00",
+     "Auto-closed: fine, nothing new for 2 h (reopen it if you disagree)"
+    ]
+   ],
+   "test_incident": false
+  },
+  {
+   "id": "INC-0005",
+   "state": "done",
+   "mode": 3,
+   "total_ms": 18153,
+   "npu_calls": 2,
+   "n_sensors": 3,
+   "n_primary": 1,
+   "agents": [
+    {
+     "ref": "S1",
+     "role": "air_quality",
+     "latency_ms": 3885.918,
+     "ttft_ms": 497.8,
+     "gen_tokens": 163,
+     "valid": true
+    }
+   ],
+   "reasoner": {
+    "model": "qwen3.5-4b rsn_v3 (htpd)",
+    "latency_ms": 16000,
+    "ttft_ms": 1528,
+    "gen_tokens": 426,
+    "valid": true,
+    "label": "hvac_or_thermal_issue",
+    "severity": "warning",
+    "domains": [
+     "air_quality",
+     "hvac"
+    ]
+   },
+   "timeline": [
+    [
+     "20:15:01",
+     "Event gated: 3 sensor(s) flagged, mode 3"
+    ],
+    [
+     "20:15:01",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "20:15:01",
+     "Orchestrator: 1 sensor(s) to NPU agents, 2 related sensor(s) checked by context agents in parallel"
+    ],
+    [
+     "20:15:01",
+     "Air Quality agent analysing SR-AQ-KH03-03 rh on NPU (fine-tuned)"
+    ],
+    [
+     "20:15:05",
+     "Air Quality agent done in 3.9s (first token 0.8s, 141 tokens): step_increase / normal (policy PASSED)"
+    ],
+    [
+     "20:15:05",
+     "Reasoner v3 combining 2 domains"
+    ],
+    [
+     "20:15:05",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "20:15:10",
+     "Reasoner title: Indoor humidity stepped up with rain: KH building, level 03"
+    ],
+    [
+     "20:15:10",
+     "Reasoner severity (provisional): normal"
+    ],
+    [
+     "20:15:19",
+     "Severity guard: the rules warned only about a trend inside the limits (Humidity exponential increase); the AI judged normal: kept normal"
+    ],
+    [
+     "20:15:19",
+     "Reasoner v3 report in 14.2s (1 completion(s), 0 tool call(s)), policy ok"
+    ],
+    [
+     "20:15:19",
+     "Finished in 18.2s, 2 NPU call(s)"
+    ],
+    [
+     "15:24:08",
+     "Refined at 1.5 h (windows to 21:45 sensor time, 2 NPU call(s), 19.0s): no change"
+    ],
+    [
+     "22:15:01",
+     "Auto-closed: fine, nothing new for 2 h (reopen it if you disagree)"
+    ],
+    [
+     "16:54:10",
+     "Severity normal -> warning: Humidity: step increase/normal -> exponential increase/warning (last reading 70.86)"
+    ],
+    [
+     "16:54:10",
+     "Refined at 3 h (windows to 23:15 sensor time, 2 NPU call(s), 19.9s): severity normal -> warning; Humidity: step increase/normal -> exponential increase/warning"
+    ]
+   ],
+   "test_incident": false
+  },
+  {
+   "id": "INC-0004",
+   "state": "done",
+   "mode": 3,
+   "total_ms": 42459,
+   "npu_calls": 14,
+   "n_sensors": 6,
+   "n_primary": 2,
+   "agents": [
+    {
+     "ref": "S1",
+     "role": "air_quality",
+     "latency_ms": 3841.871,
+     "ttft_ms": 457.1,
+     "gen_tokens": 160,
+     "valid": true
+    },
+    {
+     "ref": "S2",
+     "role": "water",
+     "latency_ms": 2615.785,
+     "ttft_ms": 383.2,
+     "gen_tokens": 155,
+     "valid": true
+    }
+   ],
+   "reasoner": {
+    "model": "deterministic (synthesizer output rejected by policy)",
+    "latency_ms": 10184,
+    "ttft_ms": 2853.2,
+    "gen_tokens": 361,
+    "valid": true,
+    "label": "occupancy_driven_load",
+    "severity": "normal",
+    "domains": [
+     "air_quality",
+     "water",
+     "occupancy",
+     "hvac",
+     "weather",
+     "power"
+    ]
+   },
+   "timeline": [
+    [
+     "03:28:48",
+     "Event gated: 6 sensor(s) flagged, mode 3"
+    ],
+    [
+     "03:28:48",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "03:28:48",
+     "Orchestrator: 2 sensor(s) to NPU agents, 4 related sensor(s) checked by context agents in parallel"
+    ],
+    [
+     "03:28:48",
+     "Air Quality agent analysing SR-AQ-KH03-03 co2 on NPU (fine-tuned)"
+    ],
+    [
+     "03:28:52",
+     "Air Quality agent done in 4.0s (first token 0.9s, 151 tokens): gradual_increase / normal (policy PASSED)"
+    ],
+    [
+     "03:28:52",
+     "Water agent analysing WM-WL-KH98-00 level on NPU (fine-tuned)"
+    ],
+    [
+     "03:28:57",
+     "Water agent done in 4.6s (first token 0.8s, 171 tokens): gradual_increase / normal (policy PASSED)"
+    ],
+    [
+     "03:28:57",
+     "Reasoner v3 combining 4 domains"
+    ],
+    [
+     "03:28:57",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "03:29:03",
+     "Reasoner title: Tank level rising with no matching use: KH building, level 98"
+    ],
+    [
+     "03:29:04",
+     "Reasoner severity (provisional): warning"
+    ],
+    [
+     "03:29:16",
+     "Reasoner v3 report in 19.3s (1 completion(s), 0 tool call(s)), policy ok"
+    ],
+    [
+     "03:29:16",
+     "Coverage check: the report does not mention S1; reasoner asked once more"
+    ],
+    [
+     "03:29:31",
+     "Severity guard: the reasoner said normal, the rules say warning: kept at warning"
+    ],
+    [
+     "03:29:31",
+     "Reasoner v3 report in 14.6s (1 completion(s), 0 tool call(s)), policy ok"
+    ],
+    [
+     "03:29:31",
+     "Coverage check: the retry covers every alerting sensor"
+    ],
+    [
+     "03:29:31",
+     "Finished in 42.5s, 4 NPU call(s)"
+    ],
+    [
+     "04:59:19",
+     "Refined at 1.5 h (windows to 11:20 sensor time, 4 NPU call(s), 30.5s): CO2: curbed warning -> normal: refined view (gradual increase normal) and rule (normal) both read lower; beyond limits last at 11:20"
+    ],
+    [
+     "10:09:51",
+     "Sensor Tank level turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "03:19:13",
+     "Sensor Tank level turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "10:09:18",
+     "Severity warning -> normal: no sensor pattern changed; the reasoner weighed the same readings differently"
+    ],
+    [
+     "10:09:18",
+     "Sensor Tank level turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "18:30:01",
+     "Auto-closed: fine, nothing new for 2 h (reopen it if you disagree)"
+    ]
+   ],
+   "test_incident": false
+  },
+  {
+   "id": "INC-0003",
+   "state": "done",
+   "mode": 3,
+   "total_ms": 0,
+   "npu_calls": 8,
+   "n_sensors": 1,
+   "n_primary": 1,
+   "agents": [
+    {
+     "ref": "S1",
+     "role": "water",
+     "latency_ms": 3633.015,
+     "ttft_ms": 839,
+     "gen_tokens": 167,
+     "valid": true
+    }
+   ],
+   "reasoner": {
+    "model": "qwen3.5-4b rsn_v3 (htpd)",
+    "latency_ms": 12176,
+    "ttft_ms": 818,
+    "gen_tokens": 374,
+    "valid": true,
+    "label": "water_quality_issue",
+    "severity": "critical",
+    "domains": [
+     "water"
+    ]
+   },
+   "timeline": [
+    [
+     "21:42:38",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "21:42:38",
+     "Critical fast path: WM-WD-KH98-00 ph beyond its critical limit for 2 readings - incident opened at once with the rules report; the AI analysis follows when the event has lasted 8 readings and updates this incident"
+    ],
+    [
+     "21:48:12",
+     "Insufficient data: the AI analysis starts once the event has lasted 8 readings; not reached after 5 min. The alert and the rules report stay; the AI analysis runs when readings return."
+    ],
+    [
+     "15:41:20",
+     "Severity critical -> warning: pH: stable/critical -> stable/warning (last reading 5)"
+    ],
+    [
+     "15:41:20",
+     "Sensor pH turned critical again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "15:40:55",
+     "Severity warning -> critical: no sensor pattern changed; the reasoner weighed the same readings differently"
+    ],
+    [
+     "15:40:55",
+     "Sensor pH turned critical again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "15:40:36",
+     "Severity critical -> warning: no sensor pattern changed; the reasoner weighed the same readings differently"
+    ],
+    [
+     "15:40:36",
+     "Sensor pH turned critical again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "03:45:19",
+     "Severity warning -> critical: pH: stable/warning -> exponential increase/critical (last reading 9.6)"
+    ],
+    [
+     "03:45:19",
+     "Sensor pH turned critical again (new episode): domain agent re-run on its current window, report updated"
+    ]
+   ],
+   "test_incident": false
+  },
+  {
+   "id": "INC-0002",
+   "state": "done",
+   "mode": 3,
+   "total_ms": 26767,
+   "npu_calls": 16,
+   "n_sensors": 2,
+   "n_primary": 2,
+   "agents": [
+    {
+     "ref": "S2",
+     "role": "hvac",
+     "latency_ms": 5849.356,
+     "ttft_ms": 1251,
+     "gen_tokens": 130,
+     "valid": true
+    }
+   ],
+   "reasoner": {
+    "model": "qwen3.5-4b rsn_v3 (htpd)",
+    "latency_ms": 18200,
+    "ttft_ms": 1937.9,
+    "gen_tokens": 569,
+    "valid": true,
+    "label": "sensor_fault",
+    "severity": "sensor_fault",
+    "domains": [
+     "hvac"
+    ]
+   },
+   "timeline": [
+    [
+     "21:07:48",
+     "Event gated: 2 sensor(s) flagged, mode 3"
+    ],
+    [
+     "21:07:48",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "21:07:48",
+     "Orchestrator: 2 sensor(s) to NPU agents, 0 related sensor(s) checked by context agents in parallel"
+    ],
+    [
+     "21:07:48",
+     "HVAC agent analysing SR-AC-KH95-02 room_temp on NPU (fine-tuned)"
+    ],
+    [
+     "21:07:52",
+     "HVAC agent done in 4.4s (first token 1.0s, 138 tokens): no_cooling_effect / warning (policy PASSED)"
+    ],
+    [
+     "21:07:52",
+     "HVAC agent analysing SR-AC-KH03-15 room_temp on NPU (fine-tuned)"
+    ],
+    [
+     "21:07:55",
+     "HVAC agent done in 2.5s (first token 0.7s, 120 tokens): dropout / sensor_fault (policy PASSED)"
+    ],
+    [
+     "21:07:55",
+     "Related domains checked and steady (0 context agents): reasoner v3 writes the report"
+    ],
+    [
+     "21:07:55",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "21:08:01",
+     "Reasoner title: Suspect room temperature readings at KH building, level 03: S1 warns"
+    ],
+    [
+     "21:08:01",
+     "Reasoner severity (provisional): warning"
+    ],
+    [
+     "21:08:14",
+     "Reasoner v3 report in 19.9s (1 completion(s), 0 tool call(s)), policy ok"
+    ],
+    [
+     "21:08:14",
+     "Finished in 26.8s, 3 NPU call(s)"
+    ],
+    [
+     "10:58:12",
+     "Severity warning -> sensor fault: Room temperature: no cooling effect/warning -> stuck on/warning (last reading 28.93)"
+    ],
+    [
+     "10:58:12",
+     "Sensor Room temperature turned critical again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "15:40:58",
+     "Sensor Room temperature turned critical again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "15:40:58",
+     "Sensor Room temperature turned sensor fault again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "15:40:06",
+     "Severity sensor fault -> warning: no sensor pattern changed; the reasoner weighed the same readings differently"
+    ],
+    [
+     "15:40:06",
+     "Sensor Room temperature rose to warning (agent had said warning): agent re-run, report updated"
+    ],
+    [
+     "15:41:59",
+     "Sensor Room temperature turned sensor fault again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "15:41:33",
+     "Severity warning -> sensor fault: Room temperature: short cycling/warning -> erratic/sensor_fault (last reading 23.4); Room temperature: no cooling effect/warning -> short cycling/warning (last reading 25.22)"
+    ],
+    [
+     "15:41:33",
+     "Sensor Room temperature turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ]
+   ],
+   "test_incident": false
+  },
+  {
+   "id": "INC-0001",
+   "state": "done",
+   "mode": 3,
+   "total_ms": 21279,
+   "npu_calls": 105,
+   "n_sensors": 6,
+   "n_primary": 2,
+   "agents": [
+    {
+     "ref": "S1",
+     "role": "power",
+     "latency_ms": 4924.216,
+     "ttft_ms": 422.4,
+     "gen_tokens": 178,
+     "valid": true
+    },
+    {
+     "ref": "S4",
+     "role": "occupancy",
+     "latency_ms": 2252.063,
+     "ttft_ms": 443.2,
+     "gen_tokens": 143,
+     "valid": true
+    }
+   ],
+   "reasoner": {
+    "model": "qwen3.5-4b rsn_v3 (htpd)",
+    "latency_ms": 22791,
+    "ttft_ms": 3493.9,
+    "gen_tokens": 507,
+    "valid": true,
+    "label": "power_load_anomaly",
+    "severity": "critical",
+    "domains": [
+     "power",
+     "occupancy"
+    ]
+   },
+   "timeline": [
+    [
+     "17:44:46",
+     "Event gated: 4 sensor(s) flagged, mode 3"
+    ],
+    [
+     "17:44:46",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "17:44:46",
+     "Orchestrator: 1 sensor(s) to NPU agents, 3 related sensor(s) checked by context agents in parallel"
+    ],
+    [
+     "17:44:46",
+     "Power agent analysing EM-CR-SB00-00 power_kw on NPU (fine-tuned)"
+    ],
+    [
+     "17:44:47",
+     "Power agent called get_card(): the result would not fit the NPU agent context, answering directly"
+    ],
+    [
+     "17:44:49",
+     "Power agent done in 3.1s (first token 0.7s, 164 tokens): gradual_decrease / warning (policy PASSED)"
+    ],
+    [
+     "17:44:49",
+     "Reasoner v3 combining 2 domains"
+    ],
+    [
+     "17:44:49",
+     "Preliminary report shown (rules + agent findings); the reasoner is writing the full report"
+    ],
+    [
+     "17:44:55",
+     "Reasoner title: SB00 substation, 11 kV feeder meter: Power drop with outdoor temperature uncertain"
+    ],
+    [
+     "17:44:55",
+     "Reasoner severity (provisional): warning"
+    ],
+    [
+     "17:45:07",
+     "Reasoner v3 report rejected (title empty or over 80 characters; warning report needs an inspect_*, review_schedule or monitor+inspect/review checklist); report rebuilt from the validated agent findings"
+    ],
+    [
+     "17:45:07",
+     "Finished in 21.3s, 3 NPU call(s)"
+    ],
+    [
+     "17:46:41",
+     "Sensor Power turned warning: domain agent re-run on its current window, report updated"
+    ],
+    [
+     "21:09:40",
+     "Sensor Power turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "21:09:40",
+     "Sensor Occupancy turned warning: promoted to domain agent, report updated"
+    ],
+    [
+     "05:09:19",
+     "Severity warning -> critical: Power: dip/warning -> dip/critical (last reading 505.7)"
+    ],
+    [
+     "05:09:19",
+     "Sensor Power turned critical again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "10:09:25",
+     "Severity critical -> warning: Power: dip/critical -> gradual increase/warning (last reading 701.6)"
+    ],
+    [
+     "10:09:25",
+     "Sensor Power turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "11:29:12",
+     "Sensor Power turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "16:14:16",
+     "Sensor Occupancy turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "17:29:17",
+     "Sensor Power turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "21:04:13",
+     "Sensor Power turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "03:59:29",
+     "Sensor Power turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "06:29:15",
+     "Severity warning -> critical: Power: gradual increase/warning -> dip/warning (last reading 417.8)"
+    ],
+    [
+     "06:29:15",
+     "Sensor Power turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "11:29:12",
+     "Severity critical -> warning: Power: dip/warning -> gradual increase/warning (last reading 603.7)"
+    ],
+    [
+     "11:29:12",
+     "Sensor Power turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "16:54:30",
+     "Sensor Power turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "16:54:30",
+     "Sensor Occupancy turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "21:39:14",
+     "Sensor Power turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "01:29:07",
+     "Sensor Power turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "08:29:11",
+     "Sensor Power turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "15:42:13",
+     "Sensor Power turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "15:40:36",
+     "Sensor Power turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "17:50:25",
+     "Sensor Power turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "00:35:23",
+     "Sensor Occupancy turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "02:30:23",
+     "Sensor Power turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "07:15:35",
+     "Sensor Power turned critical again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "18:15:26",
+     "Sensor Occupancy turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "19:10:29",
+     "Sensor Power turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "00:30:27",
+     "Severity warning -> critical: Power: gradual decrease/warning -> dip/warning (last reading 344.7)"
+    ],
+    [
+     "00:30:27",
+     "Sensor Power turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "08:40:55",
+     "Severity critical -> warning: Power: dip/warning -> stable/normal (last reading 433)"
+    ],
+    [
+     "08:40:55",
+     "Sensor Power turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "14:10:23",
+     "Severity warning -> critical: Power: stable/normal -> dip/warning (last reading 553.2)"
+    ],
+    [
+     "14:10:23",
+     "Sensor Power turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ],
+    [
+     "15:41:09",
+     "Sensor Power turned warning again (new episode): domain agent re-run on its current window, report updated"
+    ]
+   ],
+   "test_incident": false
+  }
+ ],
+ "log": {
+  "swap_in_ms": [
+   2477,
+   3025,
+   2505,
+   2977,
+   2517,
+   2893,
+   2644,
+   2978,
+   2664,
+   2865,
+   2692,
+   2809,
+   2797,
+   2838,
+   2723,
+   2796,
+   2879,
+   2863,
+   3042,
+   2979,
+   3055,
+   2824,
+   3228,
+   2728
+  ],
+  "swap_back_ms": [
+   2600,
+   2156,
+   2274,
+   2367,
+   2225,
+   2410,
+   2248,
+   2361,
+   2354,
+   2208,
+   2313,
+   2189,
+   2335,
+   2339,
+   2196,
+   2408,
+   2259,
+   2199,
+   2459,
+   2364,
+   2279,
+   2335,
+   2292,
+   2275
+  ],
+  "prefill_ms": [
+   2141,
+   159,
+   132,
+   166,
+   142,
+   161,
+   138,
+   165,
+   1134,
+   167,
+   141,
+   2360,
+   1617,
+   2366,
+   2660,
+   848,
+   2801,
+   1451,
+   2486,
+   1880,
+   2833,
+   2734,
+   2481,
+   1709,
+   163
+  ],
+  "decode_steps": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   47,
+   0,
+   0,
+   78,
+   35,
+   54,
+   109,
+   52,
+   98,
+   70,
+   100,
+   97,
+   105,
+   115,
+   96,
+   105,
+   0
+  ],
+  "summary": {
+   "n_swap": 24,
+   "swap_in_med": 2831,
+   "swap_back_med": 2302,
+   "prefill_med": 1451
+  }
+ },
+ "rows": [
+  {
+   "id": "INC-0016",
+   "test": true,
+   "n_primary": 3,
+   "npu_calls": 11,
+   "total_ms": 37847,
+   "n_npu_agents": 3,
+   "agent_sum_ms": 6973,
+   "agent_max_ms": 2556,
+   "reasoner_model": "qwen3.5-4b rsn_v3 (htpd)",
+   "reasoner_ms": 23646,
+   "reasoner_ttft_ms": 2694.7,
+   "reasoner_tokens": 548,
+   "severity": "sensor_fault"
+  },
+  {
+   "id": "INC-0015",
+   "test": true,
+   "n_primary": 2,
+   "npu_calls": 5,
+   "total_ms": 19136,
+   "n_npu_agents": 1,
+   "agent_sum_ms": 5381,
+   "agent_max_ms": 5381,
+   "reasoner_model": "qwen3.5-4b rsn_v3 (htpd)",
+   "reasoner_ms": 21269,
+   "reasoner_ttft_ms": 1672.1,
+   "reasoner_tokens": 521,
+   "severity": "critical"
+  },
+  {
+   "id": "INC-0014",
+   "test": true,
+   "n_primary": 2,
+   "npu_calls": 10,
+   "total_ms": 19158,
+   "n_npu_agents": 2,
+   "agent_sum_ms": 5296,
+   "agent_max_ms": 3199,
+   "reasoner_model": "qwen3.5-4b rsn_v3 (htpd)",
+   "reasoner_ms": 19560,
+   "reasoner_ttft_ms": 2435.5,
+   "reasoner_tokens": 466,
+   "severity": "critical"
+  },
+  {
+   "id": "INC-0013",
+   "test": true,
+   "n_primary": 2,
+   "npu_calls": 10,
+   "total_ms": 15587,
+   "n_npu_agents": 1,
+   "agent_sum_ms": 2517,
+   "agent_max_ms": 2517,
+   "reasoner_model": "qwen3.5-4b rsn_v3 (htpd)",
+   "reasoner_ms": 22510,
+   "reasoner_ttft_ms": 2760.1,
+   "reasoner_tokens": 565,
+   "severity": "warning"
+  },
+  {
+   "id": "INC-0012",
+   "test": false,
+   "n_primary": 1,
+   "npu_calls": 3,
+   "total_ms": 24236,
+   "n_npu_agents": 1,
+   "agent_sum_ms": 2538,
+   "agent_max_ms": 2538,
+   "reasoner_model": "qwen3.5-4b rsn_v3 (htpd)",
+   "reasoner_ms": 16041,
+   "reasoner_ttft_ms": 1753.1,
+   "reasoner_tokens": 393,
+   "severity": "sensor_fault"
+  },
+  {
+   "id": "INC-0011",
+   "test": false,
+   "n_primary": 1,
+   "npu_calls": 2,
+   "total_ms": 16893,
+   "n_npu_agents": 1,
+   "agent_sum_ms": 2207,
+   "agent_max_ms": 2207,
+   "reasoner_model": "qwen3.5-4b rsn_v3 (htpd)",
+   "reasoner_ms": 15284,
+   "reasoner_ttft_ms": 2248.6,
+   "reasoner_tokens": 340,
+   "severity": "normal"
+  },
+  {
+   "id": "INC-0010",
+   "test": false,
+   "n_primary": 1,
+   "npu_calls": 2,
+   "total_ms": 16951,
+   "n_npu_agents": 1,
+   "agent_sum_ms": 2248,
+   "agent_max_ms": 2248,
+   "reasoner_model": "qwen3.5-4b rsn_v3 (htpd)",
+   "reasoner_ms": 11553,
+   "reasoner_ttft_ms": 2202.7,
+   "reasoner_tokens": 332,
+   "severity": "normal"
+  },
+  {
+   "id": "INC-0009",
+   "test": false,
+   "n_primary": 3,
+   "npu_calls": 28,
+   "total_ms": 35838,
+   "n_npu_agents": 4,
+   "agent_sum_ms": 17657,
+   "agent_max_ms": 5582,
+   "reasoner_model": "qwen3.5-4b rsn_v3 (htpd)",
+   "reasoner_ms": 27792,
+   "reasoner_ttft_ms": 4510.8,
+   "reasoner_tokens": 532,
+   "severity": "critical"
+  },
+  {
+   "id": "INC-0008",
+   "test": false,
+   "n_primary": 1,
+   "npu_calls": 2,
+   "total_ms": 16199,
+   "n_npu_agents": 1,
+   "agent_sum_ms": 3785,
+   "agent_max_ms": 3785,
+   "reasoner_model": "qwen3.5-4b rsn_v3 (htpd)",
+   "reasoner_ms": 9681,
+   "reasoner_ttft_ms": 1598.2,
+   "reasoner_tokens": 341,
+   "severity": "normal"
+  },
+  {
+   "id": "INC-0007",
+   "test": false,
+   "n_primary": 1,
+   "npu_calls": 3,
+   "total_ms": 23978,
+   "n_npu_agents": 1,
+   "agent_sum_ms": 3089,
+   "agent_max_ms": 3089,
+   "reasoner_model": "qwen3.5-4b rsn_v3 (htpd)",
+   "reasoner_ms": 11987,
+   "reasoner_ttft_ms": 1608.7,
+   "reasoner_tokens": 307,
+   "severity": "normal"
+  },
+  {
+   "id": "INC-0006",
+   "test": false,
+   "n_primary": 1,
+   "npu_calls": 2,
+   "total_ms": 19619,
+   "n_npu_agents": 1,
+   "agent_sum_ms": 3452,
+   "agent_max_ms": 3452,
+   "reasoner_model": "qwen3.5-4b rsn_v3 (htpd)",
+   "reasoner_ms": 11978,
+   "reasoner_ttft_ms": 1518.2,
+   "reasoner_tokens": 296,
+   "severity": "normal"
+  },
+  {
+   "id": "INC-0005",
+   "test": false,
+   "n_primary": 1,
+   "npu_calls": 2,
+   "total_ms": 18153,
+   "n_npu_agents": 1,
+   "agent_sum_ms": 3886,
+   "agent_max_ms": 3886,
+   "reasoner_model": "qwen3.5-4b rsn_v3 (htpd)",
+   "reasoner_ms": 16000,
+   "reasoner_ttft_ms": 1528,
+   "reasoner_tokens": 426,
+   "severity": "warning"
+  },
+  {
+   "id": "INC-0004",
+   "test": false,
+   "n_primary": 2,
+   "npu_calls": 14,
+   "total_ms": 42459,
+   "n_npu_agents": 2,
+   "agent_sum_ms": 6458,
+   "agent_max_ms": 3842,
+   "reasoner_model": "deterministic (synthesizer output rejected by policy)",
+   "reasoner_ms": 10184,
+   "reasoner_ttft_ms": 2853.2,
+   "reasoner_tokens": 361,
+   "severity": "normal"
+  },
+  {
+   "id": "INC-0002",
+   "test": false,
+   "n_primary": 2,
+   "npu_calls": 16,
+   "total_ms": 26767,
+   "n_npu_agents": 1,
+   "agent_sum_ms": 5849,
+   "agent_max_ms": 5849,
+   "reasoner_model": "qwen3.5-4b rsn_v3 (htpd)",
+   "reasoner_ms": 18200,
+   "reasoner_ttft_ms": 1937.9,
+   "reasoner_tokens": 569,
+   "severity": "sensor_fault"
+  },
+  {
+   "id": "INC-0001",
+   "test": false,
+   "n_primary": 2,
+   "npu_calls": 105,
+   "total_ms": 21279,
+   "n_npu_agents": 2,
+   "agent_sum_ms": 7176,
+   "agent_max_ms": 4924,
+   "reasoner_model": "qwen3.5-4b rsn_v3 (htpd)",
+   "reasoner_ms": 22791,
+   "reasoner_ttft_ms": 3493.9,
+   "reasoner_tokens": 507,
+   "severity": "critical"
+  }
+ ]
+}

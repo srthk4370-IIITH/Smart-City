@@ -3106,3 +3106,8 @@ windows, using the live GGUF on the host GPU.
 - **Weight editing** on r3-2800: projection (hurts), per-point MEMIT (memorises), mean-key (stopped); neuron surgery (owner idea, Claude picks neurons from activation x logit-lens tables): kept C1 = 4 after-tool detector neurons rewired along the exact d log-odds(close) direction + 8 'agent said normal' detectors x0.2: think margin +0.10, hard think kept 1.00, NLL +0.0006 (small, clean). Merged base: C:\Users\hp\qidk_models\r3_edit_C1. Tool-choice probe: no single-token defect -> training data. Trust: r3 already ignores wrong agent claims on unseen flips (only 34% of pairs hurt).
 - **Reasoner dataset v2** (proofs/2026-11-13_v3_data/rsn/data/final_v2): v1 6,133 + agt_v3 real outputs (synthetic + cleaned real windows), weak reasoning types, cross-floor flow family, suspect parent, fault vs event, tool choice; ~12.1k new + ~4k replay, ~55 M tokens (~20 h); fine-tune auto-starts when READY.
 - **Reasoner strict gate**: owner limit <= 4 h (fast stratified subsets, cached r3-2800), built after the fine-tune starts.
+
+
+## Text metrics and per-reasoning-type accuracy of every current model (2026-11-26)
+
+BLEU / ROUGE-L / chrF for p2, r3c1, fix60 and v5 (deployed) on the frozen gate set, per-reasoning-type accuracy on a stratified slice of the held-out r4 cross-domain test, and the domain agent's text scores: proofs/2026-11-26_paper/METRICS_MODELS.md (scripts textmetrics.py, metrics_models.py). v5 report text on the gate set: 43.1 / 52.1 / 52.9 (BLEU / ROUGE-L / chrF). Ceiling model skipped (owner decides).

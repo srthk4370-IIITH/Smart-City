@@ -467,6 +467,9 @@ func v3NumKnown(nums map[string]bool, n string) bool {
 }
 
 // checkReportV3: parse + gate. ok=false means the operator must not see it (fallback report instead).
+// trailingCommaRe: a comma right before a closing brace or bracket (invalid JSON the model sometimes writes).
+var trailingCommaRe = regexp.MustCompile(`,\s*([}\]])`)
+
 func checkReportV3(text, knownText string) (*reportV3Raw, []string, []string) {
 	return checkReportV3For(text, knownText, false)
 }
@@ -489,7 +492,14 @@ func checkReportV3For(text, knownText string, weatherOnly bool) (*reportV3Raw, [
 	}
 	var r reportV3Raw
 	if err := json.Unmarshal([]byte(js), &r); err != nil {
-		return nil, []string{"invalid JSON: " + err.Error()}, repairs
+		// lenient repair (paper Set C 2026-11-26: adaptive decoding has no schema, and a trailing comma before
+		// '}' or ']' was one of the 2 invalid reports in 50): drop such commas and parse once more
+		fixed := trailingCommaRe.ReplaceAllString(js, "$1")
+		if fixed == js || json.Unmarshal([]byte(fixed), &r) != nil {
+			return nil, []string{"invalid JSON: " + err.Error()}, repairs
+		}
+		js = fixed
+		repairs = append(repairs, "trailing comma removed")
 	}
 	ids, nums := v3Known(knownText)
 	known := func(where string, src []string, need bool) {

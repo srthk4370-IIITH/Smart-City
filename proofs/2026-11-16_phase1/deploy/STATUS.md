@@ -154,3 +154,5 @@
 17:21:41 1u: agent.log tail: 2023/09/21 10:58:25 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|2023/09/21 10:59:25 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|2023/09/21 11:00:25 fog: upload failed (Post "http://127.0.0.1:8092/v1/ingest": EOF); rows stay queued|
 02:18:48 deploy reasoner rsn_v3_4b_v5_q4_0.gguf: stop app
 02:33:21 deploy reasoner rsn_v3_4b_v5_q4_0.gguf: stop app
+02:39:39 deploy reasoner rsn_v3_4b_v5_q4_0.gguf check INC-0012: agents_valid=1/1 final=qwen3.5-4b rsn_v3 (htpd) valid
+02:39:39 DEPLOYED reasoner rsn_v3_4b_v5_q4_0.gguf

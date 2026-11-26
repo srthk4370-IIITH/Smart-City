@@ -1001,6 +1001,19 @@ func (r *Reasoner) analyse(ctx context.Context, inc *Incident, mode int, t0 time
 				doms[s.Role] = true
 			}
 		}
+		if allNormal(inc.Sensors, findings) {
+			// owner 2026-11-26 (paper Fix 1): every flagged sensor's domain agent AND rule say normal -> no reasoner
+			// call; the deterministic report says normal. Paper Set D: false alarms on normal windows 42 % -> 12 %,
+			// Set B unchanged (the reasoner raised severity on windows every agent and rule called normal).
+			rc := isolatedReport(inc.Sensors, findings)
+			rc.Model = "deterministic (every agent and rule normal)"
+			rc.Parsed.Label, rc.Parsed.Severity, rc.Parsed.Action = "normal_operation", "normal", "none"
+			r.mu.Lock()
+			inc.Final = rc
+			r.mu.Unlock()
+			r.log(inc, "Every domain agent and rule says normal: normal report, no reasoner call")
+			break
+		}
 		if len(doms) < 2 && reasonerV3Enabled() {
 			// reasoner v3 owns the wording of every report (owner, 2026-10-27): the single-domain incident goes
 			// through it too; the deterministic isolated report is only the fallback (engine error or gate reject)
@@ -1351,4 +1364,27 @@ func (r *Reasoner) runWork(w work) {
 	} else {
 		r.Process(w.cands, w.mode)
 	}
+}
+
+// allNormal: every flagged (non-context) sensor has a normal rule status AND a normal agent status (the agent's
+// valid finding, else the rule finding stands in). Context sensors do not count (paper skip_rule.py "skip").
+func allNormal(sensors []SensorRef, calls []AgentCall) bool {
+	n := 0
+	for i, s := range sensors {
+		if s.Context {
+			continue
+		}
+		n++
+		if normSeverity(s.Rule.Status) != "normal" {
+			return false
+		}
+		st := s.Rule.Status
+		if i < len(calls) && calls[i].Parsed != nil && calls[i].Valid {
+			st = calls[i].Parsed.Status
+		}
+		if normSeverity(st) != "normal" {
+			return false
+		}
+	}
+	return n > 0
 }
