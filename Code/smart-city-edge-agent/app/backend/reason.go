@@ -195,12 +195,13 @@ type Incident struct {
 	SeverityWhy  string `json:"severity_why,omitempty"`  // why the severity last changed (refine.go)
 	SeverityKept bool   `json:"severity_kept,omitempty"` // a drop from critical was refused because the rules still read critical
 
-	promoSim   int64       // sensor time of the last promotion re-run (promote.go)
-	openedAt   time.Time   // wall clock the incident was created in this process (watchdog.go)
-	shortNoWin bool        // short-event sweep already wrote "no real window" (polish_events.go)
-	shortFull  bool        // the 8-reading analysis already replaced the early one (promote.go)
-	quiet      bool        // a refinement's working copy: no SSE, no token stream (refine.go)
-	preempt    func() bool // checked between NPU calls; true = stop, more urgent work is waiting
+	promoSim     int64       // sensor time of the last promotion re-run (promote.go)
+	openedAt     time.Time   // wall clock the incident was created in this process (watchdog.go)
+	shortNoWin   bool        // short-event sweep already wrote "no real window" (polish_events.go)
+	earlyAdopted bool        // the fast-path incident took its early (short-event) AI run (fastpath.go wording)
+	shortFull    bool        // the 8-reading analysis already replaced the early one (promote.go)
+	quiet        bool        // a refinement's working copy: no SSE, no token stream (refine.go)
+	preempt      func() bool // checked between NPU calls; true = stop, more urgent work is waiting
 }
 
 type Reasoner struct {
@@ -316,7 +317,16 @@ func (r *Reasoner) HandleCandidates(cands []Candidate) {
 	if cands = r.promoteOpen(r.splitFast(cands)); len(cands) == 0 {
 		return
 	}
+	groups := splitUnrelated(cands) // batchsplit.go: unrelated co-occurring events -> separate incidents
+	cands = groups[0]
 	r.mu.Lock()
+	for _, g := range groups[1:] {
+		if len(r.jobs) < maxJobs {
+			r.jobs = append(r.jobs, job{g, r.Mode})
+		} else {
+			r.mergePending(g) // queue full: never drop an alert
+		}
+	}
 	if r.active {
 		// NPU busy: MERGE into the pending batch (newest reading per sensor wins), never drop an alert
 		r.mergePending(cands)
@@ -553,7 +563,7 @@ func (r *Reasoner) newIncident(cands []Candidate, mode int) *Incident {
 	r.seq++
 	inc.ID = fmt.Sprintf("INC-%04d", r.seq)
 	if g := r.siteGroupLocked(inc); g != "" { // phase1.go: site-linked co-occurring flags form one group
-		inc.Timeline = append(inc.Timeline, TimelineItem{T: time.Now().Format("15:04:05"), Msg: "Site grouping: " + inc.GroupWhy})
+		inc.Timeline = append(inc.Timeline, TimelineItem{T: nowTime().In(IST).Format("15:04:05"), Msg: "Site grouping: " + inc.GroupWhy})
 	}
 	inc.openedAt = time.Now()
 	r.incidents = append(r.incidents, inc)
@@ -623,7 +633,7 @@ func (r *Reasoner) buildIncident(cands []Candidate, mode int) *Incident {
 	inc.Mode1 = mode1Report(inc.Sensors)
 	wfCreated(inc) // workflow.go: analysing
 	for _, m := range snoozed {
-		inc.Timeline = append(inc.Timeline, TimelineItem{T: time.Now().Format("15:04:05"), Msg: m})
+		inc.Timeline = append(inc.Timeline, TimelineItem{T: nowTime().In(IST).Format("15:04:05"), Msg: m})
 	}
 	r.mu.Unlock()
 	return inc
@@ -703,7 +713,14 @@ func (r *Reasoner) Process(cands []Candidate, mode int) *Incident {
 	// it reloads as "failed" and the operator can rerun it (found by killing the backend mid-run)
 	r.persist(inc)
 	t0 := time.Now()
-	r.log(inc, fmt.Sprintf("Event gated: %d sensor(s) flagged, mode %d", len(inc.Sensors), mode))
+	nflag := 0
+	for _, s := range inc.Sensors {
+		if !s.Context {
+			nflag++
+		}
+	}
+	// sweep 2026-11-27: "7 sensor(s) flagged" next to a card saying "3 sensors" (the 7 included the related context sensors)
+	r.log(inc, fmt.Sprintf("Event gated: %d sensor(s) flagged, %d related sensor(s) attached, mode %d", nflag, len(inc.Sensors)-nflag, mode))
 	if mode != 1 {
 		// instant first report (retrieval + rules, CPU, < 5 ms) while the agents and the reasoner run
 		r.preliminary(inc, r.retrievalPreliminary(inc))

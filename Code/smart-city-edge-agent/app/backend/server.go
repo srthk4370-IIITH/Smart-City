@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -294,6 +295,9 @@ func zoneMax(kind string) float64 {
 }
 
 // ThermalHot: NPU junction >= 88 C or skin >= 60 C -> defer real-data LLM incidents (thermal guard).
+// lastIngestUnix: wall time of the last POST /api/ingest batch (networkState: a live feed other than campus/MQTT).
+var lastIngestUnix atomic.Int64
+
 func ThermalHot() (bool, float64, float64) {
 	// Test hook: the guard's queue-and-resume path cannot be exercised by heating a real board to
 	// 88 C on demand, so SCE_THERMAL_FAKE names a file containing "hot" or "cool". Unset in production.
@@ -341,12 +345,15 @@ func (s *Server) routes() http.Handler {
 		writeJSON(w, map[string]any{
 			"sim_time": sim, "sim_time_ist": time.Unix(sim, 0).In(IST).Format("Mon 02 Jan 2006 15:04"),
 			"mode": mode, "replay": replay, "injections": inj,
-			"models": map[string]any{"agent": s.genie.AgentModel(), "reasoner": s.genie.Base, "base": s.genie.Base, "tuned": s.genie.Tuned},
+			"models": statusModels(s),
 			"npu":    s.genie.Status(), "device": deviceStats(), "incidents": n, "uptime_s": int(time.Since(s.start).Seconds()),
 			// whether the persistent-dialog fast path is live, so a silent fallback to the
 			// per-call CLI (which costs ~700 ms of model init per request) is visible
 			"genie_daemon": daemonStatus(),
 			"running_on":   runningOn(),
+			// the corrected wall clock (the board's RTC may be years off; the WebView's Date.now() uses it) and
+			// whether sensor time runs at wall speed (live input) - the UI derives "ago" / ETAs from these
+			"now_unix": nowTime().Unix(), "live": s.eng.isLive(),
 		})
 	})
 	mux.HandleFunc("/api/live", func(w http.ResponseWriter, r *http.Request) {
@@ -749,6 +756,7 @@ func (s *Server) routes() http.Handler {
 				body.Readings = append(body.Readings, body.Reading)
 			}
 			now := nowTime().Unix()
+			lastIngestUnix.Store(now)
 			res := make([]string, 0, len(body.Readings))
 			for _, rd := range body.Readings {
 				st, err := s.eng.IngestReading(rd, now)
@@ -922,4 +930,21 @@ func runningOn() string {
 	h, _ := os.Hostname()
 	runningOnCache = "development host " + h
 	return runningOnCache
+}
+
+// statusModels: the models the board really runs. With htpd (every current deploy) the Genie bundle names were shown
+// although agents and the reasoner are llama.cpp GGUFs on the NPU (sweep 2026-11-27: About said "Llama 3.2 3B").
+func statusModels(s *Server) map[string]any {
+	if !htpdEnabled() {
+		return map[string]any{"agent": s.genie.AgentModel(), "reasoner": s.genie.Base, "base": s.genie.Base, "tuned": s.genie.Tuned}
+	}
+	p := htpdProfile()
+	gg := func(path string) string { return strings.TrimSuffix(filepath.Base(path), ".gguf") }
+	agent := map[string]any{"name": gg(p["model"]) + " (domain agents)", "fine_tuned": true, "available": true, "note": "llama.cpp htpd on the Hexagon NPU, " + p["agents"]}
+	out := map[string]any{"agent": agent}
+	if reasonerV3Enabled() {
+		out["reasoner"] = map[string]any{"name": gg(p["reasoner_model"]) + " (" + reasonerModelLabel() + ")", "fine_tuned": true, "available": true,
+			"note": "cross-domain reasoner and chat, prompt " + p["reasoner_prompt"] + ", thinking " + p["reasoner_think"]}
+	}
+	return out
 }

@@ -576,7 +576,7 @@ func (r *Reasoner) runRefine(id string) {
 	r.advance(inc, stage, end, shift)
 	msg := fmt.Sprintf("Refined at %s (windows to %s sensor time, %d NPU call(s), %.1fs): %s", stageText(stage),
 		time.Unix(end, 0).In(IST).Format("15:04"), sh.NPUCalls, ms/1000, strings.Join(revChanges(prev, rev), "; "))
-	inc.Timeline = append(inc.Timeline, TimelineItem{time.Now().Format("15:04:05"), msg})
+	inc.Timeline = append(inc.Timeline, TimelineItem{nowTime().In(IST).Format("15:04:05"), msg})
 	wfEv := r.wfAfterRecheckLocked(inc, prev.Severity, rev) // workflow.go: re-acknowledge on worse, resolved
 	r.mu.Unlock()
 	r.persist(inc)

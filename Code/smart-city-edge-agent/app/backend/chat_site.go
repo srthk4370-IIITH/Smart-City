@@ -50,7 +50,19 @@ func NewSiteTools(cfg *SiteConfig, status map[string]string, inc map[string]map[
 	return t
 }
 
-func (t *SiteTools) find(x string) string { return t.byname[strings.ToLower(strings.TrimSpace(x))] }
+func (t *SiteTools) find(x string) string {
+	k := strings.ToLower(strings.TrimSpace(x))
+	if id := t.byname[k]; id != "" {
+		return id
+	}
+	// sweep 2026-11-27: "What is the status of the campus?" -> the model passed node "campus" and the answer became
+	// "the device has no site tree". Generic words for the whole site resolve to the campus root.
+	switch strings.TrimPrefix(strings.TrimPrefix(k, "the "), "whole ") {
+	case "", "campus", "site", "all", "everything", "iiit", "iiith", "iiit hyderabad", "campus overall", "overall", "root":
+		return t.campus()
+	}
+	return ""
+}
 
 func (t *SiteTools) st(id string) string {
 	if t.ix.kind(id) == "sensor" {

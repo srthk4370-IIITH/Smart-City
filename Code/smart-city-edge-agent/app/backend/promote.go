@@ -20,6 +20,10 @@ import (
 const (
 	promoDebounce = 2  // readings between two promotion re-runs of one incident
 	promoMaxAge   = 72 // readings (6 h) after the incident opened during which it still takes late sensors
+	// promoMaxFlagAge: an incident left open longer than this (24 h) no longer absorbs a NEW episode of its own
+	// flagged sensor; the episode opens a fresh incident (and alert). Sweep 2026-11-27: a 6-day-old open pH
+	// incident swallowed a new critical episode silently ("promotion re-check: no change", no alert).
+	promoMaxFlagAge = 288
 )
 
 type promoJob struct {
@@ -51,6 +55,9 @@ func promotionHost(inc *Incident, c Candidate) (int, bool) {
 			// the 6 h cap is for late context sensors; a sensor that is already one of the incident's own flagged
 			// sensors joins it however old the (still open) incident is, instead of opening a duplicate
 			if s.Context && age > promoMaxAge*bucketSec {
+				return 0, false
+			}
+			if !s.Context && age > promoMaxFlagAge*bucketSec {
 				return 0, false
 			}
 			return i, true
@@ -352,20 +359,20 @@ func (r *Reasoner) runPromote(id string) {
 	inc.promoSim = end
 	if inc.ShortRunAt != 0 && !inc.shortFull {
 		inc.shortFull = true
-		inc.Timeline = append(inc.Timeline, TimelineItem{time.Now().Format("15:04:05"), "Full 8-reading analysis replaces the early one"})
+		inc.Timeline = append(inc.Timeline, TimelineItem{nowTime().In(IST).Format("15:04:05"), "Full 8-reading analysis replaces the early one"})
 	}
 	rev := revisionOf(inc, "promotion", end, notes, sh.NPUCalls, ms)
 	why := r.noteSeverityChangeLocked(inc, prev, &rev, false)
 	inc.Revisions = append(inc.Revisions, rev)
 	for _, m := range said {
-		inc.Timeline = append(inc.Timeline, TimelineItem{time.Now().Format("15:04:05"), m})
+		inc.Timeline = append(inc.Timeline, TimelineItem{nowTime().In(IST).Format("15:04:05"), m})
 	}
 	msg := strings.Join(said, "; ")
 	var wfEv map[string]any
 	if wasFailed {
 		inc.Workflow = wfAnalysing
 		r.wfAnalysedLocked(inc, inc.LiveEpoch)
-		inc.Timeline = append(inc.Timeline, TimelineItem{time.Now().Format("15:04:05"), "Re-run automatically after a restart: the earlier analysis did not finish"})
+		inc.Timeline = append(inc.Timeline, TimelineItem{nowTime().In(IST).Format("15:04:05"), "Re-run automatically after a restart: the earlier analysis did not finish"})
 		wfEv = map[string]any{"workflow": inc.Workflow}
 	} else {
 		wfEv = r.wfAfterRecheckLocked(inc, prev.Severity, rev)

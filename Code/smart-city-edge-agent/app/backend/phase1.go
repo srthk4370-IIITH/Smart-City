@@ -194,9 +194,14 @@ func (s *Server) dataHealth() map[string]any {
 			if now-ts > staleS {
 				state = "stale"
 			}
-		} else if campus == nil && st.Updated > 0 {
-			state = "fresh" // slider / MQTT input: the engine's own update time
+		} else if st.Updated > 0 {
+			// slider / MQTT / /api/ingest input (or the campus API down while another feed runs): the engine's own
+			// update time. Sweep 2026-11-27: with a campus URL set, live MQTT/ingest readings were reported "missing".
+			state = "fresh"
 			row["age_s"] = now - st.Updated
+			if now-st.Updated > staleS {
+				state = "stale"
+			}
 		}
 		row["state"] = state
 		counts[state]++
@@ -234,7 +239,14 @@ func (s *Server) networkState() map[string]any {
 		mqttUp, _ = st["connected"].(bool)
 		out["mqtt"] = map[string]any{"connected": mqttUp}
 	}
-	out["offline"] = campus != nil && !apiUp && !mqttUp
+	// sweep 2026-11-27: readings POSTed to /api/ingest (a gateway, a test feeder) also count as a live feed: the
+	// full-screen "No data available" page hid a live critical incident while readings were flowing.
+	fresh := false
+	if t := lastIngestUnix.Load(); t > 0 && nowTime().Unix()-t <= 15*60 {
+		fresh = true
+	}
+	out["fresh_data"] = fresh
+	out["offline"] = campus != nil && !apiUp && !mqttUp && !fresh
 	return out
 }
 

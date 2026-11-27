@@ -61,7 +61,7 @@ func TestPolishShortEventRunsAIOnLast4h(t *testing.T) {
 	if len(rg.r.incidents) != 1 || got.NPUCalls == 0 || got.ShortRunAt == 0 || len(got.Agents) == 0 {
 		t.Fatalf("AI did not run on the same incident: %d incidents, calls %d, agents %d", len(rg.r.incidents), got.NPUCalls, len(got.Agents))
 	}
-	if !tlHas(got, "Early AI on history") {
+	if !tlHas(got, "Early AI: the event is shorter") {
 		t.Fatalf("timeline lacks the short-event line: %+v", got.Timeline)
 	}
 	if n := rg.r.shortEventSweep(time.Now().Add(30 * time.Minute)); n != 0 {

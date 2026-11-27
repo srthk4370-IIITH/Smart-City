@@ -94,8 +94,11 @@ func chatHealthRows(states []SensorState, seen map[string]int64, now, staleS int
 			if now-ts > staleS {
 				row.State = "stale"
 			}
-		} else if !hasCampus && st.Updated > 0 {
+		} else if st.Updated > 0 { // MQTT / ingest / sliders, also while a configured campus API is down
 			row.State, row.AgeS = "fresh", now-st.Updated
+			if now-st.Updated > staleS {
+				row.State = "stale"
+			}
 		}
 		if row.State == "fresh" && st.Quality == "stale" {
 			row.State = "stale"

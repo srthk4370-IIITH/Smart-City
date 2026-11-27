@@ -169,6 +169,7 @@ func covReport(refs ...string) string {
 
 func TestReasonerCoverageRetry(t *testing.T) {
 	t.Setenv("SCE_REASONER", "v3")
+	t.Setenv("SCE_COVERAGE_RETRY", "1") // the old retry path (default since 2026-11-27: add lines, no retry)
 	rg := newRefineRig(t)
 	// two flagged sensors: CO2 and the first context candidate's sensor
 	inc0 := rg.alert()
@@ -222,6 +223,38 @@ func TestReasonerCoverageRetry(t *testing.T) {
 	}
 	if !strings.Contains(inc2.Final.Parsed.Source, "missed alerting sensors") {
 		t.Fatalf("source %q", inc2.Final.Parsed.Source)
+	}
+}
+
+// default since the 2026-11-27 sweep: a report that misses an alerting sensor is KEPT (no second NPU call) and gets a
+// line per missing sensor; the source stays the AI's.
+func TestReasonerCoverageAddsLines(t *testing.T) {
+	t.Setenv("SCE_REASONER", "v3")
+	rg := newRefineRig(t)
+	inc0 := rg.alert()
+	first := rg.settle(inc0.ID)
+	c, _ := ctxCandidate(t, rg, first, 0)
+	co2 := first.Sensors[0]
+	xs, _ := rg.eng.WindowAt(co2.Node, co2.Metric, co2.End)
+	cc := Candidate{co2.Node, co2.Metric, co2.Role, RuleFinding(co2.Role, co2.Metric, co2.Node, xs, co2.End), xs, co2.End, false, false, false}
+	cc.Finding.Status = "warning"
+	llm := &covLLM{}
+	llm.reply = func(p string) string { return covReport("S1") }
+	old := reasonerLLMHook
+	reasonerLLMHook = llm
+	t.Cleanup(func() { reasonerLLMHook = old })
+	inc := rg.r.Process([]Candidate{cc, c}, 3)
+	llm.mu.Lock()
+	n := len(llm.prompts)
+	llm.mu.Unlock()
+	if n != 1 {
+		t.Fatalf("want one reasoner call, got %d", n)
+	}
+	if inc.Final == nil || inc.Final.Parsed == nil || strings.Contains(inc.Final.Parsed.Source, "missed alerting sensors") {
+		t.Fatalf("AI report not kept: %+v", inc.Final)
+	}
+	if miss := coverageMissing(inc, nil, inc.Final.Parsed); len(miss) != 0 {
+		t.Fatalf("report still misses %+v", miss)
 	}
 }
 

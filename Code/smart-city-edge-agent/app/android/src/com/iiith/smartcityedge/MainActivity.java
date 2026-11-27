@@ -197,6 +197,14 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
+        // sweep 2026-11-27: the page decides first (closes the top sheet / returns to Home); only when it has nothing to
+        // close does Back go to the previous page or leave.
+        web.evaluateJavascript("(window.SCE_back && window.SCE_back()) ? 'y' : 'n'", r -> {
+            if (r == null || !r.contains("y")) backFallback();
+        });
+    }
+
+    private void backFallback() {
         // Go back only within the dashboard (closes an open sensor sheet, which pushes a history entry).
         // The entry before the dashboard is the black "Starting..." placeholder page (loadData): going
         // back to it left a blank screen with no way out on the kiosk board (found 2026-10-21).

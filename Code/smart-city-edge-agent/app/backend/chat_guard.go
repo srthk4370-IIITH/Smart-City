@@ -93,7 +93,9 @@ func (g *chatGuard) Validate(t chatTools, name string, args map[string]any) stri
 			return chatErrJSON(ids[0] + " was not named in the question or found by a tool; use find_incidents to find the incident first")
 		}
 	}
-	if node := strArg(args, "node"); node != "" && len(g.nodes) > 0 {
+	// site tools take site-tree nodes (campus, buildings, floors, equipment) and answer "not found" themselves; the
+	// sensor-node check blocked "campus" (sweep 2026-11-27: "status of the campus" -> "there is no campus")
+	if node := strArg(args, "node"); node != "" && len(g.nodes) > 0 && !contains(siteToolNames, name) {
 		if chatIDRe.MatchString(node) {
 			return chatErrJSON(fmt.Sprintf("%q is an incident id, not a sensor node; nodes on this device: %s", node, g.nodeList()))
 		}

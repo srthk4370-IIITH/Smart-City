@@ -224,8 +224,8 @@ func (r *Reasoner) shortEventSweep(now time.Time) int {
 		r.mu.Lock()
 		it.inc.ShortRunAt = now.Unix()
 		r.mu.Unlock()
-		r.log(it.inc, fmt.Sprintf("Early AI on history: the real readings that exist; the event is shorter than %d readings (%d min so far)",
-			trigRules().PersistReadings, int(now.Sub(opened).Minutes())))
+		r.log(it.inc, fmt.Sprintf("Early AI: the event is shorter than %d readings, so the AI reads the real readings that exist now (the full analysis follows at %d)",
+			trigRules().PersistReadings, trigRules().PersistReadings))
 		r.persist(it.inc)
 		if r.Submit(cands, mode) {
 			n++

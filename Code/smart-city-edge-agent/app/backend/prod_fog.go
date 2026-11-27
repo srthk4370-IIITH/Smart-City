@@ -370,7 +370,7 @@ func (f *fogUploader) Run(stop <-chan struct{}) {
 		f.summarise()
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		if err := f.Sync(ctx); err != nil {
-			log.Printf("fog: upload failed (%v); rows stay queued", err)
+			logQuiet("fog-upload", "fog: upload failed (%v); rows stay queued", err)
 		}
 		cancel()
 		select {

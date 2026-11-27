@@ -496,7 +496,7 @@ func (c *campusClient) refreshNodes() {
 		Nodes []APINode `json:"nodes"`
 	}
 	if err := c.get("/verticals/all/nodes", &raw); err != nil {
-		log.Printf("campus: nodes: %v", err)
+		logQuiet("campus-nodes", "campus: nodes: %v", err)
 		return
 	}
 	c.mu.Lock()

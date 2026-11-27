@@ -609,7 +609,18 @@ func (t chatTools) Exec(ctx context.Context, name string, args map[string]any) s
 	return enc(res)
 }
 
+// span: a time span ending at now includes now (one extra second): "now" is the current sensor-time bucket and an
+// incident opened in it has exactly that time (sweep 2026-11-27: the newest critical incident was missing from
+// "latest critical" and "waiting for a decision").
 func (t chatTools) span(v any, required bool) (time.Time, time.Time, error) {
+	a, b, err := t.span0(v, required)
+	if err == nil && !b.Before(t.now) && b.Sub(t.now) < time.Second {
+		b = b.Add(time.Second)
+	}
+	return a, b, err
+}
+
+func (t chatTools) span0(v any, required bool) (time.Time, time.Time, error) {
 	now := t.now.In(IST)
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, IST)
 	tr, _ := v.(map[string]any)

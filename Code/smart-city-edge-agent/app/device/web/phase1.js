@@ -21,13 +21,15 @@
     const c = st.campus || {};
     $id('nonet-age').textContent = c.last_data_age_s != null ? 'Last data ' + ageTxt(c.last_data_age_s) + ' ago' + (c.last_data_utc ? ' (' + new Date(c.last_data_utc).toLocaleString() + ')' : '') : 'No data received yet.';
     const tt = $id('nonet-t'); if (tt) tt.textContent = 'No data available';
-    $id('nonet-why').textContent = 'The campus sensor API' + (st.mqtt ? ' and the MQTT broker' : '') + ' cannot be reached, so no new readings are arriving. Option 1: Wi-Fi - connect this device to the campus Wi-Fi (direct link, preferred). Option 2: USB cable - plug the data cable into the laptop that relays the API (adb reverse); the app switches over by itself, and back to Wi-Fi when it returns.' + (c.last_error ? ' (' + c.last_error.slice(0, 90) + ')' : '');
-    box.hidden = P.nonetHidden;
+    $id('nonet-why').textContent = 'The campus sensor API' + (st.mqtt ? ' and the MQTT broker' : '') + ' cannot be reached, so no new readings are arriving. Option 1: Wi-Fi - connect this device to the campus Wi-Fi (direct link, preferred). Option 2: USB cable - plug the data cable into the laptop that relays the API (adb reverse); the app switches over by itself, and back to Wi-Fi when it returns.' + (c.last_error ? ' (' + (/unreachable|no route/i.test(c.last_error) ? 'network unreachable' : /refused/i.test(c.last_error) ? 'connection refused' : /timeout|deadline/i.test(c.last_error) ? 'timed out' : 'link error') + ')' : '');
+    let hideUntil = 0; try { hideUntil = +localStorage.getItem('sce_nonet_hide') || 0; } catch (e) { /* storage off */ }
+    box.hidden = P.nonetHidden || Date.now() < hideUntil;
   }
   function netInit() {
     const w = $id('nonet-wifi'), x = $id('nonet-hide');
     if (w) w.onclick = () => { if (window.SCE && window.SCE.wifi) window.SCE.wifi(); else toast('Open Settings > Network > Wi-Fi on the device', true); };
-    if (x) x.onclick = () => { P.nonetHidden = true; $id('nonet').hidden = true; };
+    // "Show the last data" is remembered for 1 h: the page used to come back on every app resume (sweep 2026-11-27)
+    if (x) x.onclick = () => { P.nonetHidden = true; $id('nonet').hidden = true; try { localStorage.setItem('sce_nonet_hide', String(Date.now() + 3600000)); } catch (e) { /* storage off */ } };
     netTick(); setInterval(netTick, 10000);
   }
 

@@ -24,7 +24,7 @@ type causalLink struct {
 // causal map: flagged role/metric -> related domains that can explain or be affected by it
 var causal = map[string][]causalLink{
 	"air_quality/co2":  {{"occupancy", "occ", "people in the room raise CO2"}, {"hvac", "ac_units_on", "AC/ventilation state"}, {"power", "power_kw", "room load follows occupancy and HVAC"}, {"weather", "temp", "outdoor conditions drive ventilation and cooling"}},
-	"air_quality/temp": {{"hvac", "room_temp", "AC controls room temperature"}, {"weather", "temp", "outdoor heat load"}, {"occupancy", "occ", "people add heat"}, {"power", "power_kw", "cooling load"}},
+	"air_quality/temp": {{"hvac", "room_temp", "AC controls room temperature"}, {"hvac", "ac_units_on", "AC on/off explains a warming room"}, {"weather", "temp", "outdoor heat load"}, {"occupancy", "occ", "people add heat"}, {"power", "power_kw", "cooling load"}},
 	"air_quality/rh":   {{"hvac", "ac_units_on", "AC dehumidifies"}, {"weather", "rh", "outdoor humidity"}},
 	"air_quality/pm25": {{"weather", "wind", "wind disperses/brings particles"}, {"air_quality", "pm25", "other station shows if it is campus-wide"}, {"weather", "rh", "humidity affects particle readings"}},
 	"air_quality/pm10": {{"weather", "wind", "wind-blown dust"}, {"air_quality", "pm10", "other station shows if it is campus-wide"}},

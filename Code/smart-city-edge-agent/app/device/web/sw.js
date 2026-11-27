@@ -1,5 +1,5 @@
 /* Service worker: caches the static shell only. /api/* is never cached. */
-const CACHE = 'sce-shell-v49-vad';
+const CACHE = 'sce-shell-v50-sweep1127';
 const SHELL = ['/', '/index.html', '/app.js', '/phase1.js', '/phase1.css', '/qr.js', '/styles.css', '/manifest.json', '/icon.svg', '/icon-192.png'];
 
 self.addEventListener('install', (e) => {

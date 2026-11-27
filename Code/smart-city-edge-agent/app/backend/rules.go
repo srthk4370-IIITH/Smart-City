@@ -335,7 +335,9 @@ func ActionOf(cause, status string) string {
 
 var nice = map[string]string{"co2": "CO2", "pm25": "PM2.5", "pm10": "PM10", "temp": "Temperature", "rh": "Humidity",
 	"level": "Tank level", "flow": "Flow", "tds": "TDS", "ph": "pH", "power_kw": "Power", "pf": "Power factor",
-	"wind": "Wind speed", "occ": "Occupancy"}
+	"wind": "Wind speed", "occ": "Occupancy",
+	// HVAC context metrics (sweep 2026-11-27: the template printed "(S7): stable" with no name for AC units on)
+	"ac_units_on": "AC units on", "ac_on": "AC running", "room_temp": "Room temperature", "setpoint": "AC setpoint"}
 
 // Finding is the DomainFinding contract shared by Mode 1 (rules) and Mode 3 (LLM agents).
 type Finding struct {

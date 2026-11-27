@@ -114,6 +114,12 @@ func (r *Reasoner) adoptFast(cands []Candidate, mode int) *Incident {
 		inc.Severity = fresh.Severity
 	}
 	r.mu.Unlock()
-	r.log(inc, fmt.Sprintf("AI analysis of the fast-path incident: %d sensor(s) at %d readings", len(cands), trigRules().PersistReadings))
+	// sweep 2026-11-27: the early run said "at 8 readings" right after "shorter than 8 readings"
+	if inc.ShortRunAt != 0 && !inc.earlyAdopted {
+		inc.earlyAdopted = true
+		r.log(inc, fmt.Sprintf("AI analysis of the fast-path incident: %d sensor(s), early run on the readings so far", len(cands)))
+	} else {
+		r.log(inc, fmt.Sprintf("AI analysis of the fast-path incident: %d sensor(s) at %d readings", len(cands), trigRules().PersistReadings))
+	}
 	return inc
 }

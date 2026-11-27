@@ -5,7 +5,6 @@ package main
 import (
 	"fmt"
 	"strings"
-	"time"
 )
 
 // guardCriticalDrop: a re-analysis that would take an incident from critical to a lower level is only accepted when the
@@ -80,7 +79,7 @@ func (r *Reasoner) noteSeverityChangeLocked(inc *Incident, prev Revision, rev *R
 	why := severityWhy(inc, prev, *rev, kept)
 	rev.SeverityWhy = why
 	inc.SeverityWhy, inc.SeverityKept = why, kept
-	inc.Timeline = append(inc.Timeline, TimelineItem{time.Now().Format("15:04:05"), why})
+	inc.Timeline = append(inc.Timeline, TimelineItem{nowTime().In(IST).Format("15:04:05"), why})
 	if inc.Final != nil {
 		if inc.Final.Note == "" {
 			inc.Final.Note = why

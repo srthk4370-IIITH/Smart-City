@@ -512,8 +512,20 @@ func checkReportV3For(text, knownText string, weatherOnly bool) (*reportV3Raw, [
 			}
 		}
 	}
-	if r.Title == "" || len([]rune(r.Title)) > 80 {
-		errs = append(errs, "title empty or over 80 characters")
+	if rt := []rune(r.Title); len(rt) > 80 {
+		// sweep 2026-11-27 (INC-0017): a whole valid report was discarded for an 81+ character title. Shorten it at a
+		// word or clause boundary instead (the title is shown in lists; the report body is unchanged).
+		t := string(rt[:80])
+		if i := strings.LastIndexAny(t, ":,;("); i >= 40 {
+			t = t[:i]
+		} else if i := strings.LastIndex(t, " "); i >= 40 {
+			t = t[:i]
+		}
+		r.Title = strings.TrimRight(strings.TrimSpace(t), ":,;-")
+		repairs = append(repairs, "title shortened to 80 characters")
+	}
+	if r.Title == "" {
+		errs = append(errs, "title empty")
 	}
 	if !contains(v3Severities, r.Severity) {
 		errs = append(errs, fmt.Sprintf("severity %q not allowed", r.Severity))
@@ -1390,6 +1402,15 @@ func (r *Reasoner) reasonV3Fallback(ctx context.Context, inc *Incident, findings
 		// cohesive coverage (coverage.go): every alerting sensor must be in the report; one retry, then the deterministic report
 		miss := coverageMissing(inc, findings, rc.Parsed)
 		if len(miss) == 0 {
+			return rc
+		}
+		// sweep 2026-11-27 (INC-0015): the retry cost ~45 s on the board, still missed the sensor, and the sound AI
+		// report was then replaced by the deterministic template. Keep the AI report and add one line per missing
+		// alerting sensor instead (no extra NPU call). htpd_profile coverage_retry=1 restores the old retry.
+		if htpdProfile()["coverage_retry"] != "1" && os.Getenv("SCE_COVERAGE_RETRY") != "1" {
+			coverageAddLines(inc, findings, rc.Parsed)
+			rc.Repairs = append(rc.Repairs, "coverage: added a line for "+coverageRefs(miss))
+			r.log(inc, "Coverage check: the report does not mention "+coverageRefs(miss)+"; a line per missing sensor was added to the AI report")
 			return rc
 		}
 		r.log(inc, "Coverage check: the report does not mention "+coverageRefs(miss)+"; reasoner asked once more")

@@ -433,7 +433,13 @@ func suggestOutcome(inc *Incident) string {
 // wfCreated: a new incident is being analysed. Caller holds r.mu.
 func wfCreated(inc *Incident) {
 	inc.Workflow = wfAnalysing
-	inc.event("system", "created", "", "", "", fmt.Sprintf("%d sensor(s) flagged", len(inc.Sensors)))
+	n := 0
+	for _, s := range inc.Sensors {
+		if !s.Context {
+			n++
+		}
+	}
+	inc.event("system", "created", "", "", "", fmt.Sprintf("%d sensor(s) flagged", n))
 }
 
 // wfAnalysedLocked: the first analysis finished; the incident waits for a person. Caller holds r.mu.

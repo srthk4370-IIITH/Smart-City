@@ -25,6 +25,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 )
 
 var agentVer = "v1"
@@ -106,9 +108,46 @@ func htpdAgentCtx() int {
 //	env=HTPD_ROLE_DRAFT=1 HTPD_AGENT_MAX_NEW=160
 //
 // No file (or a key missing) = today's defaults. Any change restarts htpd (superviseHtpd's args key).
+// htpdProfile is read on almost every request and NPU call; the parsed file is cached and re-read only when its
+// size or modification time changes (sweep 2026-11-27). Callers get a copy, so they may modify it.
+var profCache struct {
+	sync.Mutex
+	path string
+	mod  time.Time
+	size int64
+	m    map[string]string
+}
+
 func htpdProfile() map[string]string {
+	p := filepath.Join(htpdWorkDir, "htpd_profile")
+	fi, err := os.Stat(p)
+	if err != nil {
+		return map[string]string{}
+	}
+	profCache.Lock()
+	if profCache.m != nil && profCache.path == p && profCache.mod.Equal(fi.ModTime()) && profCache.size == fi.Size() {
+		out := make(map[string]string, len(profCache.m))
+		for k, v := range profCache.m {
+			out[k] = v
+		}
+		profCache.Unlock()
+		return out
+	}
+	profCache.Unlock()
+	out := htpdProfileRead(p)
+	profCache.Lock()
+	profCache.path, profCache.mod, profCache.size, profCache.m = p, fi.ModTime(), fi.Size(), out
+	cp := make(map[string]string, len(out))
+	for k, v := range out {
+		cp[k] = v
+	}
+	profCache.Unlock()
+	return cp
+}
+
+func htpdProfileRead(p string) map[string]string {
 	out := map[string]string{}
-	b, err := os.ReadFile(filepath.Join(htpdWorkDir, "htpd_profile"))
+	b, err := os.ReadFile(p)
 	if err != nil {
 		return out
 	}

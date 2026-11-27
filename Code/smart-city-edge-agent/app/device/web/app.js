@@ -39,7 +39,11 @@ const nice = (s) => (s == null || s === '' ? '-' : String(s).replace(/_/g, ' '))
 /* ONE time helper (POLISH #24): the operator sees real time with its zone ("22:40 IST"), plus how long ago.
    Sensor time shows only in Technical details. */
 const ZONE = 'IST';
-const nowS = () => Date.now() / 1000;
+// corrected wall clock: the board's RTC can be years off (sweep 2026-11-27: "Since 22 Sep 2023", "detected 00:09 (just
+// now)"); /api/status carries the backend's corrected now_unix, the skew is applied to every displayed time.
+const CLK = { skew: 0 };
+const nowS = () => Date.now() / 1000 + CLK.skew;
+const nowMs = () => Date.now() + CLK.skew * 1000;
 const tAt = (e) => (e ? hm(e) + ' ' + ZONE : '-');
 const tDay = (e) => { if (!e) return '-'; const d = istParts(e), t = istParts(nowS()); return (d.getUTCDate() === t.getUTCDate() && d.getUTCMonth() === t.getUTCMonth() ? '' : pad(d.getUTCDate()) + ' ' + MON[d.getUTCMonth()] + ' ') + tAt(e); };
 const tAgo = (e) => { if (!e) return ''; const s = nowS() - e; return s < -120 ? '' : s < 60 ? 'just now' : dhAgo(s) + ' ago'; };
@@ -240,7 +244,7 @@ function bindHeader() {
 
 /* ============================== data refresh ============================== */
 async function refreshStatus() {
-  try { S.status = await api('/api/status'); S.lastStatus = Date.now(); renderStatus(); } catch (e) { /* offline */ }
+  try { S.status = await api('/api/status'); S.lastStatus = Date.now(); if (S.status.now_unix) CLK.skew = S.status.now_unix - Date.now() / 1000; renderStatus(); } catch (e) { /* offline */ }
 }
 let liveBusy = false;
 async function refreshLive() {
@@ -308,7 +312,7 @@ function renderBanners() {
   if (flag('htpd_rules_only')) items.push({ k: 'warn', id: 'rules', t: 'AI paused, rules only' + (flag('htpd_rules_only_min') != null ? ' for ' + Math.round(flag('htpd_rules_only_min')) + ' min' : '') + '.' });
   const need = openCritIncs().filter((i) => wfOfI(i) === 'needs_decision');
   need.slice(0, 2).forEach((i) => items.push({ k: 'crit', id: 'c' + i.id, t: 'Critical: ' + plainTitle(i.title) + ' - waiting for someone to take it.', inc: i }));
-  if (need.length > 2) items.push({ k: 'crit', id: 'cmore', t: (need.length - 2) + ' more critical incidents need a decision.', href: '#incidents', btn: 'See all' });
+  if (need.length > 2) items.push({ k: 'crit', id: 'cmore', t: (need.length - 2) + (need.length - 2 === 1 ? ' more critical incident needs a decision.' : ' more critical incidents need a decision.'), href: '#incidents', btn: 'See all' });
   const sig = items.map((x) => x.id + x.t).join('|');
   if (box.dataset.sig === sig) return; box.dataset.sig = sig;
   fill(box, items.map((x) => h('div', { class: 'pban ' + x.k, role: x.k === 'crit' ? 'alert' : 'status' },
@@ -347,7 +351,8 @@ function buildHero() {
   H.mem = h('span', { class: 'hbadge' });
   $('#hero').append(h('div', { class: 'hero' },
     h('div', { class: 'hero-top' }, H.ico, h('div', {}, H.t, H.s)),
-    h('div', { class: 'hero-stats' }, stat('sCrit', 'Critical'), stat('sWarn', 'Warnings'), stat('sFault', 'Faults'), stat('sTot', 'Sensors')),
+    h('div', { class: 'hero-cap muted', style: 'font-size:12px;letter-spacing:.08em;text-transform:uppercase;margin:10px 0 4px', text: 'Sensors right now (incidents are listed above)' }),
+    h('div', { class: 'hero-stats' }, stat('sCrit', 'Critical'), stat('sWarn', 'Warning'), stat('sFault', 'Faulty'), stat('sTot', 'Watched')),
     h('div', { class: 'hero-sys eng-only' }, H.npu, H.model, H.therm, H.run, H.mem)));
 }
 const decisionsWaiting = () => (S.incs || []).filter((i) => (i.workflow ? i.workflow === 'needs_decision' : i.approval === 'pending' && i.state !== 'running')).length;
@@ -503,7 +508,7 @@ const LABEL_IMPACT = {
   power_quality_issue: 'Poor power quality wastes energy and can damage equipment.',
   weather_driven: 'The weather is changing cooling load and indoor comfort.',
   sensor_fault: 'A faulty sensor can hide a real problem: its readings cannot be trusted until it is checked.',
-  normal_operation: 'Nothing abnormal was confirmed. Dismiss it with a short note if you agree.',
+  normal_operation: 'Nothing abnormal was confirmed.',
   unknown: 'The cause is unclear, so a person should take a look.' };
 const DOMAIN_IMPACT = { air_quality: 'Air quality affects the health and comfort of people in the room.', water: 'Water problems can cut supply or waste water.',
   power: 'Power problems can trip equipment or waste energy.', occupancy: 'Unexpected presence can be a security or energy issue.',
@@ -1216,7 +1221,7 @@ const wallMs = (inc) => { const t = Date.parse((inc.created_wall || '').replace(
 function elapsedOf(inc) {
   if (inc.state !== 'running') return inc.total_ms > 0 ? inc.total_ms / 1000 : null;
   const t = wallMs(inc); if (t == null) return null;
-  const d = (Date.now() - t) / 1000; return d >= 0 && d < 3600 ? d : null;
+  const d = (nowMs() - t) / 1000; return d >= 0 && d < 3600 ? d : null;
 }
 function usualSecs(mode) {
   const xs = S.incs.filter((i) => i.mode === mode && i.state !== 'running' && i.total_ms > 0).map((i) => i.total_ms / 1000);
@@ -2161,7 +2166,8 @@ function etaText(next) {
   if (!next || !now) return '';
   const rp = (S.status && S.status.replay) || {}, poll = rp.poll_ms || 2000, per = rp.speed_buckets_per_poll || 1;
   const rem = next - now; if (rem <= 0) return 'due now';
-  const s = Math.ceil(rem / 300 / per) * poll / 1000;
+  // live input: sensor time runs at wall speed (one 5-min bucket per 5 min), not one bucket per poll
+  const s = (S.status && S.status.live) ? rem : Math.ceil(rem / 300 / per) * poll / 1000;
   return s < 90 ? 'in ~' + Math.max(1, Math.round(s)) + ' s' : 'in ' + dhAgo(s);
 }
 function nextCheckText(i) {
@@ -2222,7 +2228,7 @@ function checklist(inc) {
       act);
   });
   return h('section', { class: 'op-sec ck-sec' }, h('h3', { text: 'What to do' + (counted.length ? ' · ' + ticked + ' of ' + counted.length + ' ticked' : '') }),
-    steps.length ? h('ol', { class: 'cklist' }, items) : h('p', { text: 'No step suggested. If you agree nothing is needed, dismiss it with a short note.' }),
+    steps.length ? h('ol', { class: 'cklist' }, items) : h('p', { text: live ? 'No step suggested. If you agree nothing is needed, dismiss it with a short note.' : 'No step was needed.' }),
     live && own < 5 ? addStepForm(inc) : null,
     live ? h('p', { class: 'op-note', text: 'Mark each step Done or Not needed. Not right? Mark it Not needed and add your own. Nothing switches automatically.' }) : null);
 }
@@ -2298,7 +2304,7 @@ function historySec(inc) {
       h('div', { class: 'hs-o', text: (WF_WORD[x.workflow] || { w: nice(x.workflow) }).w + (x.outcome ? ': ' + (OUTCOME_TEXT[x.outcome] || nice(x.outcome)) : '') +
         (x.closed_by ? ' · ' + (x.closed_by === 'system' ? 'automatically' : 'by ' + x.closed_by) : x.owner ? ' · ' + x.owner : '') + (x.outcome_note && x.outcome_note !== 'auto' ? ' · “' + x.outcome_note + '”' : '') + (x.legacy_decision ? ' (before checklists)' : '') }),
       (x.steps || []).length ? h('ul', { class: 'hs-steps' }, x.steps.map((s) => h('li', { text: (STEP_GLYPH[s.state] || '') + ' ' + s.text + (s.by ? ' (' + s.by + ')' : '') + (s.note ? ': “' + s.note + '”' : '') }))) : null,
-      x.recurred_by ? h('div', { class: 'hs-rec', text: '↻ Came back within 7 days (' + x.recurred_by + '): that fix did not hold' }) : null));
+      x.recurred_by ? h('div', { class: 'hs-rec', text: '↻ Came back within 7 days (' + x.recurred_by + ')' + (['fixed_by_action', 'sensor_repaired', 'sensor_replaced'].includes(x.outcome) ? ': that fix did not hold' : '') }) : null));
     const mts = (sh.maintenance || []).map((m) => h('li', { class: 'hs-m', text: '⊘ ' + (MAINT_TEXT[m.kind] || nice(m.kind)) + (m.minutes ? ' for ' + dhAgo(m.minutes * 60) : '') + (m.reason ? ' · ' + m.reason : '') + (m.operator ? ' · ' + m.operator : '') + ' · ' + dclock(m.at) }));
     return h('div', { class: 'hs' }, h('h4', { class: 'op-h4', text: metricName(sh.metric) + ' · ' + placeShort(sh.location || sh.node) }),
       items.length || mts.length ? h('ul', { class: 'hs-list' }, items, mts) : h('p', { class: 'op-note', text: 'No earlier incidents or maintenance on this sensor.' }));
@@ -2365,8 +2371,8 @@ function footForm(inc) {
 const INC_STATE = [['all', 'All'], ['needs_decision', 'Needs decision'], ['in_progress', 'In progress'], ['resolved', 'Resolved'], ['closed', 'Closed'], ['running', 'Analysing']];
 function incDateOk(i) {
   const d = S.incDate; if (!d || d === 'any') return true;
-  const t = (i.created_unix || 0) * 1000 || wallMs(i) || 0, now = Date.now();
-  if (d === 'today') { const m = new Date(); m.setHours(0, 0, 0, 0); return t >= m.getTime(); }
+  const t = (i.created_unix || 0) * 1000 || wallMs(i) || 0, now = nowMs();
+  if (d === 'today') { const m = new Date(nowMs() + 19800000); m.setUTCHours(0, 0, 0, 0); return t >= m.getTime() - 19800000; } // IST midnight
   return t >= now - (d === '24h' ? 864e5 : 7 * 864e5);
 }
 function incText(i) { return [i.id, i.title, plainTitle(i.title || ''), i.owner, (i.roles || []).map((r) => DH_NAME[r] || r).join(' '), (i.sensors || []).join(' '), OUTCOME_TEXT[i.outcome] || ''].join(' ').toLowerCase(); }
@@ -2383,7 +2389,7 @@ function bindIncTools() {
 const SHIFT = { last: 0, done: false };
 function shiftInit() {
   try { SHIFT.last = +localStorage.getItem('sce-last-visit') || 0; } catch (e) { SHIFT.last = 0; }
-  const mark = () => { try { localStorage.setItem('sce-last-visit', String(Date.now())); } catch (e) { /* private mode */ } };
+  const mark = () => { try { localStorage.setItem('sce-last-visit', String(nowMs())); } catch (e) { /* private mode */ } };
   setInterval(() => { if (!document.hidden && SHIFT.done) mark(); }, 60000);
   document.addEventListener('visibilitychange', () => { if (document.hidden && SHIFT.done) mark(); });
   SHIFT.mark = mark;
@@ -2643,7 +2649,7 @@ function buildAbout() {
     <details class="tech"><summary>Technical details</summary><div class="tech-bd"><div class="sec-h">Model in use</div>
     <div class="glist" id="about-model"><div class="gi"><div class="gk"><span>Loading ...</span></div></div></div></div></details>
     <div class="sec-h">Speed on the Hexagon NPU</div>
-    <div class="glist">${gi('⚡', 'Model init 0.7 s · prompt 1,160 tok/s · generation ~19 tok/s', 'Measured on this board with the Genie runtime.')}${gi('1', 'One NPU job at a time', 'Parallel NPU jobs are unsafe on this device, so agents run one after another.')}</div>
+    <div class="glist">${gi('⚡', 'Agent ~3 s per sensor · reasoner ~25-50 s per report', 'Measured on this board (llama.cpp htpd on the Hexagon NPU, Q4_0 models, 2026-11-27).')}${gi('1', 'One NPU job at a time', 'The agents model and the reasoner share the NPU: the reasoner is swapped in for each report (~3 s).')}</div>
     <div class="sec-h">Status key</div>
     <div class="card"><div class="legend-row" style="margin-top:0">${['normal', 'warning', 'critical', 'sensor_fault', 'insufficient_data'].map((s) => `<span class="pill ${stClass(s)}">${STATUS_GLYPH[s]} ${STATUS_LABEL[s]}</span>`).join('')}</div>
     <p class="muted" style="margin-top:10px;font-size:14px">Status always comes with a symbol and a word, never colour alone. Greyed rows mean the sensor is still warming up, which is not an error.</p></div>`;
@@ -2652,7 +2658,7 @@ function renderAboutModel() {
   const e = $('#about-model'); if (!e || !S.status) return;
   const m = S.status.models || {};
   const row = (lbl, x) => x ? `<div class="gi"><div class="gk"><b>${lbl}</b><span>${esc(x.name || '-')} · ${x.fine_tuned ? 'fine-tuned' : 'base'} · ${x.available ? 'available' : 'not available'}${x.note ? ' · ' + esc(x.note) : ''}</span></div></div>` : '';
-  const html = row('Agents use', m.agent) + row('Synthesizer', m.reasoner) + row('Base fallback', m.base) + row('Fine-tuned bundle', m.tuned) + `<div class="gi"><div class="gk"><b>Running on</b><span>${esc(S.status.running_on || '-')}</span></div></div>`
+  const html = row('Agents use', m.agent) + row('Reasoner', m.reasoner) + row('Base fallback', m.base) + row('Fine-tuned bundle', m.tuned) + `<div class="gi"><div class="gk"><b>Running on</b><span>${esc(S.status.running_on || '-')}</span></div></div>`
     + `<div class="gi"><div class="gk"><b>Store write errors / panics recovered</b><span>${esc(String(S.health && S.health.store_write_errors != null ? S.health.store_write_errors : '-'))} / ${esc(String(S.health && S.health.panics_recovered != null ? S.health.panics_recovered : '-'))}</span></div></div>`
     + `<div class="gi"><div class="gk"><b>Restarts in the last 7 days</b><span>${esc(String(S.status.restarts_7d != null ? S.status.restarts_7d : (S.health && S.health.restarts_7d != null ? S.health.restarts_7d : '-')))}</span></div></div>`;
   if (e.dataset.h !== html) { e.dataset.h = html; e.innerHTML = html; }
@@ -2756,6 +2762,16 @@ function boot() {
   opLoad(); shiftInit(); bindIncTools();
   $('#op').onclick = () => openOpSheet(null);
   window.addEventListener('hashchange', () => setView(location.hash.slice(1)));
+  // Android Back (MainActivity.onBackPressed asks first): close the top sheet, then go back to Home, then leave.
+  // Sweep 2026-11-27: Back on an open incident left the app instead of closing the incident.
+  window.SCE_back = () => {
+    const fs = document.getElementById('fs');
+    if (fs && !fs.hidden) { closeSensorSheet(); return true; }
+    const open = document.querySelectorAll('.sheet.open');
+    if (open.length) { closeSheet(open[open.length - 1].id); return true; }
+    const v = location.hash.slice(1); if (v && v !== 'live') { location.hash = '#live'; return true; }
+    return false;
+  };
   $('#scrim').onclick = () => { closeSheet('opsheet'); closeSheet('sheet'); closeSheet('isheet'); closeSheet('dsheet'); };
   $$('[data-close],#fs-x').forEach((b) => { b.replaceChildren(icon('x')); b.setAttribute('aria-label', 'Close'); b.title = 'Close'; });
   $$('[data-close]').forEach((b) => b.onclick = () => closeSheet(b.dataset.close));
@@ -2780,10 +2796,15 @@ function boot() {
   tickClock();
   setInterval(tickEtas, 2000); // "Next check at 1.5 h · in 23 min"
   setInterval(() => { if (OP.cur && !opName()) toast('Name cleared after 30 min idle: choose who you are before the next decision'); }, 60000);
+  // Screen off / app in background: the WebView pauses timers, so on resume the last event is old although the backend
+  // is fine (sweep 2026-11-27: the "Reconnecting" banner flashed on every wake). Give it a grace period and refresh now.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) { S.resumedAt = Date.now(); refreshStatus(); refreshLive(); refreshIncidents(); }
+  });
   setInterval(() => {
     if (!S.sse || Date.now() - S.lastLiveEv > 15000) { refreshStatus(); refreshLive(); }
     // Backend unreachable (restart, crash, reboot): say so instead of silently showing stale data.
-    const seen = Math.max(S.lastStatus || 0, S.lastLiveEv || 0), off = seen > 0 && Date.now() - seen > 12000;
+    const seen = Math.max(S.lastStatus || 0, S.lastLiveEv || 0), off = seen > 0 && Date.now() - seen > 12000 && Date.now() - (S.resumedAt || 0) > 12000;
     let ob = document.getElementById('offline');
     if (off && !ob) { ob = h('div', { id: 'offline', role: 'status', text: 'Reconnecting to the on-device backend ... values shown may be stale' }); document.body.appendChild(ob); }
     else if (!off && ob) ob.remove();

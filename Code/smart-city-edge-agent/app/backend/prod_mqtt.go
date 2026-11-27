@@ -133,7 +133,7 @@ func (b *mqttBridge) Run(stop <-chan struct{}) {
 			backoff = time.Second
 		}
 		wait := backoff/2 + time.Duration(rand.Int63n(int64(backoff/2)+1))
-		log.Printf("mqtt: %v; reconnecting in %v", err, wait.Round(time.Millisecond))
+		logQuiet("mqtt-dial", "mqtt: %v; reconnecting in %v", err, wait.Round(time.Millisecond))
 		select {
 		case <-stop:
 			return
@@ -205,6 +205,7 @@ func (b *mqttBridge) session(stop <-chan struct{}) error {
 	b.mu.Lock()
 	b.connected, b.lastErr = true, ""
 	b.mu.Unlock()
+	logQuietReset("mqtt-dial")
 	log.Printf("mqtt: connected to %s", redactURL(b.cfg.URL))
 
 	var wmu sync.Mutex

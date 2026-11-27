@@ -111,6 +111,7 @@ type Engine struct {
 	ClockMin      int       // sensor time-of-day (minutes after midnight IST) at (re)start; default 09:00
 	batchUntil    int64     // sensor time when the open incident batch closes (0 = none)
 	batchOpen     int64     // sensor time the open batch started
+	batchKey      string    // the sensor that opened the batch (batchsplit.go: only related late sensors hold it)
 	batchOpenWall time.Time // wall clock the open batch started (latency tracing only)
 	rng           *rand.Rand
 	series        map[string]map[int64]float64 // node|metric -> bucket -> value
@@ -806,7 +807,10 @@ func (e *Engine) detect() []Candidate {
 			// anomaly, so the rules keep flagging its shape (a reset looks like a spike/dip). Re-arm only for a
 			// genuinely new event: the CURRENT value is beyond a threshold again, or the old readings have
 			// left the window.
-			if valueAbnormalNode(st.Role, st.Metric, st.Node, xs[len(xs)-1]) || e.sim-st.clearedAt >= int64(Window)*bucketSec {
+			// sweep 2026-11-27: a sensor reported for high CO2 that then reads an impossible 300 ppm (a sensor fault) was
+			// not re-armed for 4 h: the fault is a new kind of event, not the old episode's shape still in the window.
+			newFault := f.Status == "sensor_fault" && st.reportedSev != sevRank("sensor_fault")
+			if valueAbnormalNode(st.Role, st.Metric, st.Node, xs[len(xs)-1]) || newFault || e.sim-st.clearedAt >= int64(Window)*bucketSec {
 				st.alerted, st.Reported, st.clearedAt, st.same, st.abTimes = false, false, 0, 0, nil
 			} else {
 				continue
@@ -977,6 +981,7 @@ func (e *Engine) batchEvents(abnormal map[string]Candidate) []Candidate {
 				e.batchOpen = e.sim
 				e.batchUntil = e.sim + int64(tr.BatchReadings)*bucketSec
 				e.batchOpenWall = time.Now()
+				e.batchKey = k
 				trace("gate: batch opened by %s", k)
 				break
 			}
@@ -992,14 +997,14 @@ func (e *Engine) batchEvents(abnormal map[string]Candidate) []Candidate {
 		// non-model delay in the whole pipeline (HANDBOOK 2.29). Close it early only when that is
 		// provably safe: at least one reading has passed AND no other sensor is abnormal at all. If
 		// anything else is abnormal, even far from maturity, keep the full window as before.
-		if e.sim < e.batchOpen+bucketSec || anyOtherAbnormal(e, abnormal) {
+		if e.sim < e.batchOpen+bucketSec || anyOtherAbnormalRelated(e, abnormal) {
 			return nil
 		}
 	}
 	if e.sim < e.batchOpen+int64(tr.BatchMaxReadings)*bucketSec {
 		for k := range abnormal {
-			if st := e.states[k]; !st.alerted && st.AbnormalInWindow < tr.AbnormalOfWindow {
-				return nil // a late sensor is still too young: keep the batch open a little longer
+			if st := e.states[k]; !st.alerted && st.AbnormalInWindow < tr.AbnormalOfWindow && e.relatedToBatch(k) {
+				return nil // a late RELATED sensor is still too young: keep the batch open a little longer
 			}
 		}
 	}
@@ -1007,7 +1012,8 @@ func (e *Engine) batchEvents(abnormal map[string]Candidate) []Candidate {
 	e.batchUntil, e.batchOpen = 0, 0
 	var out []Candidate
 	for k, c := range abnormal {
-		if st := e.states[k]; !st.alerted {
+		// an unrelated sensor that is still too young waits for its own batch (it is not marked alerted here)
+		if st := e.states[k]; !st.alerted && (st.AbnormalInWindow >= tr.AbnormalOfWindow || e.relatedToBatch(k)) {
 			st.alerted, st.Reported, st.clearedAt, st.alertedAt = true, true, 0, e.sim
 			st.reportedSev = sevRank(c.Finding.Status)
 			out = append(out, c)
