@@ -319,6 +319,11 @@ func (r *Reasoner) HandleCandidates(cands []Candidate) {
 	}
 	groups := splitUnrelated(cands) // batchsplit.go: unrelated co-occurring events -> separate incidents
 	cands = groups[0]
+	if len(groups) > 1 {
+		if note, _ := splitLast.Load().(string); note != "" {
+			log.Printf("batch: %s", note)
+		}
+	}
 	r.mu.Lock()
 	for _, g := range groups[1:] {
 		if len(r.jobs) < maxJobs {
@@ -832,6 +837,26 @@ func (r *Reasoner) analyse(ctx context.Context, inc *Incident, mode int, t0 time
 				r.log(inc, fmt.Sprintf("%s agent: no complete window for %s %s - rule finding kept", title(s.Role), s.Node, s.Metric))
 				return
 			}
+			// prefetch.go: the opener's agent may already have run during the gate wait
+			var pfE pfEntry
+			pfHave := false
+			if m := prefetchMode(); m != "" && !solo[i] && !again && !inc.quiet {
+				pc, e, ok := prefetchTake(s)
+				if m == "reuse" && ok && pfSig(s.Rule) == e.Sig {
+					pc.Ref, pc.Role = s.Ref, s.Role
+					findings[i] = pc
+					r.mu.Lock()
+					slot[i] = len(inc.Agents)
+					inc.Agents = append(inc.Agents, pc)
+					r.mu.Unlock()
+					r.log(inc, fmt.Sprintf("%s agent: answer from the gate wait reused (%d reading(s) older, same rule finding %s): %s / %s",
+						title(s.Role), (s.End-e.End)/bucketSec, e.Sig, pc.Parsed.Pattern, pc.Parsed.Status))
+					return
+				}
+				if e.Call.Parsed != nil {
+					pfE, pfHave = e, true
+				}
+			}
 			verb := "analysing"
 			if solo[i] {
 				verb = "re-running alone (its batched answer was invalid)"
@@ -876,6 +901,9 @@ func (r *Reasoner) analyse(ctx context.Context, inc *Incident, mode int, t0 time
 				// 0.8% of batched v2 answers on the device eval, in runs of neighbouring streams, so a
 				// batch artefact rather than the model; one solo re-run at the end of the batch
 				badOut = append(badOut, i)
+			}
+			if pfHave {
+				r.prefetchShadowLog(inc, s, pfE, call)
 			}
 			findings[i] = call
 			r.mu.Lock()
@@ -961,11 +989,14 @@ func (r *Reasoner) analyse(ctx context.Context, inc *Incident, mode int, t0 time
 			r.genie.Prefetch(ctx, am, prompts, AgentPrefill, func(k int, chunk string) { sinks[k](chunk) })
 		}
 		trace("phase %s agents-start +%dms (%d agents)", inc.ID, time.Since(t0).Milliseconds(), len(llm))
+		progAgents(inc.ID, len(llm)) // gateview.go: live progress for the dashboard
+		defer progEnd(inc.ID)
 		for _, i := range llm {
 			if inc.preempted() {
 				return false
 			}
 			runAgent(i, false)
+			progAgentDone(inc.ID)
 		}
 		for round := 0; round < maxNPURerun && len(npuDown) > 0; round++ {
 			todo := npuDown
@@ -1036,6 +1067,7 @@ func (r *Reasoner) analyse(ctx context.Context, inc *Incident, mode int, t0 time
 			// through it too; the deterministic isolated report is only the fallback (engine error or gate reject)
 			r.log(inc, fmt.Sprintf("Related domains checked and steady (%d context agents): reasoner v3 writes the report", nctx))
 			trace("phase %s reasoner-start +%dms (isolated)", inc.ID, time.Since(t0).Milliseconds())
+			progReasoner(inc.ID)
 			r.preliminary(inc, isolatedReport(inc.Sensors, findings))
 			rc := r.reasonV3Fallback(ctx, inc, findings, func() *ReportCall { return isolatedReport(inc.Sensors, findings) })
 			r.mu.Lock()
@@ -1054,6 +1086,7 @@ func (r *Reasoner) analyse(ctx context.Context, inc *Incident, mode int, t0 time
 		if reasonerV3Enabled() { // htpd_profile reasoner=v3 (reasoner_v3.go); default off
 			r.log(inc, fmt.Sprintf("Reasoner v3 combining %d domains", len(doms)))
 			trace("phase %s reasoner-start +%dms", inc.ID, time.Since(t0).Milliseconds())
+			progReasoner(inc.ID)
 			r.preliminary(inc, fallbackReport(inc.Sensors, findings, nil))
 			rc := r.reasonV3(ctx, inc, findings)
 			r.mu.Lock()

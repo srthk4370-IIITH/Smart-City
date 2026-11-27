@@ -71,6 +71,11 @@
             </intent-filter>
         </receiver>
 
+        <!-- "I'm on it" on an incident notification (EdgeService); only our own PendingIntents reach it -->
+        <receiver
+            android:name=".IncidentActionReceiver"
+            android:exported="false" />
+
         <receiver
             android:name=".BootReceiver"
             android:exported="true">

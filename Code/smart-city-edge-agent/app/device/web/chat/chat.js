@@ -123,6 +123,27 @@ function typing() {
   }, 500);
   return node;
 }
+// streamDraft (chatstream.go): the answer appears word by word as a draft, tool look-ups as steps; the checked final
+// answer from the reply replaces it. No EventSource (old WebView): the typing dots stay as before.
+function streamDraft(sid, ty, box) {
+  if (!window.EventSource) return null;
+  let es; try { es = new EventSource('/api/events'); } catch (e) { return null; }
+  const bub = ty.querySelector('.bub'); let draft = null, step = null;
+  es.addEventListener('chat_piece', (e) => {
+    let d; try { d = JSON.parse(e.data); } catch (x) { return; }
+    if (!d || d.stream !== sid) return;
+    if (d.step) {
+      if (!step) { step = h('div', { class: 'cstep' }); bub.append(step); }
+      step.textContent = d.step;
+    }
+    if (d.text) {
+      if (!draft) { draft = h('div', { class: 'cdraft', 'aria-live': 'polite' }); bub.append(draft); const t = bub.querySelector('.typing'); if (t) t.classList.add('small'); }
+      draft.textContent = d.text;
+      box.scrollTop = box.scrollHeight;
+    }
+  });
+  return es;
+}
 async function ask(q) {
   q = (q || '').trim(); if (!q || S.busy) return;
   const spoken = window.SPOKEN === true; window.SPOKEN = false; // set by voice.js only for a spoken question
@@ -130,14 +151,16 @@ async function ask(q) {
   const box = $('#msgs');
   if (!S.session) box.replaceChildren();
   box.append(msgNode({ role: 'user', text: q })); const ty = typing(); box.append(ty); box.scrollTop = box.scrollHeight;
+  const sid = 'cs' + Math.random().toString(36).slice(2, 10);
+  const es = streamDraft(sid, ty, box);
   try {
-    const s = await api('/api/chat', { method: 'POST', body: JSON.stringify({ session: S.id || '', message: q, spoken }) });
+    const s = await api('/api/chat', { method: 'POST', body: JSON.stringify({ session: S.id || '', message: q, spoken, stream: sid }) });
     S.session = s; S.id = s.id;
     if (spoken && window.speakAnswer) { const m = (s.messages || []).filter((x) => x.role === 'assistant' && !x.error).pop(); if (m) window.speakAnswer(m.text); }
   } catch (e) {
     ty.remove(); box.append(msgNode({ role: 'assistant', text: 'Could not reach the board: ' + e.message, error: true }));
   } finally {
-    clearInterval(timer); clearInterval(poll); S.busy = false; $('#send').disabled = false;
+    clearInterval(timer); clearInterval(poll); if (es) es.close(); S.busy = false; $('#send').disabled = false;
   }
   if (S.session) renderChat();
   loadSessions();

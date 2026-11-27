@@ -1386,6 +1386,10 @@ func (r *Reasoner) reasonV3Fallback(ctx context.Context, inc *Incident, findings
 			if phFixReport(&rep, inc.Sensors) {
 				rc.Repairs = append(rc.Repairs, "pH wording set to the readings: "+phDirWord(phDirection(inc.Sensors)))
 			}
+			for _, why := range contextFixReport(&rep, inc) { // reportfix.go: wording vs the incident's own readings
+				rc.Repairs = append(rc.Repairs, why)
+				r.log(inc, "Report guard: "+why)
+			}
 			r.severityGuard(inc, &rep)
 			r.faultGuard(inc, &rep, findings)
 			rep.Escalation = v3Escalation(true, run.Wanted, maxCalls, run.Results, parsed.NeedsDeeper)

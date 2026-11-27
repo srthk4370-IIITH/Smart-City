@@ -41,7 +41,14 @@ const nice = (s) => (s == null || s === '' ? '-' : String(s).replace(/_/g, ' '))
 const ZONE = 'IST';
 // corrected wall clock: the board's RTC can be years off (sweep 2026-11-27: "Since 22 Sep 2023", "detected 00:09 (just
 // now)"); /api/status carries the backend's corrected now_unix, the skew is applied to every displayed time.
-const CLK = { skew: 0 };
+const CLK = { skew: 0, sent: 0 };
+// viewer clock (clockviewer.go): when this device and the board disagree by > 2 min, offer our clock (at most every
+// 10 min). The board uses it only without network time; its own WebView is ignored (same wrong RTC).
+function clockHelp() {
+  if (Math.abs(CLK.skew) < 120 || Date.now() - CLK.sent < 600000 || new Date().getFullYear() < 2025) return;
+  CLK.sent = Date.now();
+  post('/api/clock/viewer', { now_ms: Date.now() }).catch(() => { /* older backend or no network */ });
+}
 const nowS = () => Date.now() / 1000 + CLK.skew;
 const nowMs = () => Date.now() + CLK.skew * 1000;
 const tAt = (e) => (e ? hm(e) + ' ' + ZONE : '-');
@@ -90,6 +97,7 @@ const post = (path, body) => api(path, { method: 'POST', headers: { 'Content-Typ
 
 /* ============================== icons ============================== */
 const IC = {
+  history: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>',
   live: '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
   incidents: '<path d="M6 9a6 6 0 0 1 12 0c0 6 2 7 2 7H4s2-1 2-7"/><path d="M10 20a2 2 0 0 0 4 0"/>',
   sensors: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
@@ -137,7 +145,7 @@ const PI = { // 16px pattern glyphs
 };
 const patIcon = (p) => `<svg class="pi" viewBox="0 0 16 16" aria-hidden="true">${PI[p] || '<circle cx="8" cy="8" r="2"/>'}</svg>`;
 function tabIcons() {
-  const labels = { live: 'Home', sensors: 'Sensors', incidents: 'Incidents', map: 'Map' };
+  const labels = { live: 'Home', sensors: 'Sensors', incidents: 'Incidents', history: 'History', map: 'Map' };
   $$('#rail a').forEach((a) => {
     const v = a.dataset.view;
     a.append(icon(v), h('span', { text: labels[v] }));
@@ -244,7 +252,7 @@ function bindHeader() {
 
 /* ============================== data refresh ============================== */
 async function refreshStatus() {
-  try { S.status = await api('/api/status'); S.lastStatus = Date.now(); if (S.status.now_unix) CLK.skew = S.status.now_unix - Date.now() / 1000; renderStatus(); } catch (e) { /* offline */ }
+  try { S.status = await api('/api/status'); S.lastStatus = Date.now(); if (S.status.now_unix) { CLK.skew = S.status.now_unix - Date.now() / 1000; clockHelp(); } renderStatus(); } catch (e) { /* offline */ }
 }
 let liveBusy = false;
 async function refreshLive() {
@@ -289,7 +297,7 @@ async function refreshIncDetail(force) {
 function renderStatus() {
   const st = S.status; if (!st) return;
   const rp = st.replay || {};
-  tickClock(); updateSub(); renderBanners();
+  tickClock(); updateSub(); renderBanners(); renderWatch();
   if (rp.poll_ms && SN.pollSeg && rp.poll_ms !== SN.pollMs) { SN.pollMs = rp.poll_ms; setSeg(SN.pollSeg, rp.poll_ms); }
   renderMode();
   updateHero();
@@ -577,6 +585,38 @@ const DH_RANK = { critical: 5, warning: 4, sensor_fault: 3, insufficient_data: 2
 const DH_NAME = { air_quality: 'Air quality', water: 'Water', power: 'Power', occupancy: 'Occupancy', weather: 'Weather', hvac: 'HVAC' };
 const DH_SRC = { report: 'AI report', agent: 'Domain agent', playbook: 'Standard playbook' };
 const DH_STAGE = { provisional: 'provisional', early: 'early', '1.5h': '1.5 h', '3h': '3 h' };
+// Watching strip (gateview.go): sensors on their way to an AI check, the open batch, and the analysis in progress.
+// The 20-55 min of sensor time before the AI is the biggest wait in the pipeline; this makes it visible.
+function renderWatch() {
+  const box = $('#watch'); if (!box) return;
+  const st = S.status || {}, g = st.gate || {}, w = (g.watching || []).slice(0, 4), pr = st.progress, b = g.batch;
+  if (!w.length && !pr && !b) { box.hidden = true; box.replaceChildren(); return; }
+  const live = !!st.live, rs = g.reading_s || 300;
+  const when = (s) => s <= 0 ? 'now' : live ? 'in ~' + dhAgo(s) : 'in ' + Math.ceil(s / rs) + ' reading' + (Math.ceil(s / rs) === 1 ? '' : 's');
+  const rows = [];
+  if (pr) {
+    const step = pr.stage === 'agents' ? 'Domain agents ' + Math.min(pr.done + 1, pr.total) + ' of ' + pr.total : 'Reasoner writing the report';
+    const pct = pr.stage === 'agents' ? Math.round(100 * pr.done / Math.max(1, pr.total) * 0.3) : 30 + Math.min(65, Math.round(65 * (1 - pr.eta_s / Math.max(pr.eta_s + 1, 30))));
+    rows.push(h('a', { class: 'wt-row wt-run', href: '#incidents', onclick: (e) => { e.preventDefault(); location.hash = '#incidents'; selectIncident(pr.id); } },
+      h('span', { class: 'wt-dot run', 'aria-hidden': 'true' }),
+      h('span', { class: 'wt-main', text: pr.id + ': ' + step }),
+      h('span', { class: 'wt-eta', text: 'ready in ~' + pr.eta_s + ' s' }),
+      h('span', { class: 'wt-bar', 'aria-hidden': 'true' }, h('i', { style: 'width:' + pct + '%' }))));
+  }
+  for (const x of w) {
+    const name = metricName(x.metric) + ' · ' + placeShort(x.location || x.node);
+    const what = x.fast ? 'critical: an incident opens on the next critical reading' : x.have + ' of ' + x.need + ' abnormal readings';
+    rows.push(h('div', { class: 'wt-row' },
+      h('span', { class: 'wt-dot ' + x.status, 'aria-hidden': 'true' }),
+      h('span', { class: 'wt-main' }, h('b', { text: name }), ' — ' + what),
+      h('span', { class: 'wt-eta', text: 'AI ' + when(x.eta_s) }),
+      h('span', { class: 'wt-bar', 'aria-hidden': 'true' }, h('i', { class: x.status, style: 'width:' + Math.round(100 * Math.min(x.have, x.need) / Math.max(1, x.need)) + '%' }))));
+  }
+  if (b) rows.push(h('div', { class: 'wt-row wt-batch' }, h('span', { class: 'wt-main', text: 'Collecting related sensors with ' + b.opened_by.replace('/', ' ') + ' so they land in one incident' }),
+    h('span', { class: 'wt-eta', text: 'closes ' + (b.min_close_s > 0 ? when(b.min_close_s) + '–' : '') + 'within ' + when(b.closes_within_s).replace(/^in /, '') })));
+  box.replaceChildren(h('h2', { class: 'wt-h', text: pr ? 'AI at work' : 'Watching' }), ...rows);
+  box.hidden = false;
+}
 function dhAgo(sec) {
   if (!(sec >= 0) || sec < 60) return 'under 1 min';
   const m = Math.floor(sec / 60);
@@ -1244,7 +1284,7 @@ function renderIncChips() {
 function incMatches(i) {
   const f = S.incFilter || 'all', w = wfOfI(i);
   const st = f === 'all' || (f === 'running' ? i.state === 'running' : f === 'pending' ? w === 'needs_decision' : f === 'done' ? w === 'closed' : w === f);
-  return st && (!S.incDom || S.incDom === 'all' || (i.roles || []).includes(S.incDom)) && incDateOk(i) && (!S.incQ || incText(i).includes(S.incQ));
+  return st && (!S.incDom || S.incDom === 'all' || (i.roles || []).includes(S.incDom)) && incDateOk(i) && (!S.incBld || S.incBld === 'all' || incBuildings(i).includes(S.incBld)) && (!S.incQ || incText(i).includes(S.incQ));
 }
 function applyIncFilter() { renderIncList(); }
 function flaggedRoles(i) {
@@ -1263,7 +1303,7 @@ function multiFlag(i) {
 }
 function renderIncList() {
   const box = $('#inc-list');
-  setBadge();
+  setBadge(); fillBldOptions();
   renderIncChips();
   renderHealthConn();
   if (!S.incs.length) { box.replaceChildren(h('div', { class: 'empty', style: 'grid-column:1/-1', text: 'All quiet. An incident appears when a reading stays abnormal for a while; you will be asked to decide on each one.' })); incEls.clear(); grpEls.clear(); return; }
@@ -1289,11 +1329,12 @@ function renderIncList() {
               i.refine_stage && i.refine_stage !== 'early' ? stageTag(i) : null, multiFlag(i),
               h('span', { class: 'pill ghost eng-only', text: 'Mode ' + i.mode }), h('span', { class: 'chip eng-only', text: nice(i.label) })))),
         running ? h('div', { class: 'prog' }) : null,
+        !running && i.spark && i.spark.length > 2 ? incSpark(i) : null,
         // live token preview, so a running incident visibly streams from the list view too.
         // Seeded from S.cardStream because the card is rebuilt whenever the incident JSON changes.
         running ? h('pre', { class: 'cstream', 'data-cs': i.id, text: S.cardStream[i.id] || '' }) : null,
         h('div', { class: 'foot' },
-          h('span', { text: (i.watermark ? 'Demo · ' : '') + i.id + (doms ? ' · ' + doms : '') + ' · ' + (i.created_unix ? tDay(i.created_unix) : (i.created_sim_ist || '-')) }),
+          h('span', { text: (i.watermark ? 'Demo · ' : '') + i.id + (i.place ? ' · ' + i.place : '') + (doms ? ' · ' + doms : '') + ' · ' + (i.created_unix ? tDay(i.created_unix) : (i.created_sim_ist || '-')) }),
           h('span', { class: 'eng-only', text: i.npu_calls + ' NPU call' + (i.npu_calls === 1 ? '' : 's') + (running ? '' : ' · ' + (i.total_ms / 1000).toFixed(1) + ' s') }),
           wfChip(i)),
         (i.steps_total && wf !== 'closed') || etaEl(i) ? h('div', { class: 'foot2' },
@@ -2376,9 +2417,68 @@ function incDateOk(i) {
   return t >= now - (d === '24h' ? 864e5 : 7 * 864e5);
 }
 function incText(i) { return [i.id, i.title, plainTitle(i.title || ''), i.owner, (i.roles || []).map((r) => DH_NAME[r] || r).join(' '), (i.sensors || []).join(' '), OUTCOME_TEXT[i.outcome] || ''].join(' ').toLowerCase(); }
+// building of each place ("KH building, level 03; SB building" -> ["KH building", "SB building"])
+function incBuildings(i) { return String(i.place || '').split(';').map((p) => p.split(',')[0].trim()).filter(Boolean); }
+function fillBldOptions() {
+  const sel = $('#inc-bld'); if (!sel) return;
+  const have = new Set(); for (const i of S.incs || []) for (const b of incBuildings(i)) have.add(b);
+  const key = [...have].sort().join('|'); if (sel.dataset.k === key) return; sel.dataset.k = key;
+  const cur = sel.value;
+  sel.replaceChildren(h('option', { value: 'all', text: 'All buildings' }), ...[...have].sort().map((b) => h('option', { value: b, text: b })));
+  sel.value = have.has(cur) ? cur : 'all';
+  sel.hidden = have.size < 2;
+}
+// mini chart of the first flagged sensor's window (server: spark, <= 24 points)
+function incSpark(i) {
+  const xs = i.spark, n = xs.length, W = 120, H = 28;
+  let lo = Math.min(...xs), hi = Math.max(...xs); if (hi - lo < 1e-9) { hi += 1; lo -= 1; }
+  const pt = (x, k) => [k * (W - 4) / (n - 1) + 2, H - 3 - (x - lo) * (H - 6) / (hi - lo)];
+  const pts = xs.map(pt), last = pts[n - 1];
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.setAttribute('width', W); svg.setAttribute('height', H); svg.setAttribute('aria-hidden', 'true');
+  const pl = document.createElementNS(NS, 'polyline');
+  pl.setAttribute('fill', 'none'); pl.setAttribute('stroke', 'currentColor'); pl.setAttribute('stroke-width', '1.6'); pl.setAttribute('stroke-linejoin', 'round');
+  pl.setAttribute('points', pts.map((p) => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' '));
+  const c = document.createElementNS(NS, 'circle');
+  c.setAttribute('cx', last[0].toFixed(1)); c.setAttribute('cy', last[1].toFixed(1)); c.setAttribute('r', '2.6'); c.setAttribute('class', 'sp-dot');
+  svg.append(pl, c);
+  const m = metricName(i.spark_metric || '');
+  const el = h('div', { class: 'ispark sev-' + sevOf(i).k, title: m + ': the 4 h window the AI read' });
+  el.append(svg, h('span', { class: 'ispark-l', text: m + ' · 4 h' }));
+  return el;
+}
+// shift handover: a plain-text summary of everything open plus the last 12 h, to copy or share
+function handoverText() {
+  const incs = S.incs || [], now = nowMs() / 1000, since = now - 12 * 3600;
+  const line = (i) => '- ' + i.id + ' [' + sevOf(i).t + '] ' + plainTitle(i.title || '') + (i.place ? ' (' + i.place + ')' : '') + (i.owner ? ' · owner ' + i.owner : '') + (i.steps_total ? ' · ' + (i.steps_total - i.steps_open) + '/' + i.steps_total + ' steps' : '');
+  const by = (w) => incs.filter((i) => wfOfI(i) === w);
+  const closed = incs.filter((i) => wfOfI(i) === 'closed' && (i.closed_at || 0) >= since);
+  const out = ['Shift handover · ' + tDay(now), ''];
+  const sec = (t, xs) => { out.push(t + ' (' + xs.length + ')'); out.push(...(xs.length ? xs.map(line) : ['- none'])); out.push(''); };
+  sec('Needs a decision', by('needs_decision'));
+  sec('In progress', by('in_progress'));
+  sec('Resolved, waiting to close', by('resolved'));
+  out.push('Closed in the last 12 h (' + closed.length + ')');
+  out.push(...(closed.length ? closed.map((i) => line(i) + ' · ' + (OUTCOME_TEXT[i.outcome] || nice(i.outcome || ''))) : ['- none']));
+  return out.join('\n');
+}
+function showHandover() {
+  const box = $('#handover'); if (!box) return;
+  const txt = handoverText();
+  const pre = h('pre', { class: 'hand-pre', text: txt });
+  const copy = h('button', { type: 'button', class: 'btn primary', onclick: async () => {
+    try { await navigator.clipboard.writeText(txt); toast('Handover copied'); } catch (e) { const r = document.createRange(); r.selectNodeContents(pre); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); toast('Text selected: copy it from the menu'); }
+  } }, 'Copy');
+  const share = navigator.share ? h('button', { type: 'button', class: 'btn', onclick: () => navigator.share({ title: 'Shift handover', text: txt }).catch(() => {}) }, 'Share') : null;
+  fill(box, h('div', { class: 'hand-hd' }, h('b', { text: 'Shift handover' }), h('button', { type: 'button', class: 'ibtn', 'aria-label': 'Close the handover', onclick: () => { box.hidden = true; } }, icon('x', 18))), pre, h('div', { class: 'foot-row' }, copy, share));
+  box.hidden = false; box.scrollIntoView({ block: 'nearest' });
+}
 function bindIncTools() {
   const q = $('#inc-q'), dom = $('#inc-dom'), dt = $('#inc-date');
   if (!q || q.dataset.b) return; q.dataset.b = '1';
+  const bld = $('#inc-bld'); if (bld) bld.addEventListener('change', () => { S.incBld = bld.value; renderIncList(); });
+  const ho = $('#inc-hand'); if (ho) ho.addEventListener('click', showHandover);
   dom.append(...ROLE_ORDER.map((r) => h('option', { value: r, text: DH_NAME[r] || r })));
   q.addEventListener('input', () => { S.incQ = q.value.trim().toLowerCase(); renderIncList(); });
   dom.addEventListener('change', () => { S.incDom = dom.value; renderIncList(); });
@@ -2685,7 +2785,7 @@ function setView(v) {
   const deep = /^incident\/(INC-\d+)$/.exec(v || '');
   if (deep) { setView('incidents'); selectIncident(deep[1]); try { history.replaceState(null, '', '#incidents'); } catch (e) { /* ignore */ } return; }
   if (v === 'site' || v === 'health') { const nv = v === 'site' ? 'map' : 'sensors'; try { history.replaceState(null, '', '#' + nv); } catch (e) { /* ignore */ } v = nv; }
-  if (!['live', 'sensors', 'incidents', 'map', 'about', 'cards'].includes(v)) v = 'live';
+  if (!['live', 'sensors', 'incidents', 'history', 'map', 'about', 'cards'].includes(v)) v = 'live';
   S.view = v;
   $$('.view').forEach((x) => x.classList.toggle('on', x.id === 'view-' + v));
   $$('#rail a').forEach((a) => { const on = a.dataset.view === v; a.classList.toggle('on', on); if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
@@ -2695,7 +2795,9 @@ function setView(v) {
   if (v === 'map') { if (window.P1) window.P1.show('site'); (S.topo ? Promise.resolve() : api('/api/topology').then((t) => { S.topo = t; }).catch(() => {})).then(() => { renderMap(); refreshLive(); }); }
   if (v === 'live') refreshLive();
   if (v === 'cards') window.P1 && window.P1.show && window.P1.show('cards');
+  if (v === 'history' && window.SCE_history) { window.SCE_history.mount($('#history')); window.SCE_history.refresh(); }
 }
+window.SCE_openIncident = (id) => { location.hash = '#incident/' + id; }; // history.js
 
 /* ============================== SSE ============================== */
 function onLive(d) {
@@ -2737,6 +2839,7 @@ function connect() {
     if (d.change || d.workflow_change === 'resolved') listed.then(() => onIncChange(d)); // re-check moved it, reminder, back to normal
     refreshHealthSoon();
     if (d.id && d.id === S.incId) refreshIncDetail(false);
+    if (S.view === 'history' && window.SCE_history) { clearTimeout(S.histT); S.histT = setTimeout(() => window.SCE_history.refresh(), 1500); }
     if (d.workflow_change === 'auto_closed' && d.id) delete S.hist[d.id];
     // Open a newly running incident so the agents are seen thinking, which is the whole point of
     // streaming tokens. Only when nothing else is open, so this can never steal the view from

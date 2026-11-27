@@ -53,3 +53,16 @@ Decisions I did not take alone. Everything else from the sweep was fixed and dep
 
 12. **Flatline (stuck sensor) needs 16 identical readings = 80 min** before it is a sensor fault (`features.go`).
     A stuck feed is invisible for 80 min. Shorten for sensors that never repeat exactly (TDS, CO2)?
+
+## Answers (owner, 2026-11-27) and what was done
+
+1. Split by site-tree distance: same building related, other buildings separate unless same domain; app and paper. Done (`batchsplit.go`).
+2. Keep add-a-line. Kept.
+3. 24 h cap + auto-close after 3 days open. Done (`stale_close_days`, default 3).
+4. Close the old test incidents. Done (INC-0001..0011 auto-closed, INC-0012 dismissed "no action needed").
+5. No laptop dependency: HTTPS Date header + viewer device clock. Done (`clockviewer.go`).
+6. / 10. No top-up; fix locally unless the errors keep varying. Done as report guards (`reportfix.go`).
+9. AC context kept.
+12. Flatline stays 80 min.
+Features chosen: watching strip + progress, Android notifications, sparkline + handover + building filter, History page,
+agents during gate wait (shadow first), early AI (study rerun first), chat streaming. See `proofs/2026-11-27_features/FEATURES.md`.

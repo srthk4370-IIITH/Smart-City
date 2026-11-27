@@ -56,6 +56,7 @@ func main() {
 	}
 	hub := NewHub()
 	rsn := NewReasoner(genie, eng, *dir, hub.Publish)
+	eng.OnBatchOpen = rsn.PrefetchAgent // prefetch.go (htpd_profile agent_prefetch=shadow|1)
 	rsn.Mode = *mode
 	health := NewHealthTracker()
 	eng.onEvent = rsn.HandleCandidates

@@ -306,6 +306,9 @@ func (f *fogUploader) post(ctx context.Context, rows []json.RawMessage) error {
 		return err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode < 500 {
+		noteHTTPDate(resp.Header, "fog Date header") // clocknet.go: true time whenever a trusted server answers
+	}
 	var out struct {
 		OK bool `json:"ok"`
 	}

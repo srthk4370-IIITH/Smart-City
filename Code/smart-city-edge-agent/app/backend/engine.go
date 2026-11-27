@@ -113,6 +113,8 @@ type Engine struct {
 	batchOpen     int64     // sensor time the open batch started
 	batchKey      string    // the sensor that opened the batch (batchsplit.go: only related late sensors hold it)
 	batchOpenWall time.Time // wall clock the open batch started (latency tracing only)
+	OnBatchOpen   func(Candidate) // prefetch.go: a mature sensor's agent runs during the gate wait (called in a goroutine)
+	pfSent        map[string]bool // sensors already handed to OnBatchOpen in the open batch
 	rng           *rand.Rand
 	series        map[string]map[int64]float64 // node|metric -> bucket -> value
 	sim           int64
@@ -983,12 +985,28 @@ func (e *Engine) batchEvents(abnormal map[string]Candidate) []Candidate {
 				e.batchOpenWall = time.Now()
 				e.batchKey = k
 				trace("gate: batch opened by %s", k)
+				e.pfSent = map[string]bool{}
 				break
 			}
 		}
 	}
 	if e.batchUntil == 0 {
 		return nil
+	}
+	// prefetch.go: every sensor that is mature while the batch waits gets its agent run on the idle NPU
+	if e.OnBatchOpen != nil {
+		for k, c := range abnormal {
+			if st := e.states[k]; st != nil && !st.alerted && st.AbnormalInWindow >= tr.AbnormalOfWindow && !e.pfSent[k] {
+				if e.pfSent == nil {
+					e.pfSent = map[string]bool{}
+				}
+				e.pfSent[k] = true
+				go e.OnBatchOpen(c)
+			}
+		}
+	}
+	if early := e.releaseUnrelatedLocked(abnormal); len(early) > 0 {
+		return early // batchsplit.go: mature sensors unrelated to this batch go out now; the batch stays open
 	}
 	if e.sim < e.batchUntil {
 		// The window exists so co-occurring sensors land in ONE incident (Mode 3's cross-domain

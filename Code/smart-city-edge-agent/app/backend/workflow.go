@@ -41,6 +41,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -822,6 +823,18 @@ func (r *Reasoner) Close(id, op, outcome, note string, dismiss bool) (*Incident,
 	})
 }
 
+// staleCloseAfter: open incidents older than this close automatically (htpd_profile stale_close_days, default 3,
+// 0 = never).
+func staleCloseAfter() time.Duration {
+	d := 3
+	if v := strings.TrimSpace(profStr("stale_close_days")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			d = n
+		}
+	}
+	return time.Duration(d) * 24 * time.Hour
+}
+
 // ---- the periodic pass (main.go onTick) ---------------------------------------------------------
 
 // WorkflowTick runs the people timers and the live return-to-normal check once per engine poll.
@@ -913,6 +926,20 @@ func (r *Reasoner) workflowTick(sim, epoch int64, states []SensorState) {
 			}
 			inc.event("system", "auto_closed", "", out, "auto", "back to normal for 24 h")
 			ev["workflow_change"] = "auto_closed"
+		}
+		// open longer than staleCloseAfter (owner 2026-11-27: 3 days) with nobody working a step: auto-close, the
+		// history is kept; a new episode of the sensor opens a new incident anyway (promote.go promoMaxFlagAge)
+		if w := wfOf(inc); w != wfClosed && staleCloseAfter() > 0 && !(inc.Owner != "" && openSteps(inc) > 0) {
+			if c := wallOf(inc); !c.IsZero() && now.Sub(c) >= staleCloseAfter() {
+				days := int(staleCloseAfter().Hours() / 24)
+				inc.Workflow, inc.Outcome, inc.ClosedAt, inc.ClosedBy = wfClosed, "no_action_needed", now.Unix(), "system"
+				inc.OutcomeNote = fmt.Sprintf("auto: open %d days with no decision", days)
+				if inc.Approval == "" || inc.Approval == "pending" {
+					inc.Approval = "dismissed"
+				}
+				inc.event("system", "auto_closed", "", "no_action_needed", "auto", fmt.Sprintf("open for %d days with no decision", days))
+				ev["workflow_change"] = "auto_closed"
+			}
 		}
 		if len(ev) > 0 {
 			ev["id"], ev["state"], ev["workflow"], ev["approval"] = inc.ID, inc.State, inc.Workflow, inc.Approval

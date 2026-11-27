@@ -324,6 +324,9 @@ func (x *supaSync) postTo(base string, r sbRow) (error, bool) {
 	}
 	defer resp.Body.Close()
 	io.Copy(io.Discard, io.LimitReader(resp.Body, 1024))
+	if resp.StatusCode < 500 {
+		noteHTTPDate(resp.Header, "Supabase Date header") // clocknet.go: true time whenever a trusted server answers
+	}
 	if resp.StatusCode >= 300 {
 		if resp.StatusCode == 409 {
 			return nil, false // already there

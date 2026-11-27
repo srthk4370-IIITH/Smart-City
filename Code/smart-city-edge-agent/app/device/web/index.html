@@ -23,6 +23,7 @@
 })();
 </script>
 <link rel="stylesheet" href="phase1.css">
+<link rel="stylesheet" href="history.css">
 </head>
 <body>
 <header class="bar">
@@ -49,6 +50,7 @@
   <a href="#live" data-view="live"></a>
   <a href="#sensors" data-view="sensors"></a>
   <a href="#incidents" data-view="incidents"></a>
+  <a href="#history" data-view="history"></a>
   <a href="#map" data-view="map"></a>
 </nav>
 
@@ -77,6 +79,7 @@
   <section id="view-live" class="view">
     <div class="ltitle"><h1>Campus Live</h1><p id="l-sub">Connecting to the edge device ...</p></div>
     <div id="hero"></div>
+    <section id="watch" class="watch" aria-label="What the AI is watching" aria-live="polite" hidden></section>
     <section id="dh" class="dh" aria-labelledby="dh-t">
       <div class="dh-hd"><h2 id="dh-t">Campus health</h2><span id="dh-conn" class="dh-conn off">○ Connecting</span></div>
       <div class="dh-hd2"><p id="dh-sub" class="dh-sum0">Checking the six areas ...</p><a id="dh-dec" class="dh-dec" href="#incidents" hidden></a></div>
@@ -92,9 +95,16 @@
       <input id="inc-q" class="note-in" type="search" placeholder="Search incidents, sensors, people" aria-label="Search incidents" autocomplete="off">
       <select id="inc-dom" class="sel" aria-label="Filter by domain"><option value="all">All domains</option></select>
       <select id="inc-date" class="sel" aria-label="Filter by date"><option value="any">Any time</option><option value="today">Today</option><option value="24h">Last 24 h</option><option value="7d">Last 7 days</option></select>
+      <select id="inc-bld" class="sel" aria-label="Filter by building" hidden><option value="all">All buildings</option></select>
+      <button id="inc-hand" class="btn" type="button">Handover</button>
     </div>
+    <section id="handover" class="handover" aria-label="Shift handover" hidden></section>
     <div class="chips" id="inc-chips" role="group" aria-label="Filter incidents by state"></div>
     <div id="inc-list" class="inc-list"></div>
+  </section>
+  <section id="view-history" class="view">
+    <div class="ltitle"><h1>History</h1><p>Every incident the edge device stored, as charts and a list.</p></div>
+    <div id="history"></div>
   </section>
   <section id="view-map" class="view">
     <div class="ltitle"><h1>Map</h1><p>The campus as a tree: buildings, floors, rooms and their sensors.</p></div>
@@ -159,6 +169,7 @@
 </div>
 <script src="app.js"></script>
 <script src="phase1.js"></script>
+<script src="history.js"></script>
 <script src="qr.js"></script>
 </body>
 </html>

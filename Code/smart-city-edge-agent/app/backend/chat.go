@@ -189,7 +189,11 @@ func (l htpdChatLLM) Complete(ctx context.Context, prompt string, maxNew int, on
 		return "", CallMetrics{}, err
 	}
 	r, err := htpdCallOpts(ctx, "reason", []string{prompt}, 3*time.Minute,
-		map[string]any{"keep": true, "prefix": l.prefix, "max_new": maxNew}, func(int, string) {})
+		map[string]any{"keep": true, "prefix": l.prefix, "max_new": maxNew}, func(_ int, p string) {
+			if onPiece != nil {
+				onPiece(p) // chatstream.go: draft answer to the chat page
+			}
+		})
 	if err != nil {
 		return "", CallMetrics{}, err
 	}
@@ -499,9 +503,15 @@ func (c *chatStore) answer(ctx context.Context, r *Reasoner, history []ChatMsg, 
 	var turns []v3Turn
 	used := 0
 	seen := map[string]bool{} // tool calls made for this question (name + arguments as the model wrote them)
+	stream := chatStreamOf(ctx)
+	var onPiece func(string)
+	if stream != nil {
+		onPiece = stream.piece
+	}
 	for {
 		prompt := chatPrompt(prefix, history, modelQ, turns)
-		text, _, err := llm.Complete(ctx, prompt, chatMaxNew, nil)
+		stream.begin(prompt)
+		text, _, err := llm.Complete(ctx, prompt, chatMaxNew, onPiece)
 		if err != nil {
 			msg.Text, msg.Error = "The assistant could not run on the NPU ("+err.Error()+"). Please try again.", true
 			break
@@ -524,6 +534,7 @@ func (c *chatStore) answer(ctx context.Context, r *Reasoner, history []ChatMsg, 
 		t := v3Turn{Calls: calls, Think: chatThinkOf(text)}
 		for _, call := range calls {
 			args := call.Args()
+			stream.step(chatToolStep(call.Name))
 			res := guard.Validate(tools, call.Name, args)
 			if res == "" {
 				res = tools.Exec(ctx, call.Name, args)
@@ -1318,12 +1329,17 @@ func (s *Server) chatRoutes(mux *http.ServeMux) {
 		var body struct {
 			Session string `json:"session"`
 			Message string `json:"message"`
+			Stream  string `json:"stream"` // chatstream.go: SSE "chat_piece" events for this id
 		}
 		if readBody(r, &body) != nil {
 			http.Error(w, "bad JSON", 400)
 			return
 		}
-		x, err := cs.Ask(r.Context(), s.rsn, body.Session, body.Message)
+		ctx := r.Context()
+		if s.hub != nil {
+			ctx = withChatStream(ctx, body.Stream, s.hub.Publish)
+		}
+		x, err := cs.Ask(ctx, s.rsn, body.Session, body.Message)
 		if err != nil {
 			http.Error(w, err.Error(), 400)
 			return

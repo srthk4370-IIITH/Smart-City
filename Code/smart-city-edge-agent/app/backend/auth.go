@@ -155,7 +155,7 @@ func (s *Server) guard(next http.Handler) http.Handler {
 			http.Error(w, "writes need the X-Requested-With header", http.StatusForbidden)
 			return
 		}
-		if !loop {
+		if !loop && r.URL.Path != "/api/clock/viewer" { // viewer clock: bounded, vote-based (clockviewer.go)
 			if !tokenEq(r.Header.Get("X-API-Token"), loadAPIToken(s.dir)) {
 				http.Error(w, "changes from off the device need the X-API-Token header (see HANDBOOK 2.35)", http.StatusForbidden)
 				return

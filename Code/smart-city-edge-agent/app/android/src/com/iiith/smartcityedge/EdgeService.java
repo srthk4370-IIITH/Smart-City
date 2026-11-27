@@ -197,33 +197,38 @@ public class EdgeService extends Service {
     // dashboard is not in front: a new Critical incident once its analysis has finished, a re-check
     // that made it worse, and the one reminder for a critical incident nobody took within 15 min.
     // Tapping opens that incident. Taken (in progress) or closed incidents lose their notification.
+    // 2026-11-27: + "I'm on it" / "Open" actions (IncidentActionReceiver), a quieter "Warnings" channel
+    // for new warning and sensor-fault incidents (once each), the site place (building, level) from
+    // /api/topology, and a group summary when more than one incident notification is showing.
     private final java.util.Set<String> seenIncidents = new java.util.HashSet<>();
     private final java.util.Set<String> critNotified = new java.util.HashSet<>();
+    private final java.util.Set<String> warnNotified = new java.util.HashSet<>();
     private final java.util.Set<String> remindNotified = new java.util.HashSet<>();
     private final java.util.Map<String, Long> worseNotified = new java.util.HashMap<>();
     private final java.util.Set<String> posted = new java.util.HashSet<>();
     private boolean incidentsPrimed = false;
     static final int NOTIF_ID = 2001;
+    static final int SUMMARY_ID = 2002;
+    static final String CH_ALERTS = "alerts";
+    static final String CH_WARNINGS = "warnings";
+    static final String GROUP = "com.iiith.smartcityedge.INCIDENTS";
 
     private void notifyNewIncidents() {
         try {
-            java.net.HttpURLConnection c = (java.net.HttpURLConnection)
-                    new java.net.URL("http://127.0.0.1:8000/api/incidents?limit=50").openConnection();
-            c.setConnectTimeout(800);
-            c.setReadTimeout(3000);
-            String body;
-            try {
-                body = new String(c.getInputStream().readAllBytes(), "UTF-8");
-            } finally {
-                c.disconnect();
-            }
-            org.json.JSONArray arr = new org.json.JSONArray(body);
+            org.json.JSONArray arr = new org.json.JSONArray(httpGet("http://127.0.0.1:8000/api/incidents?limit=50"));
             NotificationManager nm = getSystemService(NotificationManager.class);
-            if (nm.getNotificationChannel("alerts") == null) {
-                nm.createNotificationChannel(new NotificationChannel("alerts", "Sensor alerts",
+            if (nm.getNotificationChannel(CH_ALERTS) == null) {
+                nm.createNotificationChannel(new NotificationChannel(CH_ALERTS, "Sensor alerts",
                         NotificationManager.IMPORTANCE_HIGH));
             }
+            if (nm.getNotificationChannel(CH_WARNINGS) == null) {
+                NotificationChannel w = new NotificationChannel(CH_WARNINGS, "Warnings",
+                        NotificationManager.IMPORTANCE_DEFAULT);
+                w.setDescription("New warning-level and sensor-fault incidents (once each)");
+                nm.createNotificationChannel(w);
+            }
             boolean background = !MainActivity.foreground;
+            boolean postedNow = false;
             for (int i = 0; i < arr.length(); i++) {
                 org.json.JSONObject o = arr.getJSONObject(i);
                 String id = o.optString("id");
@@ -231,12 +236,17 @@ public class EdgeService extends Service {
                 String wf = o.optString("workflow", "");
                 String sev = o.optString("severity", "");
                 boolean done = !"running".equals(o.optString("state"));
-                boolean critical = done && "critical".equals(sev) && o.optBoolean("severity_final", true);
+                boolean sevFinal = o.optBoolean("severity_final", true);
+                boolean critical = done && "critical".equals(sev) && sevFinal;
+                // severity is critical | warning | normal | sensor_fault; label can also say sensor_fault (reason.go)
+                boolean fault = done && ("sensor_fault".equals(sev) || "sensor_fault".equals(o.optString("label")));
+                boolean warning = done && !fault && "warning".equals(sev) && sevFinal;
                 long worse = o.optLong("worse_at", 0);
                 boolean reminded = o.optBoolean("reminded", false);
-                boolean first = seenIncidents.add(id);
+                seenIncidents.add(id);
                 if (!incidentsPrimed) { // incidents present at start are not re-announced
                     if (critical) critNotified.add(id);
+                    if (warning || fault) warnNotified.add(id);
                     if (reminded) remindNotified.add(id);
                     worseNotified.put(id, worse);
                     continue;
@@ -244,10 +254,12 @@ public class EdgeService extends Service {
                 if ("in_progress".equals(wf) || "closed".equals(wf)) { // someone took it, or it is over
                     if (posted.remove(id)) nm.cancel(id, NOTIF_ID);
                     if (critical) critNotified.add(id);
+                    if (warning || fault) warnNotified.add(id);
                     worseNotified.put(id, worse);
                     continue;
                 }
                 String text = null;
+                String channel = CH_ALERTS;
                 Long seenWorse = worseNotified.get(id);
                 if (worse > 0 && (seenWorse == null || worse > seenWorse)) {
                     worseNotified.put(id, worse);
@@ -256,24 +268,158 @@ public class EdgeService extends Service {
                     worseNotified.put(id, worse);
                 }
                 if (text == null && reminded && remindNotified.add(id)) text = "Still needs a decision (critical for 15 min)";
-                if (text == null && critical && critNotified.add(id)) text = "New critical incident";
+                if (text == null && critical && critNotified.add(id)) {
+                    text = fault ? "Critical sensor fault" : "New critical incident";
+                    warnNotified.add(id); // not announced again as a sensor fault
+                }
+                if (text == null && (warning || fault) && warnNotified.add(id)) {
+                    text = fault ? "Sensor fault" : "New warning";
+                    channel = CH_WARNINGS;
+                }
                 if (text == null || !background) continue; // in front: the dashboard alerts by itself
-                Intent open = new Intent(this, MainActivity.class)
-                        .putExtra(MainActivity.EXTRA_INCIDENT, id)
-                        .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                PendingIntent pi = PendingIntent.getActivity(this, id.hashCode(), open,
-                        PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-                nm.notify(id, NOTIF_ID, new Notification.Builder(this, "alerts")
-                        .setContentTitle(text + " - " + id)
-                        .setContentText(o.optString("title"))
-                        .setStyle(new Notification.BigTextStyle().bigText(o.optString("title")))
-                        .setSmallIcon(android.R.drawable.stat_notify_error)
-                        .setOnlyAlertOnce(false)
-                        .setContentIntent(pi).setAutoCancel(true).build());
+                String place = placeOf(o.optJSONArray("sensors"));
+                String body = o.optString("title");
+                if (!place.isEmpty()) body = place + (body.isEmpty() ? "" : " - " + body);
+                nm.notify(id, NOTIF_ID, incidentNotification(this, channel, id, text + " - " + id, body, true).build());
                 posted.add(id);
+                postedNow = true;
             }
             incidentsPrimed = true;
+            if (postedNow) updateSummary(nm);
+            else if (countActive(nm) <= 1) nm.cancel(SUMMARY_ID); // the rest were taken, closed or swiped away
         } catch (Exception ignored) {
+        }
+    }
+
+    /**
+     * One incident notification: tap or "Open" opens the incident, "I'm on it" acknowledges it
+     * (IncidentActionReceiver). Shared with the receiver, which re-posts it with the ack result.
+     */
+    static Notification.Builder incidentNotification(Context c, String channel, String id, String title, String text,
+                                                     boolean withAck) {
+        Intent open = new Intent(c, MainActivity.class)
+                .putExtra(MainActivity.EXTRA_INCIDENT, id)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        PendingIntent pi = PendingIntent.getActivity(c, id.hashCode(), open,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        Notification.Builder b = new Notification.Builder(c, channel)
+                .setContentTitle(title)
+                .setContentText(text)
+                .setStyle(new Notification.BigTextStyle().bigText(text))
+                .setSmallIcon(CH_WARNINGS.equals(channel) ? android.R.drawable.stat_sys_warning : android.R.drawable.stat_notify_error)
+                .setCategory(Notification.CATEGORY_ALARM)
+                .setGroup(GROUP)
+                .setOnlyAlertOnce(!withAck) // the ack result replaces the alert quietly
+                .setContentIntent(pi).setAutoCancel(true);
+        if (withAck) {
+            Intent ack = new Intent(c, IncidentActionReceiver.class)
+                    .setAction(IncidentActionReceiver.ACTION_ACK)
+                    .putExtra(IncidentActionReceiver.EXTRA_ID, id)
+                    .putExtra(IncidentActionReceiver.EXTRA_CHANNEL, channel)
+                    .putExtra(IncidentActionReceiver.EXTRA_TITLE, title)
+                    .putExtra(IncidentActionReceiver.EXTRA_TEXT, text);
+            PendingIntent api = PendingIntent.getBroadcast(c, id.hashCode() ^ 0x5ce, ack,
+                    PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+            b.addAction(new Notification.Action.Builder(null, "I'm on it", api).build());
+        }
+        b.addAction(new Notification.Action.Builder(null, "Open", pi).build());
+        return b;
+    }
+
+    /** Incident notifications currently showing (the summary itself excluded). */
+    private static int countActive(NotificationManager nm) {
+        int n = 0;
+        for (android.service.notification.StatusBarNotification s : nm.getActiveNotifications()) {
+            if (s.getId() == NOTIF_ID) n++;
+        }
+        return n;
+    }
+
+    /** Group summary (shown by Android as the collapsed group) once more than one incident is showing. */
+    private void updateSummary(NotificationManager nm) {
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        boolean anyAlert = false;
+        for (android.service.notification.StatusBarNotification s : nm.getActiveNotifications()) {
+            if (s.getId() != NOTIF_ID) continue;
+            Notification n = s.getNotification();
+            if (CH_ALERTS.equals(n.getChannelId())) anyAlert = true;
+            CharSequence t = n.extras.getCharSequence(Notification.EXTRA_TITLE);
+            if (t != null) lines.add(t.toString());
+        }
+        if (lines.size() <= 1) {
+            nm.cancel(SUMMARY_ID);
+            return;
+        }
+        Notification.InboxStyle st = new Notification.InboxStyle()
+                .setBigContentTitle(lines.size() + " incidents need attention");
+        for (int i = 0; i < Math.min(6, lines.size()); i++) st.addLine(lines.get(i));
+        if (lines.size() > 6) st.setSummaryText("+" + (lines.size() - 6) + " more");
+        PendingIntent home = PendingIntent.getActivity(this, SUMMARY_ID,
+                new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        nm.notify(SUMMARY_ID, new Notification.Builder(this, anyAlert ? CH_ALERTS : CH_WARNINGS)
+                .setContentTitle(lines.size() + " incidents need attention")
+                .setContentText(String.join(", ", lines))
+                .setStyle(st)
+                .setSmallIcon(anyAlert ? android.R.drawable.stat_notify_error : android.R.drawable.stat_sys_warning)
+                .setGroup(GROUP).setGroupSummary(true)
+                .setGroupAlertBehavior(Notification.GROUP_ALERT_CHILDREN) // the children already alerted
+                .setContentIntent(home).setAutoCancel(true).build());
+    }
+
+    // node -> "KH building, level 03", from /api/topology (sensors.json building/level), refreshed every 10 min.
+    // The incident summary itself has no place field; it lists flagged sensors as "node metric".
+    private final java.util.Map<String, String> nodePlace = new java.util.HashMap<>();
+    private long nodePlaceAt = 0;
+
+    private String placeOf(org.json.JSONArray sensors) {
+        if (sensors == null || sensors.length() == 0) return "";
+        long now = System.currentTimeMillis();
+        if (nodePlace.isEmpty() || now - nodePlaceAt > 600_000) {
+            try {
+                org.json.JSONObject b = new org.json.JSONObject(httpGet("http://127.0.0.1:8000/api/topology"))
+                        .getJSONObject("buildings");
+                java.util.Map<String, String> m = new java.util.HashMap<>();
+                for (java.util.Iterator<String> bi = b.keys(); bi.hasNext(); ) {
+                    String bld = bi.next();
+                    org.json.JSONObject levels = b.getJSONObject(bld);
+                    for (java.util.Iterator<String> li = levels.keys(); li.hasNext(); ) {
+                        String lv = li.next();
+                        org.json.JSONArray nodes = levels.getJSONArray(lv);
+                        for (int k = 0; k < nodes.length(); k++) {
+                            String p = bld.isEmpty() ? "" : bld + " building" + (lv.isEmpty() ? "" : ", level " + lv);
+                            m.put(nodes.getJSONObject(k).optString("node"), p);
+                        }
+                    }
+                }
+                nodePlace.clear();
+                nodePlace.putAll(m);
+                nodePlaceAt = now;
+            } catch (Exception e) {
+                nodePlaceAt = now - 540_000; // retry in about a minute
+            }
+        }
+        java.util.LinkedHashSet<String> places = new java.util.LinkedHashSet<>();
+        for (int i = 0; i < sensors.length(); i++) {
+            String s = sensors.optString(i).trim();
+            int sp = s.indexOf(' ');
+            String p = nodePlace.get(sp > 0 ? s.substring(0, sp) : s);
+            if (p != null && !p.isEmpty()) places.add(p);
+        }
+        if (places.isEmpty()) return "";
+        java.util.Iterator<String> it = places.iterator();
+        String first = it.next();
+        return places.size() == 1 ? first : first + " +" + (places.size() - 1) + " more";
+    }
+
+    private static String httpGet(String url) throws java.io.IOException {
+        java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
+        c.setConnectTimeout(800);
+        c.setReadTimeout(3000);
+        try {
+            return new String(c.getInputStream().readAllBytes(), "UTF-8");
+        } finally {
+            c.disconnect();
         }
     }
 

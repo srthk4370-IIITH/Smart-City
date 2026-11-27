@@ -330,6 +330,7 @@ func deviceStats() map[string]any {
 
 func (s *Server) routes() http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc("/api/clock/viewer", s.handleViewerClock) // clockviewer.go
 	mux.HandleFunc("/api/status", func(w http.ResponseWriter, r *http.Request) {
 		s.genie.Refresh()
 		sim, _, inj := s.eng.Snapshot()
@@ -354,6 +355,7 @@ func (s *Server) routes() http.Handler {
 			// the corrected wall clock (the board's RTC may be years off; the WebView's Date.now() uses it) and
 			// whether sensor time runs at wall speed (live input) - the UI derives "ago" / ETAs from these
 			"now_unix": nowTime().Unix(), "live": s.eng.isLive(),
+			"gate": s.eng.GateView(), "progress": progressView(), // gateview.go: countdown + analysis progress
 		})
 	})
 	mux.HandleFunc("/api/live", func(w http.ResponseWriter, r *http.Request) {
@@ -436,13 +438,18 @@ func (s *Server) routes() http.Handler {
 			if i.Final != nil && i.Final.Parsed != nil {
 				lab = i.Final.Parsed.Label
 			}
-			var sensors []string
-			pattern := ""
+			var sensors, places []string
+			var spark []float64
+			pattern, sparkOf := "", ""
 			for _, sr := range i.Sensors {
 				if !sr.Context {
 					sensors = append(sensors, sr.Node+" "+sr.Metric)
 					if pattern == "" {
 						pattern = sr.Rule.Pattern
+						spark, sparkOf = sparkOfWindow(sr.Xs, 24), sr.Metric // incident card mini chart (first flagged sensor)
+					}
+					if p := placeOf(sr.Location); p != "" && !containsStr(places, p) {
+						places = append(places, p)
 					}
 				}
 			}
@@ -470,6 +477,7 @@ func (s *Server) routes() http.Handler {
 				"workflow": wfOf(i), "owner": i.Owner, "acked_at": i.AckedAt, "resolved_at": i.ResolvedAt, "closed_at": i.ClosedAt,
 				"outcome": i.Outcome, "suggest_outcome": i.SuggestOutcome, "worse_at": i.WorseAt, "reminded": i.Reminded,
 				"steps_open": open, "steps_total": total, "sensors": sensors, "pattern": pattern,
+				"place": strings.Join(places, "; "), "spark": spark, "spark_metric": sparkOf,
 				"group": g.Lead, "group_size": g.Size,
 				// safe decisions + demo watermark (workflow_ext.go, reason.go)
 				"watermark": i.Watermark, "undo_until": undoUntil(i), "undo_kind": undoKind(i), "dismiss_unconfirmed": i.DismissUnconfirmed})
@@ -890,6 +898,7 @@ func (s *Server) routes() http.Handler {
 	s.polishRoutes(mux) // snooze (polish_engine.go)
 	s.chatRoutes(mux)   // operator chat (chat.go), frontend web/chat/
 	s.phase1Routes(mux) // site, health, export, daily, campus (phase1.go, site.go)
+	s.registerHistoryRoutes(mux) // GET /api/history (history.go)
 	web := http.FileServer(http.Dir(filepath.Join(s.dir, "web")))
 	// Always revalidate the dashboard files. Without this the WebView judged freshness from
 	// Last-Modified, which is meaningless here: the board's clock resets to 2023 on every boot while
