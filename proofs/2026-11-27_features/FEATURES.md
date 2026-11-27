@@ -20,4 +20,25 @@ Owner decisions are recorded in `questions.md` (answered section). Code is in `C
 
 ## Verification
 
-(filled in below after the board run)
+The board was fed through `/api/ingest` by `feeder3.py`. The scenarios were a KH level 03 AC failure (heat, AC off), a critical pH at KH level 98, and a power-factor drop at the SB00 feeder. The state was backed up first and restored after every run; the sweep states are kept on the board as `state_feat1127_run1..4`. Final build: edge-agent 15ed1007, APK 2e31ae51. Rollback: `adb install -r -d deploy/before_features.apk`.
+
+| Run | Build | What happened | Fix |
+|---|---|---|---|
+| 1 | first deploy | Heat (KH03) and SB00 power factor merged into one incident. The report invented "the PF dip is caused by the AC stopping". Cause: two **inferred** `outdoor-for` links in the auto site tree related the two sensors. | Cross-building relations use confirmed links only (`confirmedIndex`) |
+| 2 | + confirmed links | **Split works:** separate incidents. The PF sensor still waited, mature, in the batch opened by the pH sensor, which was waiting for the young KH03 temperature. The reasoner called the corroborated heat a "sensor heating itself", and that report was then rejected for an invented number (template report shown). | A mature sensor unrelated to the open batch goes out at once (`releaseUnrelatedLocked`) |
+| 3 | + early release | The PF incident went out **before** the heat incident. The corroborated-rise guard **fired** and overruled sensor_fault, but the title "Suspect … readings" and one contradicting sentence stayed. The PF report blamed "the AC load change": KH AC sensors were attached as context to the SB00 feeder. | Guard catches "suspect … readings" / "sensor problem" and removes those sentences; the context picker keeps non-weather context to the same building |
+| 4 | final | PF: context is only SB00 power_kw, report clean. Heat: **critical**, "Room temperature 34.5 C, AC unit in error". pH: critical, 35.6 s. All correct. | — |
+
+Other checks:
+- **Watching strip** (screenshots in `ui/`): rows like "Water pH · KH-98 — 3 of 4 abnormal readings · AI in ~5 min" with progress bars, and "AI at work: INC-0015 domain agents · ready in ~30 s". `tele_run*.jsonl` holds the 20 s samples.
+- **Chat streaming** (`chat_stream.jsonl`): first words after 2.6 s of a 4.0 s answer for an explanation question; the draft equals the final answer. The first version showed thinking text and the closing `</think>` tag; that is fixed and covered by a test.
+- **Prefetch shadow:** 3 comparisons. 2 agree (power factor, 1 reading older, same rule finding). 1 differs (temperature, 2 readings older, the rule finding had changed, so the reuse rule would not have reused it). Too few to switch reuse on; it stays `agent_prefetch=shadow` and collects evidence.
+- **Old incidents:** INC-0001..0011 auto-closed by the 3-day rule; INC-0012 dismissed "no action needed" (owner request).
+- **History page** renders on the board with KPIs and charts. The severity chips were cut at phone width; fixed (wrap).
+- Go: full `go vet` + `go test` pass. `TestChatGPUWarmHeaderOnly` failed once under parallel load and passes alone (timing-sensitive, pre-existing).
+
+## Still open
+- **Early AI:** the v5 study rerun is still running on the laptop GPU. It is enabled only for the shapes that clear.
+- **Prefetch reuse:** needs about 20+ shadow comparisons with ≥ 95 % agreement when the rule finding is unchanged.
+- **Reasoner judgement on corroborated heat:** it misjudged it in 2 of 4 runs ("sensor heating itself", "suspect readings"). The guard now corrects the wording and severity. If this keeps happening, it is a top-up case (owner: top-up only if the errors keep varying).
+- **Viewer clock:** tested by unit tests only (the laptop reaches the board over loopback, which is ignored by design).

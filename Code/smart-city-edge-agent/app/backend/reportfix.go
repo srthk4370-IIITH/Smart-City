@@ -18,7 +18,7 @@ var (
 	acStopRe     = regexp.MustCompile(`(?i)\b(stop|turn off|switch off|shut (?:down|off))\s+(the\s+)?(ac|a/c|air[- ]?conditioning|ac units?)\b`)
 	acRunningRe  = regexp.MustCompile(`(?i)\b(ac|a/c|ac units?)\s+(is |are |still )*running\b`)
 	ventilateRe  = regexp.MustCompile(`(?i)\b(ventilate( the (room|area|space))?|open (the )?windows|increase (the )?(fresh[- ]air|ventilation)( intake)?)\b`)
-	jumpClaimRe  = regexp.MustCompile(`(?i)\b(sensor (jump|glitch|spike|error|fault|malfunction)|not (a )?real (heat|rise|event|change)|faulty sensor)\b`)
+	jumpClaimRe  = regexp.MustCompile(`(?i)\b(sensor (jump|glitch|spike|error|fault|malfunction|problem|issue)|not (a )?real (heat|rise|event|change)|not a hot room|faulty sensor|suspect(ed)? (\w+ ){0,2}(readings?|sensors?|values?)|sensor (is )?heating itself)\b`)
 	tempMetricRe = regexp.MustCompile(`(?i)^(temp|temperature|room_temp|air_temp)$`)
 )
 
@@ -134,6 +134,8 @@ func contextFixReport(rep *Report, inc *Incident) []string {
 				rep.Title = "" // the findings title is used instead
 			}
 			note := "Two sensors (" + a + ", " + b + ") rose together, so this is a real temperature rise, not a sensor jump."
+			rep.Explanation = dropClaimSentences(rep.Explanation)
+			rep.RootCause = dropClaimSentences(rep.RootCause)
 			if !strings.Contains(rep.Explanation, note) {
 				rep.Explanation = strings.TrimSpace(note + " " + rep.Explanation)
 			}
@@ -141,4 +143,41 @@ func contextFixReport(rep *Report, inc *Incident) []string {
 		}
 	}
 	return rs
+}
+
+// dropClaimSentences removes the sentences that make the sensor-fault claim (and a following "Check the sensor.").
+func dropClaimSentences(t string) string {
+	var keep []string
+	drop := false
+	for _, sen := range splitSentences(t) {
+		if jumpClaimRe.MatchString(sen) {
+			drop = true
+			continue
+		}
+		if drop && checkSensorRe.MatchString(sen) {
+			continue
+		}
+		drop = false
+		keep = append(keep, sen)
+	}
+	return strings.Join(keep, " ")
+}
+
+var checkSensorRe = regexp.MustCompile(`(?i)^\s*(please )?(check|inspect|recalibrate) the sensor\b`)
+
+func splitSentences(t string) []string {
+	var out []string
+	start := 0
+	for i := 0; i < len(t); i++ {
+		if (t[i] == '.' || t[i] == '!' || t[i] == '?') && (i+1 == len(t) || t[i+1] == ' ') {
+			if s := strings.TrimSpace(t[start : i+1]); s != "" {
+				out = append(out, s)
+			}
+			start = i + 1
+		}
+	}
+	if s := strings.TrimSpace(t[start:]); s != "" {
+		out = append(out, s)
+	}
+	return out
 }

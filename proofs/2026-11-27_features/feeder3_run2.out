@@ -1,0 +1,46 @@
+14:12:00 phase 0: backfill 12 h normal, 27 sensors, clock offset 7 s
+14:12:00 backfill {'accepted': 3888}
+14:15:00 SCENARIO ON  m=3.0 F1 KH03 AC failure (heat, AC off)
+14:17:00 SCENARIO ON  m=5.0 F2 KH98 pH critical: same building as F1 -> same incident
+14:17:00 SCENARIO ON  m=5.0 F3 SB00 pf warning: other building + domain -> separate incident
+14:30:00     INC-0015 14:30:01 Preliminary report shown (rules + agent findings); the reasoner is writing the full report
+14:30:00     INC-0015 14:30:01 Critical fast path: WM-WD-KH98-00 ph beyond its critical limit for 2 readings - incident opened at once with the rules report; the AI analysis follows when the event has lasted 8 readings and updates 
+14:31:00     INC-0015 14:30:16 Early AI: the event is shorter than 8 readings, so the AI reads the real readings that exist now (the full analysis follows at 8)
+14:31:00     INC-0015 14:30:16 AI analysis of the fast-path incident: 1 sensor(s), early run on the readings so far
+14:31:00     INC-0015 14:30:16 Event gated: 1 sensor(s) flagged, 2 related sensor(s) attached, mode 3
+14:31:00     INC-0015 14:30:16 Preliminary report shown (rules + agent findings); the reasoner is writing the full report
+14:31:00     INC-0015 14:30:16 Orchestrator: 1 sensor(s) to NPU agents, 2 related sensor(s) checked by context agents in parallel
+14:31:00     INC-0015 14:30:16 Water agent analysing WM-WD-KH98-00 ph on NPU (fine-tuned)
+14:31:00     INC-0015 14:30:19 Water agent done in 3.1s (first token 0.8s, 167 tokens): exponential_increase / critical (policy PASSED)
+14:31:00     INC-0015 14:30:19 Related domains checked and steady (2 context agents): reasoner v3 writes the report
+14:31:00     INC-0015 14:30:19 Preliminary report shown (rules + agent findings); the reasoner is writing the full report
+14:31:00     INC-0015 14:30:29 Reasoner title: Water pH critical (9.60): KH building, level 98
+14:31:00     INC-0015 14:30:29 Reasoner severity (provisional): critical
+14:31:00     INC-0015 14:30:38 Reasoner v3 report in 18.6s (1 completion(s), 0 tool call(s)), policy ok
+14:31:00     INC-0015 14:30:38 Finished in 21.7s, 2 NPU call(s)
+14:45:00     INC-0016 14:45:00 Event gated: 1 sensor(s) flagged, 4 related sensor(s) attached, mode 3
+14:45:00     INC-0016 14:45:00 Preliminary report shown (rules + agent findings); the reasoner is writing the full report
+14:45:00     INC-0016 14:45:00 Orchestrator: 1 sensor(s) to NPU agents, 4 related sensor(s) checked by context agents in parallel
+14:45:00     INC-0016 14:45:00 Air Quality agent analysing SR-AQ-KH03-03 temp on NPU (fine-tuned)
+14:46:00     INC-0017 14:45:45 Event gated: 1 sensor(s) flagged, 2 related sensor(s) attached, mode 3
+14:46:00     INC-0017 14:45:45 Preliminary report shown (rules + agent findings); the reasoner is writing the full report
+14:46:00     INC-0017 14:45:45 Orchestrator: 1 sensor(s) to NPU agents, 2 related sensor(s) checked by context agents in parallel
+14:46:00     INC-0017 14:45:45 Power agent analysing EM-CR-SB00-00 pf on NPU (fine-tuned)
+14:46:00     INC-0017 14:45:50 Prefetch shadow: the answer from the gate wait (1 reading(s) older) agrees with the real agent (step_decrease/warning vs step_decrease/warning)
+14:46:00     INC-0017 14:45:50 Power agent done in 5.0s (first token 0.5s, 166 tokens): step_decrease / warning (policy PASSED)
+14:46:00     INC-0017 14:45:50 Related domains checked and steady (2 context agents): reasoner v3 writes the report
+14:46:00     INC-0017 14:45:50 Preliminary report shown (rules + agent findings); the reasoner is writing the full report
+14:46:00     INC-0017 14:46:02 Reasoner title: Power factor 0.810 with AC units off: SB00 substation, 11 kV feeder meter
+14:46:00     INC-0017 14:46:02 Reasoner severity (provisional): warning
+14:46:00     INC-0016 14:45:05 Air Quality agent done in 1.9s (first token 0.5s, 164 tokens): step_increase / critical (policy PASSED)
+14:46:00     INC-0016 14:45:05 Reasoner v3 combining 2 domains
+14:46:00     INC-0016 14:45:05 Preliminary report shown (rules + agent findings); the reasoner is writing the full report
+14:46:00     INC-0016 14:45:20 Reasoner title: AC room sensor heating itself, room steady: KH building, level 03
+14:46:00     INC-0016 14:45:20 Reasoner severity (provisional): sensor_fault
+14:46:00     INC-0016 14:45:45 Reasoner v3 report rejected (observation 1: number 28.8 is not in the input); report rebuilt from the validated agent findings
+14:46:00     INC-0016 14:45:45 Finished in 45.1s, 2 NPU call(s)
+14:47:00     INC-0017 14:46:20 Reasoner v3 report in 30.2s (1 completion(s), 0 tool call(s)), policy ok
+14:47:00     INC-0017 14:46:20 Finished in 35.2s, 2 NPU call(s)
+14:51:00     INC-0015 14:50:23 Full 8-reading analysis replaces the early one
+14:51:00     INC-0015 14:50:23 Sensor pH turned critical again (new episode): domain agent re-run on its current window, report updated
+14:52:00 feeder end

@@ -139,3 +139,23 @@ func TestChatVisible(t *testing.T) {
 		t.Errorf("%q", v)
 	}
 }
+
+func TestCorroboratedRiseRun3Wording(t *testing.T) {
+	ramp := func(a, b float64) []float64 {
+		xs := make([]float64, 8)
+		for i := range xs {
+			xs[i] = a + (b-a)*float64(i)/7
+		}
+		return xs
+	}
+	inc := &Incident{Sensors: []SensorRef{
+		{Node: "SR-AQ-KH03-03", Metric: "temp", Xs: ramp(25, 34)},
+		{Node: "AC-KH03", Metric: "room_temp", Context: true, Xs: ramp(24, 33.5)},
+	}}
+	rep := &Report{Severity: "sensor_fault", Title: "Suspect room temperature readings (one sensor): KH building, level 03",
+		Explanation: "A sensor problem, not a hot room: the reference AC unit reads 33.5 C and rises smoothly. Check the sensor. The AC is off."}
+	contextFixReport(rep, inc)
+	if rep.Title != "" || strings.Contains(rep.Explanation, "sensor problem") || strings.Contains(rep.Explanation, "Check the sensor") || !strings.Contains(rep.Explanation, "The AC is off.") {
+		t.Errorf("%q / %q", rep.Title, rep.Explanation)
+	}
+}

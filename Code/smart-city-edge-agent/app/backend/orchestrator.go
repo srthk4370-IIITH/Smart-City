@@ -108,6 +108,11 @@ func (e *Engine) ContextFor(flagged []Candidate, max int) []contextPick {
 				if info.Role != l.Role || taken[key(n, l.Metric)] || !contains(info.Metrics, l.Metric) {
 					continue
 				}
+				// owner rule 2026-11-27: other buildings are unrelated (weather is campus-wide). Board run: KH level
+				// 03 AC sensors attached to the SB00 feeder's power factor -> "the PF drop matches the AC load change"
+				if l.Role != "weather" && fi.Building != "" && info.Building != "" && info.Building != fi.Building {
+					continue
+				}
 				xs, ok := e.Window(n, l.Metric, c.End)
 				if !ok {
 					continue
