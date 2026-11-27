@@ -62,6 +62,13 @@ Deploy check on the board:
 - Go tests pass.
 - The previous APK and profile are kept for rollback.
 
+## Early AI before the gate (2026-11-27)
+
+- **Question:** can the reasoner run after k < 8 readings on strong warnings, to cut the 40–55 min gate wait?
+- **Answer: no.** 440 event groups, 1,102 AI runs with the board models: no shape clears at any k = 3–7. Verdicts flip vs
+  the full-gate verdict 22–76 % of the time (limit 15 %); flatline, noisy and fault lose 23–33 pp severity accuracy.
+- Early AI stays off on the board. Details: `findings/EARLY_AI.md`, figure `figures/fig_early_ai_flip.png`.
+
 ## What did not help
 
 - **Retrieval:** a populated past-incident store reached 152 of 153 prompts, but both-correct went 75.2 → 74.5 % (p = 1.0) and the reasoner never called the incident tools.
@@ -86,6 +93,7 @@ Deploy check on the board:
 - `findings/RESULTS.md`: every table.
 - `findings/BOARD_RQ1.md`: board cost and Set C.
 - `findings/METRICS_MODELS.md`: BLEU / ROUGE / chrF / BERTScore per model.
+- `findings/EARLY_AI.md`: early AI before the gate (no shape clears).
 - `findings/LEAKAGE.md`, `findings/PILOT.md`, `findings/extra34.md`: leakage, pilot, ablations.
 - `results/`: aggregate JSON per analysis.
 - `figures/`: RQ1–RQ3 plots.
