@@ -432,6 +432,10 @@ func (s *Server) routes() http.Handler {
 			TotalMs                                                  float64
 		}
 		out := []map[string]any{}
+		var gw []gateWatch // early looks: when the full reading is due (read before the reasoner lock)
+		if s.eng != nil {
+			gw, _ = s.eng.GateView()["watching"].([]gateWatch)
+		}
 		s.rsn.mu.RLock() // the workflow fields change under the reasoner lock (operator clicks, workflow tick)
 		for _, i := range list {
 			lab := i.Mode1.Label
@@ -480,7 +484,8 @@ func (s *Server) routes() http.Handler {
 				"place": strings.Join(places, "; "), "spark": spark, "spark_metric": sparkOf,
 				"group": g.Lead, "group_size": g.Size,
 				// safe decisions + demo watermark (workflow_ext.go, reason.go)
-				"watermark": i.Watermark, "undo_until": undoUntil(i), "undo_kind": undoKind(i), "dismiss_unconfirmed": i.DismissUnconfirmed})
+				"watermark": i.Watermark, "undo_until": undoUntil(i), "undo_kind": undoKind(i), "dismiss_unconfirmed": i.DismissUnconfirmed,
+				"full_eta_s": earlyEtaOf(gw, i)})
 		}
 		s.rsn.mu.RUnlock()
 		writeJSON(w, out)

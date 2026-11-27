@@ -119,3 +119,73 @@ func TestEarlyAIPriority(t *testing.T) {
 		t.Fatalf("NPU order %v", order)
 	}
 }
+
+// Owner 2026-11-27: the full reading is independent of the early look - as if it never happened. The early verdict
+// (severity, final flag) does not carry over, the reasoner's re-check list leaves it out, retrieval never learns
+// from it, and an early look the gate never confirms closes by itself.
+func TestEarlyLookIndependentOfFullReading(t *testing.T) {
+	earlyProfile(t, "ai_early_k=3\nai_early_shapes=step,trend\n")
+	e := dqEngine(t)
+	early, ai := earlySplit(feedCO2(t, e, 60, 600, rep(1200, 14)))
+	if len(early) != 1 || len(ai) != 1 {
+		t.Fatalf("early %d ai %d", len(early), len(ai))
+	}
+	dir := t.TempDir()
+	r := NewReasoner(NewGenieRunner(dir, dir, true), e, dir, func(string, any) {})
+	r.active = true
+	r.splitFast([]Candidate{early[0].c})
+	w, _ := r.next()
+	r.runEarly(*w.early)
+	inc := r.incidents[0]
+	if _, ok := retDocOf(inc); ok {
+		t.Fatal("retrieval would learn from an early look")
+	}
+	// pretend the early look said critical, decided
+	r.mu.Lock()
+	inc.Severity, inc.SeverityFinal, inc.SeverityWhy = "critical", true, "early look"
+	r.mu.Unlock()
+	if in := r.buildV3Input(inc, nil); len(in.Recheck) != 0 {
+		t.Fatalf("early look in the reasoner input: %v", in.Recheck)
+	}
+	got := r.adoptFast([]Candidate{ai[0].c}, 3)
+	if got != inc {
+		t.Fatal("gate did not adopt the early incident")
+	}
+	fresh := r.buildIncident([]Candidate{ai[0].c}, 3)
+	if inc.Severity != fresh.Severity || inc.SeverityFinal || inc.SeverityWhy != "" || inc.RefineStage != "" {
+		t.Fatalf("early verdict carried over: sev %q (rules %q) final %v why %q stage %q", inc.Severity, fresh.Severity, inc.SeverityFinal, inc.SeverityWhy, inc.RefineStage)
+	}
+	if len(inc.Revisions) != 1 || inc.Revisions[0].Stage != "provisional" {
+		t.Fatalf("early look not kept as history: %+v", inc.Revisions)
+	}
+}
+
+func TestEarlyLookUnconfirmedCloses(t *testing.T) {
+	r := NewReasoner(NewGenieRunner(t.TempDir(), t.TempDir(), true), nil, t.TempDir(), func(string, any) {})
+	inc := &Incident{ID: "INC-9", State: "done", RefineStage: "provisional", CreatedSim: 1000}
+	r.fastInc = map[string]*Incident{"X|co2": inc}
+	r.incidents = []*Incident{inc}
+	now := time.Now()
+	if r.closeUnconfirmedEarlyLocked(inc, 1000+earlyUnconfirmedAfter()-1, now) {
+		t.Fatal("closed before the gate could still confirm it")
+	}
+	if !r.closeUnconfirmedEarlyLocked(inc, 1000+earlyUnconfirmedAfter(), now) || wfOf(inc) != wfClosed || len(r.fastInc) != 0 {
+		t.Fatalf("not closed: wf %q fastInc %d", wfOf(inc), len(r.fastInc))
+	}
+	fp := &Incident{ID: "INC-10", State: "done", RefineStage: "provisional", FastPath: true, CreatedSim: 1000}
+	if r.closeUnconfirmedEarlyLocked(fp, 1e9, now) {
+		t.Fatal("a fast-path (critical) incident was closed as an unconfirmed early look")
+	}
+	if got := earlyEtaOf([]gateWatch{{Node: "N", Metric: "co2", EtaS: 600}}, &Incident{RefineStage: "provisional", Sensors: []SensorRef{{Node: "N", Metric: "co2"}}}); got != 600 {
+		t.Fatalf("eta %d", got)
+	}
+}
+
+func TestShapeOfLimitFamily(t *testing.T) {
+	if s := shapeOf(Finding{Pattern: "stable", Status: "warning"}); s != "limit" {
+		t.Fatalf("limit breach shape %q", s)
+	}
+	if s := shapeOf(Finding{Pattern: "stable", Status: "normal"}); s != "" {
+		t.Fatalf("normal reading got shape %q", s)
+	}
+}

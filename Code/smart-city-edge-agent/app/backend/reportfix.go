@@ -10,6 +10,8 @@ package main
 //      sensor in the incident rose by >= 1 C over the same 30 min: treated as a real change.
 
 import (
+	"fmt"
+	"math"
 	"regexp"
 	"strings"
 )
@@ -178,6 +180,47 @@ func splitSentences(t string) []string {
 	}
 	if s := strings.TrimSpace(t[start:]); s != "" {
 		out = append(out, s)
+	}
+	return out
+}
+
+// agreeLines (owner 2026-11-27, "do something about the reasoner on heat"): a fact line for the reasoner when two
+// independent indoor temperature sensors in the same area both rose (>= 1 C over the last 6 readings). Without it
+// the reasoner sometimes called a real AC-failure heat-up a "sensor jump" (board feature runs 2 and 3); on those
+// board prompts the line took the reasoner from 27/32 to 31/31 correct (critical) on the laptop GPU
+// (proofs/2026-11-27_features/heat_ab). The reportfix guard stays as the backstop.
+func agreeLines(ss []SensorRef) []string {
+	type up struct {
+		s      SensorRef
+		lo, hi float64
+	}
+	var ups []up
+	for _, s := range ss {
+		if s.Role == "weather" || !tempMetricRe.MatchString(s.Metric) || riseOver(s, 6) < 1.0 {
+			continue
+		}
+		lo, ok := math.Inf(1), false
+		for _, x := range s.Xs {
+			if !math.IsNaN(x) && !math.IsInf(x, 0) && x < lo {
+				lo, ok = x, true
+			}
+		}
+		if ok {
+			ups = append(ups, up{s, lo, s.Xs[len(s.Xs)-1]})
+		}
+	}
+	var out []string
+	for i := 0; i < len(ups) && len(out) < 2; i++ {
+		for j := i + 1; j < len(ups) && len(out) < 2; j++ {
+			a, b := ups[i], ups[j]
+			if a.s.Node == b.s.Node || placeOf(a.s.Location) == "" || placeOf(a.s.Location) != placeOf(b.s.Location) {
+				continue
+			}
+			out = append(out, fmt.Sprintf("AGREE: %s %s and %s %s are two independent temperature sensors in the same area (%s); "+
+				"both rose over the window: %s %.1f -> %.1f C, %s %.1f -> %.1f C (now %.1f C apart).",
+				a.s.Ref, a.s.Metric, b.s.Ref, b.s.Metric, placeOf(a.s.Location),
+				a.s.Ref, a.lo, a.hi, b.s.Ref, b.lo, b.hi, math.Abs(a.hi-b.hi)))
+		}
 	}
 	return out
 }

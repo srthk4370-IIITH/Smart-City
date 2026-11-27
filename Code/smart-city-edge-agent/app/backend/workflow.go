@@ -870,6 +870,12 @@ func (r *Reasoner) workflowTick(sim, epoch int64, states []SensorState) {
 			changed = append(changed, out{inc, ev})
 			continue
 		}
+		if r.closeUnconfirmedEarlyLocked(inc, sim, now) {
+			ev["workflow_change"] = "auto_closed"
+			ev["id"], ev["state"], ev["workflow"], ev["approval"] = inc.ID, inc.State, inc.Workflow, inc.Approval
+			changed = append(changed, out{inc, ev})
+			continue
+		}
 		// an unacknowledged critical incident re-alerts once after 15 min (sound + Android notification)
 		if wf == wfNeeds && !inc.Reminded && normSeverity(inc.Severity) == "critical" && inc.NeedsSince > 0 &&
 			now.Sub(time.Unix(inc.NeedsSince, 0)) >= remindAfter {

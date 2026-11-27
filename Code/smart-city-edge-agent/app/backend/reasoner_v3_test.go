@@ -196,12 +196,25 @@ func TestCheckReportV3(t *testing.T) {
 	}
 	bad := map[string]string{
 		"not in the input": strings.Replace(v3Good, "CO2 1643 ppm is", "CO2 1720 ppm is", 1),
-		"unknown id":       strings.Replace(v3Good, `"S2.E1"]`, `"S3.E1"]`, 1),
+		"unknown id":       strings.Replace(v3Good, `"src": ["S2.E4"]`, `"src": ["S3.E4"]`, 1),
 		"not whitelisted":  strings.Replace(v3Good, `"inspect_ventilation"`, `"open_windows"`, 1),
-		"must start":       strings.Replace(v3Good, `"inspect_ventilation"`, `"monitor"`, 1),
 		"actuation":        strings.Replace(v3Good, "Fresh air for an occupied room", "shut down the AHU", 1),
 		"says normal":      strings.Replace(v3Good, "over the critical limit in an occupied room", "judged normal", 1),
-		"verdict":          strings.Replace(v3Good, `"contradicted"`, `"wrong"`, 1),
+	}
+	// owner 2026-11-27 (reportrepair.go): format slips are repaired, not rejected
+	fixed := map[string]string{
+		"unknown id(s) S3.E1 dropped": strings.Replace(v3Good, `"S2.E1"]`, `"S3.E1"]`, 1),
+		"critical policy":             strings.Replace(v3Good, `"inspect_ventilation"`, `"monitor"`, 1),
+		"agent_check 1 dropped":       strings.Replace(v3Good, `"contradicted"`, `"wrong"`, 1),
+		"evidence ids normalised":     strings.Replace(v3Good, `"src": ["S2.E4"]`, `"src": ["S2-E4"]`, 1),
+	}
+	for want, txt := range fixed {
+		r, errs, reps := checkReportV3(txt, known)
+		if len(errs) != 0 || !strings.Contains(strings.Join(reps, "; "), want) {
+			t.Errorf("%s: errs %v repairs %v", want, errs, reps)
+		} else if r.Severity == "critical" && !strings.HasPrefix(r.Checklist[0].Action, "inspect_") {
+			t.Errorf("%s: first action %s", want, r.Checklist[0].Action)
+		}
 	}
 	for want, txt := range bad {
 		_, errs, _ := checkReportV3(txt, known)

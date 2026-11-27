@@ -241,6 +241,8 @@ public class EdgeService extends Service {
                 // severity is critical | warning | normal | sensor_fault; label can also say sensor_fault (reason.go)
                 boolean fault = done && ("sensor_fault".equals(sev) || "sensor_fault".equals(o.optString("label")));
                 boolean warning = done && !fault && "warning".equals(sev) && sevFinal;
+                boolean early = "provisional".equals(o.optString("refine_stage"));
+                String nk = early ? id + "#early" : id; // the full reading is announced again on its own
                 long worse = o.optLong("worse_at", 0);
                 boolean reminded = o.optBoolean("reminded", false);
                 seenIncidents.add(id);
@@ -268,14 +270,15 @@ public class EdgeService extends Service {
                     worseNotified.put(id, worse);
                 }
                 if (text == null && reminded && remindNotified.add(id)) text = "Still needs a decision (critical for 15 min)";
-                if (text == null && critical && critNotified.add(id)) {
+                if (text == null && critical && critNotified.add(nk)) {
                     text = fault ? "Critical sensor fault" : "New critical incident";
-                    warnNotified.add(id); // not announced again as a sensor fault
+                    warnNotified.add(nk); // not announced again as a sensor fault
                 }
-                if (text == null && (warning || fault) && warnNotified.add(id)) {
+                if (text == null && (warning || fault) && warnNotified.add(nk)) {
                     text = fault ? "Sensor fault" : "New warning";
                     channel = CH_WARNINGS;
                 }
+                if (text != null && early) text = "Early look: " + text.substring(0, 1).toLowerCase() + text.substring(1);
                 if (text == null || !background) continue; // in front: the dashboard alerts by itself
                 String place = placeOf(o.optJSONArray("sensors"));
                 String body = o.optString("title");

@@ -163,6 +163,7 @@ func RenderV4User(in V3Input, cx V4Ctx) string {
 			out = append(out, fmt.Sprintf("  R%d %s", i+1, r))
 		}
 	}
+	out = append(out, in.Agree...)
 	if in.MemoryKnown {
 		if len(in.Memory) > 0 {
 			out = append(out, "MEMORY (past incidents and actions on these sensors):")

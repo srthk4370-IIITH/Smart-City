@@ -1,0 +1,53 @@
+20:04:56 phase 0: backfill 12 h normal, 27 sensors, clock offset 8 s
+20:04:56 backfill {'accepted': 3888}
+20:07:56 SCENARIO ON  m=3.0 F1 KH03 AC failure (heat, AC off)
+20:09:56 SCENARIO ON  m=5.0 F2 KH98 pH critical: same building as F1 -> same incident
+20:09:56 SCENARIO ON  m=5.0 F3 SB00 pf warning: other building + domain -> separate incident
+20:24:56     INC-0015 20:25:00 Preliminary report shown (rules + agent findings); the reasoner is writing the full report
+20:24:56     INC-0015 20:25:00 Critical fast path: WM-WD-KH98-00 ph beyond its critical limit for 2 readings - incident opened at once with the rules report; the AI analysis follows when the event has lasted 8 readings and updates 
+20:24:56     INC-0015 20:25:00 Early look queued: WM-WD-KH98-00 ph abnormal on a young window (shape trend); the full reading follows at the AI gate, independently
+20:24:56     INC-0015 20:25:00 Orchestrator: 2 sensor(s) to NPU agents, 4 related sensor(s) checked by context agents in parallel
+20:24:56     INC-0015 20:25:00 Water agent analysing WM-WD-KH98-00 ph on NPU (fine-tuned)
+20:25:56     INC-0015 20:25:03 Water agent done in 3.1s (first token 0.8s, 172 tokens): step_increase / sensor_fault (policy PASSED)
+20:25:56     INC-0015 20:25:03 Water agent asked for more data (data quality fault): re-run with 12 h window
+20:25:56     INC-0015 20:25:05 Water agent more-data answer kept: step_increase / sensor_fault, confidence 0.94
+20:25:56     INC-0015 20:25:05 Water agent unsure (data quality fault): the larger prompt would not fit the NPU agent context, answer kept
+20:25:56     INC-0015 20:25:05 Air Quality agent analysing SR-AQ-KH03-03 temp on NPU (fine-tuned)
+20:25:56     INC-0015 20:25:08 Air Quality agent done in 2.7s (first token 0.8s, 170 tokens): step_increase / sensor_fault (policy PASSED)
+20:25:56     INC-0015 20:25:08 Air Quality agent asked for more data (data quality fault): re-run with 8 h window
+20:25:56     INC-0015 20:25:11 Air Quality agent more-data answer kept: step_increase / sensor_fault, confidence 0.94
+20:25:56     INC-0015 20:25:11 Air Quality agent unsure (data quality fault): the larger prompt would not fit the NPU agent context, answer kept
+20:25:56     INC-0015 20:25:11 Reasoner v3 combining 3 domains
+20:25:56     INC-0015 20:25:11 Preliminary report shown (rules + agent findings); the reasoner is writing the full report
+20:25:56     INC-0015 20:25:24 Reasoner title: Water pH critical (9.60) out of sync with the room: KH building, level 98
+20:25:56     INC-0015 20:25:24 Reasoner severity (provisional): critical
+20:25:56     INC-0015 20:25:45 Reasoner v3 report in 34.5s (1 completion(s), 0 tool call(s)), policy ok
+20:25:56     INC-0015 20:25:45 Early look ready (young window, 45.3s): a first idea to judge by; the full reading replaces it
+20:34:56     INC-0016 20:35:00 Event gated: 1 sensor(s) flagged, 1 related sensor(s) attached, mode 3
+20:34:56     INC-0016 20:35:00 Preliminary report shown (rules + agent findings); the reasoner is writing the full report
+20:34:56     INC-0016 20:35:00 Orchestrator: 1 sensor(s) to NPU agents, 1 related sensor(s) checked by context agents in parallel
+20:34:56     INC-0016 20:35:00 Power agent analysing EM-CR-SB00-00 pf on NPU (fine-tuned)
+20:35:56     INC-0016 20:35:05 Power agent done in 1.9s (first token 0.5s, 166 tokens): step_decrease / warning (policy PASSED)
+20:35:56     INC-0016 20:35:05 Related domains checked and steady (1 context agents): reasoner v3 writes the report
+20:35:56     INC-0016 20:35:05 Preliminary report shown (rules + agent findings); the reasoner is writing the full report
+20:35:56     INC-0016 20:35:11 Reasoner title: SB00 substation, 11 kV feeder meter: Low power factor on the 11 kV feeder
+20:35:56     INC-0016 20:35:11 Reasoner severity (provisional): warning
+20:35:56     INC-0016 20:35:23 Reasoner v3 report in 18.2s (1 completion(s), 0 tool call(s)), policy ok
+20:35:56     INC-0016 20:35:23 Finished in 23.0s, 2 NPU call(s)
+20:39:56     INC-0015 20:40:00 Full reading at the AI gate: 1 sensor(s), made independently of the early look (its verdict is not an input)
+20:39:56     INC-0015 20:40:00 Event gated: 1 sensor(s) flagged, 2 related sensor(s) attached, mode 3
+20:39:56     INC-0015 20:40:00 Preliminary report shown (rules + agent findings); the reasoner is writing the full report
+20:39:56     INC-0015 20:40:00 Orchestrator: 1 sensor(s) to NPU agents, 2 related sensor(s) checked by context agents in parallel
+20:39:56     INC-0015 20:40:00 Water agent analysing WM-WD-KH98-00 ph on NPU (fine-tuned)
+20:40:56     INC-0015 20:40:03 Prefetch shadow: the answer from the gate wait (2 reading(s) older) agrees with the real agent (step_increase/sensor_fault vs step_increase/sensor_fault)
+20:40:56     INC-0015 20:40:03 Water agent done in 2.4s (first token 0.5s, 172 tokens): step_increase / sensor_fault (policy PASSED)
+20:40:56     INC-0015 20:40:03 Water agent asked for more data (data quality fault): re-run with 12 h window
+20:40:56     INC-0015 20:40:05 Water agent more-data answer kept: step_increase / sensor_fault, confidence 0.94
+20:40:56     INC-0015 20:40:05 Water agent unsure (data quality fault): the larger prompt would not fit the NPU agent context, answer kept
+20:40:56     INC-0015 20:40:05 Related domains checked and steady (2 context agents): reasoner v3 writes the report
+20:40:56     INC-0015 20:40:05 Preliminary report shown (rules + agent findings); the reasoner is writing the full report
+20:40:56     INC-0015 20:40:15 Reasoner title: Water pH alkaline 9.59 (critical): KH building, level 98
+20:40:56     INC-0015 20:40:15 Reasoner severity (provisional): critical
+20:40:56     INC-0015 20:40:28 Reasoner v3 report in 23.1s (1 completion(s), 0 tool call(s)), policy ok
+20:40:56     INC-0015 20:40:28 Finished in 27.7s, 8 NPU call(s)
+20:44:56 feeder end

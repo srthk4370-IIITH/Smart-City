@@ -1809,16 +1809,21 @@ function doneLine(inc) {
    A Mode-3 incident is analysed when the alert fires (~40 min into the event) and again on the
    windows that end 1.5 h and 3 h later in sensor time, when the agents read the shape far better.
    The page says which analysis it shows, when the next is due, and what each one changed. */
-const STAGE_TEXT = { provisional: 'Provisional AI', early: 'At alert', '1.5h': 'Re-checked 1.5 h', '3h': 'Re-checked 3 h' };
+const STAGE_TEXT = { provisional: 'Early look', early: 'At alert', '1.5h': 'Re-checked 1.5 h', '3h': 'Re-checked 3 h' };
 function stageTag(i) {
   if (!STAGE_TEXT[i.refine_stage]) return null;
   const prov = i.refine_stage === 'provisional';
   const ref = i.refine_stage !== 'early' && !prov;
   return h('span', { class: 'stagetag' + (prov ? ' prov' : ref ? ' ref' : ''), text: STAGE_TEXT[i.refine_stage],
-    title: prov ? 'AI read of a young event window; the full analysis replaces it when the event has lasted 40 min'
+    title: prov ? 'Early look: the AI read a young event window to give you a first idea. The full reading is made separately, without this early look, and replaces it.'
       : ref ? 'The AI looked again with a longer view of the event' : 'First analysis at the alert; checked again after 1.5 h and 3 h' });
 }
 function refineLine(inc) {
+  if (inc.refine_stage === 'provisional') {
+    const e = inc.full_eta_s;
+    const when = e == null || e < 0 ? 'when the event has lasted long enough' : e <= 60 ? 'within a minute' : 'in ~' + Math.round(e / 60) + ' min';
+    return h('p', { class: 'refnext early', text: 'Early look to judge by. Full reading ' + when + ', made independently of this one.' });
+  }
   if (inc.next_refine_sim && NEXT_STAGE[inc.refine_stage]) return h('p', { class: 'refnext' }, etaEl(inc), ' (due ' + hm(inc.next_refine_sim) + ' sensor time)');
   const t = inc.next_refine_sim ? 'Next re-check at ' + hm(inc.next_refine_sim) + ' (sensor time)' : inc.refine_note || '';
   return t ? h('p', { class: 'refnext', text: t }) : null;

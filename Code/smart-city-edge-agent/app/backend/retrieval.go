@@ -160,6 +160,10 @@ func retDocOf(inc *Incident) (retDoc, bool) {
 	if inc != nil && inc.DismissUnconfirmed {
 		return retDoc{}, false
 	}
+	// an early look (provisional AI on a young window) is not memory: the full reading must not learn from it
+	if inc != nil && inc.RefineStage == "provisional" {
+		return retDoc{}, false
+	}
 	if inc == nil || inc.Mode == 1 || inc.Final == nil || inc.Final.Preliminary || !inc.Final.Valid || inc.Final.Parsed == nil ||
 		(inc.State != "done" && inc.State != "done_with_errors") {
 		return retDoc{}, false
@@ -351,7 +355,7 @@ func (ix *retIndex) add(inc *Incident) {
 }
 
 // query: the top matches for a new incident (same role and metric, above the tuned threshold).
-func (ix *retIndex) query(sensors []SensorRef, title string, k int) []RetMatch {
+func (ix *retIndex) query(sensors []SensorRef, title string, k int, skip string) []RetMatch {
 	q, ok := retFeatures(sensors)
 	if !ok {
 		return nil
@@ -361,7 +365,7 @@ func (ix *retIndex) query(sensors []SensorRef, title string, k int) []RetMatch {
 	if len(ix.docs) == 0 {
 		return nil
 	}
-	return ix.search(&q, retQueryText(sensors, title), k, ix.thresh, "")
+	return ix.search(&q, retQueryText(sensors, title), k, ix.thresh, skip)
 }
 
 func (ix *retIndex) doc(id string) *retDoc {
@@ -389,7 +393,7 @@ func (r *Reasoner) retrievalPreliminary(inc *Incident) *ReportCall {
 		return rc
 	}
 	t0 := time.Now()
-	ms := r.ret.query(inc.Sensors, inc.Title, 3)
+	ms := r.ret.query(inc.Sensors, inc.Title, 3, inc.ID)
 	r.mu.Lock()
 	inc.Retrieved = ms
 	r.mu.Unlock()

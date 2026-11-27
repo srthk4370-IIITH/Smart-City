@@ -55,6 +55,14 @@ gate wait, shadow-tested in the app as `agent_prefetch=shadow`) are the safe dir
 stability mechanism first (e.g. show a provisional verdict only when the k and k + 1 runs agree, or show the rules report
 early), then this study rerun (~3.7 h laptop GPU).
 
+## What the app does instead (owner decision 2026-11-27)
+
+The early verdict is shown, but as an **"Early look"** badge with the time to the full reading, not as the alert. The
+full reading at the gate is made independently: the early verdict, severity and agent answers are not inputs to it
+(not in the reasoner's re-check list, not in retrieval, severity reset). An early look the gate never confirms closes as
+"not confirmed". Board setting: `ai_early_k=3` (a single spike never calls the AI), all six shapes plus `limit` (a value past its
+limit with no trend shape, found missing in the first board check).
+
 ## Files
 
 - `code/early_ai/`: `eas_test.go` (app-faithful driver), `htpd_shim_v5.py`, `run_v5.sh`, `run_v5_repeat.sh`,

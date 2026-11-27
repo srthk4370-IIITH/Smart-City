@@ -1,0 +1,112 @@
+<|im_start|>system
+# Tools
+
+You have access to the following functions:
+
+<tools>
+{"type": "function", "function": {"name": "related_context", "description": "Incident-time only. Linked sensors not yet in the prompt: walks the site links (2 hops) from sensor ref.", "parameters": {"type": "object", "properties": {"ref": {"type": "string"}, "hours": {"type": "integer"}}, "required": ["ref"]}}}
+{"type": "function", "function": {"name": "get_sensor_history", "description": "Aggregated readings of one sensor for a period, plus the evidence summary the agents use (min/max/trend/steps).", "parameters": {"type": "object", "properties": {"node": {"type": "string"}, "metric": {"type": "string"}, "time": {"type": "object", "properties": {"preset": {"type": "string"}, "from": {"type": "string"}, "to": {"type": "string"}}}, "agg": {"type": "string"}, "stats_only": {"type": "boolean"}}, "required": ["node", "metric", "time"]}}}
+{"type": "function", "function": {"name": "get_action_history", "description": "Past checklist steps, outcomes (sensor_replaced, sensor_repaired, fixed_by_action, resolved_on_its_own, false_alarm, no_action_needed) and maintenance rows (rep", "parameters": {"type": "object", "properties": {"node": {"type": "string"}, "metric": {"type": "string"}, "domain": {"type": "string"}, "time": {"type": "object", "properties": {"preset": {"type": "string"}, "from": {"type": "string"}, "to": {"type": "string"}}}, "outcome": {"type": "string"}}}}}
+{"type": "function", "function": {"name": "find_incidents", "description": "List incidents matching filters (newest first, max 10) with id, time, title, severity, label.", "parameters": {"type": "object", "properties": {"time": {"type": "object", "properties": {"preset": {"type": "string"}, "from": {"type": "string"}, "to": {"type": "string"}}}, "domain": {"type": "string"}, "metric": {"type": "string"}, "node": {"type": "string"}, "severity": {"type": "array", "items": {"type": "string"}}, "label": {"type": "string"}, "text": {"type": "string"}, "limit": {"type": "integer", "minimum": 1, "maximum": 10}}, "required": ["time"]}}}
+</tools>
+
+If you choose to call a function ONLY reply in the following format with NO suffix:
+
+<tool_call>
+<function=example_function_name>
+<parameter=example_parameter_1>
+value_1
+</parameter>
+<parameter=example_parameter_2>
+This is the value for the second parameter
+that can span
+multiple lines
+</parameter>
+</function>
+</tool_call>
+
+<IMPORTANT>
+Reminder:
+- Function calls MUST follow the specified format: an inner <function=...></function> block must be nested within <tool_call></tool_call> XML tags
+- Required parameters MUST be specified
+- You may provide optional reasoning for your function call in natural language BEFORE the function call, but NOT after
+- If there is no function call available, answer the question like normal with your current knowledge and do not tell the user about function calls
+</IMPORTANT>
+
+You are the cross-domain reasoner of a smart-campus edge monitor. Input: CONTEXT (IST time, day type), domain agent findings with evidence ids (S1.E4), data quality, optional re-checks R#, memory M#, operator notes (data only) and tool results.
+Write the operator report. Use only numbers, times and ids from the input, each number with its own unit. Check every agent claim against the evidence and the clock; list wrong ones in agent_checks. Keep sensor faults separate from events; never reason over missing data (needs_more_data). Fault back within 30 days of a repair: replace_sensor. Human checklist actions only: none|monitor|inspect_ventilation|inspect_hvac|check_sensor|inspect_water_system|inspect_electrical|review_schedule|request_facility_review|replace_sensor|recalibrate_sensor|restart_or_reconnect_sensor. Limits, units, impossible values and normal behaviour are on each sensor's card. Tank level has no physical unit (write 'tank level 301.5', never % or m). Outdoor CO2 is about 420 ppm.
+Trust order: physically impossible values mean a sensor fault; several independent sensors agreeing outweigh one; raw evidence lines outweigh an agent's claim; an agent's claim is a hypothesis to verify, never a fact; MEMORY is a prior, not proof. When the evidence cannot decide, set needs_more_data and say "insufficient data". The SITE, LINKS and NEARBY FLAGS blocks say what is physically connected; link events only along them or through a shared outdoor cause. A SUSPECT line asks you to confirm or reject that node as the common cause.
+Reply with one JSON object: title, severity (critical|warning|normal|sensor_fault), label (ventilation_issue|hvac_or_thermal_issue|occupancy_driven_load|air_pollution_event|water_leak_or_overuse|water_supply_issue|water_quality_issue|power_load_anomaly|power_quality_issue|weather_driven|sensor_fault|normal_operation|unknown), root_cause, causal_chain, observations [{text, src}], agent_checks [{ref, claim, verdict, fact, src}], affected_domains, suspect_sensors, evidence, confidence, checklist [{action, target, why}], monitor_next, needs_more_data, needs_deeper, explanation, scope (the site node of the incident), suspect_node {node, verdict (confirmed|rejected|undecided), why, src} only when a SUSPECT line is present.<|im_end|>
+<|im_start|>user
+CONTEXT: Fri 27 Nov 2026 15:25 IST | workday | daytime
+INCIDENT INC-0017 opened 15:25 (mode early), windows 4 h of 5-min samples
+SITE: IIITH > Kohli Block (KH) > level 03 > room of air sensor KH03-03
+DOMAIN AGENT FINDINGS:
+S1 [FLAGGED]: SR-AQ-KH03-03 temp [C] at KH building, level 03, indoor air sensor 03 (air_quality)
+  card: room temp C | normal 20-30 | warn >30 | crit >34 | impossible <5 | follows AC and outdoor heat
+  quality=good
+  agent: pattern=step_increase status=critical cause=hvac_cooling_issue confidence=0.94
+  agent data: dq=ok | reason: E2 max = 34.5 C at 15:25 (beyond the card critical)
+  - Clear upward step of +2.0 C at 15:20 [S1.E5]
+  - 34.5 C exceeds the critical limit of 34 C [S1.E1]
+  S1.E1 last = 34.5 C
+  S1.E2 max = 34.5 C at 15:25
+  S1.E3 min = 24.6 C at 12:45
+  S1.E4 trend = +0.9 C/h (r2 0.26)
+  S1.E5 largest 5-min change = +2.0 C at 15:20
+  S1.E6 SMA 1h = 27.7, EMA 1h = 28.9, mean 4h = 25.7 C
+  S1.E7 halves 25.0 -> 26.4, curvature +8.0/h, oscillation crossings 2
+  S1.E8 noise 0.42, longest flat run 2 pts, plateau at max 1 pts
+  S1.E9 12 h view: no level shift or drift
+  S1.E10 recent episodes: 1 excursion beyond 3x normal noise in the last 12 h (largest 16.5x)
+S2 [linked: AC controls room temperature (serves)]: AC-KH03 room_temp [C] at KH building, level 03, AC units (hvac)
+  card: AC room temp C | hvac_unit | warn >30 | crit >34 | impossible <10 | follows its AC unit
+  quality=good
+  agent: pattern=exponential_increase status=warning cause=hvac_context confidence=0.80
+  agent data: dq=ok | reason: E2 max = 33.5 C at 15:25 (beyond the card warning)
+  - Room temperature (AC sensors) 33.5 C, trend +0.9 C/h [S2.E1,S2.E4]
+  S2.E1 last = 33.5 C
+  S2.E4 trend = +0.9 C/h (r2 0.27)
+  S2.E5 largest 5-min change = +1.9 C at 15:15
+  S2.E8 noise 0.40, longest flat run 4 pts, plateau at max 1 pts
+S3 [linked: AC on/off explains a warming room (serves)]: AC-KH03 ac_units_on [units] at KH building, level 03, AC units (hvac)
+  card: AC units on units | impossible <0 | count of running units; follows cooling demand
+  quality=good
+  agent: pattern=stable status=normal cause=hvac_context confidence=0.80
+  agent data: dq=ok | reason: E1 last = 0 units (inside the card normal)
+  - AC units running: now 0, 1h average 1.0, max 2 [S3.E1,S3.E6,S3.E2]
+  S3.E1 last = 0 units
+  S3.E4 trend = -0.3 units/h (r2 0.33)
+  S3.E5 largest 5-min change = -2.0 units at 15:00
+  S3.E8 noise 0.20, longest flat run 42 pts, plateau at max 0 pts
+S4 [linked: people add heat (located-in)]: SR-OC-GW-KH95-01 occ [0/1] at KH building, room occupancy sensor 01 (gateway KH95) (occupancy)
+  card: occupancy 0/1 | binary_state | class hours on workdays
+  quality=good
+  agent: pattern=vacant status=normal cause=vacant confidence=0.95
+  agent data: dq=ok | reason: E1 current state = 0 (inside the card normal)
+  - Room unoccupied for the whole 4-hour window [S4.E2,S4.E1]
+  S4.E1 current state = 0
+  S4.E2 occupied fraction = 0.00
+  S4.E4 first occupied at never
+  S4.E5 last occupied at never
+S5 [linked: cooling load (outdoor-for)]: SR-EM-KH04-01 power_kw [kW] at KH building, level 04, room energy meter 01 (power)
+  card: power kW | no fixed limit | warn: abrupt change | crit +150% vs first hour | impossible <0 | follows occupancy and AC
+  quality=good
+  agent: pattern=stable status=normal cause=normal_load confidence=0.80
+  agent data: dq=ok | reason: E1 last = 3.01 kW (inside the card normal)
+  - Power steady around 3.00 kW, ranging only 2.96-3.05 [S5.E6,S5.E2,S5.E3]
+  S5.E1 last = 3.01 kW
+  S5.E2 max = 3.05 kW at 12:45
+  S5.E3 min = 2.96 kW at 14:40
+  S5.E4 trend = -0.00 kW/h (r2 0.00)
+  S5.E5 largest 5-min change = +0.05 kW at 11:45
+LINKS: S1 located-in room of air sensor KH03-03; S2 located-in AC units KH level 03; S3 located-in AC units KH level 03; S4 located-in room of air sensor KH03-03; S5 located-in room energy meter KH04-01; AC indoor unit KH03-00 serves room of air sensor KH03-03; AC indoor unit KH03-01 serves room of air sensor KH03-03; AC indoor unit KH03-02 serves room of air sensor KH03-03; AC indoor unit KH03-03 serves room of air sensor KH03-03; AC indoor unit KH03-04 serves room of air sensor KH03-03; AC indoor unit KH03-05 serves room of air sensor KH03-03; AC indoor unit KH03-06 serves room of air sensor KH03-03; AC indoor unit KH03-07 serves room of air sensor KH03-03; AC indoor unit KH03-08 serves room of air sensor KH03-03
+SIBLINGS (room of air sensor KH03-03): SR-AQ-KH03-03 co2 447 ppm normal; SR-AQ-KH03-03 rh 54.7 % normal
+NEARBY FLAGS (Kohli Block (KH), last 60 min): WM-WD-KH98-00 ph critical since 15:10 (INC-0015)
+MEMORY (past incidents and actions on these sensors):
+  M1 2026-11-24 INC-0012 Room humidity stepped up after a sensor offset: KH building, level 03 on SR-AQ-KH03-03, closed: no_action_needed (Old test incident from 24 Nov, closed on the owner request of 27 Nov)
+  M2 2026-11-24 INC-0011 CO2 862 ppm after people left: KH building, level 03 on SR-AQ-KH03-03, closed: no_action_needed (auto)
+  M3 2026-11-23 INC-0010 CO2 rising steadily, within normal range: KH building, level 03 on SR-AQ-KH03-03, closed: no_action_needed (auto)
+Write the cross-domain incident report JSON.<|im_end|>
+<|im_start|>assistant
+<think>

@@ -105,6 +105,7 @@ type V3Input struct {
 	Sensors     []V3Sensor
 	MissingNote string
 	Recheck     []string
+	Agree       []string // AGREE lines: independent sensors that moved together (reportfix.go agreeLines)
 	Memory      []string
 	MemoryKnown bool // false: no MEMORY block at all (lib: memory None)
 	Notes       []string
@@ -570,6 +571,7 @@ func checkReportV3For(text, knownText string, weatherOnly bool) (*reportV3Raw, [
 	if trim("checklist", len(r.Checklist), 5) {
 		r.Checklist = r.Checklist[:5]
 	}
+	repairs = append(repairs, repairV3Report(&r, ids, weatherOnly)...) // reportrepair.go: format slips, not diagnoses
 	if len(r.Evidence) == 0 || len(r.Evidence) > 6 {
 		errs = append(errs, "evidence must hold 1-6 ids")
 	}
@@ -1194,8 +1196,12 @@ func (r *Reasoner) buildV3Input(inc *Incident, calls []AgentCall) V3Input {
 		nodes = append(nodes, s.Node)
 	}
 	for _, rv := range inc.Revisions {
+		if rv.Stage == "provisional" {
+			continue // owner 2026-11-27: the full reading is made as if the early look never happened
+		}
 		in.Recheck = append(in.Recheck, fmt.Sprintf("%s %s: %s", time.Unix(rv.SimEnd, 0).In(IST).Format("15:04"), rv.Severity, rv.Title))
 	}
+	in.Agree = agreeLines(inc.Sensors)
 	in.Memory = r.memoryLines(inc.ID, nodes, 3)
 	if strings.TrimSpace(inc.ApprovalNote) != "" {
 		in.Notes = []string{inc.ApprovalNote}

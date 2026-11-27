@@ -33,8 +33,10 @@ func TestV3WeatherOnlyCriticalFloor(t *testing.T) {
 	if _, errs, _ := checkReportV3For(txt, known, true); len(errs) != 0 {
 		t.Fatalf("weather-only report rejected: %v", errs)
 	}
-	if _, errs, _ := checkReportV3For(txt, known, false); !strings.Contains(strings.Join(errs, ";"), "must start") {
-		t.Fatalf("facility report accepted: %v", errs)
+	// owner 2026-11-27 (reportrepair.go): a facility report with monitor first is repaired, not rejected - the policy
+	// action goes first
+	if r, errs, reps := checkReportV3For(txt, known, false); len(errs) != 0 || !strings.HasPrefix(r.Checklist[0].Action, "inspect_") && r.Checklist[0].Action != "request_facility_review" {
+		t.Fatalf("facility report not repaired: errs %v repairs %v", errs, reps)
 	}
 	w := &Incident{Roles: []string{"weather"}}
 	m := &Incident{Roles: []string{"weather", "air_quality"}}

@@ -105,17 +105,27 @@ func (r *Reasoner) adoptFast(cands []Candidate, mode int) *Incident {
 	if inc.DataStatus == "needs_more_data" {
 		inc.DataStatus, inc.RefineNote = "", ""
 	}
-	if inc.RefineStage == "provisional" {
-		inc.RefineStage = "" // the full analysis becomes the "early" stage; the provisional one stays in Revisions
+	wasEarly := inc.RefineStage == "provisional"
+	if wasEarly {
+		// owner 2026-11-27: the full reading is independent of the early look, as if it never happened. Its
+		// severity, title and report go; it stays in Revisions (history) only, which the reasoner does not read.
+		inc.RefineStage = ""
+		inc.Severity, inc.SeverityFinal, inc.SeverityWhy, inc.SeverityKept = fresh.Severity, false, "", false
+		if inc.FastPath && sevRank("critical") > sevRank(inc.Severity) {
+			inc.Severity = "critical"
+		}
+		inc.Agents, inc.Retrieved, inc.RuleTitle = nil, nil, ""
 	}
 	inc.Sensors, inc.Roles, inc.Title, inc.Mode1 = fresh.Sensors, fresh.Roles, fresh.Title, fresh.Mode1
 	inc.Injected = inc.Injected || fresh.Injected
-	if sevRank(fresh.Severity) > sevRank(inc.Severity) {
+	if !wasEarly && sevRank(fresh.Severity) > sevRank(inc.Severity) {
 		inc.Severity = fresh.Severity
 	}
 	r.mu.Unlock()
 	// sweep 2026-11-27: the early run said "at 8 readings" right after "shorter than 8 readings"
-	if inc.ShortRunAt != 0 && !inc.earlyAdopted {
+	if wasEarly {
+		r.log(inc, fmt.Sprintf("Full reading at the AI gate: %d sensor(s), made independently of the early look (its verdict is not an input)", len(cands)))
+	} else if inc.ShortRunAt != 0 && !inc.earlyAdopted {
 		inc.earlyAdopted = true
 		r.log(inc, fmt.Sprintf("AI analysis of the fast-path incident: %d sensor(s), early run on the readings so far", len(cands)))
 	} else {

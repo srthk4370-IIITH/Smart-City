@@ -159,3 +159,28 @@ func TestCorroboratedRiseRun3Wording(t *testing.T) {
 		t.Errorf("%q / %q", rep.Title, rep.Explanation)
 	}
 }
+
+func TestAgreeLines(t *testing.T) {
+	ramp := func(a, b float64) []float64 {
+		xs := make([]float64, 12)
+		for i := range xs {
+			xs[i] = a + (b-a)*float64(i)/11
+		}
+		return xs
+	}
+	ss := []SensorRef{
+		{Ref: "S1", Node: "SR-AQ-KH03-03", Metric: "temp", Role: "air_quality", Location: "KH building, level 03, indoor air sensor 03", Xs: ramp(24.6, 34.5)},
+		{Ref: "S2", Node: "AC-KH03", Metric: "room_temp", Role: "hvac", Location: "KH building, level 03, AC units", Context: true, Xs: ramp(24.1, 33.5)},
+		{Ref: "S3", Node: "WE-VN04-00", Metric: "temp", Role: "weather", Location: "VN building, level 04, weather station", Xs: ramp(25, 30)},
+		{Ref: "S4", Node: "SR-AQ-SB00-01", Metric: "temp", Role: "air_quality", Location: "SB building, level 00, indoor air sensor 01", Xs: ramp(22, 30)},
+	}
+	got := agreeLines(ss)
+	want := "AGREE: S1 temp and S2 room_temp are two independent temperature sensors in the same area (KH building, level 03); both rose over the window: S1 24.6 -> 34.5 C, S2 24.1 -> 33.5 C (now 1.0 C apart)."
+	if len(got) != 1 || got[0] != want {
+		t.Fatalf("%q", got)
+	}
+	flat := []SensorRef{ss[0], {Ref: "S2", Node: "AC-KH03", Metric: "room_temp", Role: "hvac", Location: ss[1].Location, Xs: ramp(24, 24.2)}}
+	if l := agreeLines(flat); len(l) != 0 {
+		t.Fatalf("one sensor rising is not agreement: %q", l)
+	}
+}

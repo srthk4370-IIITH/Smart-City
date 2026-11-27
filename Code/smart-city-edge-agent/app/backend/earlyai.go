@@ -4,7 +4,7 @@ package main
 //
 //	htpd_profile: ai_early_k=4                 abnormal readings before the provisional AI run (0/absent = off)
 //	              ai_early_shapes=step,flatline shapes the gate-length study cleared at that k
-//	              (spike, step, trend, flatline, noisy, fault)
+//	              (spike, step, trend, flatline, noisy, fault, limit)
 //
 // When a sensor has been abnormal for ai_early_k readings with a cleared shape, the domain agents + reasoner run on
 // that young window as refine stage "provisional" (UI badge). The incident is the fast-path incident when one is
@@ -65,6 +65,10 @@ func shapeOf(f Finding) string {
 		return "step"
 	case strings.HasPrefix(f.Pattern, "gradual") || f.Pattern == "exponential_increase":
 		return "trend"
+	case f.Status == "warning" || f.Status == "critical":
+		// owner 2026-11-27: a value past its limit with no trend shape (board run: power factor 0.81 "stable" below
+		// 0.85) still gets an early look; k=3 readings keep a single spike out
+		return "limit"
 	}
 	return ""
 }
@@ -109,8 +113,8 @@ func (r *Reasoner) queueEarly(cands []Candidate) {
 		r.preliminary(inc, rc)
 		r.persist(inc)
 	}
-	r.log(inc, fmt.Sprintf("Provisional AI queued: %s abnormal on a young window (shape %s); the full analysis follows at %d readings",
-		cands[0].Node+" "+cands[0].Metric, shapeOf(cands[0].Finding), trigRules().PersistReadings))
+	r.log(inc, fmt.Sprintf("Early look queued: %s abnormal on a young window (shape %s); the full reading follows at the AI gate, independently",
+		cands[0].Node+" "+cands[0].Metric, shapeOf(cands[0].Finding)))
 	r.mu.Lock()
 	r.early = append(r.early, earlyJob{inc, cands})
 	var w work
@@ -157,9 +161,61 @@ func (r *Reasoner) runEarly(j earlyJob) {
 	}
 	r.mu.Unlock()
 	if ok {
-		r.log(inc, fmt.Sprintf("Provisional AI report (young window, %.1fs); the full analysis will update it", time.Since(t0).Seconds()))
+		r.log(inc, fmt.Sprintf("Early look ready (young window, %.1fs): a first idea to judge by; the full reading replaces it", time.Since(t0).Seconds()))
 	} else {
-		r.log(inc, "Provisional AI run stopped: an alert needed the NPU")
+		r.log(inc, "Early look stopped: an alert needed the NPU")
 	}
 	r.persist(inc)
+}
+
+// earlyUnconfirmedAfter: an early look whose sensors never reached the AI gate within this much sensor time closes
+// itself (the gate needs persist_readings; the cooldown lets a slow episode still mature).
+func earlyUnconfirmedAfter() int64 {
+	tr := trigRules()
+	return int64(tr.PersistReadings+tr.FastCooldown) * bucketSec
+}
+
+// closeUnconfirmedEarlyLocked (caller holds r.mu): owner 2026-11-27, an early look is a guess to judge; when the full
+// reading never comes, the incident closes as "not confirmed" instead of waiting 3 days. Fast-path incidents
+// (critical readings) are left alone.
+func (r *Reasoner) closeUnconfirmedEarlyLocked(inc *Incident, sim int64, now time.Time) bool {
+	if inc.RefineStage != "provisional" || inc.FastPath || inc.State != "done" || sim-inc.CreatedSim < earlyUnconfirmedAfter() {
+		return false
+	}
+	if inc.Owner != "" && openSteps(inc) > 0 {
+		return false
+	}
+	for k, f := range r.fastInc {
+		if f == inc {
+			delete(r.fastInc, k) // a later episode opens a new incident
+		}
+	}
+	inc.Workflow, inc.Outcome, inc.ClosedAt, inc.ClosedBy = wfClosed, "no_action_needed", now.Unix(), "system"
+	inc.OutcomeNote = "auto: early look not confirmed (the full reading never reached the AI gate)"
+	if inc.Approval == "" || inc.Approval == "pending" {
+		inc.Approval = "dismissed"
+	}
+	inc.event("system", "auto_closed", "", "no_action_needed", "auto", "early look not confirmed by the full reading")
+	inc.Timeline = append(inc.Timeline, TimelineItem{nowTime().In(IST).Format("15:04:05"),
+		"Early look not confirmed: the sensor did not reach the AI gate; closed automatically"})
+	return true
+}
+
+// earlyEtaOf: for an early look, the soonest full-reading ETA among its flagged sensors (-1 = unknown / not early).
+func earlyEtaOf(gw []gateWatch, inc *Incident) int64 {
+	if inc.RefineStage != "provisional" {
+		return -1
+	}
+	best := int64(-1)
+	for _, s := range inc.Sensors {
+		if s.Context {
+			continue
+		}
+		for _, w := range gw {
+			if w.Node == s.Node && w.Metric == s.Metric && (best < 0 || w.EtaS < best) {
+				best = w.EtaS
+			}
+		}
+	}
+	return best
 }
