@@ -16,7 +16,7 @@ Owner decisions are recorded in `questions.md` (answered section). Code is in `C
 | 8 | **Incident cards:** a mini chart of the 4 h window, the building and floor, a building filter, and a **Shift handover** text (copy/share). | `/api/incidents` place + spark, `app.js` | — |
 | 9 | **History page:** 24 h / 7 d / 30 d / 90 d; Timeline, Heatmap, Breakdown and List modes; filters; KPIs against the previous period; recurring sensors. | `backend/history.go`, `web/history.js/css` | — |
 | 10 | **Android notifications:** "I'm on it" and "Open" buttons, a Warnings channel, sensor-fault labels, grouping, building and floor in the text. | `android/.../EdgeService.java`, `IncidentActionReceiver.java` | — |
-| 11 | **Early AI on strong warnings:** NOT enabled. The per-shape study is being rerun with reasoner v5 (`proofs/2026-11-12_early_ai`, raw_v5); it is enabled only for shapes that clear. | `earlyai.go` (existing) | `ai_early_k`, `ai_early_shapes` |
+| 11 | **Early AI on strong warnings:** NOT enabled: the v5 study rerun shows no shape clears (flip 40–76 %, limit 15 %). | `earlyai.go` (existing) | | `earlyai.go` (existing) | `ai_early_k`, `ai_early_shapes` |
 
 ## Verification
 
@@ -38,7 +38,7 @@ Other checks:
 - Go: full `go vet` + `go test` pass. `TestChatGPUWarmHeaderOnly` failed once under parallel load and passes alone (timing-sensitive, pre-existing).
 
 ## Still open
-- **Early AI:** the v5 study rerun is still running on the laptop GPU. It is enabled only for the shapes that clear.
+- **Early AI: stays OFF.** The full v5 rerun (440 events, 1,102 AI runs, today's board models and backend) shows no shape clears at any k from 3 to 7. Early verdicts change by the full gate 40–76 % of the time (limit 15 %), and flatline, noisy and fault lose 23–33 pp severity accuracy. Details: `proofs/2026-11-12_early_ai/STUDY.md` "v5 rerun". Side finding: 19 % of the AI runs there had the reasoner report rejected, most often for a warning checklist without an inspect/review action.
 - **Prefetch reuse:** needs about 20+ shadow comparisons with ≥ 95 % agreement when the rule finding is unchanged.
 - **Reasoner judgement on corroborated heat:** it misjudged it in 2 of 4 runs ("sensor heating itself", "suspect readings"). The guard now corrects the wording and severity. If this keeps happening, it is a top-up case (owner: top-up only if the errors keep varying).
 - **Viewer clock:** tested by unit tests only (the laptop reaches the board over loopback, which is ignored by design).

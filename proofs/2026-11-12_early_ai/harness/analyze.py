@@ -12,7 +12,7 @@ import glob, json, math, sys
 from collections import defaultdict
 from pathlib import Path
 
-P = Path(__file__).resolve().parent.parent / "raw"
+P = Path(__file__).resolve().parent.parent / (sys.argv[1] if len(sys.argv) > 1 else "raw")  # v5 rerun: analyze.py raw_v5
 rows = {}
 for f in sorted(glob.glob(str(P / "rows_s*.jsonl"))):
     for l in open(f, encoding="utf-8"):
