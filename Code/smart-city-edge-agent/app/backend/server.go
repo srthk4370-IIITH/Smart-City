@@ -194,7 +194,7 @@ func (h *Hub) Publish(kind string, data any) {
 }
 
 func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fl, ok := w.(http.Flusher)
+	_, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "stream unsupported", 500)
 		return
@@ -209,8 +209,19 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.subs[c] = true
 	h.mu.Unlock()
 	defer func() { h.mu.Lock(); delete(h.subs, c); h.mu.Unlock() }()
-	fmt.Fprint(w, ": connected\n\n")
-	fl.Flush()
+	// night sweep 2026-11-27 #50: every message gets a write deadline; a half-open phone connection used to hold
+	// this goroutine (and its buffer) until the kernel gave up, ~15 min.
+	rc := http.NewResponseController(w)
+	send := func(b []byte) bool {
+		rc.SetWriteDeadline(time.Now().Add(sseWriteTimeout)) // ErrNotSupported on a test recorder: fine
+		if _, err := w.Write(b); err != nil {
+			return false
+		}
+		return rc.Flush() == nil
+	}
+	if !send([]byte(": connected\n\n")) {
+		return
+	}
 	ping := time.NewTicker(15 * time.Second)
 	defer ping.Stop()
 	for {
@@ -218,14 +229,19 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case <-r.Context().Done():
 			return
 		case m := <-c:
-			w.Write(m)
-			fl.Flush()
+			if !send(m) {
+				return
+			}
 		case <-ping.C:
-			fmt.Fprint(w, ": ping\n\n")
-			fl.Flush()
+			if !send([]byte(": ping\n\n")) {
+				return
+			}
 		}
 	}
 }
+
+// sseWriteTimeout bounds one SSE message write (#50).
+var sseWriteTimeout = 10 * time.Second
 
 // ---------------------------------------------------------------- HTTP API
 type Server struct {
@@ -356,6 +372,7 @@ func (s *Server) routes() http.Handler {
 			// whether sensor time runs at wall speed (live input) - the UI derives "ago" / ETAs from these
 			"now_unix": nowTime().Unix(), "live": s.eng.isLive(),
 			"gate": s.eng.GateView(), "progress": progressView(), // gateview.go: countdown + analysis progress
+			"catching_up": s.eng.CatchingUp(), // night sweep 2026-11-27 #1: {done,total} buckets while the backfill replays, else null
 		})
 	})
 	mux.HandleFunc("/api/live", func(w http.ResponseWriter, r *http.Request) {
@@ -395,7 +412,17 @@ func (s *Server) routes() http.Handler {
 		if h <= 0 || h > 24 {
 			h = 8
 		}
-		writeJSON(w, s.eng.Series(r.URL.Query().Get("node"), r.URL.Query().Get("metric"), h))
+		// night sweep 2026-11-27 #4: a missing or unknown sensor is a client bug; say so instead of an empty 200
+		node, metric := r.URL.Query().Get("node"), r.URL.Query().Get("metric")
+		if node == "" || metric == "" {
+			http.Error(w, "need ?node=...&metric=...", http.StatusBadRequest)
+			return
+		}
+		if !s.knownSensor(node, metric) {
+			http.Error(w, "unknown sensor "+node+" / "+metric, http.StatusNotFound)
+			return
+		}
+		writeJSON(w, s.eng.Series(node, metric, h))
 	})
 	mux.HandleFunc("/api/topology", func(w http.ResponseWriter, r *http.Request) {
 		type bnode struct {
@@ -437,6 +464,8 @@ func (s *Server) routes() http.Handler {
 			gw, _ = s.eng.GateView()["watching"].([]gateWatch)
 		}
 		s.rsn.mu.RLock() // the workflow fields change under the reasoner lock (operator clicks, workflow tick)
+		awaiting, queued := s.rsn.aiQueueLocked() // night sweep 2026-11-27 #110: ai_eta_s / ai_running
+		runningID := aiRunningID()
 		for _, i := range list {
 			lab := i.Mode1.Label
 			if i.Final != nil && i.Final.Parsed != nil {
@@ -485,7 +514,10 @@ func (s *Server) routes() http.Handler {
 				"group": g.Lead, "group_size": g.Size,
 				// safe decisions + demo watermark (workflow_ext.go, reason.go)
 				"watermark": i.Watermark, "undo_until": undoUntil(i), "undo_kind": undoKind(i), "dismiss_unconfirmed": i.DismissUnconfirmed,
-				"full_eta_s": earlyEtaOf(gw, i)})
+				"full_eta_s": earlyEtaOf(gw, i),
+				// night sweep 2026-11-27 #110 / #73: next AI run for this incident, NPU running it now, opening wall time
+				"ai_eta_s": aiEtaOf(gw, i, awaiting[i], queued[i]), "ai_running": runningID != "" && runningID == i.ID,
+				"opened_unix": createdUnix})
 		}
 		s.rsn.mu.RUnlock()
 		writeJSON(w, out)
@@ -904,6 +936,7 @@ func (s *Server) routes() http.Handler {
 	s.chatRoutes(mux)   // operator chat (chat.go), frontend web/chat/
 	s.phase1Routes(mux) // site, health, export, daily, campus (phase1.go, site.go)
 	s.registerHistoryRoutes(mux) // GET /api/history (history.go)
+	s.resourceRoutes(mux)        // GET /api/resources (resources.go, night sweep 2026-11-27 #87)
 	web := http.FileServer(http.Dir(filepath.Join(s.dir, "web")))
 	// Always revalidate the dashboard files. Without this the WebView judged freshness from
 	// Last-Modified, which is meaningless here: the board's clock resets to 2023 on every boot while
@@ -961,4 +994,14 @@ func statusModels(s *Server) map[string]any {
 			"note": "cross-domain reasoner and chat, prompt " + p["reasoner_prompt"] + ", thinking " + p["reasoner_think"]}
 	}
 	return out
+}
+
+// knownSensor: the engine has a live state or a series for node/metric (#4).
+func (s *Server) knownSensor(node, metric string) bool {
+	s.eng.mu.RLock()
+	defer s.eng.mu.RUnlock()
+	k := key(node, metric)
+	_, live := s.eng.states[k]
+	_, ser := s.eng.series[k]
+	return live || ser
 }

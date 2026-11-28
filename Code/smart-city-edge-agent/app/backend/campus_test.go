@@ -7,6 +7,7 @@ package main
 import (
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -465,5 +466,31 @@ func TestCampusUsesCorrectedClock(t *testing.T) {
 	c.poll()
 	if bad.Load() != 0 {
 		t.Fatalf("poll sent %d bad ranges", bad.Load())
+	}
+}
+
+// night sweep 2026-11-27 #108: a down campus API is retried less and less often (cap 2 min) and reports since when.
+func TestCampusBackoffOfflineSince(t *testing.T) {
+	if campusBackoff(5*time.Second, 9) != 0 || campusBackoff(5*time.Second, 10) != 10*time.Second ||
+		campusBackoff(5*time.Second, 12) != 40*time.Second || campusBackoff(5*time.Second, 40) != 2*time.Minute {
+		t.Fatal("backoff", campusBackoff(5*time.Second, 12), campusBackoff(5*time.Second, 40))
+	}
+	c := &campusClient{every: 5 * time.Second, results: map[string]int{}}
+	c.setOnline(true, nil)
+	good := c.lastOK
+	for i := 0; i < 12; i++ {
+		c.setOnline(false, errors.New("connection refused"))
+	}
+	st := c.Status()
+	if st["offline_since_unix"].(int64) != good.Unix() || st["online"] != false {
+		t.Fatal("offline since", st)
+	}
+	c.poll() // inside the back-off window: skipped, no request
+	if c.Status()["skipped_polls"].(int) != 1 {
+		t.Fatal("poll not skipped", c.Status())
+	}
+	c.setOnline(true, nil)
+	if c.Status()["offline_since_unix"].(int64) != 0 {
+		t.Fatal("not cleared", c.Status())
 	}
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"math"
 	"os"
 	"path/filepath"
@@ -380,7 +381,7 @@ var chatFirstRe = regexp.MustCompile(`(?i)\bwhich\b[^.?!]*\bfirst\b|\bwhat\b[^.?
 
 // chatPriority: the open incident to handle first: severity, then a sensor still flagged now, then the newest; several
 // incidents on the same sensor count once (the newest stands for them).
-func (t chatTools) chatPriority(q string, dom string) (chatV25, bool) {
+func (t chatTools) chatPriority(q string, dom string, place chatPlace, nodes map[string]NodeInfo) (chatV25, bool) {
 	wantCrit := regexp.MustCompile(`(?i)\bcritical\b`).MatchString(q)
 	args := map[string]any{"workflow": wfNeeds}
 	if dom != "" {
@@ -392,7 +393,7 @@ func (t chatTools) chatPriority(q string, dom string) (chatV25, bool) {
 	}
 	var open []chatInc
 	for _, ci := range incs {
-		if wfOf(ci.inc) == wfNeeds {
+		if wfOf(ci.inc) == wfNeeds && chatIncAt(ci, place, nodes) {
 			open = append(open, ci)
 		}
 	}
@@ -413,6 +414,9 @@ func (t chatTools) chatPriority(q string, dom string) (chatV25, bool) {
 		open = c
 	}
 	if len(open) == 0 {
+		if place.Words {
+			return chatV25{fmt.Sprintf("No incident %s is waiting for a decision right now.", chatPlaceWords(place)), []ChatTool{chatToolRec("open_incidents", args, map[string]any{"total": 0})}}, true
+		}
 		return chatV25{"No incident is waiting for a decision right now.", []ChatTool{chatToolRec("open_incidents", args, map[string]any{"total": 0})}}, true
 	}
 	live := func(ci chatInc) bool {
@@ -482,6 +486,16 @@ func (t chatTools) chatPriority(q string, dom string) (chatV25, bool) {
 		return ""
 	}
 	text += note(first)
+	// night sweep 2026-11-27 #68: "what should the team check first for the KH level 3 issue": that incident's open steps
+	if place.Words && regexp.MustCompile(`(?i)\b(check|do|fix|inspect|steps?)\b`).MatchString(q) {
+		rt := chatRoute{Tool: "get_incident", Args: map[string]any{"id": first.inc.ID}, Act: "do"}
+		if res, err := t.run("get_incident", rt.Args); err == nil {
+			t.chatAugment(rt, res)
+			if steps, _ := res["_open_steps"].([]string); len(steps) > 0 {
+				text += " First checks: " + strings.Join(steps[:min(3, len(steps))], "; ") + "."
+			}
+		}
+	}
 	if len(tops) > 1 {
 		var ps []string
 		for _, ci := range tops[1:min(4, len(tops))] {
@@ -601,9 +615,7 @@ func (t chatTools) chatKnowledge(q string, place chatPlace, metrics []string, no
 			text += " " + line + "."
 		}
 	}
-	if _, up, _ := fogC.State(); !up {
-		text += " Deeper lookup (documents and guidance on the fog server) is unavailable right now, so this comes only from the incident and the alert limits on this device."
-	}
+	// night sweep 2026-11-27 #118: no "fog server" note on every answer; the facts above are the answer
 	return chatV25{text, tools}, true
 }
 
@@ -621,7 +633,7 @@ func (t chatTools) chatPolishRoutes(q string, history []ChatMsg, place chatPlace
 	case chatNotSendRe.MatchString(q) && chatWhichRe.MatchString(q) && place.Node == "":
 		return t.chatNotSending(place, metrics, nodes), true
 	case chatFirstRe.MatchString(q) && !chatCountQRe.MatchString(q) && (incWords || regexp.MustCompile(`(?i)\b(critical|serious|urgent|alerts?|incidents?)\b`).MatchString(q)):
-		return t.chatPriority(q, dom)
+		return t.chatPriority(q, dom, place, nodes)
 	case chatForecastRe.MatchString(q) && len(metrics) > 0:
 		return t.chatForecast(q, chatRefOf(history), place, metrics, nodes)
 	case chatPeakRe.MatchString(q) && len(metrics) > 0 && len(picks) > 0 && place.Words && span.Found() && !incWords && !chatCountQRe.MatchString(q):
@@ -638,7 +650,7 @@ var (
 	chatLinesRe = regexp.MustCompile(`(?i)\b(?:in|within|using|just)\s+(one|1|two|2|three|3)\s+(?:short\s+)?(?:lines?|sentences?)\b|\b(one|two|three)[- ](?:line|sentence)\b|\bone[- ]liner\b|\bin\s+a\s+(?:single\s+)?(?:line|sentence)\b`)
 	chatShortRe = regexp.MustCompile(`(?i)\b(short(ly|er)?|brief(ly)?|concise(ly)?|tl;?dr|in\s+short|quick(ly)?)\b`)
 	chatMgrRe   = regexp.MustCompile(`(?i)\bfor\s+(my|the|our)\s+(manager|boss|supervisor|principal|director|dean|head|chief)\b|\bnon[- ]technical\b|\bfor\s+management\b`)
-	chatSimpRe  = regexp.MustCompile(`(?i)\b(simple|plain|easy|layman'?s?|everyday)\s+(words|terms|language|english)\b|\beli5\b|\blike\s+i'?m\s+(five|new|a\s+beginner)\b|\bnot\s+an?\s+\w+\s+(guy|person|expert)\b`)
+	chatSimpRe  = regexp.MustCompile(`(?i)\b(simple|plain|easy|layman'?s?|everyday)\s+(words|terms|language|english)\b|\beli5\b|\bsimple\s+(mein|me|main|bhasha)\b|\blike\s+i'?m\s+(five|new|a\s+beginner)\b|\bnot\s+an?\s+\w+\s+(guy|person|expert)\b`)
 	// text the plain-words pass drops: rule thresholds and reading stamps in brackets, the "ask why" hint
 	chatParenRe = regexp.MustCompile(`\s*\([^()]{18,}\)`)
 	chatHintRe  = regexp.MustCompile(`\s*Ask why, or what to do, for its details\.`)
@@ -755,6 +767,10 @@ var (
 		{regexp.MustCompile(`\s*[\[(]\s*S\d+\.E\d+(?:\s*[,;]\s*S\d+\.E\d+)*\s*[\])]`), ""},
 		{regexp.MustCompile(`\s*\bS\d+\.E\d+\b`), ""},
 		{regexp.MustCompile(`\s*\[E\d\]`), ""},
+		// night sweep 2026-11-27 #118: no infrastructure jargon in an operator answer
+		{regexp.MustCompile(`(?i)\bthe\s+fog\s+(server\s+)?(is\s+)?(offline|unreachable|down|not\s+reachable)\b`), "the campus server is not reachable"},
+		{regexp.MustCompile(`(?i)\bfog\s+server\b`), "campus server"},
+		{regexp.MustCompile(`(?i)\bfrom\s+the\s+fog\b`), "from the campus server"},
 	}
 	chatIDWords = strings.NewReplacer("air_quality", "air quality", "sensor_fault", "sensor fault", "room_temp", "room temperature", "power_kw", "power",
 		"ac_units_on", "AC units on", "ac_on", "AC on", "no_action_needed", "no action needed", "false_alarm", "false alarm",
@@ -818,7 +834,16 @@ var chatOpenQRe = regexp.MustCompile(`(?i)\b(why|how\s+come|should\s+(i|we)|what
 // chatSendToReasoner: an open question whose template answer is data (it has tools) is written by the reasoner from
 // those facts, unless the user asked for a format the template trims exactly, or the answer is a refusal.
 func chatSendToReasoner(q string, m ChatMsg) bool {
-	if !chatOpenQRe.MatchString(q) || len(m.Tools) == 0 || chatFormatOf(q).Lines > 0 || chatFormatOf(q).Plain {
+	if len(m.Tools) == 0 || strings.HasPrefix(m.Text, "There is no incident ") {
+		return false
+	}
+	// night sweep 2026-11-27 #24 / #66: a multi-part question ("explain X in one sentence, then give the value, then say
+	// whether it needs action") and "explain ... in simple words" are written by the model from the template's facts
+	// (the template answered one part / only the title)
+	if chatMultiPart(q) || chatExplainAskRe.MatchString(q) && chatFormatOf(q).Plain {
+		return !strings.HasPrefix(m.Text, "I can't do that") && !strings.HasPrefix(m.Text, "Sorry, that's outside") && !strings.HasPrefix(m.Text, "That's outside")
+	}
+	if !chatOpenQRe.MatchString(q) || chatFormatOf(q).Lines > 0 || chatFormatOf(q).Plain {
 		return false
 	}
 	return !strings.HasPrefix(m.Text, "I can't do that") && !strings.HasPrefix(m.Text, "Sorry, that's outside") && !strings.HasPrefix(m.Text, "That's outside")
@@ -850,15 +875,62 @@ func (c *chatStore) archiveOldLocked(now time.Time) int {
 	if len(old) == 0 {
 		return 0
 	}
+	c.appendArchiveLocked(old, now)
+	return len(old)
+}
+
+// night sweep 2026-11-27 #52b: chats_archive.json is local only (never uploaded to Supabase or the fog); entries older
+// than 90 days drop out and the file stays under 5 MB (oldest first out).
+const (
+	chatArchiveKeepDays = 90
+	chatArchiveMaxBytes = 5 << 20
+	chatKeepSessions    = 100
+)
+
+// appendArchiveLocked adds sessions to state/chats_archive.json and rotates it (90 days / 5 MB).
+func (c *chatStore) appendArchiveLocked(add []*ChatSession, now time.Time) {
 	p := filepath.Join(filepath.Dir(c.path), "chats_archive.json")
 	var have []*ChatSession
 	if b, err := os.ReadFile(p); err == nil {
 		_ = json.Unmarshal(b, &have)
 	}
-	have = append(have, old...)
-	if b, err := json.Marshal(have); err == nil {
-		_ = atomicWrite(p, b, 0o644)
+	have = append(have, add...)
+	cut := now.Unix() - chatArchiveKeepDays*86400
+	keep := have[:0]
+	for _, s := range have {
+		if s != nil && (s.Updated == 0 || s.Updated >= cut) {
+			keep = append(keep, s)
+		}
 	}
+	sort.SliceStable(keep, func(i, j int) bool { return keep[i].Updated < keep[j].Updated })
+	b, err := json.Marshal(keep)
+	for err == nil && len(b) > chatArchiveMaxBytes && len(keep) > 0 {
+		drop := len(keep)/10 + 1
+		keep = keep[drop:]
+		b, err = json.Marshal(keep)
+	}
+	if err == nil {
+		if werr := atomicWrite(p, b, 0o644); werr != nil {
+			log.Printf("chat: archive not saved: %v", werr)
+		}
+	}
+}
+
+// archiveOverflowLocked: sessions beyond the newest 100 move to the archive (they were dropped at the next restart).
+func (c *chatStore) archiveOverflowLocked(now time.Time) int {
+	if len(c.S) <= chatKeepSessions {
+		return 0
+	}
+	list := make([]*ChatSession, 0, len(c.S))
+	for _, s := range c.S {
+		list = append(list, s)
+	}
+	sort.Slice(list, func(i, j int) bool { return list[i].Updated > list[j].Updated })
+	old := list[chatKeepSessions:]
+	for _, s := range old {
+		delete(c.S, s.ID)
+	}
+	c.appendArchiveLocked(old, now)
 	return len(old)
 }
 

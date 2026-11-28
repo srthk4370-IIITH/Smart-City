@@ -103,7 +103,8 @@ func TestHealthStaleness(t *testing.T) {
 	st[5].Status, st[5].DataOK, st[5].Last = "insufficient_data", false, nil
 	h := buildHealth(hsim, 1, st, nil, map[string]*healthMark{})
 	p := hfind(h, "power")
-	if p.Fresh || len(p.Stale) != 1 || p.Headline != "normal" {
+	// night sweep 2026-11-27 #105: a stale sensor (3 missed readings) counts as no data
+	if p.Fresh || len(p.Stale) != 1 || p.Headline != "insufficient_data" || p.Counts["insufficient_data"] != 1 {
 		t.Fatalf("stale power: %+v", p)
 	}
 	o := hfind(h, "occupancy")
@@ -118,23 +119,30 @@ func TestHealthStaleness(t *testing.T) {
 func TestHealthTrend(t *testing.T) {
 	marks := map[string]*healthMark{}
 	st := baseStates()
+	// the readings keep arriving as sensor time moves (else they go stale, #105, and count as no data)
+	buildHealthAt := func(sim int64) HealthOut {
+		for i := range st {
+			st[i].Updated = sim
+		}
+		return buildHealth(sim, 1, st, nil, marks)
+	}
 	buildHealth(hsim, 1, st, nil, marks)
 	st[0].Status = "warning"
-	aq := hfind(buildHealth(hsim+bucketSec, 1, st, nil, marks), "air_quality")
+	aq := hfind(buildHealthAt(hsim+bucketSec), "air_quality")
 	if aq.Trend != "elevated" || aq.TrendFrom != "normal" || aq.Since != hsim+bucketSec {
 		t.Fatalf("elevated: %+v", aq)
 	}
 	// no change: arrow held for healthTrendHold, then steady; since unchanged
-	aq = hfind(buildHealth(hsim+2*bucketSec, 1, st, nil, marks), "air_quality")
+	aq = hfind(buildHealthAt(hsim+2*bucketSec), "air_quality")
 	if aq.Trend != "elevated" {
 		t.Fatalf("held: %+v", aq)
 	}
-	aq = hfind(buildHealth(hsim+bucketSec+healthTrendHold+bucketSec, 1, st, nil, marks), "air_quality")
+	aq = hfind(buildHealthAt(hsim+bucketSec+healthTrendHold+bucketSec), "air_quality")
 	if aq.Trend != "steady" || aq.Since != hsim+bucketSec {
 		t.Fatalf("steady: %+v", aq)
 	}
 	st[0].Status = "normal"
-	aq = hfind(buildHealth(hsim+20*bucketSec, 1, st, nil, marks), "air_quality")
+	aq = hfind(buildHealthAt(hsim+20*bucketSec), "air_quality")
 	if aq.Trend != "curbed" || aq.TrendFrom != "warning" {
 		t.Fatalf("curbed: %+v", aq)
 	}

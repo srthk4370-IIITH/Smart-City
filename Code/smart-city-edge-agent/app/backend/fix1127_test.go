@@ -184,3 +184,47 @@ func TestAgreeLines(t *testing.T) {
 		t.Fatalf("one sensor rising is not agreement: %q", l)
 	}
 }
+
+// 2026-11-28 re-run INC-0016: sensor_fault verdict on a corroborated heat rise -> title/root cause/explanation replaced.
+func TestCorroboratedRiseStrongVerdictReplaced(t *testing.T) {
+	ramp := func(a, b float64) []float64 {
+		xs := make([]float64, 8)
+		for i := range xs {
+			xs[i] = a + (b-a)*float64(i)/7
+		}
+		return xs
+	}
+	inc := &Incident{Sensors: []SensorRef{
+		{Node: "SR-AQ-KH03-03", Metric: "temp", Xs: ramp(24.6, 31.8)},
+		{Node: "AC-KH03", Metric: "room_temp", Context: true, Xs: ramp(23.7, 30.8)},
+		{Node: "AC-KH03", Metric: "ac_units_on", Context: true, Xs: []float64{2, 2, 0, 0, 0, 0, 0, 0}},
+	}}
+	rep := &Report{Severity: "sensor_fault", Label: "sensor_fault", Title: "Point sensor reading not credible (KH building, level 03)",
+		RootCause:   "A local heat source or a fault on one point sensor; the AC's own sensor reads normal and the room power has not changed.",
+		Explanation: "Do not read the room as heated: one small sensor disagrees with the AC sensor (30.8 C) and with the room power."}
+	contextFixReport(rep, inc)
+	if rep.Severity == "sensor_fault" || rep.Title != "" || strings.Contains(rep.RootCause, "reads normal") ||
+		strings.Contains(rep.Explanation, "Do not read") || !strings.Contains(rep.RootCause, "AC units are off") || rep.Label != "hvac_or_thermal_issue" {
+		t.Fatalf("%+v", rep)
+	}
+}
+
+// 2026-11-28 re-run INC-0019: a per-unit AC room sensor gets the room air sensor and the AC units as context.
+func TestContextForPerUnitACSensor(t *testing.T) {
+	e := dqEngine(t)
+	role := e.Meta.Nodes["AC-KH03"].Role
+	if role == "" {
+		t.Fatal("no AC-KH03 in the sensor bank")
+	}
+	e.mu.RLock()
+	end := e.sim
+	e.mu.RUnlock()
+	picks := e.ContextFor([]Candidate{{Node: "AC-KH03", Metric: "room_temp", Role: role, End: end}}, 6)
+	got := map[string]bool{}
+	for _, p := range picks {
+		got[p.Cand.Node+"/"+p.Cand.Metric] = true
+	}
+	if !got["SR-AQ-KH03-03/temp"] {
+		t.Fatalf("room air sensor missing from context: %v (role %s)", got, role)
+	}
+}

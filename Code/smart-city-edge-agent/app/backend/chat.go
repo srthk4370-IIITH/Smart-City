@@ -188,6 +188,7 @@ func (l htpdChatLLM) Complete(ctx context.Context, prompt string, maxNew int, on
 	if err := htpdReasonCaps(ctx); err != nil {
 		return "", CallMetrics{}, err
 	}
+	thermalYield(ctx, "chat", 30*time.Second) // night sweep 2026-11-27 #88 (stream D): chat waits up to 30 s for a hot NPU; alerts never do
 	r, err := htpdCallOpts(ctx, "reason", []string{prompt}, 3*time.Minute,
 		map[string]any{"keep": true, "prefix": l.prefix, "max_new": maxNew}, func(_ int, p string) {
 			if onPiece != nil {
@@ -264,6 +265,7 @@ func newChatStore(dir string) *chatStore {
 }
 
 func (c *chatStore) saveLocked() {
+	c.archiveOverflowLocked(nowTime()) // night sweep 2026-11-27 #52b: beyond 100 sessions -> local archive, not lost
 	list := c.listLocked()
 	b, _ := json.Marshal(list)
 	if err := atomicWrite(c.path, b, 0o644); err != nil {
@@ -509,7 +511,7 @@ func (c *chatStore) answer(ctx context.Context, r *Reasoner, history []ChatMsg, 
 		onPiece = stream.piece
 	}
 	for {
-		prompt := chatPrompt(prefix, history, modelQ, turns)
+		prompt := chatPrompt(prefix, chatModelHistory(history), modelQ, turns) // #21: no unknown-id exchanges
 		stream.begin(prompt)
 		text, _, err := llm.Complete(ctx, prompt, chatMaxNew, onPiece)
 		if err != nil {
@@ -1233,6 +1235,8 @@ func (t chatTools) run(name string, args map[string]any) (map[string]any, error)
 		}
 		return map[string]any{"outcome_counts": counts, "maintenance_counts": map[string]int{}, "maintenance": []any{},
 			"items": items, "coverage": chatCoverage(a, b, t.now)}, nil
+	case "gate_status": // night sweep 2026-11-27 #92: what the AI gate is waiting for (gateview.go)
+		return t.gateStatus(args), nil
 	case "rank_readings", "current_levels", "recent_incidents", "open_incidents", "faulty_sensors", "what_if":
 		return t.runV3(name, args) // chat_tools_v3.go
 	case "get_site_tree", "nodes_under", "linked_equipment", "site_status":

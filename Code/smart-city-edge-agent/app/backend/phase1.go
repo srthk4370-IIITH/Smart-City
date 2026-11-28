@@ -173,33 +173,34 @@ func siteScope(ix *SiteIndex, sensors []string) string {
 
 func (s *Server) dataHealth() map[string]any {
 	now := nowTime().Unix()
-	_, states, _ := s.eng.Snapshot()
+	sim, states, _ := s.eng.Snapshot()
 	var seen map[string]int64
 	if campus != nil {
 		seen = campus.SensorAt()
 	}
-	staleS := int64(profInt("health_stale_min", 30, 5, 1440)) * 60
+	// night sweep 2026-11-27 #105: one rule everywhere (sensorStale: 3 missed readings), no longer 30 min here
+	staleS := int64(staleMissed * bucketSec)
 	var rows []map[string]any
 	counts := map[string]int{}
 	for _, st := range states {
 		k := key(st.Node, st.Metric)
 		row := map[string]any{"node": st.Node, "metric": st.Metric, "role": st.Role, "quality": st.Quality, "quality_reason": st.QualityWhy,
-			"status": st.Status, "data_ok": st.DataOK}
+			"status": st.Status, "now_status": st.NowStatus, "data_ok": st.DataOK}
 		ts := seen[k]
 		state := "missing"
 		if ts > 0 {
 			row["last_seen_utc"] = time.Unix(ts, 0).UTC().Format(time.RFC3339)
 			row["age_s"] = now - ts
 			state = "fresh"
-			if now-ts > staleS {
+			if sensorStale(ts, now) {
 				state = "stale"
 			}
 		} else if st.Updated > 0 {
 			// slider / MQTT / /api/ingest input (or the campus API down while another feed runs): the engine's own
 			// update time. Sweep 2026-11-27: with a campus URL set, live MQTT/ingest readings were reported "missing".
 			state = "fresh"
-			row["age_s"] = now - st.Updated
-			if now-st.Updated > staleS {
+			row["age_s"] = sim - st.Updated // engine (sensor) time on both sides
+			if sensorStale(st.Updated, sim) {
 				state = "stale"
 			}
 		}

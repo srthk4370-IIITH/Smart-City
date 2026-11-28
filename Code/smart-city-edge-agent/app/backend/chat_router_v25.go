@@ -156,6 +156,8 @@ var (
 )
 
 var (
+	chatExistRe      = regexp.MustCompile(`(?i)\b(is|are|was|were|be|been)\s+there\b|\bthere\s+(is|are|was|were|has|have)\b|\bit\s+is\s+\w+er\s+than\b|^\s*is\s+it\s+\w+er\s+than\b`)
+	chatCampusRe     = regexp.MustCompile(`(?i)\b(campus|overall|everywhere|whole\s+(site|device|system)|all\s+(sensors|buildings|domains|readings)|on\s+this\s+device)\b`)
 	chatThisTimeRe   = regexp.MustCompile(`(?i)\bthis\s+(week|month|year|morning|afternoon|evening|hour|weekend|quarter)\b`)
 	chatStrongBackRe = regexp.MustCompile(`(?i)\b(those|them|these|that\s+(sensor|room|incident|alert|one|node|building|level|floor)|the\s+same|same\s+(sensor|room|one|place)|wahan|waha|wahaan|unme|unmein|inme|inmein|uska|uski)\b`)
 	chatNewTopicRe   = regexp.MustCompile(`(?i)\bfalse\s+(alarms?|alerts?|positives?)\b|\bwhen\s+(will|would)\b|\b(cross|reach|exceed)\s+\d|\bforecast\b|\bwhich\b[^.?!]*\bfirst\b|\bnot\s+(sending|reporting)\b`)
@@ -255,7 +257,7 @@ var chatMetricWords = []struct {
 	{regexp.MustCompile(`(?i)\bwater\s*level\b|\btank\s+level\b|\btanks?\b|\boverflow\w*\b`), "level"},
 	{regexp.MustCompile(`(?i)\bflow\b|\bleak\w*`), "flow"},
 	{regexp.MustCompile(`(?i)\bwind\b|\bhawa\b`), "wind"},
-	{regexp.MustCompile(`(?i)\btemp\w*|\bhot\b|\bcold\b|\bwarm\w*|\bgaram\b|\bthanda\b|\bheat\b|\bcooling\b|\bcool\b`), "temp"},
+	{regexp.MustCompile(`(?i)\btemp\w*|\bhot\b|\bhott?(er|est)\b|\bcold(er|est)?\b|\bwarm\w*|\bgaram\b|\bthanda\b|\bheat\b|\bcooling\b|\bcool\b`), "temp"},
 	{regexp.MustCompile(`(?i)\bair\s+quality\b|\baqi\b`), "aq"},
 }
 
@@ -586,6 +588,9 @@ func chatRefOf(history []ChatMsg) *chatRef {
 }
 
 func chatRefOfMsg(m ChatMsg) *chatRef {
+	if chatUnknownAnswer(m) {
+		return nil // night sweep 2026-11-27 #21: an id the device does not have is never carried forward
+	}
 	ids := chatIDs(m.Text)
 	for j := len(m.Tools) - 1; j >= 0; j-- {
 		tl := m.Tools[j]
@@ -657,6 +662,17 @@ func chatIsFollowUp(q string, p chatPlace, metrics []string, span chatSpan) bool
 	if chatStrongBackRe.MatchString(q2) {
 		return true
 	}
+	// night sweep 2026-11-27 #14: "how many incidents were there today?" ("there" is existential) and "is it hotter
+	// than usual outside today?" (its own metric AND place) or a campus-wide question start fresh; the last sensor is
+	// carried only into a true follow-up ("and what about humidity?", "what about yesterday?")
+	q2 = chatExistRe.ReplaceAllString(q2, " ")
+	ownPlace := p.Words || p.Outdoor || chatCampusRe.MatchString(q2)
+	if ownPlace && (len(metrics) > 0 || chatCampusRe.MatchString(q2)) {
+		return false
+	}
+	if chatIncQRe.MatchString(q2) && !chatBackRefRe.MatchString(q2) && !chatFollowStRe.MatchString(q2) {
+		return false
+	}
 	// a question about a new topic (false alarms, a forecast, which critical first, silent sensors) starts fresh
 	if chatNewTopicRe.MatchString(q2) {
 		return false
@@ -716,6 +732,10 @@ func (t chatTools) chatRouteV25(q string, history []ChatMsg) (chatV25, bool) {
 	var sensorIDs []string
 	for _, p := range picks {
 		sensorIDs = append(sensorIDs, p.Node)
+	}
+	// night sweep 2026-11-27 (chat_handson.go): greeting, unknown ids, early look, gate, history, verdict, live state
+	if r, ok := t.chatHandsonRoutes(q, history, place, metrics, span, dom, nodes, picks); ok && r.Text != "" {
+		return r, true
 	}
 	if r, ok := t.chatPolishRoutes(q, history, place, metrics, span, dom, nodes, picks); ok && r.Text != "" {
 		return r, true
@@ -1013,6 +1033,10 @@ func (t chatTools) chatReadingLine(p chatSensorPick) string {
 			why = "no new readings"
 		}
 		line += fmt.Sprintf(", but the sensor is silent (%s), so this is the last value it sent", why)
+	case chatStaleAt(s.Updated, t.now.Unix()):
+		// night sweep 2026-11-27 #91 / #105: 3 missed readings = stale, never "fine"
+		line += fmt.Sprintf(", but no new reading for %s, so this value may be out of date", chatAge(t.now.Sub(time.Unix(s.Updated, 0))))
+		st = "no_data"
 	}
 	if m, ok := Metrics[s.Role+"/"+s.Metric]; ok && m.HasLimits {
 		dir := "above"
@@ -1092,7 +1116,8 @@ func (t chatTools) chatMissing(p chatPlace, missing []string, nodes map[string]N
 		if len(elsewhere) <= 3 {
 			v, tl := t.chatValues(elsewhere, false)
 			if v != "" {
-				s += " The device measures it here: " + v
+				// night sweep 2026-11-27 #16: lead with the answer, the missing sensor after it
+				s = v + fmt.Sprintf(" (There is no %s sensor %s; these are the sensors that measure it.)", name, where)
 				tools = append(tools, tl)
 			}
 		}

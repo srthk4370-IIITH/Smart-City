@@ -223,13 +223,51 @@ func (e *Engine) relatedToBatch(k string) bool {
 // anyOtherAbnormalRelated: anyOtherAbnormal restricted to sensors related to the batch opener (an unrelated young
 // event elsewhere on campus no longer keeps this batch waiting). Caller holds e.mu.
 func anyOtherAbnormalRelated(e *Engine, abnormal map[string]Candidate) bool {
-	pr := trigRules().AbnormalOfWindow
 	for k := range abnormal {
-		if st := e.states[k]; st != nil && !st.alerted && st.AbnormalInWindow < pr && e.relatedToBatch(k) {
+		if e.holdsBatchLocked(k) {
 			return true
 		}
 	}
 	return false
+}
+
+// holdsBatchLocked: night sweep 2026-11-27 #77, sensor k keeps the open batch waiting: not reported, still too young,
+// related to the opener and abnormal NOW (its newest reading counted). A sensor back to normal cannot mature, so it
+// never holds (board: one 2600 ppm CO2 reading held the KH batch 25 min). Caller holds e.mu.
+func (e *Engine) holdsBatchLocked(k string) bool {
+	st := e.states[k]
+	return st != nil && !st.alerted && st.nowAb && st.AbnormalInWindow < trigRules().AbnormalOfWindow && e.relatedToBatch(k)
+}
+
+// criticalMatureLocked: #77, a mature, unreported sensor related to the batch reads beyond its critical limit now:
+// the batch closes at once. Caller holds e.mu.
+func (e *Engine) criticalMatureLocked(abnormal map[string]Candidate) bool {
+	need := trigRules().AbnormalOfWindow
+	for k := range abnormal {
+		st := e.states[k]
+		if st == nil || st.alerted || st.AbnormalInWindow < need || !e.relatedToBatch(k) {
+			continue
+		}
+		if nowStatusOf(st, e.sim) == "critical" {
+			return true
+		}
+	}
+	return false
+}
+
+// batchWaitingLocked: the sensors (site ids, sorted) the open batch waits for (#84 gate.batch.waiting_for).
+func (e *Engine) batchWaitingLocked() []string {
+	out := []string{}
+	if e.batchUntil == 0 {
+		return out
+	}
+	for k := range e.states {
+		if e.holdsBatchLocked(k) {
+			out = append(out, keySite(k))
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 // splitLast: the newest split decision as text (for the event log and /api/status), e.g.
@@ -296,7 +334,7 @@ func (e *Engine) releaseUnrelatedLocked(abnormal map[string]Candidate) []Candida
 		wait := false
 		for k2 := range abnormal {
 			st2 := e.states[k2]
-			if k2 != k && st2 != nil && !st2.alerted && st2.AbnormalInWindow < tr.AbnormalOfWindow &&
+			if k2 != k && st2 != nil && !st2.alerted && st2.nowAb && st2.AbnormalInWindow < tr.AbnormalOfWindow && // #77
 				relatedSensors(ix, keySite(k), keySite(k2), role(k), role(k2)) {
 				wait = true
 				break

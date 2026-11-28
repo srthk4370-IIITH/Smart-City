@@ -57,3 +57,22 @@ func TestVoiceAbsentBinary(t *testing.T) {
 		t.Fatal("clean")
 	}
 }
+
+// night sweep 2026-11-27 #7: whisper's silence outputs ("you") come back as no speech.
+func TestVoiceNoSpeech(t *testing.T) {
+	defer func() { voiceRun = nil }()
+	for _, s := range []string{"you", " You. ", "Thank you.", "Thanks for watching!", ""} {
+		voiceRun = func(ctx context.Context, p string) (string, error) { return s, nil }
+		w := voicePost(wavBody(100))
+		if w.Code != 200 || !strings.Contains(w.Body.String(), `"no_speech":true`) || !strings.Contains(w.Body.String(), `"text":""`) {
+			t.Fatalf("%q -> %d %s", s, w.Code, w.Body.String())
+		}
+	}
+	voiceRun = func(ctx context.Context, p string) (string, error) { return "what about you", nil }
+	if w := voicePost(wavBody(100)); strings.Contains(w.Body.String(), "no_speech") {
+		t.Fatal("real question dropped", w.Body.String())
+	}
+	if !strings.Contains(whisperPrompt, "KH") || !strings.Contains(whisperPrompt, "pH") {
+		t.Fatal("prompt")
+	}
+}

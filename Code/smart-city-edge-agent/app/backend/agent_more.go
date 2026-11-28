@@ -121,6 +121,15 @@ func (r *Reasoner) askMoreData(ctx context.Context, inc *Incident, i int, am Mod
 	}
 	n := len(ai0.Xs)
 	bestN := n
+	if why := needMoreData(best, bestN, bestS.End); why != "" {
+		// night sweep 2026-11-27 #58: on the board the 12 h re-run (~3 s of NPU) always ended with "the larger prompt
+		// would not fit the NPU agent context" for the related-sensor round, so the request never completed. Skip it
+		// up front when the full request cannot fit agent_ctx.
+		if dead := moreDataDead(r.agentPrompt, s0, n, relatedLines(inc, s0)); dead != "" {
+			r.log(inc, fmt.Sprintf("%s agent unsure (%s): %s; no re-run, answer kept", title(s0.Role), why, dead))
+			return best, bestS, false
+		}
+	}
 	tried := s0 // the longest window asked so far
 	for round := 1; round <= maxMoreRounds; round++ {
 		why := needMoreData(best, bestN, bestS.End)
@@ -205,6 +214,34 @@ func (r *Reasoner) askMoreData(ctx context.Context, inc *Incident, i int, am Mod
 		}
 	}
 	return best, bestS, changed
+}
+
+// moreDataDead: why the more-data request cannot complete inside agent_ctx ("" = it can). The request is the longest
+// window that fits (round 1) followed by the related-sensor lines on that window (round 2); when round 2 would not
+// fit, round 1 is the dead "12 h re-run" of the board logs (night sweep 2026-11-27 #58). Without a longer window or
+// without related lines there is nothing to pre-check (the rounds skip themselves at no NPU cost).
+func moreDataDead(build func(SensorRef) (AgentInput, bool), s0 SensorRef, n int, related []string) string {
+	if len(related) == 0 {
+		return ""
+	}
+	sx := s0
+	for _, wn := range []int{v2MaxN, 96, 72} { // same choice as round 1
+		sx.WinN = wn
+		if ai, ok := build(sx); ok && agentFits(ai.Prompt) {
+			break
+		}
+	}
+	ai, ok := build(sx)
+	if !ok || len(ai.Xs) <= n || !agentFits(ai.Prompt) {
+		return "" // no longer window: round 1 is skipped anyway
+	}
+	sx.WinN = len(ai.Xs)
+	sx.ExtraEv = related
+	if ai2, ok := build(sx); ok && agentFits(ai2.Prompt) {
+		return ""
+	}
+	return fmt.Sprintf("the %s h window with %d related-sensor line(s) would not fit the NPU agent context (agent_ctx %d)",
+		hoursStr(len(ai.Xs)), len(related), htpdAgentCtx())
 }
 
 // agentFits: prompt + new-token cap + htpd layout headroom must fit the agent ctx. Overflowing it is what crashed htpd on

@@ -59,20 +59,18 @@ func (r *Reasoner) PrefetchAgent(c Candidate) {
 	if prefetchMode() == "" || r == nil || r.genie == nil || r.eng == nil {
 		return
 	}
-	r.mu.RLock()
-	busy := r.active
-	r.mu.RUnlock()
-	if busy {
+	// night sweep 2026-11-27 #104: a sensor that matures inside an open batch while an analysis runs used to be
+	// dropped for good (the engine hands each sensor over once). Now it waits for the NPU to free up, as long as
+	// the batch has not closed on it yet (then the real agent run makes the prefetch pointless).
+	if !r.pfWaitIdle(c, pfIdleWait) {
 		return
 	}
 	pfRun.Lock() // one prefetch at a time; the others wait their turn (a batch may mature several sensors at once)
 	defer pfRun.Unlock()
-	r.mu.RLock()
-	busy = r.active
-	r.mu.RUnlock()
-	if busy {
+	if !r.pfWaitIdle(c, pfIdleWait) {
 		return
 	}
+	thermalYield(context.Background(), "prefetch", thermalYieldMax) // #88: non-urgent NPU work waits for a hot NPU to cool
 
 	s := r.sensorRef("S1", c, "")
 	ai, ok := r.agentPrompt(s)
@@ -109,6 +107,38 @@ func (r *Reasoner) PrefetchAgent(c Candidate) {
 	pfS.Unlock()
 	log.Printf("prefetch: %s %s agent done in %.1fs during the gate wait (%s): %s/%s", c.Node, c.Metric,
 		time.Since(t0).Seconds(), prefetchMode(), call.Parsed.Pattern, call.Parsed.Status)
+}
+
+var (
+	pfIdleWait = 10 * time.Minute // longest a matured sensor waits for a running analysis to finish
+	pfPoll     = 5 * time.Second
+)
+
+// pfWaitIdle waits (bounded) until no analysis runs; false when the wait ran out or the sensor already alerted
+// (its batch closed and the real agent ran, or runs, on it).
+func (r *Reasoner) pfWaitIdle(c Candidate, max time.Duration) bool {
+	t0 := time.Now()
+	for {
+		r.mu.RLock()
+		busy := r.active
+		r.mu.RUnlock()
+		if r.eng != nil {
+			r.eng.mu.RLock()
+			st := r.eng.states[key(c.Node, c.Metric)]
+			alerted := st != nil && st.alerted
+			r.eng.mu.RUnlock()
+			if alerted {
+				return false
+			}
+		}
+		if !busy {
+			return true
+		}
+		if time.Since(t0) >= max {
+			return false
+		}
+		time.Sleep(pfPoll)
+	}
 }
 
 // prefetchTake: the prefetched answer for sensor s when it may be reused (mode reuse, same rule finding, <= 3

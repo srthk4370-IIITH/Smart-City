@@ -45,7 +45,8 @@ func whisperRun(ctx context.Context, wav string) (string, error) {
 	}
 	ctx, cancel := context.WithTimeout(ctx, voiceTimeout)
 	defer cancel()
-	args := []string{"-n", "19", bin, "-m", model, "-f", wav, "-t", "2", "-l", "en", "-nt", "-np"}
+	// night sweep 2026-11-27 #9: a short campus vocabulary prompt helps tiny.en with names ("in KH", not "and KH").
+	args := []string{"-n", "19", bin, "-m", model, "-f", wav, "-t", "2", "-l", "en", "-nt", "-np", "--prompt", whisperPrompt}
 	name := "nice"
 	if _, err := exec.LookPath("nice"); err != nil { // toybox has nice on Android; fall back to no nice
 		name, args = bin, args[2:]
@@ -64,9 +65,25 @@ func whisperRun(ctx context.Context, wav string) (string, error) {
 
 var voiceNoise = regexp.MustCompile(`[\[\(][^\]\)]*[\]\)]`) // [BLANK_AUDIO], (music) ...
 
+// whisperPrompt: campus words the operator says (night sweep 2026-11-27 #9).
+const whisperPrompt = "Campus sensors in KH, VN, SB buildings, level 3. pH, TDS, CO2, PM2.5, AC, feeder, power factor, INC-0012."
+
 func cleanTranscript(s string) string {
 	s = voiceNoise.ReplaceAllString(s, " ")
 	return strings.Join(strings.Fields(s), " ")
+}
+
+// noSpeech: whisper's well-known outputs for silence or noise (3 s of silence -> "you").
+// night sweep 2026-11-27 #7: answer "heard nothing" instead of sending "you" to the chat.
+func noSpeech(s string) bool {
+	t := strings.ToLower(strings.TrimSpace(s))
+	t = strings.Trim(t, " .,!?'\"-")
+	switch t {
+	case "", "you", "thank you", "thanks", "thank you very much", "thanks for watching", "thank you for watching",
+		"bye", "bye bye", "okay", "ok", "so", "uh", "um", "hmm", "mm", "the end", "silence", "blank audio":
+		return true
+	}
+	return false
 }
 
 func (s *Server) voiceRoutes(mux *http.ServeMux) {
@@ -108,6 +125,10 @@ func (s *Server) voiceRoutes(mux *http.ServeMux) {
 		text, err := run(r.Context(), f.Name())
 		if err != nil {
 			http.Error(w, err.Error(), 503)
+			return
+		}
+		if noSpeech(text) { // #7: empty text = voice.js says "Heard nothing"
+			writeJSON(w, map[string]any{"text": "", "no_speech": true})
 			return
 		}
 		writeJSON(w, map[string]any{"text": text})

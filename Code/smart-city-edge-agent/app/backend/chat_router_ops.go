@@ -40,6 +40,9 @@ func chatLastIncID(history []ChatMsg) string {
 		if history[i].Role != "assistant" || history[i].Busy {
 			continue
 		}
+		if chatUnknownAnswer(history[i]) {
+			return "" // night sweep 2026-11-27 #21
+		}
 		ids := chatIDs(history[i].Text)
 		if len(ids) == 1 {
 			return ids[0]
@@ -352,6 +355,10 @@ func chatSayIncident(rt chatRoute, res map[string]any) string {
 	root, _ := res["root_cause"].(string)
 	label, _ := res["label"].(string)
 	var sens []string
+	// night sweep 2026-11-27 #67: an agent's sensor-fault read that the final report did not keep is shown as overruled,
+	// not as "looks like bias" next to a "real" verdict
+	faultVerdict := sev == "sensor_fault" || label == "sensor_fault"
+	var overruled []string
 	if ss, ok := res["sensors"].([]map[string]any); ok {
 		for _, s := range ss {
 			if s["flagged"] != true {
@@ -362,7 +369,11 @@ func chatSayIncident(rt chatRoute, res map[string]any) string {
 				d += ", pattern " + strings.ReplaceAll(p, "_", " ")
 			}
 			if fk, _ := s["fault_kind"].(string); fk != "" {
-				d += ", looks like " + fk
+				if faultVerdict {
+					d += ", looks like " + fk
+				} else {
+					overruled = append(overruled, fmt.Sprintf("%s %s (%s)", s["node"], chatMetricName(fmt.Sprint(s["metric"])), fk))
+				}
 			}
 			sens = append(sens, d)
 		}
@@ -374,6 +385,12 @@ func chatSayIncident(rt chatRoute, res map[string]any) string {
 	if len(sens) > 0 {
 		why += " Flagged: " + strings.Join(sens, "; ") + "."
 	}
+	if len(overruled) > 0 && label != "" {
+		why += " An agent first read " + strings.Join(overruled, ", ") + " as a sensor fault; the final report overruled that."
+	} else if len(overruled) > 0 {
+		why += " An agent reads " + strings.Join(overruled, ", ") + " as a possible sensor fault; the final AI report will decide."
+	}
+	early := res["refine_stage"] == "provisional"
 	state := map[string]string{wfNeeds: "It is waiting for your decision (tap I'm on it or Dismiss on the incident page).",
 		wfInProgress: "Someone tapped I'm on it and its checklist is in progress.", wfResolved: "Readings went back to normal; it waits to be closed.",
 		wfClosed: "It is closed.", wfAnalysing: "The AI is still analysing it.", wfInterrupted: "Its analysis was interrupted."}[fmt.Sprint(res["workflow"])]
@@ -392,11 +409,18 @@ func chatSayIncident(rt chatRoute, res map[string]any) string {
 	}
 	switch rt.Act {
 	case "realfault":
-		verdict := fmt.Sprintf("The AI judged it a real %s problem, not a sensor fault.", chatSevName(sev))
-		if sev == "sensor_fault" || label == "sensor_fault" {
-			verdict = "The AI judged it a sensor fault, not a real problem in the building."
+		verdict := fmt.Sprintf("Real. The AI judged it a real %s problem, not a sensor fault.", chatSevName(sev))
+		if faultVerdict {
+			verdict = "Sensor fault. The AI judged it a sensor fault, not a real problem in the building."
 		} else if sev == "normal" {
-			verdict = "The AI judged the readings normal: not a real problem."
+			verdict = "Not a real problem. The AI judged the readings normal."
+		}
+		switch {
+		case early:
+			verdict = "Not decided yet: this is an early look (a first idea from a young window); the full reading at the AI gate decides. So far: " +
+				strings.ToLower(verdict[:1]) + verdict[1:]
+		case label == "" && root == "" && fmt.Sprint(res["workflow"]) == wfAnalysing:
+			verdict = fmt.Sprintf("Not decided yet: the final AI report is not ready; the rules read it as %s so far.", chatSevName(sev))
 		}
 		return verdict + " " + head + " " + why + " " + state
 	case "do":

@@ -106,6 +106,7 @@ type V3Input struct {
 	MissingNote string
 	Recheck     []string
 	Agree       []string // AGREE lines: independent sensors that moved together (reportfix.go agreeLines)
+	Recovered   []string // RECOVERED lines (night sweep 2026-11-27 #95, reportfix.go recoveredLines); v4 prompt only
 	Memory      []string
 	MemoryKnown bool // false: no MEMORY block at all (lib: memory None)
 	Notes       []string
@@ -1202,6 +1203,7 @@ func (r *Reasoner) buildV3Input(inc *Incident, calls []AgentCall) V3Input {
 		in.Recheck = append(in.Recheck, fmt.Sprintf("%s %s: %s", time.Unix(rv.SimEnd, 0).In(IST).Format("15:04"), rv.Severity, rv.Title))
 	}
 	in.Agree = agreeLines(inc.Sensors)
+	in.Recovered = recoveredLines(inc.Sensors)
 	in.Memory = r.memoryLines(inc.ID, nodes, 3)
 	if strings.TrimSpace(inc.ApprovalNote) != "" {
 		in.Notes = []string{inc.ApprovalNote}
@@ -1396,6 +1398,10 @@ func (r *Reasoner) reasonV3Fallback(ctx context.Context, inc *Incident, findings
 				rc.Repairs = append(rc.Repairs, why)
 				r.log(inc, "Report guard: "+why)
 			}
+			if why := normalEventFix(&rep, inc, findings); why != "" { // night sweep 2026-11-27 #70
+				rc.Repairs = append(rc.Repairs, why)
+				r.log(inc, "Report guard: "+why)
+			}
 			r.severityGuard(inc, &rep)
 			r.faultGuard(inc, &rep, findings)
 			rep.Escalation = v3Escalation(true, run.Wanted, maxCalls, run.Results, parsed.NeedsDeeper)
@@ -1492,7 +1498,17 @@ var v3FaultTitleRe = regexp.MustCompile(`(?i)\b(fault|faulty|broken|malfunction\
 func (r *Reasoner) severityGuard(inc *Incident, rep *Report) {
 	rule := ruleSeverity(inc.Sensors)
 	b := &SeverityBasis{Rule: rule, Reasoner: rep.Severity, Final: rep.Severity}
-	if trend, ok := trendOnlyWarning(inc.Sensors); ok && rep.Severity == "normal" && rule == "warning" {
+	if what, ok := beyondCriticalNow(inc.Sensors); ok && (rep.Severity == "warning" || rep.Severity == "normal") {
+		// night sweep 2026-11-27 #82 (owner): a reading beyond its card's critical limit is a hard fact; the incident
+		// stays critical while it lasts. The AI's lower view is kept as the note on the severity basis + timeline.
+		rep.Severity, b.Final = "critical", "critical"
+		b.Guard = "a reading is beyond its critical limit (" + what + "): kept critical; the AI read it as " + sevWord(b.Reasoner)
+		rep.Title = warnWordRe.ReplaceAllString(rep.Title, "critical")
+		if v3CalmTitleRe.MatchString(rep.Title) {
+			rep.Title = ""
+		}
+		r.log(inc, "Severity guard: "+b.Guard)
+	} else if trend, ok := trendOnlyWarning(inc.Sensors); ok && rep.Severity == "normal" && rule == "warning" {
 		// owner 2026-11-20: the rules' warning is a trend inside the card limits and the AI judged normal: the AI wins
 		b.Guard = "the rules warned only about a trend inside the limits (" + trend + "); the AI judged normal: kept normal"
 		rep.Title = "Watching: " + trend + ", AI judged normal"
@@ -1574,6 +1590,10 @@ func (r *Reasoner) faultGuard(inc *Incident, rep *Report, calls []AgentCall) {
 	}
 	for _, c := range calls {
 		if c.Valid && c.Parsed != nil && normSeverity(c.Parsed.Status) == "sensor_fault" {
+			if doubt := agentFaultDoubt(inc, c); doubt != "" {
+				r.log(inc, "Fault guard: "+doubt)
+				continue
+			}
 			return
 		}
 	}
@@ -1599,6 +1619,81 @@ func (r *Reasoner) faultGuard(inc *Incident, rep *Report, calls []AgentCall) {
 	r.log(inc, "Fault guard: "+why)
 	j, _ := json.Marshal(map[string]any{"incident": inc.ID, "stage": inc.RefineStage, "reasoner": "sensor_fault", "final": to, "guard": "fault"})
 	log.Printf("severity-disagreement %s", j)
+}
+
+var warnWordRe = regexp.MustCompile(`(?i)\bwarning\b`)
+
+// beyondCriticalNow (night sweep 2026-11-27 #82): the first flagged sensor whose latest reading is beyond its card's
+// critical limit, as words ("PM2.5 134.7 ug/m3, critical limit 120"). A sensor the rules call a sensor fault, or a
+// reading beyond the card's impossible bounds, is a data problem, not a critical event.
+func beyondCriticalNow(ss []SensorRef) (string, bool) {
+	for _, s := range ss {
+		if s.Context || len(s.Xs) == 0 || normSeverity(s.Rule.Status) == "sensor_fault" {
+			continue
+		}
+		last := s.Xs[len(s.Xs)-1]
+		m, ok := effectiveMetricOK(s.Role, s.Metric, s.Node)
+		if !ok || math.IsNaN(last) || !valueCriticalM(m, last) {
+			continue
+		}
+		if (m.HasFaultHi && last > m.FaultHi) || (m.HasFaultLo && last < m.FaultLo) {
+			continue
+		}
+		lim, _, _ := crossedLimit(m, last)
+		return fmt.Sprintf("%s %s%s, critical limit %s", metricWord(s.Metric), valStr(m, last), unitSfx(m), lim), true
+	}
+	return "", false
+}
+
+// agentFaultDoubt (night sweep 2026-11-27 #57): agents over-call sensor_fault on fast real rises (pH 7.2 -> 9.6 and an
+// AC-off heat-up, both "step_increase / sensor_fault 0.94" on the board). Such a vote is not a second line of evidence
+// for the reasoner's sensor_fault unless the rules see a fault sign on that sensor or no other sensor agrees with the
+// move. Returns why the vote is not counted ("" = it counts).
+func agentFaultDoubt(inc *Incident, c AgentCall) string {
+	p := normEnum(c.Parsed.Pattern)
+	if p != "step_increase" && p != "step_decrease" && p != "exponential_increase" {
+		return ""
+	}
+	var self *SensorRef
+	for i := range inc.Sensors {
+		if inc.Sensors[i].Ref == c.Ref {
+			self = &inc.Sensors[i]
+		}
+	}
+	if self == nil {
+		return ""
+	}
+	switch {
+	case normSeverity(self.Rule.Status) == "sensor_fault", self.Rule.Pattern == "flatline", self.Rule.Pattern == "erratic":
+		return "" // the rules see a fault sign
+	}
+	if m, ok := effectiveMetricOK(self.Role, self.Metric, self.Node); ok && len(self.Xs) > 0 {
+		last := self.Xs[len(self.Xs)-1]
+		if (m.HasFaultHi && last > m.FaultHi) || (m.HasFaultLo && last < m.FaultLo) {
+			return "" // impossible reading
+		}
+	}
+	agree := ""
+	for _, o := range inc.Sensors {
+		if o.Ref == self.Ref || (o.Node == self.Node && o.Metric == self.Metric) {
+			continue
+		}
+		near := o.Role == self.Role || (placeOf(o.Location) != "" && placeOf(o.Location) == placeOf(self.Location))
+		if st := normSeverity(o.Rule.Status); near && (st == "warning" || st == "critical") {
+			agree = o.Node + " " + o.Metric
+			break
+		}
+	}
+	if agree == "" {
+		if a, b, ok := corroboratedRise(inc); ok && (strings.HasPrefix(a, self.Node+" ") || strings.HasPrefix(b, self.Node+" ")) {
+			agree = a + " / " + b
+		}
+	}
+	if agree == "" {
+		return ""
+	}
+	return fmt.Sprintf("the %s agent's sensor_fault on a fast %s of %s is not counted (no rule fault sign; %s moved too)",
+		strings.ReplaceAll(self.Role, "_", " "), strings.ReplaceAll(p, "_", " "), self.Metric, agree)
 }
 
 // v3Split: htpd v8x split decoding. The answer head (keys up to After) is decoded once, then each group of the

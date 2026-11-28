@@ -23,7 +23,8 @@ type gateWatch struct {
 	Have     int    `json:"have"`
 	Need     int    `json:"need"`
 	Fast     bool   `json:"fast,omitempty"` // critical: the fast path opens the incident on the next critical reading
-	EtaS     int64  `json:"eta_s"`
+	EtaS     int64  `json:"eta_s"`          // #84: includes the batch hold (time until the batch can close)
+	HeldBy   string `json:"held_by"`        // #84: sensor (site id) the open batch waits for, "" if none
 }
 
 // GateView: caller must not hold e.mu.
@@ -32,11 +33,16 @@ func (e *Engine) GateView() map[string]any {
 	defer e.mu.RUnlock()
 	tr := trigRules()
 	var w []gateWatch
+	waiting := e.batchWaitingLocked()
+	hold := e.batchHoldLocked(waiting)
 	for k, st := range e.states {
 		if st == nil || st.alerted || st.AbnormalInWindow <= 0 || sevRank(st.Status) <= 0 {
 			continue
 		}
 		need := tr.AbnormalOfWindow
+		if st.AbnormalInWindow < need && !st.nowAb && st.NowStatus == "normal" {
+			continue // #77: back to normal and still young: it cannot reach the AI gate, nothing to count down
+		}
 		g := gateWatch{Node: st.Node, Metric: st.Metric, Location: st.Location, Status: st.Status, Have: st.AbnormalInWindow, Need: need}
 		left := need - st.AbnormalInWindow
 		if st.Status == "critical" && st.critRun > 0 && st.critRun < fastReadings {
@@ -49,8 +55,15 @@ func (e *Engine) GateView() map[string]any {
 			left = 0
 		}
 		g.EtaS = int64(left) * bucketSec
-		if e.batchUntil != 0 && k == e.batchKey {
-			g.EtaS = 0
+		if e.batchUntil != 0 && left == 0 && e.relatedToBatch(k) {
+			// #84: mature and waiting in the open batch: the real wait is the batch hold, and who causes it
+			g.EtaS = hold
+			for _, h := range waiting {
+				if h != keySite(k) {
+					g.HeldBy = h
+					break
+				}
+			}
 		}
 		w = append(w, g)
 	}
@@ -72,9 +85,105 @@ func (e *Engine) GateView() map[string]any {
 					return d
 				}
 				return 0
-			}()}
+			}(), "waiting_for": waiting, "eta_s": hold}
 	}
 	return out
+}
+
+// batchHoldLocked: #84, sensor time until the open batch can close, from the same rules as batchEvents: at once for a
+// mature critical member; otherwise the minimum hold, or (while related sensors that are abnormal now are maturing)
+// until the slowest of them matures, never past the batch cap. 0 = closes at the next reading. Caller holds e.mu.
+func (e *Engine) batchHoldLocked(waiting []string) int64 {
+	if e.batchUntil == 0 {
+		return 0
+	}
+	tr := trigRules()
+	maxClose := e.batchOpen + int64(tr.BatchMaxReadings)*bucketSec - e.sim
+	ab := map[string]Candidate{}
+	for k, st := range e.states {
+		if st != nil && st.nowAb {
+			ab[k] = Candidate{}
+		}
+	}
+	if e.criticalMatureLocked(ab) {
+		return 0
+	}
+	var d int64
+	if len(waiting) == 0 {
+		d = e.batchOpen + bucketSec - e.sim
+	} else {
+		d = e.batchUntil - e.sim
+		for k := range e.states {
+			if e.holdsBatchLocked(k) {
+				if m := int64(tr.AbnormalOfWindow-e.states[k].AbnormalInWindow) * bucketSec; m > d {
+					d = m
+				}
+			}
+		}
+		if d > maxClose {
+			d = maxClose
+		}
+	}
+	if d < 0 {
+		d = 0
+	}
+	return d
+}
+
+// aiRunningID: night sweep 2026-11-27 #110, the incident the NPU is analysing right now ("" = none).
+func aiRunningID() string {
+	progS.Lock()
+	defer progS.Unlock()
+	if progS.cur == nil {
+		return ""
+	}
+	return progS.cur.ID
+}
+
+// aiEtaOf: #110 ai_eta_s, sensor seconds until the next AI run for this incident (early look or full reading): 0 when
+// it is queued for the NPU, the gate ETA of its soonest flagged sensor while it waits for the full reading (awaiting:
+// a fast-path / early-look incident still mapped to its sensors), -1 when unknown or nothing is due.
+func aiEtaOf(gw []gateWatch, inc *Incident, awaiting, queued bool) int64 {
+	if queued {
+		return 0
+	}
+	if !awaiting && inc.RefineStage != "provisional" {
+		return -1
+	}
+	best := int64(-1)
+	for _, s := range inc.Sensors {
+		if s.Context {
+			continue
+		}
+		for _, w := range gw {
+			if w.Node == s.Node && w.Metric == s.Metric && (best < 0 || w.EtaS < best) {
+				best = w.EtaS
+			}
+		}
+	}
+	return best
+}
+
+// aiQueueLocked: #110, incidents waiting for the full reading (fast path / early look still mapped to their sensors)
+// and incidents queued for the NPU (early look jobs, or a pending alert batch on a mapped sensor). Caller holds r.mu.
+func (r *Reasoner) aiQueueLocked() (awaiting, queued map[*Incident]bool) {
+	awaiting, queued = map[*Incident]bool{}, map[*Incident]bool{}
+	for _, inc := range r.fastInc {
+		if inc != nil {
+			awaiting[inc] = true
+		}
+	}
+	for _, j := range r.early {
+		if j.inc != nil {
+			queued[j.inc] = true
+		}
+	}
+	for _, c := range r.pending {
+		if inc := r.fastInc[key(c.Node, c.Metric)]; inc != nil {
+			queued[inc] = true
+		}
+	}
+	return awaiting, queued
 }
 
 // ---- analysis progress

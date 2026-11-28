@@ -97,11 +97,29 @@ function renderChat() {
     box.append(h('div', { class: 'welcome' }, h('div', { class: 'big', 'aria-hidden': 'true', text: '✦' }),
       h('h2', { text: 'Ask the campus monitor' }),
       h('p', { text: 'The on-device AI looks up incidents, sensors and past actions on this board and answers with exact numbers. It can explain, but it never switches anything.' }),
-      h('div', { class: 'sugg' }, SUGG.map(([k, q]) => h('button', { type: 'button', onclick: () => ask(q) }, h('small', { text: k }), q)))));
+      h('div', { class: 'sugg' }, suggestions().map(([k, q]) => h('button', { type: 'button', onclick: () => ask(q) }, h('small', { text: k }), q)))));
     return;
   }
   for (const m of s.messages) box.append(msgNode(m));
   box.scrollTop = box.scrollHeight;
+}
+// night sweep 2026-11-27 #35: suggestions from what is open right now (worst open incidents first), then the general ones
+let CTX = [];
+function suggestions() {
+  const out = [], rank = { critical: 3, sensor_fault: 2, warning: 1 };
+  const open = CTX.filter((i) => i && i.workflow !== 'closed' && i.workflow !== 'resolved' && i.state !== 'running')
+    .sort((a, b) => (rank[b.severity] || 0) - (rank[a.severity] || 0) || String(b.id).localeCompare(String(a.id), undefined, { numeric: true }));
+  if (open[0]) {
+    out.push(['Open now', 'What is happening in ' + open[0].id + ' and what should I do first?']);
+    out.push(['Real or fault?', 'Is ' + open[0].id + ' a sensor fault or a real problem?']);
+  }
+  if (open[1]) out.push(['Open now', 'Explain ' + open[1].id + ' in simple words.']);
+  if (open.length) out.push(['Right now', 'Which readings are critical or warning right now?']);
+  for (const x of SUGG) if (out.length < 4) out.push(x);
+  return out.slice(0, 4);
+}
+function loadContext() {
+  api('/api/incidents?limit=40').then((l) => { CTX = Array.isArray(l) ? l : []; if (!S.session || !S.session.messages.length) renderChat(); }).catch(() => {});
 }
 let timer = null, poll = null;
 function typing() {
@@ -148,6 +166,8 @@ async function ask(q) {
   q = (q || '').trim(); if (!q || S.busy) return;
   const spoken = window.SPOKEN === true; window.SPOKEN = false; // set by voice.js only for a spoken question
   S.busy = true; $('#send').disabled = true; $('#q').value = ''; grow();
+  // night sweep 2026-11-27 #119: an old status note (e.g. a voice error) goes once a new question is sent
+  const vn = $('#voicenote'); if (vn) { vn.replaceChildren(); vn.hidden = true; }
   const box = $('#msgs');
   if (!S.session) box.replaceChildren();
   box.append(msgNode({ role: 'user', text: q })); const ty = typing(); box.append(ty); box.scrollTop = box.scrollHeight;
@@ -189,7 +209,7 @@ $('#del').addEventListener('click', async () => {
   newChat(); loadSessions();
 });
 api('/api/status').then((st) => { if (st && st.running_on) $('#sub').textContent = 'On-device AI · ' + st.running_on.split(',')[0]; }).catch(() => {});
-renderChat(); loadSessions(); setTimeout(() => $("#q").focus(), 300);
+renderChat(); loadSessions(); loadContext(); setTimeout(() => $("#q").focus(), 300);
 /* keep the reasoner warm on the NPU while this page is in use (backend Warm: ~60 s after the last activity) */
 let lastWarm = 0;
 function warm() { if (Date.now() - lastWarm < 15000) return; lastWarm = Date.now(); fetch('/api/chat/warm', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'sce' }, body: '{}' }).catch(() => {}); }

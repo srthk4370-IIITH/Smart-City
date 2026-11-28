@@ -10,6 +10,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -25,18 +26,30 @@ import (
 const (
 	sbMaxRows  = 5000
 	sbMaxBytes = 20 << 20
+	// night sweep 2026-11-27 #46: a row the server keeps refusing with a row-level error (HTTP 500/501/505...) is
+	// parked after this many tries (supabase_parked.jsonl) so it cannot block every later report.
+	sbParkAfter = 5
+	// night sweep 2026-11-27 #53: dedup entries of incidents closed this long ago are dropped.
+	sbSeenKeep = 30 * 24 * time.Hour
 )
 
 type sbRow struct {
-	T string         `json:"t"` // table
-	D map[string]any `json:"d"`
+	T  string         `json:"t"` // table
+	D  map[string]any `json:"d"`
+	ID int64          `json:"id,omitempty"` // queue row id (local only; #46: the sent row is removed by id, not by table)
 }
 
 type sbSeen struct {
-	Rev  int    `json:"rev"`
-	Hash string `json:"hash"`
-	Seq  int    `json:"seq"`
+	Rev    int    `json:"rev"`
+	Hash   string `json:"hash"`
+	Seq    int    `json:"seq"`
+	Closed int64  `json:"closed,omitempty"` // unix time the incident was first seen closed (#53 pruning)
 }
+
+// sbRowErr: the server refused this row itself (not the network, the key or rate limiting).
+type sbRowErr struct{ msg string }
+
+func (e *sbRowErr) Error() string { return e.msg }
 
 type supaSync struct {
 	url, key, board, site string
@@ -52,6 +65,11 @@ type supaSync struct {
 	boardSent             bool
 	wake                  chan struct{}
 	s                     *Server
+	// night sweep 2026-11-27 #11/#46: status and row bookkeeping
+	nextID       int64
+	sent, parked int
+	headFails    int       // row-level failures of the current head row
+	offlineSince time.Time // first failed flush of the current outage
 }
 
 func newSupaSync(dir string) *supaSync {
@@ -98,12 +116,37 @@ func (x *supaSync) load() {
 			}
 		}
 	}
+	for i := range x.rows { // queues written before row ids get fresh ones
+		if x.rows[i].ID > x.nextID {
+			x.nextID = x.rows[i].ID
+		}
+	}
+	for i := range x.rows {
+		if x.rows[i].ID == 0 {
+			x.nextID++
+			x.rows[i].ID = x.nextID
+		}
+	}
 	if b, err := os.ReadFile(x.seenPath()); err == nil {
 		json.Unmarshal(b, &x.seen)
 	}
+	x.pruneSeenLocked(time.Now())
 }
 
-// saveLocked rewrites the queue (small: capped) via tmp+rename.
+// pruneSeenLocked drops dedup entries of incidents closed more than sbSeenKeep ago (#53). A later change to such an
+// incident is sent again as revision 0, which Supabase answers 409 "already there" at worst.
+func (x *supaSync) pruneSeenLocked(now time.Time) int {
+	n := 0
+	for id, sn := range x.seen {
+		if sn.Closed > 0 && now.Sub(time.Unix(sn.Closed, 0)) > sbSeenKeep {
+			delete(x.seen, id)
+			n++
+		}
+	}
+	return n
+}
+
+// saveLocked rewrites the queue (small: capped) and the dedup map via tmp+rename.
 func (x *supaSync) saveLocked() {
 	var buf bytes.Buffer
 	for _, r := range x.rows {
@@ -115,6 +158,10 @@ func (x *supaSync) saveLocked() {
 	if os.WriteFile(tmp, buf.Bytes(), 0o600) == nil {
 		os.Rename(tmp, x.qpath())
 	}
+	x.saveSeenLocked()
+}
+
+func (x *supaSync) saveSeenLocked() {
 	if b, err := json.Marshal(x.seen); err == nil {
 		if os.WriteFile(x.seenPath()+".part", b, 0o600) == nil {
 			os.Rename(x.seenPath()+".part", x.seenPath())
@@ -124,6 +171,10 @@ func (x *supaSync) saveLocked() {
 
 // enqueueLocked adds rows and enforces the cap: oldest health rows go first, then the oldest rows.
 func (x *supaSync) enqueueLocked(rs ...sbRow) {
+	for i := range rs {
+		x.nextID++
+		rs[i].ID = x.nextID
+	}
 	x.rows = append(x.rows, rs...)
 	size := func() int {
 		n := 0
@@ -212,7 +263,7 @@ func (x *supaSync) OnIncident(line []byte) {
 		if t, err := time.Parse(time.RFC3339, inc.CreatedWall); err == nil {
 			created = t.UTC().Format(time.RFC3339)
 		}
-		rows = append(rows, sbRow{"incident_reports", map[string]any{"board_id": x.board, "incident_id": inc.ID, "revision": rev,
+		rows = append(rows, sbRow{T: "incident_reports", D: map[string]any{"board_id": x.board, "incident_id": inc.ID, "revision": rev,
 			"created_at": created, "severity": inc.Severity, "title": inc.Title, "domains": domains, "location": loc,
 			"label": label, "root_cause": root, "checklist": steps, "report": rep, "state": state}})
 		sn.Rev, sn.Hash = rev, hash
@@ -221,15 +272,23 @@ func (x *supaSync) OnIncident(line []byte) {
 		if ev.Seq <= sn.Seq {
 			continue
 		}
-		rows = append(rows, sbRow{"decisions", map[string]any{"board_id": x.board, "incident_id": inc.ID,
+		rows = append(rows, sbRow{T: "decisions", D: map[string]any{"board_id": x.board, "incident_id": inc.ID,
 			"at": rowTime(ev.At), "actor": ev.Actor, "action": ev.Event, "outcome": ev.Outcome, "note": ev.Note}})
 		sn.Seq = ev.Seq
+	}
+	changed := len(rows) > 0
+	if state == wfClosed { // #53: remember when it closed, for pruning
+		if sn.Closed == 0 {
+			sn.Closed, changed = time.Now().Unix(), true
+		}
+	} else if sn.Closed != 0 {
+		sn.Closed, changed = 0, true
 	}
 	x.seen[inc.ID] = sn
 	if len(rows) > 0 {
 		x.enqueueLocked(rows...)
-	} else {
-		x.saveLocked()
+	} else if changed {
+		x.saveSeenLocked() // #45: an unchanged report does not rewrite the queue file
 	}
 }
 
@@ -277,7 +336,7 @@ func (x *supaSync) healthRow() sbRow {
 		status["store_write_errors"] = storeWriteErrors.Load()
 	}
 	d["status"] = status
-	return sbRow{"board_health", d}
+	return sbRow{T: "board_health", D: d}
 }
 
 func appBuildVersion() string {
@@ -335,18 +394,45 @@ func (x *supaSync) postTo(base string, r sbRow) (error, bool) {
 			log.Printf("supabase: dropping unacceptable %s row (%d)", r.T, resp.StatusCode)
 			return nil, false // a bad row must not block the queue
 		}
-		return fmt.Errorf("%s: HTTP %d", r.T, resp.StatusCode), resp.StatusCode == 502 || resp.StatusCode == 503 || resp.StatusCode == 504
+		msg := fmt.Sprintf("%s: HTTP %d", r.T, resp.StatusCode)
+		switch resp.StatusCode {
+		case 502, 503, 504:
+			return errors.New(msg), true
+		case 401, 403, 429:
+			return errors.New(msg), false // key / rate limit: every row would fail the same way, keep waiting
+		}
+		return &sbRowErr{msg}, false // 500, 501, 505...: may be this row; parked after sbParkAfter tries (#46)
 	}
 	return nil, false
 }
 
-// flush sends queued rows in order; stops at the first failure (kept for the next try).
+// removeIDLocked drops the queued row with this id (#46: by id; the cap may have dropped or moved it meanwhile).
+func (x *supaSync) removeIDLocked(id int64) {
+	for i, q := range x.rows {
+		if q.ID == id {
+			x.rows = append(x.rows[:i], x.rows[i+1:]...)
+			return
+		}
+	}
+}
+
+// flush sends queued rows in order; stops at the first failure (kept for the next try). The queue file is written
+// once per flush, not once per row (#45: draining 5000 rows after an outage wrote ~n^2/2 rows to flash).
 func (x *supaSync) flush() error {
+	dirty := false
+	defer func() {
+		if dirty {
+			x.mu.Lock()
+			x.saveLocked()
+			x.mu.Unlock()
+		}
+	}()
 	for {
 		x.mu.Lock()
 		if !x.boardSent {
 			x.boardSent = true
-			x.rows = append([]sbRow{{"boards", map[string]any{"board_id": x.board, "site": x.site}}}, x.rows...)
+			x.nextID++
+			x.rows = append([]sbRow{{T: "boards", D: map[string]any{"board_id": x.board, "site": x.site}, ID: x.nextID}}, x.rows...)
 		}
 		if len(x.rows) == 0 {
 			x.mu.Unlock()
@@ -357,27 +443,55 @@ func (x *supaSync) flush() error {
 		if err := x.post(r); err != nil {
 			x.mu.Lock()
 			x.lastErr = err.Error()
+			if x.offlineSince.IsZero() {
+				x.offlineSince = nowTime()
+			}
+			var re *sbRowErr
+			if errors.As(err, &re) {
+				x.headFails++
+				if x.headFails >= sbParkAfter { // park it and go on with the next row
+					x.parkLocked(r, err.Error())
+					x.removeIDLocked(r.ID)
+					x.headFails, dirty = 0, true
+					x.mu.Unlock()
+					continue
+				}
+			}
 			x.mu.Unlock()
 			return err
 		}
 		x.mu.Lock()
-		if len(x.rows) > 0 && x.rows[0].T == r.T { // the cap may have dropped it meanwhile
-			x.rows = x.rows[1:]
-		}
-		x.lastOK, x.lastErr = nowTime(), ""
-		x.saveLocked()
+		x.removeIDLocked(r.ID)
+		x.sent++
+		x.headFails, dirty = 0, true
+		x.lastOK, x.lastErr, x.offlineSince = nowTime(), "", time.Time{}
 		x.mu.Unlock()
 	}
+}
+
+// parkLocked keeps a refused row on the board (supabase_parked.jsonl, last 1 MB) for a later look; never re-sent.
+func (x *supaSync) parkLocked(r sbRow, why string) {
+	x.parked++
+	b, _ := json.Marshal(map[string]any{"at": nowTime().UTC().Format(time.RFC3339), "error": why, "row": r})
+	p := filepath.Join(x.dir, "supabase_parked.jsonl")
+	if appendSync(p, append(b, '\n')) == nil {
+		capTail(p, 1<<20)
+	}
+	log.Printf("supabase: %s row parked after %d refusals (%s)", r.T, sbParkAfter, why)
 }
 
 func (x *supaSync) Stats() map[string]any {
 	x.mu.Lock()
 	defer x.mu.Unlock()
-	lo := ""
+	lo, lou, off := "", int64(0), int64(0)
 	if !x.lastOK.IsZero() {
-		lo = x.lastOK.UTC().Format(time.RFC3339)
+		lo, lou = x.lastOK.UTC().Format(time.RFC3339), x.lastOK.Unix()
 	}
-	return map[string]any{"enabled": true, "queued": len(x.rows), "last_ok": lo, "last_error": x.lastErr}
+	if !x.offlineSince.IsZero() {
+		off = x.offlineSince.Unix()
+	}
+	return map[string]any{"enabled": true, "queued": len(x.rows), "sent": x.sent, "parked": x.parked, "last_ok": lo,
+		"last_ok_unix": lou, "last_error": x.lastErr, "offline_since_unix": off}
 }
 
 func (x *supaSync) Run(stop <-chan struct{}) {
@@ -406,6 +520,7 @@ func (x *supaSync) Run(stop <-chan struct{}) {
 		case <-x.wake:
 		case <-hc.C:
 			x.mu.Lock()
+			x.pruneSeenLocked(time.Now()) // #53
 			x.enqueueLocked(x.healthRow())
 			x.mu.Unlock()
 		}

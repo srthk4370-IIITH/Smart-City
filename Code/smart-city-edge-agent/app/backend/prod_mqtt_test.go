@@ -281,3 +281,15 @@ func TestMQTTPublishScript(t *testing.T) {
 	}
 	waitFor(t, "readings", 5*time.Second, func() bool { r := b.Stats()["results"].(map[string]int); return r["accepted"]+r["late"] == 6 })
 }
+
+// night sweep 2026-11-27 #108: an MQTT broker that stays down is retried every 5 min after 10 min, not every minute.
+func TestMQTTBackoffCapAndOfflineSince(t *testing.T) {
+	if mqttBackoffCap(time.Minute) != time.Minute || mqttBackoffCap(11*time.Minute) != 5*time.Minute {
+		t.Fatal("cap")
+	}
+	b := newMQTTBridge(testMQTTCfg("tcp://"+closedAddr(t)), dqEngine(t))
+	stop := make(chan struct{})
+	go b.Run(stop)
+	waitFor(t, "offline since", 5*time.Second, func() bool { return b.Stats()["offline_since_unix"].(int64) > 0 })
+	close(stop)
+}

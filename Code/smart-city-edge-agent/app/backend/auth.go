@@ -113,6 +113,19 @@ func isJSONType(ct string) bool {
 	return ct == "application/json" || strings.HasPrefix(ct, "application/json;")
 }
 
+// postOnlyPaths: write-only routes; a GET answers 405 + Allow instead of a 400 usage text or "EOF" (#4).
+var postOnlyPaths = map[string]bool{"/api/mode": true, "/api/maintenance": true, "/api/site/validate": true,
+	"/api/chat/voice": true}
+
+// isWAVType: the push-to-talk upload types (night sweep 2026-11-27 #113).
+func isWAVType(ct string) bool {
+	ct = strings.ToLower(strings.TrimSpace(ct))
+	if i := strings.IndexByte(ct, ';'); i >= 0 {
+		ct = strings.TrimSpace(ct[:i])
+	}
+	return ct == "audio/wav" || ct == "audio/x-wav" || ct == "audio/wave"
+}
+
 // sameOrigin: the Origin header names this server (or is absent: a non-browser caller).
 func sameOrigin(r *http.Request) (present, same bool) {
 	o := r.Header.Get("Origin")
@@ -133,6 +146,11 @@ func (s *Server) guard(next http.Handler) http.Handler {
 		loop := isLoopback(r.RemoteAddr)
 		read := r.Method == http.MethodGet || r.Method == http.MethodHead || r.Method == http.MethodOptions
 		if read {
+			if postOnlyPaths[r.URL.Path] && r.Method != http.MethodOptions { // night sweep 2026-11-27 #4
+				w.Header().Set("Allow", "POST")
+				http.Error(w, r.URL.Path+" takes POST only", http.StatusMethodNotAllowed)
+				return
+			}
 			if !loop && sensitiveRead(r.URL.Path) {
 				got := r.Header.Get("X-API-Token")
 				if !tokenEq(got, loadReadToken(s.dir)) && !tokenEq(got, loadAPIToken(s.dir)) {
@@ -147,7 +165,10 @@ func (s *Server) guard(next http.Handler) http.Handler {
 		if present, same := sameOrigin(r); !same {
 			http.Error(w, "cross-origin request refused", http.StatusForbidden)
 			return
-		} else if (present || !loop) && !isJSONType(r.Header.Get("Content-Type")) && r.ContentLength != 0 {
+		} else if (present || !loop) && !isJSONType(r.Header.Get("Content-Type")) && r.ContentLength != 0 &&
+			!(r.URL.Path == "/api/chat/voice" && isWAVType(r.Header.Get("Content-Type"))) {
+			// night sweep 2026-11-27 #113: push-to-talk posts audio/wav from the WebView (Origin set);
+			// only the voice route may take a WAV body; the same-origin check above still applies.
 			http.Error(w, "writes need Content-Type: application/json", http.StatusUnsupportedMediaType)
 			return
 		}

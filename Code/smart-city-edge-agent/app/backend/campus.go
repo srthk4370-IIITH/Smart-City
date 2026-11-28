@@ -114,6 +114,33 @@ type campusClient struct {
 	sensorAt   map[string]int64       // bank key -> newest device time
 	backfill   string                 // "" | running | done (n readings) | error
 	gapFrom    time.Time
+	// night sweep 2026-11-27 #108: back-off while the API is down + "offline since" for the health page
+	offlineSince time.Time // last good contact (or the first failure) of the current outage; zero = online
+	nextTry      time.Time // offline: polls before this are skipped
+	skipped      int       // polls skipped by the back-off
+}
+
+const campusBackoffAfter = 10
+
+// campusBackoff: the wait after `fails` failures in a row: none for the first 10 (a blip or a
+// short outage keeps the normal poll and its quick reconnect), then doubling from 2 poll periods up to 2 min
+// (5 s poll: 10, 20, 40, 80, 120 s).
+func campusBackoff(every time.Duration, fails int) time.Duration {
+	if fails < campusBackoffAfter {
+		return 0
+	}
+	d := 2 * every
+	for i := campusBackoffAfter; i < fails && d < 2*time.Minute; i++ {
+		d *= 2
+	}
+	return min64d(d, 2*time.Minute)
+}
+
+func min64d(a, b time.Duration) time.Duration {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 var campus *campusClient
@@ -601,10 +628,18 @@ func (c *campusClient) setOnline(ok bool, err error) {
 			log.Printf("campus: API reachable again")
 		}
 		c.online, c.everOK, c.fails, c.lastOK, c.lastErr = true, true, 0, nowTime(), ""
+		c.offlineSince, c.nextTry = time.Time{}, time.Time{}
 		return
 	}
 	c.fails++
 	c.lastErr = err.Error()
+	if c.offlineSince.IsZero() && (c.fails >= 3 || !c.everOK) {
+		c.offlineSince = c.lastOK // offline since the last good contact
+		if c.offlineSince.IsZero() {
+			c.offlineSince = nowTime()
+		}
+	}
+	c.nextTry = time.Now().Add(campusBackoff(c.every, c.fails))
 	if c.fails >= 3 && c.online {
 		c.online = false
 		c.gapFrom = c.lastOK
@@ -674,6 +709,11 @@ func (c *campusClient) Run(stop <-chan struct{}) {
 
 func (c *campusClient) poll() {
 	c.mu.Lock()
+	if !c.online && time.Now().Before(c.nextTry) { // #108: down: try less often (up to every 2 min), not every 5 s
+		c.skipped++
+		c.mu.Unlock()
+		return
+	}
 	c.polls++
 	needNodes := time.Since(c.nodesAt) > time.Hour
 	c.mu.Unlock()
@@ -764,7 +804,11 @@ func (c *campusClient) Status() map[string]any {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	out := map[string]any{"enabled": true, "url": c.base, "urls": c.bases, "link": c.link(), "link_label": linkLabel(c.link()), "online": c.online, "polls": c.polls, "results": c.results,
-		"nodes": len(c.nodes), "backfill": c.backfill, "poll_s": c.every.Seconds(), "last_error": c.lastErr}
+		"nodes": len(c.nodes), "backfill": c.backfill, "poll_s": c.every.Seconds(), "last_error": c.lastErr,
+		"offline_since_unix": int64(0), "skipped_polls": c.skipped}
+	if !c.offlineSince.IsZero() {
+		out["offline_since_unix"] = c.offlineSince.Unix()
+	}
 	if !c.lastOK.IsZero() {
 		out["last_ok_age_s"] = int(nowTime().Sub(c.lastOK).Seconds())
 	}

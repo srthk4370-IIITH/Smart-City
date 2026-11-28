@@ -98,7 +98,7 @@ func chatRouteV24(q string, history []ChatMsg, buildings []string, depth int) (c
 	tv, tok := chatTimeOf(q)
 	inc := chatIncWordRe.MatchString(q)
 	count := chatCountRe.MatchString(q) || chatCountHiRe.MatchString(q)
-	loc := chatLocationOf(q, buildings)
+	loc := chatLocLevelOf(q, buildings) // night sweep 2026-11-27 #68
 	if r, ok := chatFollowV24(q, history, buildings, depth, count); ok {
 		return r, true
 	}

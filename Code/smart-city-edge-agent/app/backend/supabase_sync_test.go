@@ -5,9 +5,12 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 func fakeSupa(t *testing.T, fail *bool) (*httptest.Server, *[]string, *sync.Mutex) {
@@ -105,11 +108,131 @@ func TestSupabaseOfflineQueueSurvivesRestartAndCaps(t *testing.T) {
 	}
 	// cap: health rows are dropped first
 	z := testSupa(ts.URL, t.TempDir())
-	z.rows = []sbRow{{"incident_reports", map[string]any{"a": 1}}}
+	z.rows = []sbRow{{T: "incident_reports", D: map[string]any{"a": 1}}}
 	for i := 0; i < sbMaxRows+10; i++ {
-		z.enqueueLocked(sbRow{"board_health", map[string]any{"i": i}})
+		z.enqueueLocked(sbRow{T: "board_health", D: map[string]any{"i": i}})
 	}
 	if len(z.rows) != sbMaxRows || z.rows[0].T != "incident_reports" {
 		t.Fatalf("cap %d %s", len(z.rows), z.rows[0].T)
+	}
+}
+
+// night sweep 2026-11-27 #46/#11: a row refused with HTTP 500 is parked after sbParkAfter tries and the rows behind it
+// still go; rows are removed by id; Stats carries sent/parked/last_ok_unix/offline_since_unix.
+func TestSupabaseParksPoisonRowAndKeepsOrder(t *testing.T) {
+	var mu sync.Mutex
+	var got []string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		mu.Lock()
+		defer mu.Unlock()
+		if strings.Contains(string(b), "POISON") {
+			w.WriteHeader(500)
+			return
+		}
+		got = append(got, string(b))
+		w.WriteHeader(201)
+	}))
+	defer ts.Close()
+	dir := t.TempDir()
+	x := testSupa(ts.URL, dir)
+	x.boardSent = true
+	x.enqueueLocked(sbRow{T: "decisions", D: map[string]any{"n": "POISON"}}, sbRow{T: "decisions", D: map[string]any{"n": "after"}})
+	if x.rows[0].ID == 0 || x.rows[0].ID == x.rows[1].ID {
+		t.Fatal("row ids", x.rows)
+	}
+	for i := 1; i < sbParkAfter; i++ {
+		if x.flush() == nil {
+			t.Fatal("expected a failure", i)
+		}
+		if st := x.Stats(); st["offline_since_unix"].(int64) == 0 || st["queued"].(int) != 2 {
+			t.Fatal("stats while failing", st)
+		}
+	}
+	if err := x.flush(); err != nil {
+		t.Fatal(err)
+	}
+	st := x.Stats()
+	if st["queued"].(int) != 0 || st["parked"].(int) != 1 || st["sent"].(int) != 1 || st["offline_since_unix"].(int64) != 0 ||
+		st["last_ok_unix"].(int64) == 0 {
+		t.Fatal("stats", st)
+	}
+	if len(got) != 1 || !strings.Contains(got[0], "after") {
+		t.Fatal("sent", got)
+	}
+	if b, _ := os.ReadFile(filepath.Join(dir, "supabase_parked.jsonl")); !strings.Contains(string(b), "POISON") {
+		t.Fatal("parked file", string(b))
+	}
+	// a key problem (401) is never parked: it would fail every row
+	y := testSupa(ts.URL, t.TempDir())
+	y.key = "wrong"
+	y.boardSent = true
+	y.enqueueLocked(sbRow{T: "decisions", D: map[string]any{"n": 1}})
+	srv401 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(401) }))
+	defer srv401.Close()
+	y.url = srv401.URL
+	for i := 0; i < sbParkAfter+2; i++ {
+		y.flush()
+	}
+	if y.Stats()["queued"].(int) != 1 || y.Stats()["parked"].(int) != 0 {
+		t.Fatal("401 parked", y.Stats())
+	}
+}
+
+// night sweep 2026-11-27 #45: a flush that sends many rows writes the queue file once, not once per row.
+func TestSupabaseFlushWritesQueueOnce(t *testing.T) {
+	fail := false
+	ts, _, _ := fakeSupa(t, &fail)
+	defer ts.Close()
+	dir := t.TempDir()
+	x := testSupa(ts.URL, dir)
+	x.boardSent = true
+	for i := 0; i < 50; i++ {
+		x.enqueueLocked(sbRow{T: "board_health", D: map[string]any{"i": i}})
+	}
+	os.Remove(x.qpath())
+	writes := 0
+	stop := make(chan struct{})
+	done := make(chan struct{})
+	go func() { // count queue-file rewrites while flushing (each rewrite renames a fresh file in)
+		defer close(done)
+		var last time.Time
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+			}
+			if st, err := os.Stat(x.qpath()); err == nil && st.ModTime() != last {
+				last = st.ModTime()
+				writes++
+			}
+		}
+	}()
+	if err := x.flush(); err != nil {
+		t.Fatal(err)
+	}
+	close(stop)
+	<-done
+	if b, _ := os.ReadFile(x.qpath()); len(strings.TrimSpace(string(b))) != 0 || writes > 2 {
+		t.Fatalf("queue after flush %q, writes %d", b, writes)
+	}
+}
+
+// night sweep 2026-11-27 #53: dedup entries of incidents closed > 30 days ago are pruned; open ones stay.
+func TestSupabaseSeenPrune(t *testing.T) {
+	x := testSupa("http://127.0.0.1:1", t.TempDir())
+	now := time.Now()
+	x.seen = map[string]sbSeen{"INC-1": {Rev: 1, Closed: now.Add(-31 * 24 * time.Hour).Unix()},
+		"INC-2": {Rev: 1, Closed: now.Add(-2 * 24 * time.Hour).Unix()}, "INC-3": {Rev: 1}}
+	if n := x.pruneSeenLocked(now); n != 1 || len(x.seen) != 2 {
+		t.Fatal(n, x.seen)
+	}
+	inc := testInc()
+	inc.Workflow = wfClosed
+	line, _ := json.Marshal(inc)
+	x.OnIncident(line)
+	if x.seen["INC-1"].Closed == 0 {
+		t.Fatal("closed time not recorded", x.seen["INC-1"])
 	}
 }

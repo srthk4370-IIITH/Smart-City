@@ -141,7 +141,7 @@ func (t chatTools) chatFaultsNow(incs []chatInc) map[string]time.Time {
 			continue
 		}
 		for _, s := range ci.sensors {
-			if normSeverity(ci.inc.Severity) == "sensor_fault" || ci.status[s.Ref] == "sensor_fault" {
+			if normSeverity(ci.inc.Severity) == "sensor_fault" || ci.status[s.Ref] == "sensor_fault" && !chatFaultOverruled(ci) {
 				k := key(s.Node, s.Metric)
 				if old, ok := out[k]; !ok || ci.at.Before(old) {
 					out[k] = ci.at
@@ -241,7 +241,7 @@ func (t chatTools) rankReadings(args map[string]any) (map[string]any, error) {
 			continue
 		}
 		for _, s := range ci.sensors {
-			if normSeverity(ci.inc.Severity) == "sensor_fault" || ci.status[s.Ref] == "sensor_fault" {
+			if normSeverity(ci.inc.Severity) == "sensor_fault" || ci.status[s.Ref] == "sensor_fault" && !chatFaultOverruled(ci) {
 				faultyInc[key(s.Node, s.Metric)] = true
 			}
 		}

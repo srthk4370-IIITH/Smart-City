@@ -31,11 +31,17 @@ func (r *Reasoner) splitFast(cands []Candidate) []Candidate {
 			rest = append(rest, c)
 		}
 	}
+	// night sweep 2026-11-27 #59: the building / domain / confirmed-link rule of the gate batch (batchsplit.go) applies to
+	// fast and early candidates too: an SB00 power-factor and a KH03 heat early look were merged into one incident
 	if len(fast) > 0 {
-		r.openFast(fast)
+		for _, g := range splitUnrelated(fast) {
+			r.openFast(g)
+		}
 	}
 	if len(early) > 0 {
-		r.queueEarly(early)
+		for _, g := range splitUnrelated(early) {
+			r.queueEarly(g)
+		}
 	}
 	return rest
 }
@@ -67,10 +73,17 @@ func (r *Reasoner) openFast(cands []Candidate) *Incident {
 	}
 	r.mu.Unlock()
 	r.preliminary(inc, rc)
+	// night sweep 2026-11-27 #38: the wording follows the live gate rule (it said "8 readings" after the gate became 4 of 8)
 	r.log(inc, fmt.Sprintf("Critical fast path: %s beyond its critical limit for %d readings - incident opened at once with the rules report; "+
-		"the AI analysis follows when the event has lasted %d readings and updates this incident", inc.Sensors[0].Node+" "+inc.Sensors[0].Metric, trigRules().FastReadings, trigRules().PersistReadings))
+		"the AI analysis follows %s and updates this incident", inc.Sensors[0].Node+" "+inc.Sensors[0].Metric, trigRules().FastReadings, gateRuleText()))
 	r.persist(inc)
 	return inc
+}
+
+// gateRuleText: the live AI gate rule in words (#38), e.g. "once the sensor is abnormal in 4 of its last 8 readings".
+func gateRuleText() string {
+	tr := trigRules()
+	return fmt.Sprintf("once the sensor is abnormal in %d of its last %d readings", tr.AbnormalOfWindow, tr.PersistReadings)
 }
 
 // adoptFast: the AI batch for a sensor that already has a fast incident runs on that incident (same ID, created
@@ -129,7 +142,7 @@ func (r *Reasoner) adoptFast(cands []Candidate, mode int) *Incident {
 		inc.earlyAdopted = true
 		r.log(inc, fmt.Sprintf("AI analysis of the fast-path incident: %d sensor(s), early run on the readings so far", len(cands)))
 	} else {
-		r.log(inc, fmt.Sprintf("AI analysis of the fast-path incident: %d sensor(s) at %d readings", len(cands), trigRules().PersistReadings))
+		r.log(inc, fmt.Sprintf("AI analysis of the fast-path incident: %d sensor(s), %s", len(cands), gateRuleText()))
 	}
 	return inc
 }

@@ -164,6 +164,7 @@ func RenderV4User(in V3Input, cx V4Ctx) string {
 		}
 	}
 	out = append(out, in.Agree...)
+	out = append(out, in.Recovered...) // night sweep 2026-11-27 #95
 	if in.MemoryKnown {
 		if len(in.Memory) > 0 {
 			out = append(out, "MEMORY (past incidents and actions on these sensors):")

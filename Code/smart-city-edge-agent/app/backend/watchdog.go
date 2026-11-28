@@ -59,7 +59,7 @@ func (r *Reasoner) watchdogSweep(now time.Time, wait, hard time.Duration) int {
 		case fast[inc] && idle && age >= wait:
 			// 2026-11-19 board audit: the old text said "no new readings for 5 min" even while readings arrived;
 			// the AI waits for the event to last persistReadings readings (40+ min, hours for an hourly pH probe)
-			r.markNeedsMoreData(inc, fmt.Sprintf("the AI analysis starts once the event has lasted %d readings; not reached after %d min", trigRules().PersistReadings, int(age.Minutes())))
+			r.markNeedsMoreData(inc, fmt.Sprintf("the AI analysis starts %s; not reached after %d min", gateRuleText(), int(age.Minutes()))) // night sweep #38
 			n++
 		case !active && age >= hard:
 			r.failOverToRules(inc, fmt.Sprintf("analysis did not finish in %d min", int(age.Minutes())))

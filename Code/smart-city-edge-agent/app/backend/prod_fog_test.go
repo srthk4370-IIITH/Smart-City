@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // fogBox: a fog server (FogHandler + FogIngestHandler over its own store) that can be down, or apply a batch and then
@@ -190,4 +192,57 @@ func TestFogHourlySummariesNoOccupancy(t *testing.T) {
 	if occ == 0 {
 		t.Fatal("fog_upload_occupancy=1 did not include occupancy")
 	}
+}
+
+// night sweep 2026-11-27 #10: a down fog backs off (1 min, 2, 4, 8 ... 10 min), the status says "offline since"
+// (kept across a restart) with a readable reason, and the first good sync clears it.
+func TestFogBackoffOfflineSince(t *testing.T) {
+	if fogBackoff(time.Minute, 0) != time.Minute || fogBackoff(time.Minute, 1) != 2*time.Minute ||
+		fogBackoff(time.Minute, 3) != 8*time.Minute || fogBackoff(time.Minute, 50) != 10*time.Minute {
+		t.Fatal("backoff", fogBackoff(time.Minute, 1), fogBackoff(time.Minute, 3), fogBackoff(time.Minute, 50))
+	}
+	s := testServer(t)
+	f := newFogUploader(s.dir, s.eng)
+	dead := "http://" + closedAddr(t)
+	f.url = func() string { return dead } // nothing listens: connection refused
+	f.client = &http.Client{Timeout: 3 * time.Second}
+	f.Enqueue("health", "", map[string]any{"uptime_s": 1})
+	ctx := context.Background()
+	for i := 0; i < 3; i++ {
+		if f.Sync(ctx) == nil {
+			t.Fatal("sync to a closed port succeeded")
+		}
+	}
+	st := f.Stats()
+	since := st["offline_since_unix"].(int64)
+	if since == 0 || st["online"] != false || st["consecutive_failures"] != 3 || st["retry_in_s"] != 480 ||
+		!strings.Contains(st["last_error"].(string), "adb reverse") {
+		t.Fatal("stats while down", st)
+	}
+	g := newFogUploader(s.dir, s.eng) // restart: the outage start survives
+	if g.Stats()["offline_since_unix"].(int64) != since {
+		t.Fatal("offline_since lost on restart", g.Stats())
+	}
+	fb := newFogBox(t)
+	g.url = func() string { return fb.srv.URL }
+	if err := g.Sync(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if st := g.Stats(); st["offline_since_unix"].(int64) != 0 || st["online"] != true || st["last_ok_unix"] == nil {
+		t.Fatal("stats after recovery", st)
+	}
+	if _, err := os.Stat(filepath.Join(s.dir, "state", "fog_offline_since")); err == nil {
+		t.Fatal("offline marker left behind")
+	}
+}
+
+// closedAddr: a local port nobody listens on (connection refused at once).
+func closedAddr(t *testing.T) string {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := ln.Addr().String()
+	ln.Close()
+	return a
 }

@@ -207,3 +207,70 @@ func TestHtpdWaitReadyDrivesBringUp(t *testing.T) {
 		t.Fatal("ready state not reused")
 	}
 }
+
+// night sweep 2026-11-27 #44: 10 callers waiting while htpd is down share ONE bring-up (one restart, not ten).
+func TestHtpdWaitReadySharesOneBringUp(t *testing.T) {
+	htpdReady.Store(false)
+	htpdGateOn.Store(true)
+	defer func() { htpdGateOn.Store(false); htpdBringHook.Store(nil); htpdReady.Store(false) }()
+	var called atomic.Int32
+	release := make(chan struct{})
+	h := func() bool { called.Add(1); <-release; return false } // a slow bring-up that fails
+	htpdBringHook.Store(&h)
+	var wg sync.WaitGroup
+	var oks atomic.Int32
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if htpdWaitReady(context.Background(), 5*time.Second) {
+				oks.Add(1)
+			}
+		}()
+	}
+	time.Sleep(100 * time.Millisecond)
+	close(release)
+	wg.Wait()
+	if called.Load() != 1 || oks.Load() != 0 {
+		t.Fatalf("bring-ups %d (want 1), ok %d", called.Load(), oks.Load())
+	}
+	// the next waiter after a finished (failed) bring-up starts a new one
+	htpdWaitReady(context.Background(), time.Second)
+	if called.Load() != 2 {
+		t.Fatal("no new bring-up after the failed one", called.Load())
+	}
+}
+
+// night sweep 2026-11-27 #49: when the chat client leaves (ctx cancelled) the htpd call returns at once with
+// context.Canceled (not a transport error that would restart htpd) instead of waiting up to 3 min.
+func TestHtpdCallCancelledByClient(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	gone := make(chan struct{})
+	go func() {
+		c, err := ln.Accept()
+		if err != nil {
+			return
+		}
+		bufio.NewReader(c).ReadBytes('\n') // read the request, never answer
+		io.Copy(io.Discard, c)             // returns when the client closes
+		close(gone)
+		c.Close()
+	}()
+	t.Setenv("SCE_HTPD", ln.Addr().String())
+	ctx, cancel := context.WithCancel(context.Background())
+	time.AfterFunc(150*time.Millisecond, cancel)
+	t0 := time.Now()
+	_, err = htpdCallRaw(ctx, "reason", []string{"q"}, 3*time.Minute, nil, nil)
+	if !errors.Is(err, context.Canceled) || time.Since(t0) > 3*time.Second || htpdTransportErr(err) {
+		t.Fatalf("err %v after %v", err, time.Since(t0))
+	}
+	select {
+	case <-gone:
+	case <-time.After(3 * time.Second):
+		t.Fatal("connection not closed")
+	}
+}

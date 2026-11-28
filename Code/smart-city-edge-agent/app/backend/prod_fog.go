@@ -63,9 +63,12 @@ type fogUploader struct {
 	fails     int
 	lastErr   string
 	lastOK    time.Time
-	dropped   int
-	url       func() string
-	client    *http.Client
+	// night sweep 2026-11-27 #10: back-off + "fog offline since" (18k rows queued, one failed POST a minute)
+	consec       int       // failed syncs in a row
+	offlineSince time.Time // first failure of the current outage (zero = online)
+	dropped      int
+	url          func() string
+	client       *http.Client
 }
 
 func newFogUploaderFromProfile(dir string, e *Engine) *fogUploader {
@@ -94,6 +97,11 @@ func newFogUploader(dir string, e *Engine) *fogUploader {
 	if b, err := os.ReadFile(f.path("fog_outbox.seq")); err == nil {
 		f.seq, _ = strconv.ParseInt(strings.TrimSpace(string(b)), 10, 64)
 	}
+	if b, err := os.ReadFile(f.path("fog_offline_since")); err == nil { // #10: "offline since" across restarts
+		if n, _ := strconv.ParseInt(strings.TrimSpace(string(b)), 10, 64); n > 0 {
+			f.offlineSince = time.Unix(n, 0)
+		}
+	}
 	for _, r := range f.readRows(0, math.MaxInt) { // a seq file older than the outbox (power cut between writes)
 		f.seq = max(f.seq, r.Seq)
 	}
@@ -121,8 +129,53 @@ func (f *fogUploader) Stats() map[string]any {
 		"last_error": f.lastErr, "dropped_rows": f.dropped, "stream": f.stream}
 	if !f.lastOK.IsZero() {
 		out["last_sync_age_s"] = int(time.Since(f.lastOK).Seconds())
+		out["last_ok_unix"] = f.lastOK.Unix()
+	}
+	out["online"] = f.offlineSince.IsZero()
+	out["offline_since_unix"] = int64(0)
+	if !f.offlineSince.IsZero() {
+		out["offline_since_unix"] = f.offlineSince.Unix()
+		out["consecutive_failures"] = f.consec
+		out["retry_in_s"] = int(fogBackoff(f.every, f.consec).Seconds())
 	}
 	return out
+}
+
+// fogBackoffMax: the longest wait between upload tries while the fog is down (profile fog_backoff_max_s).
+func fogBackoffMax() time.Duration {
+	return time.Duration(profInt("fog_backoff_max_s", 600, 30, 3600)) * time.Second
+}
+
+// fogBackoff: the wait before the next sync after `fails` failed syncs in a row: every, 2x, 4x ... up to
+// fogBackoffMax (night sweep 2026-11-27 #10: a fog that is down costs one POST per 10 min, not one a minute).
+func fogBackoff(every time.Duration, fails int) time.Duration {
+	d, hi := every, fogBackoffMax()
+	if d > hi {
+		return d
+	}
+	for i := 0; i < fails && d < hi; i++ {
+		d *= 2
+	}
+	if d > hi {
+		d = hi
+	}
+	return d
+}
+
+// fogHint: a readable reason for the common deployment faults (status page + log).
+func fogHint(err error) string {
+	s := err.Error()
+	switch {
+	case strings.Contains(s, "connection refused"):
+		return s + " (nothing listens at fog_url: on the board 127.0.0.1:8092 needs `adb reverse tcp:8092 tcp:8092` and the laptop fog server running)"
+	case strings.Contains(s, "HTTP 503"):
+		return s + " (the fog server has no fog_ingest_token configured: it refuses every upload)"
+	case strings.Contains(s, "HTTP 401"):
+		return s + " (fog_token on the board does not match fog_ingest_token on the fog server)"
+	case strings.Contains(s, "EOF"):
+		return s + " (the link is up but no fog server answers behind it, e.g. adb reverse with the laptop fog stopped)"
+	}
+	return s
 }
 
 // Enqueue appends one row to the outbox (data is marshalled as is).
@@ -275,7 +328,12 @@ func (f *fogUploader) Sync(ctx context.Context) error {
 		if err := f.post(ctx, rows); err != nil {
 			f.mu.Lock()
 			f.fails++
-			f.lastErr = err.Error()
+			f.consec++
+			if f.offlineSince.IsZero() {
+				f.offlineSince = nowTime()
+				writeFileAtomic(f.path("fog_offline_since"), []byte(strconv.FormatInt(f.offlineSince.Unix(), 10))) // survives a restart
+			}
+			f.lastErr = fogHint(err)
 			f.mu.Unlock()
 			fogC.mark(false)
 			return err
@@ -285,7 +343,13 @@ func (f *fogUploader) Sync(ctx context.Context) error {
 			writeFileAtomic(f.path("fog_outbox.pos"), []byte(strconv.FormatInt(off+used, 10)))
 		}
 		f.sent += len(rows)
+		if !f.offlineSince.IsZero() {
+			log.Printf("fog: back online after %v offline", nowTime().Sub(f.offlineSince).Round(time.Second))
+			logQuietReset("fog-upload")
+		}
 		f.lastErr, f.lastOK = "", time.Now()
+		f.consec, f.offlineSince = 0, time.Time{}
+		os.Remove(f.path("fog_offline_since"))
 		f.mu.Unlock()
 		fogC.mark(true)
 	}
@@ -367,19 +431,23 @@ func (f *fogUploader) compactLocked(overCap bool) {
 }
 
 func (f *fogUploader) Run(stop <-chan struct{}) {
-	t := time.NewTicker(f.every)
-	defer t.Stop()
 	for {
-		f.summarise()
+		f.summarise() // summaries still queue during an outage (on the board's own clock)
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		wait := f.every
 		if err := f.Sync(ctx); err != nil {
-			logQuiet("fog-upload", "fog: upload failed (%v); rows stay queued", err)
+			f.mu.Lock()
+			wait = fogBackoff(f.every, f.consec)
+			since, msg := f.offlineSince, f.lastErr
+			f.mu.Unlock()
+			logQuiet("fog-upload", "fog: upload failed (%s); rows stay queued, offline since %s, next try in %v",
+				msg, since.Format(time.RFC3339), wait)
 		}
 		cancel()
 		select {
 		case <-stop:
 			return
-		case <-t.C:
+		case <-time.After(wait):
 		}
 	}
 }

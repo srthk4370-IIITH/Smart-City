@@ -27,7 +27,6 @@ var healthDomains = []string{"air_quality", "water", "power", "occupancy", "weat
 
 const (
 	healthTrendHold = 6 * bucketSec // an elevated/curbed arrow stays this long (30 min sensor time)
-	healthStaleSec  = 2 * bucketSec // a sensor whose last reading is older than this is stale
 	healthOpenSec   = 12 * 3600     // pending incidents older than this (sensor time) are not "open"
 	healthMaxSteps  = 3
 )
@@ -62,6 +61,7 @@ type DomainHealth struct {
 	ByAI        bool             `json:"raised_by_ai,omitempty"`
 	Faults      int              `json:"sensor_faults"`
 	Counts      map[string]int   `json:"counts"`
+	NowCounts   map[string]int   `json:"now_counts,omitempty"` // #110: sensors by the status of their current reading
 	OutOfSvc    int              `json:"out_of_service,omitempty"` // sensors under maintenance: shown, never alarmed
 	Sensors     int              `json:"sensors"`
 	Context     int              `json:"context_sensors"`
@@ -129,7 +129,8 @@ func contextSensor(st SensorState) bool {
 }
 
 func staleSensor(st SensorState, sim int64) bool {
-	return st.Last == nil || !st.DataOK || st.Status == "insufficient_data" || (st.Updated > 0 && sim-st.Updated > healthStaleSec)
+	// night sweep 2026-11-27 #105: the one staleness rule (sensorStale, 3 missed readings)
+	return st.Last == nil || !st.DataOK || st.Status == "insufficient_data" || sensorStale(st.Updated, sim)
 }
 
 // openIncident: not closed, from this sensor history, and either recent enough to still matter or
@@ -199,8 +200,14 @@ func buildHealth(sim, epoch int64, states []SensorState, incs []*Incident, marks
 				continue
 			}
 			s := st.Status
-			if s == "" {
+			if s == "" || staleSensor(st, sim) { // #105: a stale sensor counts as no data, not as its last status
 				s = "insufficient_data"
+			}
+			if ns := st.NowStatus; ns != "" { // #110: counts of the CURRENT readings ("right now" on Home)
+				if dh.NowCounts == nil {
+					dh.NowCounts = map[string]int{}
+				}
+				dh.NowCounts[ns]++
 			}
 			dh.Counts[s]++
 			if s == "sensor_fault" {

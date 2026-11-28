@@ -213,6 +213,8 @@ function build(root) {
     s('svg', { viewBox: '0 0 24 24', width: 20, height: 20, 'aria-hidden': 'true', fill: 'none', stroke: 'currentColor', 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' },
       s('path', { d: 'M4 4v6h6' }), s('path', { d: 'M5.5 15a8 8 0 1 0 1.5-8.5L4 10' })));
   E.status = h('span', { class: 'hx-status', role: 'status', 'aria-live': 'polite' });
+  // night sweep 2026-11-27 #5: every stored incident as CSV (GET /api/incidents/export, the same file as Data health)
+  E.csv = h('a', { class: 'btn sm hx-csv', href: '/api/incidents/export?format=csv', download: 'incidents.csv', title: 'Download every stored incident as a CSV file' }, 'Download CSV');
   E.sevs = h('div', { class: 'hx-sevs', role: 'group', 'aria-label': 'Filter by severity' });
   E.ftoggle = h('button', { type: 'button', class: 'hx-ftog', 'aria-expanded': 'false', 'aria-controls': 'hx-fbody', onclick: () => {
     const on = E.ftoggle.getAttribute('aria-expanded') !== 'true';
@@ -247,7 +249,7 @@ function build(root) {
   E.tip = h('div', { class: 'hx-tip', role: 'tooltip', hidden: true });
   E.note = h('p', { class: 'hx-note' });
   fill(root,
-    h('div', { class: 'hx-topbar' }, E.range, h('div', { class: 'hx-bar-r' }, E.status, E.refresh)),
+    h('div', { class: 'hx-topbar' }, E.range, h('div', { class: 'hx-bar-r' }, E.status, E.csv, E.refresh)),
     h('div', { class: 'hx-filters' }, h('div', { class: 'hx-frow' }, E.sevs, E.ftoggle), E.fbody),
     E.drill, E.story, E.kpis,
     E.modes,

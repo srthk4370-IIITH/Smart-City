@@ -24,10 +24,12 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/smtp"
 	"os"
@@ -144,15 +146,66 @@ func smtpChan(name, addr, user, pass, from string, to []string) alertChan {
 		}
 		msg := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n%s\r\n",
 			from, strings.Join(to, ", "), strings.ReplaceAll(m.Title, "\n", " "), strings.ReplaceAll(m.Text, "\n", "\r\n"))
-		done := make(chan error, 1)
-		go func() { done <- smtp.SendMail(addr, auth, from, to, []byte(msg)) }()
-		select {
-		case err := <-done:
-			return err
-		case <-ctx.Done():
-			return ctx.Err()
-		}
+		return smtpSendDeadline(ctx, addr, auth, from, to, []byte(msg))
 	}}
+}
+
+// smtpTimeout bounds one whole SMTP conversation.
+var smtpTimeout = 60 * time.Second
+
+// smtpSendDeadline is smtp.SendMail with a deadline on the connection (night sweep 2026-11-27 #48: a stalled mail
+// server used to leave one goroutine blocked forever per retry). The ctx deadline (or smtpTimeout) covers dial, TLS
+// and every read/write; a cancelled ctx closes the connection at once.
+func smtpSendDeadline(ctx context.Context, addr string, auth smtp.Auth, from string, to []string, msg []byte) error {
+	dl := time.Now().Add(smtpTimeout)
+	if d, ok := ctx.Deadline(); ok && d.Before(dl) {
+		dl = d
+	}
+	conn, err := (&net.Dialer{Deadline: dl}).DialContext(ctx, "tcp", addr)
+	if err != nil {
+		return err
+	}
+	conn.SetDeadline(dl)
+	stop := context.AfterFunc(ctx, func() { conn.Close() })
+	defer stop()
+	host, _, _ := strings.Cut(addr, ":")
+	c, err := smtp.NewClient(conn, host)
+	if err != nil {
+		conn.Close()
+		return err
+	}
+	defer c.Close()
+	if ok, _ := c.Extension("STARTTLS"); ok {
+		if err := c.StartTLS(&tls.Config{ServerName: host}); err != nil {
+			return err
+		}
+	}
+	if auth != nil {
+		if ok, _ := c.Extension("AUTH"); ok {
+			if err := c.Auth(auth); err != nil {
+				return err
+			}
+		}
+	}
+	if err := c.Mail(from); err != nil {
+		return err
+	}
+	for _, r := range to {
+		if err := c.Rcpt(r); err != nil {
+			return err
+		}
+	}
+	w, err := c.Data()
+	if err != nil {
+		return err
+	}
+	if _, err := w.Write(msg); err != nil {
+		return err
+	}
+	if err := w.Close(); err != nil {
+		return err
+	}
+	return c.Quit()
 }
 
 func newAlerterFromProfile(dir string) *alerter {

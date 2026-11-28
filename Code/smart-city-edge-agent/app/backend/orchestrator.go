@@ -26,6 +26,10 @@ var causal = map[string][]causalLink{
 	"air_quality/co2":  {{"occupancy", "occ", "people in the room raise CO2"}, {"hvac", "ac_units_on", "AC/ventilation state"}, {"power", "power_kw", "room load follows occupancy and HVAC"}, {"weather", "temp", "outdoor conditions drive ventilation and cooling"}},
 	"air_quality/temp": {{"hvac", "room_temp", "AC controls room temperature"}, {"hvac", "ac_units_on", "AC on/off explains a warming room"}, {"weather", "temp", "outdoor heat load"}, {"occupancy", "occ", "people add heat"}, {"power", "power_kw", "cooling load"}},
 	"air_quality/rh":   {{"hvac", "ac_units_on", "AC dehumidifies"}, {"weather", "rh", "outdoor humidity"}},
+	// 2026-11-28 re-run (board INC-0019): a per-unit AC sensor had no context at all, so a real 33.8 C during an AC
+	// failure was read alone and called a sensor fault; the room sensor and the AC units confirm or refute it
+	"hvac/room_temp": {{"air_quality", "temp", "room air sensor in the same space"}, {"hvac", "room_temp", "other AC room sensor"}, {"hvac", "ac_units_on", "AC on/off explains a warming room"}, {"weather", "temp", "outdoor heat load"}, {"occupancy", "occ", "people add heat"}},
+	"hvac/ac_on":     {{"hvac", "ac_units_on", "AC units running"}, {"hvac", "room_temp", "room temperature under this AC"}, {"air_quality", "temp", "room air sensor"}},
 	"air_quality/pm25": {{"weather", "wind", "wind disperses/brings particles"}, {"air_quality", "pm25", "other station shows if it is campus-wide"}, {"weather", "rh", "humidity affects particle readings"}},
 	"air_quality/pm10": {{"weather", "wind", "wind-blown dust"}, {"air_quality", "pm10", "other station shows if it is campus-wide"}},
 	"water/level":      {{"water", "flow", "inflow/outflow explains level changes"}, {"occupancy", "occ", "usage follows occupancy"}, {"weather", "temp", "heat raises consumption"}},

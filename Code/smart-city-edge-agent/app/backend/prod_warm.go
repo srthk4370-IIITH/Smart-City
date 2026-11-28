@@ -97,7 +97,7 @@ func (w *idleWarmer) Check() bool {
 	if !free || w.now().Sub(last) < w.idle {
 		return false
 	}
-	if hot, _, _ := ThermalHot(); hot {
+	if hot, _, _ := ThermalHot(); hot || thermalOverBudget() { // #88: no warm-up while the NPU is above the budget
 		return false
 	}
 	if w.ready != nil && !w.ready() {

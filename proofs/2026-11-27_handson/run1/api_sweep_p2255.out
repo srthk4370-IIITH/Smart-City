@@ -1,0 +1,45 @@
+    200    160 ms     3716 B json=True /api/health 
+    200     13 ms     4789 B json=True /api/health/data 
+    200      8 ms     1867 B json=True /api/status 
+    200      5 ms      441 B json=True /api/campus/status 
+    200     22 ms     7367 B json=True /api/sensors 
+    200     24 ms     2326 B json=True /api/topology 
+    200      5 ms    74672 B json=True /api/site 
+    200     27 ms    10980 B json=True /api/site/status 
+    200      5 ms       17 B json=True /api/site/versions 
+!!  400      3 ms        4 B json=False /api/site/validate EOF
+
+    200     20 ms    31456 B json=True /api/cards 
+    200      8 ms     7241 B json=True /api/rules 
+    200     21 ms    17123 B json=True /api/incidents 
+    200     30 ms    17123 B json=True /api/incidents?all=1 
+!!  200      5 ms     5569 B json=False /api/incidents/export id,opened_ist,severity,title,domains,sensors,state,workflow,outcome,scope,site_group,relat
+    200     25 ms     2343 B json=True /api/history?days=1 
+    200     14 ms     5806 B json=True /api/history?days=7 
+    200     16 ms    14116 B json=True /api/history?days=90 
+    200     30 ms     1077 B json=True /api/daily 
+    200      6 ms       49 B json=True /api/streams 
+!!  400     12 ms       98 B json=False /api/maintenance POST {"node":"SR-AQ-KH03-03","metric":"co2","minutes":60,"reason":"calibration","replaced"
+!!  400      5 ms       23 B json=False /api/mode mode must be 1, 2 or 3
+
+!!  404     11 ms       65 B json=False /api/scenarios demo mode is off on this board (htpd_profile demo=1 turns it on)
+
+    200      7 ms      743 B json=True /api/prod/status 
+    200      6 ms      145 B json=True /api/prod/time 
+    200     25 ms       19 B json=True /api/chat/status 
+    200      4 ms     1319 B json=True /api/chat/sessions 
+    200      4 ms     2048 B json=False /api/live 
+!!  404      4 ms       19 B json=False /v1/status 404 page not found
+
+    200      5 ms    16634 B json=True /api/series?node=SR-AQ-KH03-03&metric=temp 
+    200      5 ms    24202 B json=True /api/series?node=WM-WD-KH98-00&metric=ph&hours=24 
+!!  404      4 ms       10 B json=False /api/incidents/INC-9999 not found
+
+!!  404      8 ms       19 B json=False /api/incidents/../../etc/passwd 404 page not found
+
+    200      3 ms      146 B json=True /api/series 
+    200     15 ms      151 B json=True /api/series?node=NOPE&metric=x 
+    200     16 ms     5806 B json=True /api/history?days=-5 
+    200     15 ms    14116 B json=True /api/history?days=100000 
+    200      8 ms     5806 B json=True /api/history?days=abc 
+    200      6 ms    16634 B json=True /api/series?node=SR-AQ-KH03-03&metric=temp&hours=99999 

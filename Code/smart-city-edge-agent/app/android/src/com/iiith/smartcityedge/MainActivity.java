@@ -17,6 +17,11 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.JavascriptInterface;
+import android.speech.tts.TextToSpeech;
+import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
+import android.media.AudioManager;
+import java.util.Locale;
 import android.provider.Settings;
 
 import java.net.HttpURLConnection;
@@ -36,6 +41,10 @@ public class MainActivity extends Activity {
     private final Handler ui = new Handler(Looper.getMainLooper());
 
     private PermissionRequest micReq;
+    // 2026-11-28: WebView has no speechSynthesis, so answers to spoken questions are read with the system TTS
+    // (on the board: the offline sherpa-onnx Piper engine) through window.SCETTS.
+    private TextToSpeech tts;
+    private volatile boolean ttsReady;
 
     @Override
     public void onRequestPermissionsResult(int code, String[] perms, int[] res) {
@@ -50,7 +59,10 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle b) {
         super.onCreate(b);
         EdgeService.start(this);
-        pendingIncident = incidentOf(getIntent());
+        // night sweep 2026-11-27 #86: a recreated activity (b != null) or a launch from Recents re-delivers the old
+        // notification intent; opening its incident again put a sheet over whatever the operator was doing
+        boolean stale = b != null || (getIntent() != null && (getIntent().getFlags() & Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0);
+        pendingIncident = stale ? null : incidentOf(getIntent());
         if (checkSelfPermission("android.permission.POST_NOTIFICATIONS") != 0) {
             requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 1);
         }
@@ -98,6 +110,42 @@ public class MainActivity extends Activity {
                 });
             }
         }, "SCE");
+        tts = new TextToSpeech(getApplicationContext(), st -> {
+            if (st == TextToSpeech.SUCCESS) {
+                try { tts.setLanguage(Locale.US); } catch (Exception ignored) { }
+                // 2026-11-28 board test: on the QIDK speaker the ASSISTANT stream fades after a few seconds (the audio
+                // itself is steady: checked by synthesizing to a file); the MEDIA stream stays loud, so speak on it
+                tts.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
+                ttsReady = true;
+            }
+        });
+        web.addJavascriptInterface(new Object() {
+            @JavascriptInterface
+            public boolean available() { return ttsReady; }
+            @JavascriptInterface
+            public void speak(String text) {
+                if (!ttsReady || text == null) return;
+                // 2026-11-28 board test: right after push-to-talk the WebView's voice-call route (echo cancellation)
+                // can leave output on the earpiece path / ducked; put audio back to normal on the loudspeaker first
+                try {
+                    AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
+                    am.setMode(AudioManager.MODE_NORMAL);
+                    if (android.os.Build.VERSION.SDK_INT >= 31) am.clearCommunicationDevice();
+                    am.setSpeakerphoneOn(false);
+                    int s = AudioManager.STREAM_MUSIC, max = am.getStreamMaxVolume(s); // same volume group as the assistant stream here
+                    if (am.getStreamVolume(s) < max * 0.8) am.setStreamVolume(s, max, 0);
+                    am.requestAudioFocus(new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                            .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA)
+                                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build()).build());
+                } catch (Exception ignored) { }
+                ui.postDelayed(() -> tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "sce-answer"), 400);
+            }
+            @JavascriptInterface
+            public void stop() { if (ttsReady) tts.stop(); }
+            @JavascriptInterface
+            public boolean speaking() { return ttsReady && tts.isSpeaking(); }
+        }, "SCETTS");
         setContentView(web);
         hideBars();
         web.loadData("<html><body style='background:#000;color:#ccc;font:20px sans-serif;display:flex;"
@@ -219,5 +267,11 @@ public class MainActivity extends Activity {
     public void onWindowFocusChanged(boolean f) {
         super.onWindowFocusChanged(f);
         if (f) hideBars();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (tts != null) { try { tts.shutdown(); } catch (Exception ignored) { } }
+        super.onDestroy();
     }
 }

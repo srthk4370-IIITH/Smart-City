@@ -857,102 +857,105 @@ func (r *Reasoner) workflowTick(sim, epoch int64, states []SensorState) {
 		ev  map[string]any
 	}
 	var changed []out
-	r.mu.Lock()
-	for _, inc := range r.incidents {
-		wf := wfOf(inc)
-		if wf == wfClosed || wf == wfAnalysing || wf == wfInterrupted || inc.State == "running" {
-			continue
-		}
-		ev := map[string]any{}
-		if r.fineAutoCloseLocked(inc, sim, now) { // polish_events.go: fine, nothing new for 2 h
-			ev["workflow_change"] = "auto_closed"
-			ev["id"], ev["state"], ev["workflow"], ev["approval"] = inc.ID, inc.State, inc.Workflow, inc.Approval
-			changed = append(changed, out{inc, ev})
-			continue
-		}
-		if r.closeUnconfirmedEarlyLocked(inc, sim, now) {
-			ev["workflow_change"] = "auto_closed"
-			ev["id"], ev["state"], ev["workflow"], ev["approval"] = inc.ID, inc.State, inc.Workflow, inc.Approval
-			changed = append(changed, out{inc, ev})
-			continue
-		}
-		// an unacknowledged critical incident re-alerts once after 15 min (sound + Android notification)
-		if wf == wfNeeds && !inc.Reminded && normSeverity(inc.Severity) == "critical" && inc.NeedsSince > 0 &&
-			now.Sub(time.Unix(inc.NeedsSince, 0)) >= remindAfter {
-			inc.Reminded = true
-			inc.event("system", "reminder", "", "", "", "critical and not acknowledged for 15 min")
-			ev["change"] = "reminder"
-		}
-		// live return to normal (ISA-18.2 "return to normal"; resolved while unacknowledged stays visible)
-		if inc.LiveEpoch != 0 && inc.LiveEpoch == epoch {
-			n, normal, abnormal := 0, 0, false
-			for _, s := range inc.Sensors {
-				if s.Context {
-					continue
+	// night sweep 2026-11-27 #43: deferred unlock, so a panic in one incident's timers cannot leave r.mu held
+	func() {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		for _, inc := range r.incidents {
+			wf := wfOf(inc)
+			if wf == wfClosed || wf == wfAnalysing || wf == wfInterrupted || inc.State == "running" {
+				continue
+			}
+			ev := map[string]any{}
+			if r.fineAutoCloseLocked(inc, sim, now) { // polish_events.go: fine, nothing new for 2 h
+				ev["workflow_change"] = "auto_closed"
+				ev["id"], ev["state"], ev["workflow"], ev["approval"] = inc.ID, inc.State, inc.Workflow, inc.Approval
+				changed = append(changed, out{inc, ev})
+				continue
+			}
+			if r.closeUnconfirmedEarlyLocked(inc, sim, now) {
+				ev["workflow_change"] = "auto_closed"
+				ev["id"], ev["state"], ev["workflow"], ev["approval"] = inc.ID, inc.State, inc.Workflow, inc.Approval
+				changed = append(changed, out{inc, ev})
+				continue
+			}
+			// an unacknowledged critical incident re-alerts once after 15 min (sound + Android notification)
+			if wf == wfNeeds && !inc.Reminded && normSeverity(inc.Severity) == "critical" && inc.NeedsSince > 0 &&
+				now.Sub(time.Unix(inc.NeedsSince, 0)) >= remindAfter {
+				inc.Reminded = true
+				inc.event("system", "reminder", "", "", "", "critical and not acknowledged for 15 min")
+				ev["change"] = "reminder"
+			}
+			// live return to normal (ISA-18.2 "return to normal"; resolved while unacknowledged stays visible)
+			if inc.LiveEpoch != 0 && inc.LiveEpoch == epoch {
+				n, normal, abnormal := 0, 0, false
+				for _, s := range inc.Sensors {
+					if s.Context {
+						continue
+					}
+					n++
+					st := live[key(s.Node, s.Metric)]
+					if st == nil || st.Quality == "maintenance" {
+						continue
+					}
+					if st.Status == "normal" && st.normalRun >= liveNormalRun {
+						normal++
+					}
+					if reportRank[normSeverity(st.Status)] > 0 && st.AbnormalFor > 0 {
+						abnormal = true
+					}
 				}
-				n++
-				st := live[key(s.Node, s.Metric)]
-				if st == nil || st.Quality == "maintenance" {
-					continue
-				}
-				if st.Status == "normal" && st.normalRun >= liveNormalRun {
-					normal++
-				}
-				if reportRank[normSeverity(st.Status)] > 0 && st.AbnormalFor > 0 {
-					abnormal = true
+				switch {
+				case wf != wfResolved && n > 0 && normal == n:
+					r.resolveLocked(inc, sim, "readings back to normal (live)")
+					ev["workflow_change"] = "resolved"
+				case wf == wfResolved && abnormal && inc.ResolvedSim != 0 && sim > inc.ResolvedSim:
+					inc.Workflow, inc.ResolvedAt, inc.ResolvedSim = wfNeeds, 0, 0
+					if inc.Owner != "" {
+						inc.Workflow = wfInProgress
+					} else {
+						inc.NeedsSince = now.Unix()
+					}
+					inc.SuggestOutcome = suggestOutcome(inc)
+					inc.event("system", "abnormal_again", "", "", "", "a flagged reading is abnormal again")
+					ev["workflow_change"] = "abnormal_again"
 				}
 			}
-			switch {
-			case wf != wfResolved && n > 0 && normal == n:
-				r.resolveLocked(inc, sim, "readings back to normal (live)")
-				ev["workflow_change"] = "resolved"
-			case wf == wfResolved && abnormal && inc.ResolvedSim != 0 && sim > inc.ResolvedSim:
-				inc.Workflow, inc.ResolvedAt, inc.ResolvedSim = wfNeeds, 0, 0
-				if inc.Owner != "" {
-					inc.Workflow = wfInProgress
-				} else {
-					inc.NeedsSince = now.Unix()
+			// resolved for 24 h: auto-close, unless the owner still has a step open
+			if wfOf(inc) == wfResolved && inc.ResolvedAt > 0 && now.Sub(time.Unix(inc.ResolvedAt, 0)) >= autoCloseAfter &&
+				!(inc.Owner != "" && openSteps(inc) > 0) {
+				// the pre-filled outcome when the owner did steps (fixed by action, repaired ...), else resolved on its own
+				out := suggestOutcome(inc)
+				if out == "" || out == "no_action_needed" {
+					out = "resolved_on_its_own"
 				}
-				inc.SuggestOutcome = suggestOutcome(inc)
-				inc.event("system", "abnormal_again", "", "", "", "a flagged reading is abnormal again")
-				ev["workflow_change"] = "abnormal_again"
-			}
-		}
-		// resolved for 24 h: auto-close, unless the owner still has a step open
-		if wfOf(inc) == wfResolved && inc.ResolvedAt > 0 && now.Sub(time.Unix(inc.ResolvedAt, 0)) >= autoCloseAfter &&
-			!(inc.Owner != "" && openSteps(inc) > 0) {
-			// the pre-filled outcome when the owner did steps (fixed by action, repaired ...), else resolved on its own
-			out := suggestOutcome(inc)
-			if out == "" || out == "no_action_needed" {
-				out = "resolved_on_its_own"
-			}
-			inc.Workflow, inc.Outcome, inc.OutcomeNote, inc.ClosedAt, inc.ClosedBy = wfClosed, out, "auto", now.Unix(), "system"
-			if inc.Approval == "" || inc.Approval == "pending" {
-				inc.Approval = "approved"
-			}
-			inc.event("system", "auto_closed", "", out, "auto", "back to normal for 24 h")
-			ev["workflow_change"] = "auto_closed"
-		}
-		// open longer than staleCloseAfter (owner 2026-11-27: 3 days) with nobody working a step: auto-close, the
-		// history is kept; a new episode of the sensor opens a new incident anyway (promote.go promoMaxFlagAge)
-		if w := wfOf(inc); w != wfClosed && staleCloseAfter() > 0 && !(inc.Owner != "" && openSteps(inc) > 0) {
-			if c := wallOf(inc); !c.IsZero() && now.Sub(c) >= staleCloseAfter() {
-				days := int(staleCloseAfter().Hours() / 24)
-				inc.Workflow, inc.Outcome, inc.ClosedAt, inc.ClosedBy = wfClosed, "no_action_needed", now.Unix(), "system"
-				inc.OutcomeNote = fmt.Sprintf("auto: open %d days with no decision", days)
+				inc.Workflow, inc.Outcome, inc.OutcomeNote, inc.ClosedAt, inc.ClosedBy = wfClosed, out, "auto", now.Unix(), "system"
 				if inc.Approval == "" || inc.Approval == "pending" {
-					inc.Approval = "dismissed"
+					inc.Approval = "approved"
 				}
-				inc.event("system", "auto_closed", "", "no_action_needed", "auto", fmt.Sprintf("open for %d days with no decision", days))
+				inc.event("system", "auto_closed", "", out, "auto", "back to normal for 24 h")
 				ev["workflow_change"] = "auto_closed"
 			}
+			// open longer than staleCloseAfter (owner 2026-11-27: 3 days) with nobody working a step: auto-close, the
+			// history is kept; a new episode of the sensor opens a new incident anyway (promote.go promoMaxFlagAge)
+			if w := wfOf(inc); w != wfClosed && staleCloseAfter() > 0 && !(inc.Owner != "" && openSteps(inc) > 0) {
+				if c := wallOf(inc); !c.IsZero() && now.Sub(c) >= staleCloseAfter() {
+					days := int(staleCloseAfter().Hours() / 24)
+					inc.Workflow, inc.Outcome, inc.ClosedAt, inc.ClosedBy = wfClosed, "no_action_needed", now.Unix(), "system"
+					inc.OutcomeNote = fmt.Sprintf("auto: open %d days with no decision", days)
+					if inc.Approval == "" || inc.Approval == "pending" {
+						inc.Approval = "dismissed"
+					}
+					inc.event("system", "auto_closed", "", "no_action_needed", "auto", fmt.Sprintf("open for %d days with no decision", days))
+					ev["workflow_change"] = "auto_closed"
+				}
+			}
+			if len(ev) > 0 {
+				ev["id"], ev["state"], ev["workflow"], ev["approval"] = inc.ID, inc.State, inc.Workflow, inc.Approval
+				changed = append(changed, out{inc, ev})
+			}
 		}
-		if len(ev) > 0 {
-			ev["id"], ev["state"], ev["workflow"], ev["approval"] = inc.ID, inc.State, inc.Workflow, inc.Approval
-			changed = append(changed, out{inc, ev})
-		}
-	}
-	r.mu.Unlock()
+	}()
 	for _, c := range changed {
 		r.persist(c.inc)
 		r.notify("incident", c.ev)

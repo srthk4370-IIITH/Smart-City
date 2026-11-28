@@ -634,8 +634,11 @@ func TestPolishSystemCheckHiddenAndClosed(t *testing.T) {
 	if !got.SystemCheck || wfOf(&got) != wfClosed || got.ClosedBy != "system" {
 		t.Fatalf("system check: flag %v wf %s", got.SystemCheck, wfOf(&got))
 	}
-	if len(rg.r.List()) != 0 || rg.r.visibleCountLocked() != 0 {
-		t.Fatalf("the operator sees the system check: list %d count %d", len(rg.r.List()), rg.r.visibleCountLocked())
+	rg.r.mu.RLock()
+	vis := rg.r.visibleCountLocked()
+	rg.r.mu.RUnlock()
+	if len(rg.r.List()) != 0 || vis != 0 {
+		t.Fatalf("the operator sees the system check: list %d count %d", len(rg.r.List()), vis)
 	}
 	if rg.r.Get(chk.ID) == nil {
 		t.Fatal("the system check is gone (it must stay readable by ID)")

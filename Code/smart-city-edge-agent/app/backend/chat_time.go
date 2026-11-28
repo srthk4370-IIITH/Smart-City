@@ -63,6 +63,7 @@ var (
 	chatSpanRel1Re   = regexp.MustCompile(`(?i)\b(?:in\s+the\s+|over\s+the\s+|during\s+the\s+|within\s+the\s+)?(?:last|past|previous|pichle|pichhle)\s+(hour|day|week|fortnight|month|year|ghanta|ghante|din|hafte|mahine)\b`)
 	chatSpanFortRe   = regexp.MustCompile(`(?i)\bfortnight\b`)
 	chatBetweenRe    = regexp.MustCompile(`(?i)\b(?:between|from)\s+` + chatClockRe + `\s+(?:and|to|till|until|-)\s+` + chatClockRe)
+	chatToNowRe      = regexp.MustCompile(`(?i)\b(?:between|from)\s+(\d{1,2}(?:[:.]\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.|baje)?)\s+(?:and|to|till|until|-)\s+(?:right\s+)?now\b`)
 	chatSinceRe      = regexp.MustCompile(`(?i)\bsince\s+(?:last\s+)?(` + chatWdRe[1:len(chatWdRe)-1] + `|yesterday|kal|today|this\s+morning|morning|midnight|noon|\d{1,2}(?:[:.]\d{2})?\s*(?:am|pm|baje)?)\b(?:\s*(?:at\s+|,\s*)?` + chatClockRe + `)?`)
 	chatAfterRe      = regexp.MustCompile(`(?i)\b(?:after|post)\s+` + chatClockRe + `|\b` + chatClockRe + `\s+(?:ke\s+baad|ke\s+bad|baad|onwards)\b`)
 	chatBeforeRe     = regexp.MustCompile(`(?i)\b(?:before|until|till)\s+` + chatClockRe + `|\b` + chatClockRe + `\s+(?:se\s+pehle|ke\s+pehle|tak)\b`)
@@ -198,6 +199,9 @@ func chatLastWeekday(now time.Time, wd time.Weekday) time.Time {
 
 // chatSpanOf reads the period a question names, relative to the device time now.
 func chatSpanOf(q string, now time.Time) chatSpan {
+	// night sweep 2026-11-27 #20: "between 10 pm and now" / "from 9 am till now" is "since 10 pm" (it was unread, and the
+	// model then listed incidents from days before)
+	q = chatToNowRe.ReplaceAllString(q, "since $1")
 	now = now.In(IST)
 	today := chatDay(now)
 	mk := func(a, b time.Time, words string) chatSpan {

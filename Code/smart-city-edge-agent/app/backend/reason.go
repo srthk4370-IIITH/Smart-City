@@ -627,6 +627,9 @@ func (r *Reasoner) buildIncident(cands []Candidate, mode int) *Incident {
 		what = strings.ReplaceAll(s0.Rule.Status, "_", " ") // steady shape, abnormal value: say so
 	}
 	inc.Title = fmt.Sprintf("%s %s: %s", nice[s0.Metric], what, s0.Location)
+	if lt, ok := limitTitle(s0); ok { // night sweep 2026-11-27 #39: value + limit, not the pattern name
+		inc.Title = lt + ": " + s0.Location
+	}
 	if len(flagged) > 1 {
 		// multi-sensor alert: name every alarming sensor and its status
 		var parts []string
@@ -728,7 +731,7 @@ func (r *Reasoner) Process(cands []Candidate, mode int) *Incident {
 	r.log(inc, fmt.Sprintf("Event gated: %d sensor(s) flagged, %d related sensor(s) attached, mode %d", nflag, len(inc.Sensors)-nflag, mode))
 	if mode != 1 {
 		// instant first report (retrieval + rules, CPU, < 5 ms) while the agents and the reasoner run
-		r.preliminary(inc, r.retrievalPreliminary(inc))
+		r.preliminaryNext(inc, r.retrievalPreliminary(inc), "the AI agents are reading the sensors now")
 	}
 	var epoch, shift int64
 	if r.eng != nil {
@@ -1068,7 +1071,7 @@ func (r *Reasoner) analyse(ctx context.Context, inc *Incident, mode int, t0 time
 			r.log(inc, fmt.Sprintf("Related domains checked and steady (%d context agents): reasoner v3 writes the report", nctx))
 			trace("phase %s reasoner-start +%dms (isolated)", inc.ID, time.Since(t0).Milliseconds())
 			progReasoner(inc.ID)
-			r.preliminary(inc, isolatedReport(inc.Sensors, findings))
+			r.preliminaryNext(inc, isolatedReport(inc.Sensors, findings), "the reasoner is writing the full report")
 			rc := r.reasonV3Fallback(ctx, inc, findings, func() *ReportCall { return isolatedReport(inc.Sensors, findings) })
 			r.mu.Lock()
 			inc.Final = rc
@@ -1087,7 +1090,7 @@ func (r *Reasoner) analyse(ctx context.Context, inc *Incident, mode int, t0 time
 			r.log(inc, fmt.Sprintf("Reasoner v3 combining %d domains", len(doms)))
 			trace("phase %s reasoner-start +%dms", inc.ID, time.Since(t0).Milliseconds())
 			progReasoner(inc.ID)
-			r.preliminary(inc, fallbackReport(inc.Sensors, findings, nil))
+			r.preliminaryNext(inc, fallbackReport(inc.Sensors, findings, nil), "the reasoner is writing the full report")
 			rc := r.reasonV3(ctx, inc, findings)
 			r.mu.Lock()
 			inc.Final = rc
@@ -1382,6 +1385,13 @@ func (r *Reasoner) QueueAhead() int {
 // preliminary: stage 1 of the two-stage report. The deterministic report (rules + validated agent findings) is shown
 // at once, marked preliminary, while the reasoner writes the real one (stage 2 replaces inc.Final).
 func (r *Reasoner) preliminary(inc *Incident, rc *ReportCall) {
+	r.preliminaryNext(inc, rc, "")
+}
+
+// preliminaryNext: preliminary with what happens next in the timeline line. night sweep 2026-11-27 #37: "the
+// reasoner is writing the full report" only where the reasoner call follows at once (Process); the fast path and
+// the early look said it while nothing ran on the NPU for 5-20 min.
+func (r *Reasoner) preliminaryNext(inc *Incident, rc *ReportCall, next string) {
 	if rc == nil || rc.Parsed == nil {
 		return
 	}
@@ -1398,7 +1408,11 @@ func (r *Reasoner) preliminary(inc *Incident, rc *ReportCall) {
 		mergeSteps(inc, "preliminary") // actionable at once; the AI report merges into it (workflow.go)
 	}
 	r.mu.Unlock()
-	r.log(inc, "Preliminary report shown (rules + agent findings); the reasoner is writing the full report")
+	msg := "Preliminary report shown (rules + agent findings)"
+	if next != "" {
+		msg += "; " + next
+	}
+	r.log(inc, msg)
 }
 
 // runWork runs one unit of work; a panic in it is logged with its stack and the loop carries on (the incident it

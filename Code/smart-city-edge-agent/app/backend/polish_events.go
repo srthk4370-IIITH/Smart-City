@@ -59,10 +59,10 @@ func incidentOpenWF(inc *Incident) bool {
 	return w != wfClosed && w != wfResolved && inc.ClosedAt == 0
 }
 
-// visibleCountLocked: incidents the operator sees (no system checks). Takes the read lock itself.
+// visibleCountLocked: incidents the operator sees (no system checks). Caller holds r.mu (read or write).
+// Night sweep 2026-11-27: it used to take r.mu.RLock itself while both callers (/api/status, heartbeat) already held
+// it; a writer queued between the two read locks would deadlock the reasoner, chat and dashboard.
 func (r *Reasoner) visibleCountLocked() int {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
 	n := 0
 	for _, i := range r.incidents {
 		if !i.SystemCheck {

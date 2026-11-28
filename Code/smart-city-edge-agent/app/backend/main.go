@@ -100,7 +100,8 @@ func main() {
 	rsn.StartRerunFailed()    // interrupted incidents are re-run once the first readings are in
 	rsn.RestorePending()      // alerts that were waiting for the NPU when the board went down (pendingq.go)
 	srv := &Server{eng: eng, rsn: rsn, genie: genie, hub: hub, health: health, dir: *dir, start: time.Now()}
-	srv.StartHousekeeping() // hourly file rotation + disk alarm (hardening.go)
+	srv.StartHousekeeping()    // hourly file rotation + disk alarm (hardening.go)
+	srv.StartResourceHistory() // RSS / memory / temperatures every minute (resources.go, night sweep 2026-11-27 #87)
 	log.Printf("edge-agent: %d live sensors (sliders / %s), clock from %s, agent model: %s (available=%v, agent %s), listening on %s",
 		len(eng.states), "/api/ingest", eng.Meta.StartIST, genie.AgentModel().Name, genie.AgentModel().Available, agentVer, *port)
 	// header and idle timeouts stop slow or abandoned clients holding connections open; no write

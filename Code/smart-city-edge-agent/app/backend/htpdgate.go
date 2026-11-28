@@ -51,18 +51,50 @@ func htpdWaitReady(ctx context.Context, max time.Duration) bool {
 	if hp == nil {
 		return false
 	}
-	done := make(chan bool, 1)
-	go func() { done <- (*hp)() }()
+	f := htpdBringOnce(*hp)
 	t := time.NewTimer(max)
 	defer t.Stop()
 	select {
-	case ok := <-done:
-		return ok
+	case <-f.done:
+		return f.ok
 	case <-t.C:
 		return false
 	case <-ctx.Done():
 		return false
 	}
+}
+
+// night sweep 2026-11-27 #44: every waiter used to start its own bring-up goroutine while htpd was down; they piled
+// up and each one restarted htpd again after the previous failed. Now all waiters share one bring-up in flight.
+type htpdFlight struct {
+	done chan struct{}
+	ok   bool // valid after done is closed
+}
+
+var (
+	htpdFlightMu  sync.Mutex
+	htpdFlightCur *htpdFlight
+)
+
+func htpdBringOnce(run func() bool) *htpdFlight {
+	htpdFlightMu.Lock()
+	defer htpdFlightMu.Unlock()
+	if f := htpdFlightCur; f != nil {
+		return f
+	}
+	f := &htpdFlight{done: make(chan struct{})}
+	htpdFlightCur = f
+	go func() {
+		ok := false
+		defer func() {
+			htpdFlightMu.Lock()
+			f.ok, htpdFlightCur = ok, nil
+			htpdFlightMu.Unlock()
+			close(f.done)
+		}()
+		ok = run()
+	}()
+	return f
 }
 
 // htpdTransportErr: the htpd process died, was killed, or is not there (as opposed to a timeout or a normal error).

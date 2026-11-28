@@ -141,7 +141,10 @@ func (g *chatGuard) Saw(name, res string) {
 	delete(g.errs, name)
 }
 
-var chatSaysFailRe = regexp.MustCompile(`(?i)\b(could\s*n[o']t|can\s*n[o']t|can't|cannot|unable|not\s+available|no\s+data|error|failed|unknown|not\s+found|no\s+such|does\s+not\s+exist|isn't\s+on)\b`)
+// chatGuardTidyRe: " and ." / " ," left where an unverified id was cut out.
+var chatGuardTidyRe = regexp.MustCompile(`\s*(?:,|\band\b|\bor\b)?\s*([.,;:!?])`)
+
+var chatSaysFailRe =regexp.MustCompile(`(?i)\b(could\s*n[o']t|can\s*n[o']t|can't|cannot|unable|not\s+available|no\s+data|error|failed|unknown|not\s+found|no\s+such|does\s+not\s+exist|isn't\s+on)\b`)
 
 // Check: the answer against the evidence (ids), failed tools and an unread period.
 func (g *chatGuard) Check(text string, tools []ChatTool) string {
@@ -152,13 +155,34 @@ func (g *chatGuard) Check(text string, tools []ChatTool) string {
 			bad = append(bad, id)
 		}
 	}
-	for _, id := range bad {
-		text = strings.ReplaceAll(text, "["+id+"]", "[unverified id removed]")
-		text = strings.ReplaceAll(text, id, "[unverified id removed]")
-	}
+	// night sweep 2026-11-27 #92: a sentence naming an id the tools never returned is dropped whole (the user saw
+	// "[unverified id removed]" inside an answer about the wrong incident)
 	if len(bad) > 0 {
-		text += fmt.Sprintf(" (Note: %s that did not appear in the device data %s removed.)", plural(len(bad), "an incident id", "incident ids"),
-			map[bool]string{true: "was", false: "were"}[len(bad) == 1])
+		var keep []string
+		for _, s := range chatSentences(text) {
+			hit, good := false, false
+			for _, id := range bad {
+				hit = hit || strings.Contains(s, id)
+			}
+			for _, id := range chatIDs(s) {
+				good = good || !contains(bad, id)
+			}
+			if hit && good { // the sentence also names verified incidents: drop only the unverified id
+				for _, id := range bad {
+					s = strings.ReplaceAll(strings.ReplaceAll(s, "["+id+"]", ""), id, "")
+				}
+				s = chatGuardTidyRe.ReplaceAllString(s, "$1")
+				hit = false
+			}
+			if !hit {
+				keep = append(keep, s)
+			}
+		}
+		text = strings.Join(keep, " ")
+		if strings.TrimSpace(text) == "" {
+			text = "I could not confirm that from the device data."
+		}
+		text += fmt.Sprintf(" (I left out %s that the device data does not contain.)", plural(len(bad), "incident id", "incident ids"))
 	}
 	if len(g.errs) > 0 && !chatSaysFailRe.MatchString(text) {
 		var ks []string

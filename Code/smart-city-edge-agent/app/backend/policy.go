@@ -215,7 +215,7 @@ func checkAgentWin(s SensorRef, res GenieResult, prompt string, win []float64, h
 		call.Repairs = append(call.Repairs, "malformed JSON ("+err.Error()+"); fields recovered from the model's own output")
 	}
 	f.Pattern, f.Status, f.LikelyCause, f.Action = normEnum(f.Pattern), normEnum(f.Status), normEnum(f.LikelyCause), normEnum(f.Action)
-	f.Observations = mergeStrayIDs(f.Observations)
+	f.Observations = stepSignFixAll(mergeStrayIDs(f.Observations)) // night sweep 2026-11-27 #98: up/down from the sign
 	if on := postRules(); on != nil && len(win) > 0 {
 		for _, c := range applyPostRules(on, s.Role, s.Metric, s.Node, s.End, win, &f, prompt) {
 			call.Repairs = append(call.Repairs, fmt.Sprintf("post-rule %s: %s '%s' -> '%s'", c.rule, c.field, c.from, c.to))

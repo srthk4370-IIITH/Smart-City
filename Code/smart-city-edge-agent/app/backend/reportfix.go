@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -107,6 +108,21 @@ func rewriteAll(rep *Report, re *regexp.Regexp, repl string) bool {
 // contextFixReport applies the guards; returns the repair lines.
 func contextFixReport(rep *Report, inc *Incident) []string {
 	var rs []string
+	// night sweep 2026-11-27 #98: "stepped up -2.40" copied from an agent observation
+	stepHit := false
+	for _, p := range reportTexts(rep) {
+		if n := stepSignFix(*p); n != *p {
+			*p, stepHit = n, true
+		}
+	}
+	for i := range rep.Observations {
+		if n := stepSignFix(rep.Observations[i].Text); n != rep.Observations[i].Text {
+			rep.Observations[i].Text, stepHit = n, true
+		}
+	}
+	if stepHit {
+		rs = append(rs, "step direction set from the sign of the change")
+	}
 	if acOff(inc) {
 		a := rewriteAll(rep, acStopRe, "check why the AC is off (power, breaker, controller) and restore cooling")
 		b := rewriteAll(rep, acRunningRe, "AC is off")
@@ -118,9 +134,13 @@ func contextFixReport(rep *Report, inc *Incident) []string {
 		rs = append(rs, "outdoor dust: 'ventilate' replaced by 'keep windows closed, reduce fresh-air intake'")
 	}
 	if a, b, ok := corroboratedRise(inc); ok {
+		// night sweep 2026-11-27 #94: only a claim about the temperature / room sensors counts; "pH sensor fault" in the
+		// title of a heat incident is about another sensor and must not blank a good title
+		tc := tempClaimer(inc)
 		claim := rep.Severity == "sensor_fault" || rep.Label == "sensor_fault"
+		strong := claim // the reasoner's verdict itself is "sensor fault": its whole story is built on it
 		for _, p := range []*string{&rep.Title, &rep.RootCause, &rep.Explanation} {
-			claim = claim || jumpClaimRe.MatchString(*p)
+			claim = claim || tc(*p)
 		}
 		if claim {
 			if rep.Severity == "sensor_fault" {
@@ -132,12 +152,30 @@ func contextFixReport(rep *Report, inc *Incident) []string {
 			if rep.Label == "sensor_fault" {
 				rep.Label = "unknown"
 			}
-			if jumpClaimRe.MatchString(rep.Title) {
+			if tc(rep.Title) {
 				rep.Title = "" // the findings title is used instead
 			}
 			note := "Two sensors (" + a + ", " + b + ") rose together, so this is a real temperature rise, not a sensor jump."
-			rep.Explanation = dropClaimSentences(rep.Explanation)
-			rep.RootCause = dropClaimSentences(rep.RootCause)
+			if strong {
+				// 2026-11-28 re-run (board INC-0016): the reasoner said "Point sensor reading not credible ... the AC's
+				// own sensor reads normal" while both sensors were rising past 30 C. When the verdict itself was
+				// sensor_fault, nothing in its story can be kept: replace title, root cause and explanation.
+				rep.Title = ""
+				cause := "cooling is not keeping up with the heat load"
+				if acOff(inc) {
+					cause = "the AC units are off"
+				}
+				rep.RootCause = "Real room temperature rise: " + a + " and " + b + " rose together; most likely " + cause + "."
+				keep := dropClaimSentences(rep.Explanation, func(x string) bool { return tc(x) || faultStoryRe.MatchString(x) })
+				rep.Explanation = strings.TrimSpace(note + " " + keep + " Check the AC units and the room.")
+				if rep.Label == "unknown" || rep.Label == "" {
+					rep.Label = "hvac_or_thermal_issue"
+				}
+				rs = append(rs, "corroborated rise: "+a+" and "+b+" rose together; the reasoner's sensor-fault verdict replaced (title, root cause, explanation)")
+				return rs
+			}
+			rep.Explanation = dropClaimSentences(rep.Explanation, tc)
+			rep.RootCause = dropClaimSentences(rep.RootCause, tc)
 			if !strings.Contains(rep.Explanation, note) {
 				rep.Explanation = strings.TrimSpace(note + " " + rep.Explanation)
 			}
@@ -148,11 +186,15 @@ func contextFixReport(rep *Report, inc *Incident) []string {
 }
 
 // dropClaimSentences removes the sentences that make the sensor-fault claim (and a following "Check the sensor.").
-func dropClaimSentences(t string) string {
+// isClaim nil = any jump / fault claim.
+func dropClaimSentences(t string, isClaim func(string) bool) string {
+	if isClaim == nil {
+		isClaim = jumpClaimRe.MatchString
+	}
 	var keep []string
 	drop := false
 	for _, sen := range splitSentences(t) {
-		if jumpClaimRe.MatchString(sen) {
+		if isClaim(sen) {
 			drop = true
 			continue
 		}
@@ -224,3 +266,222 @@ func agreeLines(ss []SensorRef) []string {
 	}
 	return out
 }
+
+// ---------------------------------------------------------------- night sweep 2026-11-27 (workstream B)
+
+var (
+	// #94: a claim clause is about temperature when it names a temperature word or a temperature sensor's ref, or names
+	// no other metric at all ("a sensor jump"); "pH sensor fault" is about the pH sensor.
+	clauseSepRe   = regexp.MustCompile(`\s*[;,:]\s*|\s+(?:and|but|while|whereas)\s+`)
+	tempWordRe    = regexp.MustCompile(`(?i)\b(temp\w*|room|heat\w*|hot|warm\w*|thermal|cool\w*|ac|a/c|hvac)\b|\d\s?°?\s?C\b`)
+	otherMetricRe = regexp.MustCompile(`(?i)\b(ph|co2|pm\s?2\.?5|pm\s?10|dust|flow|power|pf|load|tds|turbidity|tank|humidity|rh|occupancy|wind|voltage|current|chlorine)\b`)
+	sensorRefRe   = regexp.MustCompile(`\bS\d+\b`)
+)
+
+// tempClaimer: true when a text makes a jump / fault claim about the incident's temperature or room sensors.
+func tempClaimer(inc *Incident) func(string) bool {
+	tempRef, otherRef := map[string]bool{}, map[string]bool{}
+	for _, s := range inc.Sensors {
+		if tempMetricRe.MatchString(s.Metric) {
+			tempRef[s.Ref] = true
+		} else if s.Ref != "" {
+			otherRef[s.Ref] = true
+		}
+	}
+	return func(t string) bool {
+		for _, c := range clauseSepRe.Split(t, -1) {
+			if !jumpClaimRe.MatchString(c) {
+				continue
+			}
+			temp, other := tempWordRe.MatchString(c), otherMetricRe.MatchString(c)
+			for _, ref := range sensorRefRe.FindAllString(c, -1) {
+				temp, other = temp || tempRef[ref], other || otherRef[ref]
+			}
+			if temp || !other {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+// #98: "stepped up -2.40 pH" (the agent's words for a step_increase on a falling reading): up/down from the sign.
+var stepSignRe = regexp.MustCompile(`(?i)\b(stepped|shifted|jumped|moved|steps?|stepping)\s+(up|down)(\s+(?:abruptly\s+)?(?:by\s+)?)([+\-−])(\d)`)
+
+func stepSignFix(t string) string {
+	return stepSignRe.ReplaceAllStringFunc(t, func(m string) string {
+		g := stepSignRe.FindStringSubmatch(m)
+		want := "down"
+		if g[4] == "+" {
+			want = "up"
+		}
+		if strings.EqualFold(g[2], want) {
+			return m
+		}
+		if g[2] == strings.ToUpper(g[2]) {
+			want = strings.ToUpper(want)
+		}
+		return g[1] + " " + want + g[3] + g[5]
+	})
+}
+
+func stepSignFixAll(xs []string) []string {
+	for i := range xs {
+		xs[i] = stepSignFix(xs[i])
+	}
+	return xs
+}
+
+// #70: event claims about a sensor whose rule AND agent both read normal ("the flow event is real" while flow was
+// steady) are removed, clause by clause. A word shared with an abnormal sensor (two temperature sensors) is left alone.
+var (
+	metricAlias = map[string]string{"flow": `flow`, "ph": `ph`, "co2": `co2`, "pm25": `pm\s?2\.?5`, "pm10": `pm\s?10`,
+		"temp": `temperature`, "room_temp": `room temperature`, "rh": `humidity`, "level": `(?:tank|water) level`, "tds": `tds`,
+		"power_kw": `power|load`, "pf": `power factor`, "occ": `occupancy`, "wind": `wind`}
+	eventWordRe = regexp.MustCompile(`(?i)\b(event|surge|spike|leak\w*|burst|drop|rise|jump|anomal\w*|abnormal\w*|alarm\w*|problem|failure|excursion)\b`)
+	calmWordRe  = regexp.MustCompile(`(?i)\b(no|not|never|steady|stable|normal|unchanged|flat|fine|ok|within|context)\b`)
+	clauseDelRe = regexp.MustCompile(`\s*;\s*|,\s+|\s+and\s+`)
+)
+
+func aliasRe(metric string) *regexp.Regexp {
+	a := metricAlias[metric]
+	if a == "" {
+		return nil
+	}
+	return regexp.MustCompile(`(?i)\b(?:` + a + `)\b`)
+}
+
+// normalEventFix: returns the repair line ("" = nothing changed).
+func normalEventFix(rep *Report, inc *Incident, calls []AgentCall) string {
+	agent := map[string]string{}
+	for _, c := range calls {
+		if c.Valid && c.Parsed != nil {
+			agent[c.Ref] = normSeverity(c.Parsed.Status)
+		}
+	}
+	var calm, busy []*regexp.Regexp
+	var names []string
+	for _, s := range inc.Sensors {
+		re := aliasRe(s.Metric)
+		if re == nil {
+			continue
+		}
+		a, ok := agent[s.Ref]
+		if normSeverity(s.Rule.Status) == "normal" && (!ok || a == "normal") {
+			calm = append(calm, re)
+			names = append(names, metricWord(s.Metric))
+		} else {
+			busy = append(busy, re)
+		}
+	}
+	if len(calm) == 0 {
+		return ""
+	}
+	bad := func(c string) bool {
+		if !eventWordRe.MatchString(c) || calmWordRe.MatchString(c) {
+			return false
+		}
+		for _, re := range busy {
+			if re.MatchString(c) {
+				return false
+			}
+		}
+		for _, re := range calm {
+			if re.MatchString(c) {
+				return true
+			}
+		}
+		return false
+	}
+	hit := false
+	fix := func(p *string) {
+		if n, ch := dropClauses(*p, bad); ch {
+			*p, hit = n, true
+		}
+	}
+	fix(&rep.Title)
+	fix(&rep.RootCause)
+	fix(&rep.Explanation)
+	fix(&rep.CausalChain)
+	for i := range rep.Observations {
+		fix(&rep.Observations[i].Text)
+	}
+	if !hit {
+		return ""
+	}
+	return "event claim removed: " + strings.Join(names, ", ") + " read normal (rule and agent)"
+}
+
+// dropClauses removes the clauses (split at ";", ", ", " and ") of each sentence that bad() flags; a sentence
+// with nothing left goes. Terminal punctuation and the first capital are kept.
+func dropClauses(t string, bad func(string) bool) (string, bool) {
+	changed := false
+	var out []string
+	for _, sen := range splitSentences(t) {
+		end := ""
+		if n := len(sen); n > 0 && strings.ContainsAny(sen[n-1:], ".!?") {
+			sen, end = sen[:n-1], sen[n-1:]
+		}
+		idx := clauseDelRe.FindAllStringIndex(sen, -1)
+		var segs, dels []string
+		prev := 0
+		for _, d := range idx {
+			segs, dels = append(segs, sen[prev:d[0]]), append(dels, sen[d[0]:d[1]])
+			prev = d[1]
+		}
+		segs = append(segs, sen[prev:])
+		var b strings.Builder
+		kept := 0
+		for i, sg := range segs {
+			if bad(sg) {
+				changed = true
+				continue
+			}
+			if kept > 0 {
+				b.WriteString(dels[i-1])
+			}
+			b.WriteString(sg)
+			kept++
+		}
+		if kept == 0 {
+			continue
+		}
+		s := strings.TrimSpace(b.String())
+		if s != "" {
+			s = strings.ToUpper(s[:1]) + s[1:]
+		}
+		out = append(out, s+end)
+	}
+	if !changed {
+		return t, false
+	}
+	return strings.Join(out, " "), true
+}
+
+// #95: a fact line for the reasoner when a flagged sensor's episode is already over at the window end, so a late
+// reading does not read the finished event as a step / sensor fault (INC-0016: pH 9.6 -> 7.2 called a sensor fault).
+// The wording comes from stream A's returnedToNormalFact (engine.go) on the sensor's window.
+func recoveredLines(ss []SensorRef) []string {
+	var out []string
+	for _, s := range ss {
+		n := len(s.Xs)
+		if s.Context || n < 2 || math.IsNaN(s.Xs[n-1]) {
+			continue
+		}
+		fact := returnedToNormalFact(s.Role, s.Metric, s.Node, s.Xs, s.End)
+		if fact == "" {
+			continue
+		}
+		m, _ := effectiveMetricOK(s.Role, s.Metric, s.Node)
+		u := ""
+		if m.Unit != "" {
+			u = " " + m.Unit
+		}
+		out = append(out, fmt.Sprintf("RECOVERED: %s %s %s; now %s%s, inside the card limits.",
+			s.Ref, s.Metric, fact, strconv.FormatFloat(s.Xs[n-1], 'f', m.Dec, 64), u))
+	}
+	return out
+}
+
+// faultStoryRe: sentences of a "one sensor is wrong" story that no longer hold once two sensors agree (board INC-0016).
+var faultStoryRe = regexp.MustCompile(`(?i)(not (read|treat) the room as (heated|hot)|disagrees? with|reads? normal|not credible|unreliable|point sensor|one (small )?sensor)`)

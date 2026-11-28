@@ -128,6 +128,18 @@ func chatLocationOf(q string, buildings []string) string {
 	return ""
 }
 
+// chatLocLevelOf: chatLocationOf plus the level ("KH level 3"): the tools' location argument. Night sweep 2026-11-27
+// #68: "KH level 3" was read as KH, then matched the KH level 98 tank.
+func chatLocLevelOf(q string, buildings []string) string {
+	b := chatLocationOf(q, buildings)
+	if b != "" && !strings.Contains(b, "-") {
+		if m := chatLevelWordRe.FindStringSubmatch(q); m != nil {
+			return b + " level " + m[1] + m[2] + m[3]
+		}
+	}
+	return b
+}
+
 type chatMention struct {
 	at     int
 	metric string
@@ -193,7 +205,7 @@ func chatRouteQuestion(q string, history []ChatMsg, buildings []string) (chatRou
 	if r, ok := chatRouteV24(q, history, buildings, 0); ok {
 		return r, true
 	}
-	loc := chatLocationOf(q, buildings)
+	loc := chatLocLevelOf(q, buildings)
 	dom := chatDomainOf(q)
 	inc := chatIncWordRe.MatchString(q)
 	count := chatCountRe.MatchString(q)
@@ -453,7 +465,7 @@ func chatDomainName(d string) string {
 }
 
 func chatSevName(s string) string {
-	if n, ok := map[string]string{"sensor_fault": "sensor fault", "normal": "fine"}[s]; ok {
+	if n, ok := map[string]string{"sensor_fault": "sensor fault", "normal": "fine", "no_data": "no data (stale)"}[s]; ok {
 		return n
 	}
 	return s

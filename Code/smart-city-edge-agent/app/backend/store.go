@@ -44,7 +44,32 @@ func incNum(id string) int {
 	return n
 }
 
+// night sweep 2026-11-27 #41: the incident id counter lives next to the store (incidents.jsonl.seq), so a state
+// backup / restore carries it and an id is never handed out twice (ids of incidents that left the file are not reused).
+func seqPath(store string) string { return store + ".seq" }
+
+var seqSaved sync.Map // store path -> highest id number written to its seq file (int)
+
+// saveSeq records n as the highest id handed out (only when it grew). Caller holds storeMu.
+func saveSeq(store string, n int) {
+	if store == "" {
+		return
+	}
+	if v, ok := seqSaved.Load(store); ok && n <= v.(int) {
+		return
+	}
+	if atomicWrite(seqPath(store), []byte(strconv.Itoa(n)), 0o644) == nil {
+		seqSaved.Store(store, n)
+	}
+}
+
 func (r *Reasoner) load() {
+	if b, err := os.ReadFile(seqPath(r.store)); err == nil {
+		if n, err := strconv.Atoi(strings.TrimSpace(string(b))); err == nil && n > r.seq {
+			r.seq = n
+			seqSaved.Store(r.store, n)
+		}
+	}
 	b, err := os.ReadFile(r.store)
 	if err != nil {
 		return
@@ -105,6 +130,7 @@ func (r *Reasoner) persist(inc *Incident) {
 		log.Printf("store: WRITE FAILED for %s (%v) - the change is in memory only; check the disk", inc.ID, werr)
 	} else {
 		r.storeLines++
+		saveSeq(r.store, incNum(inc.ID)) // #41
 	}
 	lines := r.storeLines
 	storeMu.Unlock()
@@ -173,6 +199,11 @@ func (r *Reasoner) compact() {
 			}
 		}
 		r.incidents = keep
+		// night sweep 2026-11-27 #51: the retrieval index forgets archived incidents too (it only grew until a
+		// restart, whose rebuild reads the live store only, so the two now agree)
+		for _, inc := range old {
+			r.ret.remove(inc.ID)
+		}
 	}
 	var buf []byte
 	for _, inc := range r.incidents {

@@ -71,6 +71,9 @@ type SensorState struct {
 	AbnormalFor      int      `json:"abnormal_for"`       // CONSECUTIVE abnormal readings so far (display of the current run; the AI gate uses abnormal_in_window)
 	AbnormalInWindow int      `json:"abnormal_in_window"` // abnormal readings among the last persist_readings (the AI is called at abnormal_of_window)
 	Reported         bool     `json:"reported"`           // already in an incident during this abnormal episode
+	// night sweep 2026-11-27 #110: status of the CURRENT reading against the card limits (normal | warning | critical |
+	// sensor_fault | no_data), not the 4 h window finding: a recovered pH whose window still holds the spike is "normal"
+	NowStatus string `json:"now_status"`
 	// data quality (dataquality.go): good | uncertain | bad | stale | maintenance, why, real-reading
 	// coverage of the 4 h window, held (slider / sample-and-hold) or measured (device feed), ingest counters
 	Quality     string       `json:"quality"`
@@ -91,6 +94,9 @@ type SensorState struct {
 	critRun     int          // consecutive FRESH readings beyond the critical limit (fast path)
 	fastAt      int64        // sensor time a fast-path incident was opened for this episode (0 = none)
 	earlyAt     int64        // sensor time a provisional early AI run was requested for this episode (0 = none)
+	// night sweep 2026-11-27 #77: the newest fresh reading counted toward the gate (abnormal NOW). Only such a sensor can
+	// still mature, so only it may hold an open batch; a one-reading spike already back to normal held a KH batch 25 min.
+	nowAb bool
 	// snoozed (polish_engine.go), filled in by Snapshot: criticals alarm as usual, everything else is held
 	// warming up (hardening): a live sensor with fewer than PersistReadings readings since start / restore - the AI gate
 	// cannot open yet; minutes left until it can
@@ -141,9 +147,18 @@ type Engine struct {
 	// liveHold: the startup backfill is still loading (Tick waits); liveQuiet: catch-up buckets up to this sensor time
 	// are fed without running the event gate, so only the last hour of the backfill can raise alerts (fast first alert
 	// for what is abnormal now, no alert flood for events of the night)
-	liveHold  bool
-	liveQuiet int64
+	liveHold   bool
+	liveHoldAt time.Time // wall clock the startup hold began (night sweep 2026-11-27 #1: capped at liveHoldMax)
+	liveQuiet  int64
 }
+
+// liveHoldMax: night sweep 2026-11-27 #1. With the campus API unreachable the startup hold lasted 1-5 min (6 connect
+// tries) and every sensor showed "no data". After this the engine catches up anyway; a late backfill still merges
+// into its own buckets (IngestReading's late path).
+var liveHoldMax = 20 * time.Second
+
+// liveCatchupMax: buckets replayed per poll while catching up (12 h = 144; one poll covers a 24 h backfill too).
+const liveCatchupMax = 600
 
 // SetLive switches the engine to the wall clock with measured feeds only (no simulated readings, no slider holds).
 // backfill > 0: sensor time starts that far back and waits (LiveReady) until the backfill is loaded; Tick then catches
@@ -155,6 +170,7 @@ func (e *Engine) SetLive(backfill time.Duration) {
 	now := nowTime().Unix() / bucketSec * bucketSec
 	e.sim = now - int64(backfill.Seconds())/bucketSec*bucketSec
 	e.liveHold = backfill > 0
+	e.liveHoldAt = time.Now()
 	e.liveQuiet = now - 3600
 	e.Meta.Start = e.sim
 	e.Meta.StartIST = time.Unix(e.sim, 0).In(IST).Format("Mon 02 Jan 15:04")
@@ -551,22 +567,45 @@ func (e *Engine) SimBase() (epoch, shift, now int64) {
 
 // Tick takes Speed new readings from every live sensor (one 5-minute bucket each) and runs detection.
 func (e *Engine) Tick() {
-	e.mu.Lock()
-	if !e.Playing {
-		e.mu.Unlock()
+	sim, cands, rises, ok := e.tickLocked()
+	if !ok {
 		return
 	}
-	var cands []Candidate
+	e.mu.RLock()
+	cb, tick, rcb := e.onEvent, e.onTick, e.onRise
+	e.mu.RUnlock()
+	if tick != nil {
+		tick(sim)
+	}
+	if len(rises) > 0 && rcb != nil {
+		rcb(rises)
+	}
+	if len(cands) > 0 && cb != nil {
+		cb(cands)
+	}
+}
+
+// tickLocked: the locked part of Tick. Night sweep 2026-11-27 #43: the unlock is deferred, so a panic recovered by
+// safeIter no longer leaves e.mu held (every ingest and API call would block forever).
+func (e *Engine) tickLocked() (sim int64, cands []Candidate, rises []Candidate, ok bool) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if !e.Playing {
+		return 0, nil, nil, false
+	}
 	steps := e.Speed
-	if e.Live { // one bucket per real 5 minutes; catch-up after the backfill / a stall: at most 160 buckets per poll
+	if e.Live { // one bucket per real 5 minutes; catch-up after the backfill / a stall in big steps (#1)
 		target := nowTime().Unix() / bucketSec * bucketSec
 		steps = int((target - e.sim) / bucketSec)
-		if steps > 160 {
-			steps = 160
+		if steps > liveCatchupMax {
+			steps = liveCatchupMax
+		}
+		if e.liveHold && time.Since(e.liveHoldAt) > liveHoldMax {
+			e.liveHold = false // #1: do not show "no data" for minutes while the campus API is unreachable
+			trace("engine: startup hold ended after %v without the backfill; catching up now", liveHoldMax)
 		}
 		if steps <= 0 || e.liveHold {
-			e.mu.Unlock()
-			return
+			return 0, nil, nil, false
 		}
 	}
 	for i := 0; i < steps; i++ {
@@ -586,20 +625,32 @@ func (e *Engine) Tick() {
 		}
 	}
 	e.injects = keep
-	sim := e.sim
-	cb, tick := e.onEvent, e.onTick
-	rises, rcb := e.rises, e.onRise
+	rises = e.rises
 	e.rises = nil
-	e.mu.Unlock()
-	if tick != nil {
-		tick(sim)
+	return e.sim, cands, rises, true
+}
+
+// CatchingUp: night sweep 2026-11-27 #1, the live engine is still loading or replaying its backfill: buckets done
+// and total (nil = up to date). /api/status "catching_up".
+func (e *Engine) CatchingUp() map[string]int64 {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	if !e.Live {
+		return nil
 	}
-	if len(rises) > 0 && rcb != nil {
-		rcb(rises)
+	target := nowTime().Unix() / bucketSec * bucketSec
+	if !e.liveHold && target-e.sim <= bucketSec {
+		return nil
 	}
-	if len(cands) > 0 && cb != nil {
-		cb(cands)
+	total := (target - e.Meta.Start) / bucketSec
+	done := (e.sim - e.Meta.Start) / bucketSec
+	if total < 1 {
+		total = 1
 	}
+	if done < 0 {
+		done = 0
+	}
+	return map[string]int64{"done": done, "total": total}
 }
 
 // injectionMature: an injection has run long enough (>= 60% of its duration, min 6 buckets) for its
@@ -682,7 +733,7 @@ func (e *Engine) detect() []Candidate {
 			if !ok {
 				st.Pattern, st.Status, st.Cause, st.Finding = "-", "insufficient_data", "", nil
 				st.SMA1h, st.EMA1h, st.SlopePerH = nil, nil, nil
-				st.same, st.AbnormalFor, st.normalRun, st.abTimes, st.AbnormalInWindow = 0, 0, 0, nil, 0
+				st.same, st.AbnormalFor, st.normalRun, st.abTimes, st.AbnormalInWindow, st.nowAb = 0, 0, 0, nil, 0, false
 				e.setQuality(k, st, false)
 				continue
 			}
@@ -721,7 +772,7 @@ func (e *Engine) detect() []Candidate {
 				// not enough real readings (gap, offline, warming up, replaced): no AI, a reason instead
 				st.Pattern, st.Status, st.Cause, st.Finding = "-", "insufficient_data", "", nil
 				st.SMA1h, st.EMA1h, st.SlopePerH = nil, nil, nil
-				st.same, st.AbnormalFor, st.normalRun, st.abTimes, st.AbnormalInWindow = 0, 0, 0, nil, 0
+				st.same, st.AbnormalFor, st.normalRun, st.abTimes, st.AbnormalInWindow, st.nowAb = 0, 0, 0, nil, 0, false
 				e.setQuality(k, st, false)
 				continue
 			}
@@ -736,6 +787,11 @@ func (e *Engine) detect() []Candidate {
 				// the flat run is the gap fill (history shorter than the window), not a stuck sensor: judge the
 				// real critical level as a stable shape
 				f = ruleFindingAs("stable", st.Role, st.Metric, st.Node, xs, e.sim)
+			}
+			// night sweep 2026-11-27 #80: a device feed repeating EXACTLY the same value for 30 min is stuck (TDS 152.0 from
+			// 22:30 read "normal" until the 80 min flatline rule); the 80 min rule stays for everything else
+			if !bypass && sevRank(f.Status) == 0 && e.exactConstantLocked(k) {
+				f = ruleFindingAs("flatline", st.Role, st.Metric, st.Node, xs, e.sim)
 			}
 		}
 		if sevRank(f.Status) > 0 && !hvacAgentSensor(st.Role, st.Node, st.Metric) {
@@ -752,18 +808,18 @@ func (e *Engine) detect() []Candidate {
 		st.Pattern, st.Status, st.Cause, st.Finding = f.Pattern, f.Status, f.LikelyCause, &f
 		e.setQuality(k, st, true)
 		if e.dq[k].inMaintenance(e.sim) { // out of service: shown, never alarmed
-			st.same, st.AbnormalFor, st.normalRun, st.abTimes, st.AbnormalInWindow = 0, 0, 0, nil, 0
+			st.same, st.AbnormalFor, st.normalRun, st.abTimes, st.AbnormalInWindow, st.nowAb = 0, 0, 0, nil, 0, false
 			continue
 		}
 		if e.dq[k].snoozedAt(e.sim) && f.Status != "critical" { // snoozed: only a critical may still open an incident
-			st.same, st.AbnormalFor, st.normalRun, st.critRun, st.abTimes, st.AbnormalInWindow = 0, 0, 0, 0, nil, 0
+			st.same, st.AbnormalFor, st.normalRun, st.critRun, st.abTimes, st.AbnormalInWindow, st.nowAb = 0, 0, 0, 0, nil, 0, false
 			continue
 		}
 		// Only an abnormal STATUS (warning, critical, faulty/stuck sensor) may call the AI. A shape change at
 		// normal levels - including a value returning to normal - is shown on the dashboard but never costs
 		// an NPU call, so a board at rest makes no LLM calls at all.
 		if sevRank(f.Status) == 0 {
-			st.critRun = 0
+			st.critRun, st.nowAb = 0, false
 			st.normalRun++
 			// ISA-18.2 deadband + off-delay: a reading back to normal but still within the deadband of the
 			// limit neither restarts the on-delay count nor ends a reported episode until it has repeated
@@ -832,8 +888,11 @@ func (e *Engine) detect() []Candidate {
 		// K-of-window counts READINGS beyond the threshold: after a one-reading spike/dip the window shape keeps the rule
 		// abnormal for many readings while the value is back to normal; those must not count (2026-11-20, one 2999 ppm
 		// glitch reached the AI). Trend / stuck / erratic findings count as before.
-		if !((f.Pattern == "spike" || f.Pattern == "dip") && len(xs) > 0 && hasLimits(st.Role, st.Metric, st.Node) &&
-			!valueAbnormalNode(st.Role, st.Metric, st.Node, xs[len(xs)-1])) {
+		// night sweep 2026-11-27 #109: a sensor_fault reading (impossible / stuck value) always counts, whatever the window
+		// shape: CO2 stuck at 300 ppm (below the physical floor) read as pattern "spike" and never reached the gate.
+		st.nowAb = f.Status == "sensor_fault" || !((f.Pattern == "spike" || f.Pattern == "dip") && len(xs) > 0 &&
+			hasLimits(st.Role, st.Metric, st.Node) && !valueAbnormalNode(st.Role, st.Metric, st.Node, xs[len(xs)-1]))
+		if st.nowAb {
 			st.abTimes = append(st.abTimes, e.sim)
 		}
 		st.AbnormalInWindow = st.winCount(e.sim, tr.PersistReadings)
@@ -854,14 +913,22 @@ func (e *Engine) detect() []Candidate {
 		} else {
 			st.critRun = 0
 		}
-		if !st.alerted && st.fastAt == 0 && st.critRun >= tr.FastReadings && inWin < tr.AbnormalOfWindow {
+		// night sweep 2026-11-27 #78: the fast path any time in the episode (it used to stop at maturity, so a room that
+		// went warning -> critical after maturing, held in a batch, had no incident at all); the reasoner skips it when
+		// the sensor already has an open incident (splitFast / openHostFor)
+		if !st.alerted && st.fastAt == 0 && st.critRun >= tr.FastReadings {
 			st.fastAt = e.sim
 			fast = append(fast, Candidate{st.Node, st.Metric, st.Role, f, xs, e.sim, st.Injected, true, false})
 		}
-		if ek > 0 && !st.alerted && st.earlyAt == 0 && inWin >= ek && inWin < tr.AbnormalOfWindow && earlyShapeOK(f, eshapes) {
+		// night sweep 2026-11-27 #55: no early look once the fast path opened an incident in this episode (the pair made two
+		// incidents for one pH event, INC-0015/16); the fast incident gets its own short-window AI run
+		if ek > 0 && !st.alerted && st.earlyAt == 0 && st.fastAt == 0 && inWin >= ek && inWin < tr.AbnormalOfWindow && earlyShapeOK(f, eshapes) {
 			st.earlyAt = e.sim
 			fast = append(fast, Candidate{st.Node, st.Metric, st.Role, f, xs, e.sim, st.Injected, false, true})
 		}
+	}
+	for _, st := range e.states { // #110
+		st.NowStatus = nowStatusOf(st, e.sim)
 	}
 	return append(e.batchEvents(abnormal), fast...)
 }
@@ -933,13 +1000,118 @@ func valueAbnormalM(m Metric, last float64) bool {
 	if m.Warn == 0 && m.Crit == 0 {
 		return false
 	}
+	// night sweep 2026-11-27: a "both" limit (pH) was never abnormal here, so a pH spike to 9.6 did not count
+	if m.HasLoSide && last < m.WarnLo {
+		return true
+	}
 	switch m.Dir {
-	case "high":
+	case "high", "both":
 		return last >= m.Warn
 	case "low":
 		return last <= m.Warn
 	}
 	return false
+}
+
+// readingFaultM: the reading itself is physically impossible for the card (indoor CO2 below 350 ppm).
+func readingFaultM(m Metric, v float64) bool {
+	return (m.HasFaultLo && v < m.FaultLo) || (m.HasFaultHi && v > m.FaultHi)
+}
+
+// nowStatusOf: night sweep 2026-11-27 #110, the status of the CURRENT reading (normal | warning | critical |
+// sensor_fault | no_data). Metrics with card limits are judged on the value; others (power, level, flow) take the rule
+// status only while their newest reading counted toward the gate. Caller holds e.mu (or owns st).
+func nowStatusOf(st *SensorState, sim int64) string {
+	if st.Last == nil || st.Status == "" || st.Status == "no_data" || st.Status == "insufficient_data" || sensorStale(st.Updated, sim) {
+		return "no_data"
+	}
+	if st.Pattern == "context" {
+		return "normal"
+	}
+	v := *st.Last
+	if m, ok := effectiveMetricOK(st.Role, st.Metric, st.Node); ok {
+		if readingFaultM(m, v) {
+			return "sensor_fault"
+		}
+		if m.HasLimits && (m.Warn != 0 || m.Crit != 0) {
+			switch {
+			case valueCriticalM(m, v):
+				return "critical"
+			case valueAbnormalM(m, v):
+				return "warning"
+			case st.Status == "sensor_fault" && st.nowAb: // stuck / erratic at a normal level
+				return "sensor_fault"
+			}
+			return "normal"
+		}
+	}
+	if st.nowAb && sevRank(st.Status) > 0 {
+		return st.Status
+	}
+	return "normal"
+}
+
+// exactConstantMin: readings (30 min) of an exactly repeated value after which a device feed counts as stuck (#80).
+const exactConstantMin = 7
+
+// exactConstantLocked: night sweep 2026-11-27 #80, the last exactConstantMin buckets of a MEASURED feed all hold a real
+// reading and the very same non-zero value. Only metrics with card limits (power, tank level and flow can sit still
+// for real), never slider / held feeds (constant by design). Caller holds e.mu.
+func (e *Engine) exactConstantLocked(k string) bool {
+	fs := e.dq[k]
+	st := e.states[k]
+	if fs == nil || !fs.measured || st == nil || !hasLimits(st.Role, st.Metric, st.Node) || st.Role == "occupancy" || st.Role == "hvac" {
+		return false
+	}
+	s := e.series[k]
+	v0, ok := s[e.sim]
+	if !ok || math.Abs(v0) < 1e-9 {
+		return false
+	}
+	for i := 1; i < exactConstantMin; i++ {
+		v, ok := s[e.sim-int64(i)*bucketSec]
+		if !ok || math.Abs(v-v0) > 1e-9 {
+			return false
+		}
+	}
+	return true
+}
+
+// returnedToNormalFact: night sweep 2026-11-27 #95, for the reasoner prompt. xs is a window ending at end (one reading
+// per bucket). When the newest readings are back inside the card limits after a run of abnormal ones it returns
+// "returned to normal at HH:MM after N abnormal readings", else "". Metrics without card limits: "".
+func returnedToNormalFact(role, metric, node string, xs []float64, end int64) string {
+	m, ok := effectiveMetricOK(role, metric, node)
+	if !ok || !m.HasLimits || len(xs) == 0 {
+		return ""
+	}
+	bad := func(v float64) bool { return readingFaultM(m, v) || valueAbnormalM(m, v) || valueCriticalM(m, v) }
+	i := len(xs) - 1
+	normal := 0
+	for ; i >= 0 && !bad(xs[i]); i-- {
+		normal++
+	}
+	n := 0
+	for ; i >= 0 && bad(xs[i]); i-- {
+		n++
+	}
+	if normal == 0 || n == 0 {
+		return ""
+	}
+	back := end - int64(normal-1)*bucketSec
+	return fmt.Sprintf("returned to normal at %s after %d abnormal readings", time.Unix(back, 0).In(IST).Format("15:04"), n)
+}
+
+// ReturnedToNormalFact: returnedToNormalFact on the engine's own window of the sensor ending at end ("" when none).
+func (e *Engine) ReturnedToNormalFact(node, metric string, end int64) string {
+	xs, ok := e.WindowAt(node, metric, end)
+	if !ok {
+		return ""
+	}
+	e.mu.RLock()
+	role := e.Meta.Nodes[node].Role
+	e.mu.RUnlock()
+	return returnedToNormalFact(role, metric, node, xs, end)
 }
 
 // transientMax: default of TriggerRules.TransientMax - a spike/dip at most this many readings wide (beyond half its
@@ -1008,7 +1180,12 @@ func (e *Engine) batchEvents(abnormal map[string]Candidate) []Candidate {
 	if early := e.releaseUnrelatedLocked(abnormal); len(early) > 0 {
 		return early // batchsplit.go: mature sensors unrelated to this batch go out now; the batch stays open
 	}
-	if e.sim < e.batchUntil {
+	// night sweep 2026-11-27 #77: a mature CRITICAL member does not wait for anyone (the fast path would not either)
+	critNow := e.criticalMatureLocked(abnormal)
+	if critNow {
+		trace("gate: a mature critical sensor closes the batch at once")
+	}
+	if e.sim < e.batchUntil && !critNow {
 		// The window exists so co-occurring sensors land in ONE incident (Mode 3's cross-domain
 		// case). It used to run its full batchReadings unconditionally, which on an isolated event
 		// was ~6 s (3 readings at the 2 s poll) of waiting for nobody - measured as the largest
@@ -1019,10 +1196,10 @@ func (e *Engine) batchEvents(abnormal map[string]Candidate) []Candidate {
 			return nil
 		}
 	}
-	if e.sim < e.batchOpen+int64(tr.BatchMaxReadings)*bucketSec {
+	if e.sim < e.batchOpen+int64(tr.BatchMaxReadings)*bucketSec && !critNow {
 		for k := range abnormal {
-			if st := e.states[k]; !st.alerted && st.AbnormalInWindow < tr.AbnormalOfWindow && e.relatedToBatch(k) {
-				return nil // a late RELATED sensor is still too young: keep the batch open a little longer
+			if e.holdsBatchLocked(k) {
+				return nil // a late RELATED sensor, abnormal now, is still too young: keep the batch open a little longer
 			}
 		}
 	}
@@ -1031,7 +1208,8 @@ func (e *Engine) batchEvents(abnormal map[string]Candidate) []Candidate {
 	var out []Candidate
 	for k, c := range abnormal {
 		// an unrelated sensor that is still too young waits for its own batch (it is not marked alerted here)
-		if st := e.states[k]; !st.alerted && (st.AbnormalInWindow >= tr.AbnormalOfWindow || e.relatedToBatch(k)) {
+		// #77: a young related sensor joins only while it is abnormal NOW (a one-reading spike back to normal is not reported)
+		if st := e.states[k]; !st.alerted && (st.AbnormalInWindow >= tr.AbnormalOfWindow || (st.nowAb && e.relatedToBatch(k))) {
 			st.alerted, st.Reported, st.clearedAt, st.alertedAt = true, true, 0, e.sim
 			st.reportedSev = sevRank(c.Finding.Status)
 			out = append(out, c)

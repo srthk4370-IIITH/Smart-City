@@ -30,6 +30,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -178,6 +179,10 @@ func htpdCallRaw(ctx context.Context, kind string, prompts []string, timeout tim
 		dl = d
 	}
 	c.SetDeadline(dl)
+	// night sweep 2026-11-27 #49: a chat user who leaves (request ctx cancelled) closes the htpd connection at once
+	// instead of holding it up to 3 min; htpd's stream writer then sees the client gone.
+	stopClose := context.AfterFunc(ctx, func() { c.Close() })
+	defer stopClose()
 	req := map[string]any{"kind": kind}
 	for k, v := range extra {
 		req[k] = v
@@ -199,6 +204,9 @@ func htpdCallRaw(ctx context.Context, kind string, prompts []string, timeout tim
 	for {
 		line, err := rd.ReadBytes('\n')
 		if err != nil {
+			if errors.Is(ctx.Err(), context.Canceled) { // the caller left: not an htpd crash (never htpdTransportErr)
+				return nil, ctx.Err()
+			}
 			return nil, err
 		}
 		var l htpdLine

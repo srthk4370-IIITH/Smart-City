@@ -102,7 +102,9 @@ const IC = {
   incidents: '<path d="M6 9a6 6 0 0 1 12 0c0 6 2 7 2 7H4s2-1 2-7"/><path d="M10 20a2 2 0 0 0 4 0"/>',
   sensors: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
   map: '<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/>',
-  settings: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+  // night sweep 2026-11-27 #26: a real gear (the old rays looked like the theme toggle's sun)
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   about: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   moon: '<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/>',
@@ -158,7 +160,7 @@ const S = {
   status: null, live: null, topo: null, incs: [], incId: null, incText: '', inc: null,
   view: 'live', sensorMap: new Map(), drawer: null, open: new Set(), draft: {}, sse: false,
   pendingNewest: null, lastLiveEv: 0, lastLive: 0, lastStatus: 0, lastDrawer: 0, lastIncList: 0,
-  filter: 'all', incFilter: 'all', stream: {}, cardStream: {}, autoOpened: {}, trkPct: {}, modeTimer: 0, fold: {},
+  filter: 'all', incFilter: 'all', stream: {}, cardStream: {}, autoOpened: {}, newIncs: [], trkPct: {}, modeTimer: 0, fold: {},
   health: null, simNow: 0, lastHealth: 0, eng: false,
   // UX v34: checklist "not needed" form, footer close/dismiss form, sensor history cache, list filters
   ckNN: null, footForm: null, hist: {}, histReq: {}, incQ: '', incDom: 'all', incDate: 'any', grpOpen: new Set(),
@@ -272,7 +274,8 @@ async function refreshIncidents() {
     S.incs = (Array.isArray(l) ? l : []).sort((a, b) => (+b.id.slice(4) || 0) - (+a.id.slice(4) || 0));
     S.lastIncList = Date.now();
     renderIncList(); renderBanners(); updateHero();
-    shiftSummary(); // "Since 14:05: 2 new · 1 got worse · 1 resolved" (once per opening)
+    shiftSummary(); // "Since 14:05: 2 new · 1 got worse · 1 resolved" (live, #100)
+    renderDoNext(); // Home "Do this next" (#85b)
     renderHealth(); // tiles count decisions still owed per domain
     if (S.pendingNewest) {
       const nw = S.incs.find((i) => !S.pendingNewest.has(i.id));
@@ -318,7 +321,16 @@ function renderBanners() {
   const dk = hv.disk || st.disk;
   if (dk && dk.alert) { const pc = dk.used_pct != null ? dk.used_pct : dk.used_percent != null ? dk.used_percent : dk.pct; items.push({ k: 'warn', id: 'disk', t: 'Storage almost full' + (pc != null ? ': ' + Math.round(pc) + '% used' : '') + '.' }); }
   if (flag('htpd_rules_only')) items.push({ k: 'warn', id: 'rules', t: 'AI paused, rules only' + (flag('htpd_rules_only_min') != null ? ' for ' + Math.round(flag('htpd_rules_only_min')) + ' min' : '') + '.' });
-  const need = openCritIncs().filter((i) => wfOfI(i) === 'needs_decision');
+  // night sweep 2026-11-27 #1: start-up replay of the backlog ("catching up") instead of a dead-looking dashboard
+  const cu = st.catching_up || hv.catching_up;
+  if (cu && cu.total > 0 && cu.done < cu.total) items.push({ k: 'warn', id: 'catch', t: 'Catching up on the readings missed while the app was off: ' + Math.floor(100 * cu.done / cu.total) + ' % done. Values settle in a moment.' });
+  // night sweep 2026-11-27 #97/#86: a new incident is announced here (tap to open), never opened over the current screen
+  for (const n of S.newIncs || []) {
+    const i = (S.incs || []).find((x) => x.id === n) || { id: n, title: n };
+    items.push({ k: i.severity === 'critical' ? 'crit' : 'warn', id: 'n' + n, t: 'New incident ' + n + ': ' + plainTitle(i.title || n), open: n });
+  }
+  // on Home the "Do this next" card already offers these two buttons (#85b)
+  const need = S.view === 'live' ? [] : openCritIncs().filter((i) => wfOfI(i) === 'needs_decision' && !(S.newIncs || []).includes(i.id));
   need.slice(0, 2).forEach((i) => items.push({ k: 'crit', id: 'c' + i.id, t: 'Critical: ' + plainTitle(i.title) + ' - waiting for someone to take it.', inc: i }));
   if (need.length > 2) items.push({ k: 'crit', id: 'cmore', t: (need.length - 2) + (need.length - 2 === 1 ? ' more critical incident needs a decision.' : ' more critical incidents need a decision.'), href: '#incidents', btn: 'See all' });
   const sig = items.map((x) => x.id + x.t).join('|');
@@ -327,7 +339,14 @@ function renderBanners() {
     h('span', { class: 'pt', text: x.t }),
     x.inc ? [h('button', { type: 'button', class: 'btn sm', onclick: () => selectIncident(x.inc.id) }, 'Open'),
       h('button', { type: 'button', class: 'btn sm', onclick: () => wfAct(x.inc, '/ack', {}, 'Recorded: you are on it') }, 'I\'m on it')] : null,
+    x.open ? [h('button', { type: 'button', class: 'btn sm', onclick: () => { dropNewInc(x.open); selectIncident(x.open); } }, 'Open'),
+      h('button', { type: 'button', class: 'ibtn sm', 'aria-label': 'Hide this notice', onclick: () => dropNewInc(x.open) }, icon('x', 16))] : null,
     x.href ? h('a', { class: 'btn sm', href: x.href }, x.btn) : null)));
+}
+function dropNewInc(id) { S.newIncs = (S.newIncs || []).filter((x) => x !== id); renderBanners(); }
+function noteNewInc(id) {
+  if (!id || (S.newIncs || []).includes(id) || S.incId === id) return;
+  S.newIncs = (S.newIncs || []).concat(id).slice(-3); renderBanners();
 }
 function tickClock() { setText($('#c-time'), tAt(nowS())); setAttr($('#c-time'), 'title', 'Current time (' + ZONE + ')'); }
 function updateSub() {
@@ -357,9 +376,13 @@ function buildHero() {
   H.thermDot = h('i', { class: 'dot' }); H.thermT = h('span'); H.therm = h('span', { class: 'hbadge' }, H.thermDot, H.thermT);
   H.runDot = h('i', { class: 'dot' }); H.runT = h('span'); H.run = h('span', { class: 'hbadge' }, H.runDot, H.runT);
   H.mem = h('span', { class: 'hbadge' });
+  H.next = h('div', { class: 'donext', hidden: true }); // #85b "Do this next" (renderDoNext)
+  H.now = h('p', { class: 'dn-now', hidden: true });
+  H.areas = h('p', { class: 'dn-areas', hidden: true });
   $('#hero').append(h('div', { class: 'hero' },
     h('div', { class: 'hero-top' }, H.ico, h('div', {}, H.t, H.s)),
-    h('div', { class: 'hero-cap muted', style: 'font-size:12px;letter-spacing:.08em;text-transform:uppercase;margin:10px 0 4px', text: 'Sensors right now (incidents are listed above)' }),
+    H.next, H.now, H.areas,
+    h('div', { class: 'hero-cap muted', style: 'font-size:12px;letter-spacing:.08em;text-transform:uppercase;margin:10px 0 4px', text: 'Readings right now' }),
     h('div', { class: 'hero-stats' }, stat('sCrit', 'Critical'), stat('sWarn', 'Warning'), stat('sFault', 'Faulty'), stat('sTot', 'Watched')),
     h('div', { class: 'hero-sys eng-only' }, H.npu, H.model, H.therm, H.run, H.mem)));
 }
@@ -398,7 +421,13 @@ function headline(crit, warn, fault) {
 function updateHero() {
   if (!H.ico) return;
   let crit = 0, warn = 0, fault = 0, tot = 0, worst = 'normal';
-  if (S.health && Array.isArray(S.health.domains)) for (const d of S.health.domains) {
+  // night sweep 2026-11-27 #110: "right now" counts the CURRENT reading vs its card limits (now_status); the window
+  // status kept a recovered pH "critical" for 40 min. Older backends without now_status: the domain counts as before.
+  const nowList = nowSensors();
+  if (nowList) for (const s of nowList) {
+    tot++;
+    if (s.now_status === 'critical') crit++; else if (s.now_status === 'warning') warn++; else if (s.now_status === 'sensor_fault') fault++;
+  } else if (S.health && Array.isArray(S.health.domains)) for (const d of S.health.domains) {
     if (d.context_only) continue;
     const c = d.counts || {}; crit += c.critical || 0; warn += c.warning || 0; fault += c.sensor_fault || 0; tot += d.sensors || 0;
   } else if (S.live) for (const r in S.live.roles) {
@@ -415,6 +444,7 @@ function updateHero() {
   if (H.ico.dataset.i !== want) { H.ico.dataset.i = want; H.ico.replaceChildren(icon(want)); }
   setText(H.t, title); setText(H.s, sub);
   setText(H.sCrit, crit); setText(H.sWarn, warn); setText(H.sFault, fault); setText(H.sTot, tot);
+  renderDoNext(crit + warn + fault);
   const st = S.status; if (!st) return;
   const n = st.npu || {};
   setText(H.npuT, 'NPU ' + (n.errors > 0 ? 'errors ' + n.errors : n.busy ? 'busy' : 'idle') + (n.queue ? ' · q' + n.queue : '') + (n.last_latency_ms ? ' · ' + Math.round(n.last_latency_ms) + ' ms' : ''));
@@ -435,6 +465,71 @@ function updateHero() {
   setCls(H.runDot, 'dot ' + (onQidk ? 'ok' : 'warn')); setAttr(H.run, 'title', 'running_on: ' + ro);
   setText(H.mem, dv.mem_available_mb != null ? (dv.mem_available_mb >= 1024 ? (dv.mem_available_mb / 1024).toFixed(1) + ' GB' : dv.mem_available_mb + ' MB') + ' free' : '');
   H.mem.style.display = dv.mem_available_mb != null ? '' : 'none';
+}
+// judged sensors with a now_status (#110); null when the backend does not send it yet (fall back to the old counts)
+function nowSensors() {
+  if (!S.live || !S.live.roles) return null;
+  const out = [];
+  for (const r in S.live.roles) {
+    if (r === 'hvac') continue; // context only, never judged (as the domain counts)
+    for (const s of S.live.roles[r].sensors) { if (s.now_status == null) return null; out.push(s); }
+  }
+  return out.length ? out : null;
+}
+/* ----- Home "Do this next" (night sweep 2026-11-27 #85b) -----
+   The worst open incident with I'm on it / Open, then the other open ones, a live line ("Now: 3 abnormal readings ·
+   AI in ~12 min") and the areas no open incident covers. Worst = severity, then needs a decision, then newest. */
+const WF_PRIO = { needs_decision: 4, analysing: 3, interrupted: 2, in_progress: 1, resolved: 0 };
+function openIncs() {
+  return (S.incs || []).filter((i) => { const w = wfOfI(i); return w !== 'closed'; })
+    .sort((a, b) => sevRank(b.severity) - sevRank(a.severity) || (WF_PRIO[wfOfI(b)] || 0) - (WF_PRIO[wfOfI(a)] || 0) || (+b.id.slice(4) || 0) - (+a.id.slice(4) || 0));
+}
+function aiEtaLine() {
+  const st = S.status || {}, g = st.gate || {}, pr = st.progress;
+  if (pr && pr.id) return 'AI working on ' + pr.id + ' now';
+  const ws = (g.watching || []).map((w) => +w.eta_s).filter((x) => x >= 0);
+  if (!ws.length) return '';
+  const m = Math.min(...ws), b = g.batch;
+  if (m <= 0 && b && b.closes_within_s > 0) return 'AI within ~' + dhAgo(b.closes_within_s); // held by the open batch (#84)
+  return m <= 0 ? 'AI check due now' : 'AI in ~' + dhAgo(m);
+}
+function renderDoNext(nAbn) {
+  if (!H.next) return;
+  if (nAbn != null) S.nowAbn = nAbn;
+  const list = openIncs(), top = list[0], also = list.slice(1, 5);
+  const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+  // live line: abnormal readings now + when the AI looks next
+  const n = S.nowAbn || 0, ai = aiEtaLine();
+  const nowTxt = S.live ? 'Now: ' + (n ? plural(n, 'abnormal reading') : 'all readings normal') + (ai ? ' · ' + ai : '') : '';
+  setText(H.now, nowTxt); H.now.hidden = !nowTxt || (!top && !n && !ai);
+  // areas no open incident covers
+  const doms = S.health && Array.isArray(S.health.domains) ? S.health.domains.filter((d) => !d.context_only) : [];
+  const covered = new Set(list.flatMap((i) => i.roles || []));
+  const other = doms.filter((d) => !covered.has(d.domain) && /^(warning|critical|sensor_fault)$/.test(d.headline));
+  const starting = doms.filter((d) => !covered.has(d.domain) && d.headline === 'insufficient_data');
+  const areaTxt = !top || !doms.length ? '' : other.length ? 'Also needs a look: ' + other.map((d) => (DH_NAME[d.domain] || nice(d.domain)) + ' (' + (DH_WORD[d.headline] || d.headline).toLowerCase() + ')').join(', ')
+    : 'All other areas normal' + (starting.length ? ' (' + starting.map((d) => DH_NAME[d.domain] || nice(d.domain)).join(', ') + ' starting up)' : '');
+  setText(H.areas, areaTxt); H.areas.hidden = !areaTxt;
+  const sig = JSON.stringify([top && [top.id, top.severity, top.title, wfOfI(top), top.owner, top.place, top.state], also.map((i) => [i.id, i.severity, wfOfI(i), i.title]), list.length]);
+  if (H.next.dataset.sig === sig) return; H.next.dataset.sig = sig;
+  if (!top) { H.next.hidden = true; H.next.replaceChildren(); return; }
+  const wf = wfOfI(top), v = sevOf(top), place = top.place ? placeShort(String(top.place).split(';')[0]) : '';
+  const opened = top.opened_unix || top.created_unix;
+  const canAck = wf === 'needs_decision' || wf === 'analysing' || wf === 'interrupted';
+  const rowOf = (i) => h('button', { type: 'button', class: 'dn-also-i sev-' + sevOf(i).k, onclick: () => selectIncident(i.id), 'aria-label': 'Open ' + i.id + ': ' + plainTitle(i.title) },
+    h('i', { class: 'sdot', 'aria-hidden': 'true' }), h('span', { class: 'dn-t', text: plainTitle(i.title) }), h('span', { class: 'dn-m', text: sevOf(i).t + ' · ' + (WF_WORD[wfOfI(i)] || { w: nice(wfOfI(i)) }).w }));
+  fill(H.next,
+    h('div', { class: 'dn-h', text: 'Do this next' }),
+    h('div', { class: 'dn-card sev-' + v.k },
+      h('div', { class: 'dn-top' }, sevTag(top), wfChip(top)),
+      h('b', { class: 'dn-title', text: plainTitle(top.title) }),
+      h('span', { class: 'dn-meta', text: [top.id, place, opened ? 'opened ' + tDay(opened) : ''].filter(Boolean).join(' · ') }),
+      h('div', { class: 'dn-btns' },
+        canAck ? h('button', { type: 'button', class: 'btn primary', onclick: () => wfAct(top, '/ack', {}, 'Recorded: you are on it') }, 'I\'m on it') : null,
+        h('button', { type: 'button', class: 'btn', onclick: () => selectIncident(top.id) }, 'Open'))),
+    also.length ? h('div', { class: 'dn-also' }, h('div', { class: 'dn-h2', text: 'Also open (' + (list.length - 1) + ')' }), also.map(rowOf),
+      list.length > 5 ? h('a', { class: 'dn-more', href: '#incidents', text: 'All ' + list.length + ' open incidents ›' }) : null) : null);
+  H.next.hidden = false;
 }
 
 /* ----- plain language ----- */
@@ -603,19 +698,40 @@ function renderWatch() {
       h('span', { class: 'wt-eta', text: 'ready in ~' + pr.eta_s + ' s' }),
       h('span', { class: 'wt-bar', 'aria-hidden': 'true' }, h('i', { style: 'width:' + pct + '%' }))));
   }
+  // night sweep 2026-11-27 #84: the real wait and its reason. A mature sensor held by an open batch used to say
+  // "AI now" for 15+ min; held_by / eta_s (gate contract) say who holds it and until when.
+  const keyName = (k) => {
+    const p = String(k || '').split(/[/ :]/), s = S.sensorMap.get(key(p[0], p[1]));
+    return s ? metricName(s.metric) + ' · ' + placeShort(s.location) : String(k || '').replace('/', ' ');
+  };
+  const busyId = pr && pr.id;
   for (const x of w) {
     const name = metricName(x.metric) + ' · ' + placeShort(x.location || x.node);
-    const what = x.fast ? 'critical: an incident opens on the next critical reading' : x.have + ' of ' + x.need + ' abnormal readings';
+    const mature = x.have >= x.need;
+    const what = x.fast ? 'critical: an incident opens on the next critical reading' : 'abnormal for ' + x.have + ' reading' + (x.have === 1 ? '' : 's') + ' (' + x.need + ' needed)';
+    let eta = 'AI ' + when(x.eta_s), why = '';
+    if (x.held_by) { why = 'waiting for ' + keyName(x.held_by) + ' so related readings land in one incident'; eta = x.eta_s > 0 ? 'AI ' + when(x.eta_s) : 'AI soon'; }
+    else if (mature && x.eta_s <= 0) {
+      if (busyId) { eta = 'AI next'; why = 'the AI is busy with ' + busyId; }
+      else if (b && b.closes_within_s > 0) { eta = 'AI ' + when(b.closes_within_s).replace(/^in /, 'within '); why = 'waiting for related sensors' + ((b.waiting_for || []).length ? ': ' + b.waiting_for.map(keyName).join(', ') : ''); }
+      else eta = 'AI now';
+    }
     rows.push(h('div', { class: 'wt-row' },
       h('span', { class: 'wt-dot ' + x.status, 'aria-hidden': 'true' }),
-      h('span', { class: 'wt-main' }, h('b', { text: name }), ' — ' + what),
-      h('span', { class: 'wt-eta', text: 'AI ' + when(x.eta_s) }),
+      h('span', { class: 'wt-main' }, h('b', { text: name }), ' — ' + what, why ? h('span', { class: 'wt-why', text: why }) : null),
+      h('span', { class: 'wt-eta', text: eta }),
       h('span', { class: 'wt-bar', 'aria-hidden': 'true' }, h('i', { class: x.status, style: 'width:' + Math.round(100 * Math.min(x.have, x.need) / Math.max(1, x.need)) + '%' }))));
   }
-  if (b) rows.push(h('div', { class: 'wt-row wt-batch' }, h('span', { class: 'wt-main', text: 'Collecting related sensors with ' + b.opened_by.replace('/', ' ') + ' so they land in one incident' }),
+  if (b) rows.push(h('div', { class: 'wt-row wt-batch' }, h('span', { class: 'wt-main', text: 'Collecting related sensors with ' + keyName(b.opened_by) + ' so they land in one incident' + ((b.waiting_for || []).length ? '; waiting for ' + b.waiting_for.map(keyName).join(', ') : '') }),
     h('span', { class: 'wt-eta', text: 'closes ' + (b.min_close_s > 0 ? when(b.min_close_s) + '–' : '') + 'within ' + when(b.closes_within_s).replace(/^in /, '') })));
   box.replaceChildren(h('h2', { class: 'wt-h', text: pr ? 'AI at work' : 'Watching' }), ...rows);
   box.hidden = false;
+}
+// the live gate rule in words (night sweep 2026-11-27 #38: texts said "8 readings in a row" after the rule became 4 of 8)
+function gateRuleText() {
+  const s0 = (S.live && S.sensorMap.values().next().value) || {};
+  const k = +s0.abnormal_of_window || 4, n = +s0.persist_readings || 8;
+  return 'the AI is asked once ' + k + ' of the last ' + n + ' readings of a sensor are abnormal (a critical reading can open an incident sooner)';
 }
 function dhAgo(sec) {
   if (!(sec >= 0) || sec < 60) return 'under 1 min';
@@ -744,7 +860,7 @@ function renderHealth() {
 function renderHealthConn() {
   const e = $('#dh-conn'); if (!e) return;
   const seen = Math.max(S.lastStatus || 0, S.lastLiveEv || 0, S.lastHealth || 0);
-  const live = S.sse && seen && Date.now() - seen < 12000;
+  const live = (S.sse && seen && Date.now() - seen < 12000) || Date.now() - (S.resumedAt || 0) < 12000; // #116 wake grace
   setCls(e, 'dh-conn ' + (live ? 'on' : 'off'));
   setText(e, live ? '● Live' : '○ Not updating');
   setAttr(e, 'title', live ? 'Receiving live updates from the edge device' : 'No update for a while: values shown may be out of date');
@@ -802,7 +918,7 @@ function renderDomainSheet() {
       h('div', { class: 'ds-incs' }, m.incs.map((i) => h('button', { type: 'button', class: 'ds-inc sev-' + (i.state === 'running' ? 'pending' : i.sev), onclick: () => openIncidentFromHealth(i.id),
         'aria-label': 'Open incident ' + i.id + ': ' + i.plain + ', ' + i.text.replace(/ ↑$/, ', got worse').replace(/ ↓$/, ', improved') },
         h('b', { text: i.plain }), h('span', { text: i.text }))))) :
-      (m.abnormal && !older.length ? h('p', { class: 'op-note', text: 'No incident yet: the AI is asked once a reading stays abnormal for 8 readings in a row.' }) : null),
+      (m.abnormal && !older.length ? h('p', { class: 'op-note', text: 'No incident yet: ' + gateRuleText() + '.' }) : null),
     older.length ? h('section', { class: 'op-sec' }, h('h3', { text: 'Earlier, still awaiting your decision (' + older.length + ')' }),
       h('div', { class: 'ds-incs' }, older.slice(0, 5).map((i) => h('button', { type: 'button', class: 'ds-inc sev-' + (SEV_LABEL[i.severity] ? (i.severity === 'info' ? 'normal' : i.severity) : 'pending'), onclick: () => openIncidentFromHealth(i.id),
         'aria-label': 'Open incident ' + i.id + ': ' + plainTitle(i.title) },
@@ -1033,8 +1149,16 @@ async function sparkLoop() {
 
 /* ============================== sheets ============================== */
 function openSheet(id) {
-  const s = $('#' + id); s.classList.add('open'); s.setAttribute('aria-hidden', 'false');
+  const s = $('#' + id);
+  if (!s.classList.contains('open')) s.dataset.openedAt = String(Date.now()); // #97 tap guard (see sheetTapGuard)
+  s.classList.add('open'); s.setAttribute('aria-hidden', 'false');
   $('#scrim').classList.add('on'); document.body.classList.add('noscroll');
+}
+// night sweep 2026-11-27 #97: ignore taps for 1 s after a sheet slides in, so a tap aimed at what was under it
+// (bottom nav, a card) can never land on "I'm on it" / "Dismiss"
+function sheetTapGuard(e) {
+  const s = e.target.closest && e.target.closest('.sheet');
+  if (s && Date.now() - (+s.dataset.openedAt || 0) < 1000) { e.preventDefault(); e.stopPropagation(); }
 }
 function closeSheet(id) {
   const s = $('#' + id); if (!s.classList.contains('open')) return;
@@ -1287,6 +1411,22 @@ function incMatches(i) {
   return st && (!S.incDom || S.incDom === 'all' || (i.roles || []).includes(S.incDom)) && incDateOk(i) && (!S.incBld || S.incBld === 'all' || incBuildings(i).includes(S.incBld)) && (!S.incQ || incText(i).includes(S.incQ));
 }
 function applyIncFilter() { renderIncList(); }
+// #112: split each backend group into parts linked by a shared sensor or a shared building (site tree); order kept
+function splitGroups(list) {
+  const byG = new Map();
+  for (const i of list) { const g = i.group || i.id; if (!byG.has(g)) byG.set(g, []); byG.get(g).push(i); }
+  const out = [];
+  for (const members of byG.values()) {
+    const par = members.map((_, k) => k), find = (k) => (par[k] === k ? k : (par[k] = find(par[k])));
+    const sens = members.map((i) => new Set(i.sensors || [])), blds = members.map((i) => new Set(incBuildings(i)));
+    const meets = (a, b) => [...sens[a]].some((x) => sens[b].has(x)) || [...blds[a]].some((x) => blds[b].has(x));
+    for (let a = 0; a < members.length; a++) for (let b = a + 1; b < members.length; b++) if (meets(a, b)) par[find(b)] = find(a);
+    const parts = new Map();
+    members.forEach((i, k) => { const r = find(k); if (!parts.has(r)) parts.set(r, []); parts.get(r).push(i); });
+    out.push(...parts.values());
+  }
+  return out;
+}
 function flaggedRoles(i) {
   if (!i.sensors) { // list payload: roles + count from the title
     const m = /^(\d+) sensors/.exec(i.title || '');
@@ -1334,7 +1474,7 @@ function renderIncList() {
         // Seeded from S.cardStream because the card is rebuilt whenever the incident JSON changes.
         running ? h('pre', { class: 'cstream', 'data-cs': i.id, text: S.cardStream[i.id] || '' }) : null,
         h('div', { class: 'foot' },
-          h('span', { text: (i.watermark ? 'Demo · ' : '') + i.id + (i.place ? ' · ' + i.place : '') + (doms ? ' · ' + doms : '') + ' · ' + (i.created_unix ? tDay(i.created_unix) : (i.created_sim_ist || '-')) }),
+          h('span', { text: (i.watermark ? 'Demo · ' : '') + i.id + (i.place ? ' · ' + i.place : '') + (doms ? ' · ' + doms : '') + ' · ' + ((i.opened_unix || i.created_unix) ? tDay(i.opened_unix || i.created_unix) : (i.created_sim_ist || '-')) }),
           h('span', { class: 'eng-only', text: i.npu_calls + ' NPU call' + (i.npu_calls === 1 ? '' : 's') + (running ? '' : ' · ' + (i.total_ms / 1000).toFixed(1) + ' s') }),
           wfChip(i)),
         (i.steps_total && wf !== 'closed') || etaEl(i) ? h('div', { class: 'foot2' },
@@ -1344,20 +1484,30 @@ function renderIncList() {
   });
   const ids = new Set(S.incs.map((i) => i.id));
   for (const [id, e] of incEls) if (!ids.has(id)) { e.root.remove(); incEls.delete(id); }
-  // filter, then collapse repeats (same sensor, or same domain + pattern, within 30 min: backend group)
+  // filter, then collapse repeats. Night sweep 2026-11-27 #112: the backend group also joined "same pattern within
+  // 30 min" across buildings and folded a critical under a warning. Now a member stays in a group only when it shares
+  // a sensor or a building (site tree) with another member; the worst leads; a critical is never folded away.
   const vis = S.incs.filter(incMatches), groups = new Map();
-  for (const i of vis) { const g = i.group || i.id; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(i); }
+  for (const sub of splitGroups(vis)) {
+    sub.sort((a, b) => sevRank(b.severity) - sevRank(a.severity) || (+b.id.slice(4) || 0) - (+a.id.slice(4) || 0));
+    const lead = sub[0], folded = [];
+    groups.set(lead.id, { lead, rest: folded });
+    for (const i of sub.slice(1)) {
+      if (i.severity === 'critical' && i.state !== 'running') groups.set(i.id, { lead: i, rest: [] }); // never collapsed
+      else folded.push(i);
+    }
+  }
   const want = [];
-  for (const [g, members] of groups) {
+  for (const [g, gm] of groups) {
     let ge = grpEls.get(g);
     if (!ge) { ge = { root: h('div', { class: 'igrp' }), btn: null }; grpEls.set(g, ge); }
-    const lead = members[0], rest = members.slice(1), open = S.grpOpen.has(g);
+    const lead = gm.lead, rest = gm.rest, open = S.grpOpen.has(g);
     const kids = [incEls.get(lead.id).root];
     if (rest.length) {
       const lid = 'rel-' + g;
       kids.push(h('button', { type: 'button', class: 'irel', 'aria-expanded': open ? 'true' : 'false', 'aria-controls': lid,
         onclick: () => { open ? S.grpOpen.delete(g) : S.grpOpen.add(g); renderIncList(); } },
-      (open ? '▾ ' : '▸ ') + rest.length + ' related', h('span', { class: 'muted', text: ' · same sensor or same pattern within 30 min' })));
+      (open ? '▾ ' : '▸ ') + rest.length + ' related', h('span', { class: 'muted', text: ' · same sensor or same building' })));
       if (open) kids.push(h('div', { class: 'irel-list', id: lid }, rest.map((i) => incEls.get(i.id).root)));
     }
     if (ge.root.children.length !== kids.length || kids.some((k, n) => ge.root.children[n] !== k)) ge.root.replaceChildren(...kids);
@@ -1370,6 +1520,7 @@ function renderIncList() {
 }
 async function selectIncident(id) {
   S.incId = id; S.incText = ''; S.inc = null; S.ckNN = null; S.footForm = null;
+  if ((S.newIncs || []).includes(id)) dropNewInc(id);
   delete S.hist[id]; delete S.histReq[id]; // History of this sensor: always fresh on open
   setText($('#isheet-t'), id);
   $('#inc-detail').replaceChildren(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Loading ' + id + ' ...'));
@@ -1643,8 +1794,9 @@ function renderIncFoot(inc, force) {
   }
   if (ff) { f.replaceChildren(footForm(inc)); return; }
   const pre = prelimOpen(inc), busy = inc.state === 'running'; // preliminary shown: act now, the AI report merges in
-  const running = wf === 'analysing' && !pre, failed = wf === 'interrupted', owned = wf === 'in_progress' || (wf === 'resolved' && inc.owner);
-  const hint = running ? 'Dismiss and Close wait until the analysis has finished. You can already say "I\'m on it".' : pre && !owned ? 'Preliminary report: you can take this and tick steps now. The AI report will update the list; your ticks stay.' : failed ? 'The analysis was interrupted and there is no report. Tap Retry, or dismiss it with a note.'
+  const early = earlyReady(inc); // #60: an early look is something to act on, not "still analysing"
+  const running = wf === 'analysing' && !pre && !early, failed = wf === 'interrupted', owned = wf === 'in_progress' || (wf === 'resolved' && inc.owner);
+  const hint = early ? 'Early look ready: act on it now (I\'m on it, or Dismiss with a note). The full reading is made independently and replaces it.' : running ?'Dismiss and Close wait until the analysis has finished. You can already say "I\'m on it".' : pre && !owned ? 'Preliminary report: you can take this and tick steps now. The AI report will update the list; your ticks stay.' : failed ? 'The analysis was interrupted and there is no report. Tap Retry, or dismiss it with a note.'
     : owned ? (inc.owner ? inc.owner + ' is on it' + (inc.acked_at ? ' since ' + dclock(inc.acked_at) : '') + '. ' : '') + 'Tick the steps above, then close it with how it ended.'
       : 'I\'m on it = you take this and work through the steps. Dismiss = not needed (note required). Nothing switches automatically.';
   const me = opName();
@@ -1691,7 +1843,8 @@ function sensorVerdict(inc, s) {
 function sensorChip(inc, s) {
   const v = sensorVerdict(inc, s), name = metricName(s.metric), pend = v.st === 'pending';
   const glyph = pend ? '◌' : s.context ? (CTX_GLYPH[v.st] || '○') : (STATUS_GLYPH[v.st] || '○');
-  const said = pend ? 'waiting for the AI' : (STATUS_LABEL[v.st] || nice(v.st));
+  const ovr = S.ov && S.ov.id === inc.id && S.ov.m.get(s.ref); // #62: the agent's call was overruled by the report
+  const said = pend ? 'waiting for the AI' : (STATUS_LABEL[v.st] || nice(v.st)) + (ovr ? ' (agent, overruled)' : '');
   return h('button', { type: 'button', class: 'schip ' + stClass(pend ? 'none' : v.st) + (s.context ? ' ctx' : '') + (pend ? ' pend' : ''), 'data-ref': s.ref, title: s.location || s.node,
     'aria-haspopup': 'dialog', 'aria-label': name + ', ' + (s.location || s.node) + (s.context ? ', checked for context' : '') + ': ' + said + '. Open details',
     onclick: (e) => openSensorSheet(inc.id, s.ref, e.currentTarget) },
@@ -1759,6 +1912,8 @@ function renderSensorSheet(force) {
   const ctxA = a && isCtxAgent(a);
   const who = !S.eng ? 'What the AI found' : ctxA ? 'Context agent (rules, CPU)' : a ? (roleTitle[s.role] || nice(s.role)) + ' agent (NPU)' : inc.mode === 3 ? (roleTitle[s.role] || nice(s.role)) + ' agent' : 'Agent';
   const sec = h('div', { class: 'fs-sec' }, h('h3', { text: who + (S.eng ? ' says' : '') }));
+  const ovr = S.ov && S.ov.id === inc.id && S.ov.m.get(s.ref);
+  if (ovr) sec.append(h('p', { class: 'op-more op-overruled', text: 'This is the ' + ovr.who + '\'s first read. The final AI report overruled it: ' + ovr.why.replace(/\.$/, '') + '.' }));
   if (p) {
     const cw = confWord(p.confidence);
     sec.append(h('div', { class: 'rep-h', style: 'margin-top:8px' }, pill(p.status), patChip(p)), earlyNote(inc, s, p) || '',
@@ -1820,9 +1975,10 @@ function stageTag(i) {
 }
 function refineLine(inc) {
   if (inc.refine_stage === 'provisional') {
-    const e = inc.full_eta_s;
-    const when = e == null || e < 0 ? 'when the event has lasted long enough' : e <= 60 ? 'within a minute' : 'in ~' + Math.round(e / 60) + ' min';
-    return h('p', { class: 'refnext early', text: 'Early look to judge by. Full reading ' + when + ', made independently of this one.' });
+    // #60/#37: the ETA comes from the list row (ai_eta_s, else full_eta_s); "now" only while the NPU runs it
+    const e = aiEtaOf(inc);
+    const when = aiRunning(inc) ? 'is being made now' : e == null ? 'follows when the event has lasted long enough' : 'follows ' + etaWords(e);
+    return h('p', { class: 'refnext early', text: 'Early look ready: act on it now. The full reading ' + when + ', made independently of this one.' });
   }
   if (inc.next_refine_sim && NEXT_STAGE[inc.refine_stage]) return h('p', { class: 'refnext' }, etaEl(inc), ' (due ' + hm(inc.next_refine_sim) + ' sensor time)');
   const t = inc.next_refine_sim ? 'Next re-check at ' + hm(inc.next_refine_sim) + ' (sensor time)' : inc.refine_note || '';
@@ -1880,7 +2036,7 @@ function reasonerCard(inc) {
     if (!fast) card.append(details(inc.id + ':final:raw', 'Raw model output', f.raw), details(inc.id + ':final:prompt', 'Prompt (synthesizer)', f.prompt));
   } else if (running && pre) {
     const tx = S.stream[streamKeyOf(inc.id, 'final')];
-    card.append(h('div', { class: 'banner', style: 'margin-bottom:12px' }, icon('clock'), h('span', { text: pre.note ? pre.note.replace(/ - /g, ' — ') + '. The AI report will replace this one.' : 'Preliminary report from the rules and the agent findings. The AI reasoner is writing the full report and will replace this one.' })));
+    card.append(h('div', { class: 'banner', style: 'margin-bottom:12px' }, icon('clock'), h('span', { text: (pre.note ? pre.note.replace(/ - /g, ' — ') + '. ' : 'Preliminary report from the rules and the agent findings. ') + aiNextText(inc) })));
     card.append(aiSoFarBox(tx));
     if (pre.parsed) card.append(h('div', { style: 'margin-top:12px;opacity:.85' }, reportBody(inc, pre.parsed)));
     card.append(h('pre', { class: 'stream live', 'data-s': 'final', text: tx || '' }), h('div', { class: 'muted', style: 'font-size:13px;margin-top:6px', text: 'Reasoner typing live …' }));
@@ -1946,13 +2102,39 @@ function sensorPhrase(s, f, st) {
   const word = p && STEADY[p] && PATTERN_PLAIN[st] ? PATTERN_PLAIN[st] : p ? patternPlain(p) : 'checked';
   return metricName(s.metric) + ' at ' + where + ' ' + word;
 }
-function happening(inc, flagged, related) {
-  const lead = [], obs = [], ok = [], bad = [];
+/* night sweep 2026-11-27 #62: flagged sensors whose agent finding the final AI report overruled (the card led with
+   "pH jumped up and stayed (sensor fault)" while the report said the water really is alkaline). Signals, strongest
+   first: the reasoner's own agent_checks (contradicted / corrected), its suspect_sensors list, else the report's
+   label / root cause against the agent's fault call. Map ref -> { who, why }. */
+function overruledOf(inc, flagged, main) {
+  const out = new Map();
+  if (!main || main.src !== 'ai' || !main.r) return out;
+  const r = main.r, checks = r.agent_checks || [], sus = Array.isArray(r.suspect_sensors) ? r.suspect_sensors : null;
+  const sevReal = /^(warning|critical)$/.test(inc.severity), reportFault = r.label === 'sensor_fault' || inc.severity === 'sensor_fault';
+  const rcFault = /sensor (?:fault|bias|error|is wrong)|faulty|recalibrat|stuck sensor/i.test(r.root_cause || '');
+  for (const s of flagged) {
+    const v = sensorVerdict(inc, s); if (!v.a || !v.f) continue;
+    const f = v.f, agentFault = f.status === 'sensor_fault' || f.likely_cause === 'sensor_fault';
+    const ck = checks.find((c) => c.ref === s.ref && (c.verdict === 'contradicted' || (c.verdict === 'corrected' && /fault|bias|offset|stuck|real|normal|critical|warning/i.test((c.claim || '') + ' ' + (c.fact || '')))));
+    const inSus = sus ? sus.some((x) => x === s.ref || String(x).includes(s.node)) : null;
+    let why = null;
+    if (ck) why = stripRefs(ck.fact || '') || 'the report weighed the other evidence';
+    else if (agentFault && sevReal && inSus !== true && !(inSus === null && rcFault)) why = 'the report treats the reading as real';
+    else if (!agentFault && /^(warning|critical)$/.test(f.status) && (inSus === true || (reportFault && flagged.length === 1))) why = 'the report calls this sensor faulty';
+    if (why) out.set(s.ref, { who: (DH_NAME[s.role] || roleTitle[s.role] || nice(s.role)) + ' agent', why });
+  }
+  return out;
+}
+function happening(inc, flagged, related, ov) {
+  const lead = [], obs = [], ok = [], bad = [], over = [];
   for (const s of flagged) {
     const { st, f } = findingOf(inc, s);
     if (st === 'pending') continue;
-    lead.push(sensorPhrase(s, f, st) + (st && st !== 'normal' ? ' (' + (STATUS_LABEL[st] || nice(st)).toLowerCase() + ')' : ''));
-    ((f && f.observations) || []).slice(0, 2).forEach((o) => obs.push(o));
+    const phrase = sensorPhrase(s, f, st) + (st && st !== 'normal' ? ' (' + (STATUS_LABEL[st] || nice(st)).toLowerCase() + ')' : '');
+    const o = ov && ov.get(s.ref);
+    if (o) { over.push('First read by the ' + o.who + ': ' + phrase + '. Overruled by the AI report: ' + o.why.replace(/\.$/, '') + '.'); continue; } // #62
+    lead.push(phrase);
+    ((f && f.observations) || []).slice(0, 2).forEach((x) => obs.push(x));
   }
   for (const s of related) {
     const { st, f } = findingOf(inc, s);
@@ -1963,7 +2145,7 @@ function happening(inc, flagged, related) {
   let rel = '';
   if (bad.length) rel = 'Also abnormal nearby: ' + bad.join('; ') + '.';
   if (ok.length) rel += (rel ? ' ' : '') + 'Checked nearby and normal: ' + ok.join('; ') + '.' + (!bad.length && !allNormal ? ' So the cause looks local.' : '');
-  return { lead: lead.length ? (allNormal ? 'Nothing abnormal confirmed: ' : '') + cap(lead.join('; ')) + '.' : '', obs: joinSentences(obs.slice(0, 3)), related: rel };
+  return { lead: lead.length ? (allNormal ? 'Nothing abnormal confirmed: ' : '') + cap(lead.join('; ')) + '.' : '', obs: joinSentences(obs.slice(0, 3)), related: rel, over };
 }
 function opSummary(inc, main, flagged) {
   const out = [], r = main && main.r;
@@ -1971,11 +2153,16 @@ function opSummary(inc, main, flagged) {
   if (main && main.rejected) out.push(h('div', { class: 'banner op-warn', role: 'note' }, icon('alert'), h('span', { text: 'The AI report failed the safety check, so the automatic rule result is shown. See Technical details.' })));
   // what is happening: composed from each sensor's structured finding (pattern, status, place) so it reads
   // the same in every mode; the model's own wording stays under Technical details
-  const hap = happening(inc, flagged, (inc.sensors || []).filter((x) => x.context));
-  const what = hap.lead || (r ? stripRefs(r.root_cause) : '');
+  // #62: when the AI report overruled an agent, the report's root cause leads and the agent view is a note below
+  const ov = overruledOf(inc, flagged, main); S.ov = { id: inc.id, m: ov };
+  const hap = happening(inc, flagged, (inc.sensors || []).filter((x) => x.context), ov);
+  const rc = r ? stripRefs(r.root_cause) : '';
+  const what = ov.size && rc ? rc : hap.lead || rc;
   out.push(h('section', { class: 'op-sec' }, h('h3', { text: 'What is happening' }),
     h('p', { class: 'op-lead', text: what || 'No summary was produced.' }),
+    ov.size && rc && hap.lead ? h('p', { class: 'op-more', text: hap.lead }) : null,
     hap.obs ? h('p', { class: 'op-more', text: hap.obs }) : null,
+    hap.over.map((t) => h('p', { class: 'op-more op-overruled', text: t })),
     hap.related ? h('p', { class: 'op-more', text: hap.related }) : null));
   // why it matters: consequence from the report label, and the likely cause from the flagged sensors
   const causes = [];
@@ -2017,6 +2204,7 @@ function opSummary(inc, main, flagged) {
 function renderIncDetail() {
   const inc = S.inc, box = $('#inc-detail'); if (!inc) return;
   const running = inc.state === 'running';
+  S.ov = null; // set again by opSummary (#62)
   // finished calls no longer need their stream buffer
   const drop = (ref) => { const k = streamKeyOf(inc.id, ref); delete S.stream[k]; delete ST.first[k]; };
   (inc.agents || []).forEach((a) => drop(a.ref));
@@ -2039,13 +2227,14 @@ function renderIncDetail() {
       inc.dismiss_unconfirmed ? h('span', { class: 'pill st-warning', text: 'Dismissed by one person - needs a second check' }) : null),
     h('h1', { class: 'inc-title', text: plainTitle(inc.title), title: inc.title }),
     whyText(inc.severity_why) ? h('p', { class: 'why-sev', text: 'Why the severity changed: ' + whyText(inc.severity_why) }) : null,
-    h('p', { class: 'op-meta', text: (doms.join(', ') || 'Campus') + ' · detected ' + tBoth(inc.created_unix || realOf(inc.created_sim)) }),
+    // #73: "detected" = when the incident opened (opened_unix), not when the AI finished; #63: refreshed every 30 s
+    relTime('p', 'op-meta', (doms.join(', ') || 'Campus') + ' · detected ', fieldOf(inc, 'opened_unix') || inc.created_unix || realOf(inc.created_sim)),
     wfOfI(inc) !== 'closed' && etaEl(inc) ? h('p', { class: 'op-meta' }, etaEl(inc)) : null));
   const bn = wfBanner(inc); if (bn) parts.push(bn);
   // 2. while the AI works: the progress steps (plain), its live text is under Technical details (open)
   if (prelim) {
     parts.push(h('div', { class: 'banner op-prelim', role: 'note' }, icon('clock'), h('span', { text: 'Preliminary report from past similar incidents and the rules. ' +
-      'The AI is writing the full report now and will replace this one. You can already work through the steps below.' })));
+      aiNextText(inc) + ' You can already work through the steps below.' })));
     parts.push(aiSoFarBox(S.stream[streamKeyOf(inc.id, 'final')]));
     parts.push(...opSummary(inc, main, flagged));
   }
@@ -2149,8 +2338,33 @@ const EV_TEXT = { created: 'Alert raised', analysed: 'Report ready', interrupted
 const wfOfI = (i) => i.workflow || (i.state === 'running' ? 'analysing' : i.state === 'failed' ? 'interrupted' : i.approval === 'approved' ? 'in_progress' : i.approval === 'dismissed' ? 'closed' : 'needs_decision');
 const clock = (u) => (u ? tAt(u) : '');
 const dclock = (u) => (u ? tDay(u) : '');
+// the list row of an incident (the detail payload has no ai_eta_s / full_eta_s / opened_unix: list-only fields)
+const listRow = (i) => (S.incs || []).find((x) => x.id === i.id) || {};
+const fieldOf = (i, k) => (i[k] != null ? i[k] : listRow(i)[k]);
+// seconds until the next AI run for this incident (#37/#60 contract: ai_eta_s, else full_eta_s); null = unknown
+function aiEtaOf(i) {
+  const a = fieldOf(i, 'ai_eta_s'), f = fieldOf(i, 'full_eta_s');
+  return a != null && a >= 0 ? a : f != null && f >= 0 ? f : null;
+}
+const aiRunning = (i) => fieldOf(i, 'ai_running') === true;
+const etaWords = (e) => (e == null ? '' : e <= 60 ? 'within a minute' : 'in ~' + Math.round(e / 60) + ' min');
+// night sweep 2026-11-27 #37: what the AI is doing for a fast-path / preliminary report, truthfully: "writing now"
+// only while the NPU runs this incident, else the real ETA (older backends: no promise of "now")
+function aiNextText(i) {
+  if (aiRunning(i)) return 'The AI is writing the full report now and will replace this one.';
+  const e = aiEtaOf(i);
+  return e != null ? 'The AI analysis follows ' + etaWords(e) + ' and will replace this one.' : 'The AI analysis follows when the event has lasted long enough; it will replace this one.';
+}
+// #60: an early look is ready (its run finished) while the full reading is still to come
+const earlyReady = (i) => i.refine_stage === 'provisional' && i.state !== 'running' && wfOfI(i) === 'analysing';
 function wfChip(i) {
+  if (earlyReady(i)) {
+    const e = aiEtaOf(i);
+    return h('span', { class: 'dec wfchip wf-needs_decision' }, h('i', { 'aria-hidden': 'true', text: '●' }), 'Early look ready' + (e != null ? ' · full reading ' + etaWords(e) : ''));
+  }
   const w = wfOfI(i), m = WF_WORD[w] || { g: '○', w: nice(w) };
+  // #40: one "Analysing" chip, not two (the severity tag already says it while the AI runs)
+  if (w === 'analysing' && sevOf(i).k === 'pending') return null;
   const extra = (w === 'in_progress' || w === 'resolved') && i.owner ? ' · ' + i.owner : w === 'closed' && i.outcome ? ' · ' + (OUTCOME_TEXT[i.outcome] || nice(i.outcome)) : '';
   return h('span', { class: 'dec wfchip wf-' + w }, h('i', { 'aria-hidden': 'true', text: m.g }), m.w + extra);
 }
@@ -2224,6 +2438,9 @@ function etaEl(i) {
   const t = nextCheckText(i);
   return t ? h('span', { class: 'eta', 'data-next': String(i.next_refine_sim), 'data-stage': i.refine_stage, title: 'Re-check due at ' + hm(i.next_refine_sim) + ' sensor time', text: t }) : null;
 }
+// night sweep 2026-11-27 #63: relative times on an open sheet ("detected 22:31 (just now)") refresh every 30 s
+function relTime(tag, cls, prefix, u) { return h(tag, { class: cls, 'data-rel': String(u || 0), 'data-pre': prefix, text: prefix + tBoth(u) }); }
+function tickRel() { $$('[data-rel]').forEach((e) => setText(e, e.dataset.pre + tBoth(+e.dataset.rel || 0))); }
 function tickEtas() { $$('[data-next]').forEach((e) => setText(e, nextCheckText({ next_refine_sim: +e.dataset.next, refine_stage: e.dataset.stage }))); }
 
 /* ----- actions ----- */
@@ -2456,7 +2673,9 @@ function incSpark(i) {
 // shift handover: a plain-text summary of everything open plus the last 12 h, to copy or share
 function handoverText() {
   const incs = S.incs || [], now = nowMs() / 1000, since = now - 12 * 3600;
-  const line = (i) => '- ' + i.id + ' [' + sevOf(i).t + '] ' + plainTitle(i.title || '') + (i.place ? ' (' + i.place + ')' : '') + (i.owner ? ' · owner ' + i.owner : '') + (i.steps_total ? ' · ' + (i.steps_total - i.steps_open) + '/' + i.steps_total + ' steps' : '');
+  // #102: the place only once (titles often carry it already: "(KN building, outdoor air station) (KN building)")
+  const placeOf = (i, t) => { const lo = t.toLowerCase(), ps = [...new Set(String(i.place || '').split(';').map((p) => p.trim()).filter(Boolean))].filter((p) => !lo.includes(p.toLowerCase()) && !lo.includes(placeShort(p).toLowerCase())); return ps.length ? ' (' + ps.join('; ') + ')' : ''; };
+  const line = (i) => '- ' + i.id + ' [' + sevOf(i).t + '] ' + plainTitle(i.title || '') + placeOf(i, plainTitle(i.title || '') + ' ' + (i.title || '')) + (i.owner ? ' · owner ' + i.owner : '') + (i.steps_total ? ' · ' + (i.steps_total - i.steps_open) + '/' + i.steps_total + ' steps' : '');
   const by = (w) => incs.filter((i) => wfOfI(i) === w);
   const closed = incs.filter((i) => wfOfI(i) === 'closed' && (i.closed_at || 0) >= since);
   const out = ['Shift handover · ' + tDay(now), ''];
@@ -2494,26 +2713,36 @@ function bindIncTools() {
 const SHIFT = { last: 0, done: false };
 function shiftInit() {
   try { SHIFT.last = +localStorage.getItem('sce-last-visit') || 0; } catch (e) { SHIFT.last = 0; }
-  const mark = () => { try { localStorage.setItem('sce-last-visit', String(nowMs())); } catch (e) { /* private mode */ } };
+  // 2026-11-28 re-run: the board's WebView clock is its raw RTC (Sep 2023); a visit stamped before the server clock was
+  // known made every incident "new". Only stamp with the server-corrected clock, and drop stamps that cannot be right.
+  const mark = () => { if (!S.lastStatus) return; try { localStorage.setItem('sce-last-visit', String(nowMs())); } catch (e) { /* private mode */ } };
   setInterval(() => { if (!document.hidden && SHIFT.done) mark(); }, 60000);
   document.addEventListener('visibilitychange', () => { if (document.hidden && SHIFT.done) mark(); });
   SHIFT.mark = mark;
 }
+// night sweep 2026-11-27 #100/#28: the counts are recomputed on every incident refresh (the card used to be computed
+// once at start-up and said "0 new" while 4 incidents arrived), counted by opening time vs the last visit, and the
+// card is hidden while everything is 0
 function shiftSummary() {
-  if (SHIFT.done || !S.lastIncList) return;
-  SHIFT.done = true;
-  const last = SHIFT.last; SHIFT.mark();
-  if (!last) return; // first visit on this device: nothing to compare with
+  if (!S.lastIncList) return;
+  if (!SHIFT.done) { SHIFT.done = true; SHIFT.mark(); }
+  if (!S.lastStatus) return; // wait for the server clock
+  if (SHIFT.last && (SHIFT.last > nowMs() + 600000 || nowMs() - SHIFT.last > 30 * 86400000)) SHIFT.last = 0; // stamp from a wrong clock
+  const last = SHIFT.last, box = $('#shift'); if (!box) return;
+  if (!last || SHIFT.closed) { box.hidden = true; return; } // first visit on this device: nothing to compare with
   const s = last / 1000, incs = S.incs || [];
-  const nw = incs.filter((i) => (i.created_unix || 0) > s).length;
+  const nw = incs.filter((i) => (i.opened_unix || i.created_unix || 0) > s).length;
   const worse = incs.filter((i) => (i.worse_at || 0) > s).length;
   const res = incs.filter((i) => (i.resolved_at || 0) > s || ((i.closed_at || 0) > s && (i.outcome === 'resolved_on_its_own' || i.outcome === 'fixed_by_action' || i.outcome === 'sensor_repaired' || i.outcome === 'sensor_replaced'))).length;
-  const box = $('#shift'); if (!box) return;
-  const since = tDay(last / 1000);
-  const parts = [nw + ' new', worse + ' got worse', res + ' resolved'];
-  fill(box, h('span', { class: 'sh-t' }, h('b', { text: 'Since ' + since + ': ' }), parts.join(' · ')),
-    nw || worse ? h('a', { class: 'sh-go', href: '#incidents', text: 'See incidents ›' }) : null,
-    h('button', { type: 'button', class: 'ibtn sh-x', 'aria-label': 'Dismiss the summary since your last visit', onclick: () => { box.hidden = true; } }, icon('x', 18)));
+  if (!nw && !worse && !res) { box.hidden = true; return; }
+  const sig = [last, nw, worse, res].join('|');
+  if (box.dataset.sig !== sig) {
+    box.dataset.sig = sig;
+    const parts = [nw + ' new', worse + ' got worse', res + ' resolved'];
+    fill(box, h('span', { class: 'sh-t' }, h('b', { text: 'Since you last looked (' + tDay(last / 1000) + '): ' }), parts.join(' · ')),
+      nw || worse ? h('a', { class: 'sh-go', href: '#incidents', text: 'See incidents ›' }) : null,
+      h('button', { type: 'button', class: 'ibtn sh-x', 'aria-label': 'Dismiss the summary since your last visit', onclick: () => { SHIFT.closed = true; box.hidden = true; } }, icon('x', 18)));
+  }
   box.hidden = false;
 }
 
@@ -2644,7 +2873,10 @@ function snBuild() {
   const d = SN.data, box = $('#sens');
   const ids = d.sensors.map((s) => s.node + '  ' + s.metric + '  (' + s.label + ', ' + s.location + ')').join('\n');
   const ctl = h('div', { class: 'card sn-top-card' },
-    h('div', { class: 'sn-banner' }, icon('info'), h('p', { text: 'Live input: the campus smart-city API is read every 5 s (only changed readings) and the last 12 h are loaded at start, so every agent window is full at once. Only warning, critical or stuck readings call the AI, once 4 of the last 8 readings are abnormal (Cards & rules); site-linked alarms become one incident group.' })),
+    // night sweep 2026-11-27 #27: where the readings really come from (the old text named the campus API on a board
+    // fed by /api/ingest), collapsed so the sensor list is above the fold
+    h('details', { class: 'sn-help' }, h('summary', { text: 'Where these readings come from' }),
+      h('div', { class: 'sn-banner' }, icon('info'), h('p', { class: 'sn-src', text: 'Checking the input links ...' }))),
     h('div', { class: 'sn-btns' }, h('a', { class: 'btn', href: '#sensors' }, icon('info'), 'Data health'), h('a', { class: 'btn', href: '#map' }, icon('map'), 'Site map and cards')));
   const conn = h('details', { class: 'card sn-conn' }, h('summary', { text: 'Sensor ids' }),
     h('p', { class: 'muted', text: 'MQTT (sce/#) and POST /api/ingest with a device timestamp use the same ids (node, metric):' }), h('pre', { class: 'sn-pre', text: ids }));
@@ -2658,6 +2890,18 @@ function snBuild() {
   }
   box.replaceChildren(ctl, groups, conn);
   snLiveAll();
+  snSource();
+}
+// #27: the input text from /api/health/data (campus API, MQTT, or readings posted to this board)
+async function snSource() {
+  const p = $('#sens .sn-src'); if (!p) return;
+  let d = null; try { d = await api('/api/health/data'); } catch (e) { /* older backend: generic text */ }
+  const c = (d && d.campus) || {}, m = (d && d.mqtt) || {}, src = [];
+  if (c.enabled) src.push('the campus smart-city API' + (c.link_label && c.link_label !== 'none' ? ' (via ' + c.link_label + ')' : '') + (c.online ? '' : ', unreachable right now'));
+  if (m.enabled !== false && m.connected) src.push('the MQTT broker');
+  const lead = src.length ? 'Readings arrive from ' + src.join(' and ') + '.' : 'Readings are posted to this board by the sensors (or their gateway) and by the sliders below; no campus API link is set up.';
+  setText(p, lead + ' Each new value becomes the sensor\'s next 5-minute reading. Only warning, critical or stuck readings call the AI: ' + gateRuleText() + '. Related alarms become one incident.');
+  const sub = $('#view-sensors .ltitle p'); if (sub) setText(sub, src.length ? 'Live readings from ' + src[0].replace(/, unreachable.*$/, '') + '. The agents check every sensor.' : 'Live readings posted to this board. The agents check every sensor.');
 }
 function snSparkSvg(vals) {
   if (vals.length < 2) return '';
@@ -2748,7 +2992,7 @@ function buildAbout() {
     <div class="sec-h">The pipeline</div>
     <div class="glist">${[['Poll sensors', 'Every poll, each current sensor value becomes its next 5-minute reading.'], ['Stats and rules', 'SMA, EMA, trend, Bollinger bands and a rule-based pattern per sensor.'], ['Event gate', 'Only warning, critical or stuck sensors wake the AI, so the NPU stays free and cool.'], ['Domain agents on the NPU', 'One small agent per flagged sensor reads its evidence (E1..E8) and writes a finding.'], ['Synthesizer', 'Combines the agent findings into one cross-domain report.'], ['Safety check', 'The policy gate rejects bad JSON, unknown labels and made-up evidence ids.'], ['Human approval', 'Nothing is actuated automatically. You approve or dismiss every recommendation.']].map((x, i) => gi(i + 1, x[0], x[1])).join('')}</div>
     <div class="sec-h">How alerts work</div>
-    <div class="card"><p class="muted">A sensor calls the AI only when its status is warning, critical or stuck (sensor fault) and stays that way for 8 readings in a row. Every sensor that is alarming at that moment, plus any that join within 3 more readings, goes into one incident with one batch of NPU agent calls. A sensor reports once per episode and re-arms after it returns to normal.</p></div>
+    <div class="card"><p class="muted">A sensor calls the AI only when its status is warning, critical or stuck (sensor fault) in 4 of its last 8 readings (set in Cards &amp; rules); two critical readings open a rules alert at once. Related sensors that are abnormal at that moment go into one incident with one batch of NPU agent calls. A sensor reports once per episode and re-arms after it returns to normal.</p></div>
     <div class="sec-h">The three modes</div>
     <div class="glist">${gi('1', 'Rules', 'Deterministic statistics and rules. No AI. Always computed as the shadow baseline.')}${gi('2', 'Single', 'One AI call reads all flagged sensors and writes the report.')}${gi('3', 'Multi-Agent', 'One agent call per sensor (fine-tuned model when deployed), then a synthesizer.')}</div>
     <details class="tech"><summary>Technical details</summary><div class="tech-bd"><div class="sec-h">Model in use</div>
@@ -2795,6 +3039,7 @@ function setView(v) {
   $$('.view').forEach((x) => x.classList.toggle('on', x.id === 'view-' + v));
   $$('#rail a').forEach((a) => { const on = a.dataset.view === v; a.classList.toggle('on', on); if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   window.scrollTo(0, 0);
+  renderBanners(); // the critical-incident banners are left out on Home, where "Do this next" shows them (#85b)
   if (v === 'incidents') refreshIncidents();
   if (v === 'sensors') { snFetch().then(() => snLiveAll()); refreshStatus(); if (!S.live) refreshLive(); if (window.P1) window.P1.show('health'); }
   if (v === 'map') { if (window.P1) window.P1.show('site'); (S.topo ? Promise.resolve() : api('/api/topology').then((t) => { S.topo = t; }).catch(() => {})).then(() => { renderMap(); refreshLive(); }); }
@@ -2813,7 +3058,7 @@ function onLive(d) {
     const s = S.sensorMap.get(key(u.node, u.metric)); if (!s) continue;
     if (u.status !== s.status || u.pattern !== s.pattern) changed = true;
     if (u.quality !== s.quality) changed = true;
-    for (const k of ['last', 'sma_1h', 'ema_1h', 'slope_per_h', 'pattern', 'status', 'injected', 'data_ok', 'updated', 'quality', 'quality_reason', 'maint_until']) if (k in u) s[k] = u[k];
+    for (const k of ['last', 'sma_1h', 'ema_1h', 'slope_per_h', 'pattern', 'status', 'now_status', 'injected', 'data_ok', 'updated', 'quality', 'quality_reason', 'maint_until']) if (k in u) s[k] = u[k];
   }
   for (const r in S.live.roles) { let w = 'normal'; for (const s of S.live.roles[r].sensors) if (sevRank(s.status) > sevRank(w)) w = s.status; S.live.roles[r].status = w; }
   S.lastLive = S.lastLiveEv = Date.now();
@@ -2846,12 +3091,11 @@ function connect() {
     if (d.id && d.id === S.incId) refreshIncDetail(false);
     if (S.view === 'history' && window.SCE_history) { clearTimeout(S.histT); S.histT = setTimeout(() => window.SCE_history.refresh(), 1500); }
     if (d.workflow_change === 'auto_closed' && d.id) delete S.hist[d.id];
-    // Open a newly running incident so the agents are seen thinking, which is the whole point of
-    // streaming tokens. Only when nothing else is open, so this can never steal the view from
-    // someone reading another incident or working on the sensors tab.
-    if (d.id && d.state === 'running' && !S.autoOpened[d.id] && !$('.sheet.open')) {
+    // night sweep 2026-11-27 #97/#86: a new incident is announced with a banner to tap, never opened by itself over
+    // the current screen (an auto-opened sheet took a tap meant for the bottom nav as "I'm on it" on the board)
+    if (d.id && d.state === 'running' && !S.autoOpened[d.id]) {
       S.autoOpened[d.id] = 1;
-      selectIncident(d.id);
+      listed.then(() => noteNewInc(d.id));
     }
     refreshStatus();
   });
@@ -2868,6 +3112,16 @@ function connect() {
 function boot() {
   tabIcons(); buildAbout(); bindHeader(); bindTheme(); bindEng(); buildHero();
   opLoad(); shiftInit(); bindIncTools();
+  // night sweep 2026-11-27 #25: page bottom padding = the bottom nav's real height (labels wrap / dark font make it
+  // taller than the 60 px guess, so the handover Copy/Share buttons ended up under the nav)
+  const tabsH = () => {
+    const r = $('#rail'); if (!r) return;
+    const fixedBottom = getComputedStyle(r).bottom === '0px';
+    if (fixedBottom) document.documentElement.style.setProperty('--tabs', r.offsetHeight + 'px');
+    else document.documentElement.style.removeProperty('--tabs');
+  };
+  tabsH(); addEventListener('resize', () => { clearTimeout(tabsH.t); tabsH.t = setTimeout(tabsH, 150); });
+  if (window.ResizeObserver) new ResizeObserver(tabsH).observe($('#rail'));
   $('#op').onclick = () => openOpSheet(null);
   window.addEventListener('hashchange', () => setView(location.hash.slice(1)));
   // Android Back (MainActivity.onBackPressed asks first): close the top sheet, then go back to Home, then leave.
@@ -2903,6 +3157,8 @@ function boot() {
   setInterval(() => { tickClock(); updateSub(); }, 20000);
   tickClock();
   setInterval(tickEtas, 2000); // "Next check at 1.5 h · in 23 min"
+  setInterval(tickRel, 30000); // #63 "detected ... (15 min ago)" on an open sheet
+  document.addEventListener('click', sheetTapGuard, true); // #97 1 s tap guard on newly opened sheets
   setInterval(() => { if (OP.cur && !opName()) toast('Name cleared after 30 min idle: choose who you are before the next decision'); }, 60000);
   // Screen off / app in background: the WebView pauses timers, so on resume the last event is old although the backend
   // is fine (sweep 2026-11-27: the "Reconnecting" banner flashed on every wake). Give it a grace period and refresh now.
@@ -2910,9 +3166,17 @@ function boot() {
     if (!document.hidden) { S.resumedAt = Date.now(); refreshStatus(); refreshLive(); refreshIncidents(); }
   });
   setInterval(() => {
+    // night sweep 2026-11-27 #116: a gap in this 3 s timer means the WebView slept (screen off, doze) without a
+    // visibilitychange: treat it as a wake, refresh at once and give the connection a grace period
+    const now0 = Date.now();
+    if (S.lastTick && now0 - S.lastTick > 10000) { S.resumedAt = now0; refreshStatus(); refreshLive(); refreshIncidents(); refreshHealth(); if (es && es.readyState === 2) connect(); }
+    S.lastTick = now0;
     if (!S.sse || Date.now() - S.lastLiveEv > 15000) { refreshStatus(); refreshLive(); }
-    // Backend unreachable (restart, crash, reboot): say so instead of silently showing stale data.
-    const seen = Math.max(S.lastStatus || 0, S.lastLiveEv || 0), off = seen > 0 && Date.now() - seen > 12000 && Date.now() - (S.resumedAt || 0) > 12000;
+    // Backend unreachable (restart, crash, reboot): say so instead of silently showing stale data, but only once it
+    // has lasted 5 s (#116: the banner flashed for a few seconds on every wake)
+    const seen = Math.max(S.lastStatus || 0, S.lastLiveEv || 0), off0 = seen > 0 && Date.now() - seen > 12000 && Date.now() - (S.resumedAt || 0) > 12000;
+    S.offSince = off0 ? S.offSince || Date.now() : 0;
+    const off = off0 && Date.now() - S.offSince >= 5000;
     let ob = document.getElementById('offline');
     if (off && !ob) { ob = h('div', { id: 'offline', role: 'status', text: 'Reconnecting to the on-device backend ... values shown may be stale' }); document.body.appendChild(ob); }
     else if (!off && ob) ob.remove();

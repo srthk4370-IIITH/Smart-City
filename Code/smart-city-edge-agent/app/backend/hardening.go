@@ -181,6 +181,45 @@ func rotateStateFiles(dir string, now time.Time) {
 	if n := pruneOld(filepath.Join(st, "daily"), "*.json", dailyKeepDays*24*time.Hour, now); n > 0 {
 		log.Printf("rotate: %d daily summaries older than %d days removed", n, dailyKeepDays)
 	}
+	// night sweep 2026-11-27 #47: the htpd/genied logs rotated only when the process was (re)spawned, and the
+	// prefetch shadow log never. chats_archive.json rotates itself (chat_polish.go, 90 days / 5 MB).
+	rotateLiveLog(filepath.Join(st, "htpd.log"), liveLogCapBytes)
+	rotateLiveLog(filepath.Join(st, "genied.log"), liveLogCapBytes)
+	capTail(filepath.Join(st, "prefetch_shadow.jsonl"), 2<<20)
+}
+
+const liveLogCapBytes = 8 << 20
+
+// rotateLiveLog: a log a running child writes with O_APPEND (htpd, genied). Renaming it would leave the child
+// writing into the unlinked file, so the newest quarter is copied to <log>.1 and the log is truncated in place;
+// O_APPEND writes then continue at the new end.
+func rotateLiveLog(path string, max int64) bool {
+	fi, err := os.Stat(path)
+	if err != nil || fi.Size() <= max {
+		return false
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	keep := max / 4
+	buf := make([]byte, keep)
+	n, _ := f.ReadAt(buf, fi.Size()-keep)
+	f.Close()
+	buf = buf[:n]
+	if i := bytes.IndexByte(buf, '\n'); i >= 0 {
+		buf = buf[i+1:]
+	}
+	if err := atomicWrite(path+".1", buf, 0o644); err != nil {
+		log.Printf("rotate: %s: %v", path, err)
+		return false
+	}
+	if err := os.Truncate(path, 0); err != nil {
+		log.Printf("rotate: %s: %v", path, err)
+		return false
+	}
+	log.Printf("rotate: %s truncated (newest %d KB kept in %s.1)", filepath.Base(path), len(buf)>>10, filepath.Base(path))
+	return true
 }
 
 // ---------------------------------------------------------------- disk

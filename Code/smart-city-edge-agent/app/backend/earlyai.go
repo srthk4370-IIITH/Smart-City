@@ -101,7 +101,21 @@ func (r *Reasoner) queueEarly(cands []Candidate) {
 			break
 		}
 	}
+	if inc == nil {
+		// night sweep 2026-11-27 #55: a sensor that already has an open incident (e.g. its fast-path incident whose
+		// short-window run consumed the mapping) gets no second incident from an early look
+		keep := cands[:0:0]
+		for _, c := range cands {
+			if !r.hostedLocked(c) {
+				keep = append(keep, c)
+			}
+		}
+		cands = keep
+	}
 	r.mu.Unlock()
+	if len(cands) == 0 {
+		return
+	}
 	if inc == nil {
 		inc = r.newIncident(cands, r.Mode)
 		rc := r.retrievalPreliminary(inc)

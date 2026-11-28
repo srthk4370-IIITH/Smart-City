@@ -1316,3 +1316,48 @@ main,.wrap,.bar-in,.bar-r{min-width:0;max-width:100%}
 .warmup{display:inline-block;margin-top:4px;font-size:12.5px;font-weight:700;color:var(--tx2)}
 .why-off{display:block;font-size:12.5px;color:var(--tx2);margin-top:4px}
 .hero-s .hd{font-weight:700}
+/* ============ night sweep 2026-11-27 (hands-on fixes) ============ */
+/* #25: the bottom nav is fully opaque (page text showed through it); its real height is measured into --tabs (app.js) */
+@media (max-width:1023px){
+  .tabs,[data-theme="dark"] .tabs{background:var(--bg)}
+  .tabs{box-shadow:0 -1px 0 var(--sep)}
+}
+/* #85b: Home "Do this next" */
+.donext{position:relative;z-index:1;margin-top:14px}
+.dn-h,.dn-h2{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.8;margin:0 0 6px}
+.dn-h2{margin-top:12px}
+.dn-card{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:16px;background:var(--card);color:var(--tx);border:1px solid var(--sep);border-left:4px solid var(--svb,var(--sep))}
+.dn-card.sev-critical{--svb:var(--crit)} .dn-card.sev-warning{--svb:var(--warn)} .dn-card.sev-sensor_fault{--svb:var(--fault)}
+.dn-top{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.dn-title{font-size:16.5px;line-height:1.3;overflow-wrap:anywhere}
+.dn-meta{font-size:13px;color:var(--tx2);overflow-wrap:anywhere}
+.dn-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.dn-btns .btn{min-height:44px;flex:1 1 120px}
+.dn-also{display:flex;flex-direction:column;gap:6px}
+.dn-also-i{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 8px;align-items:center;text-align:left;padding:10px 12px;min-height:44px;border-radius:12px;background:var(--card);color:var(--tx);border:1px solid var(--sep)}
+.dn-also-i .sdot{grid-row:1/3}
+.dn-also-i .dn-t{font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dn-also-i .dn-m{font-size:12.5px;color:var(--tx2)}
+.dn-also-i.sev-critical{--svb:var(--crit)} .dn-also-i.sev-warning{--svb:var(--warn)} .dn-also-i.sev-sensor_fault{--svb:var(--fault)}
+.dn-more{font-size:13.5px;font-weight:700;color:var(--accent-tx);padding:6px 2px}
+.dn-now,.dn-areas{position:relative;z-index:1;margin:10px 0 0;font-size:14px;font-weight:600;overflow-wrap:anywhere}
+.dn-areas{font-weight:500;opacity:.85;margin-top:4px}
+/* #84: why a mature sensor is still waiting */
+.wt-why{display:block;font-size:12.5px;color:var(--tx2);margin-top:2px}
+/* #62: the agent view the AI report overruled */
+.op-overruled{border-left:3px solid var(--fill2);padding-left:10px;color:var(--tx2);font-size:13.5px}
+/* #97: dismiss button on a new-incident banner */
+.pban .ibtn.sm{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%}
+.pban.crit .ibtn.sm{color:#fff}
+/* #27: the input help is collapsed by default */
+.sn-help{margin:0 0 10px}
+.sn-help summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-size:14px;font-weight:700;color:var(--tx2)}
+/* #29: sensor search above the campus tree; a shorter tree on phones (less empty sky) */
+.bt-q{width:100%;margin:10px 0 6px}
+.bt-found{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.bt-hit-row{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;text-align:left;padding:8px 12px;min-height:44px;border-radius:12px;background:var(--card2);color:var(--tx)}
+.bt-hit-row .muted{font-size:12.5px;flex-basis:100%}
+.bt-wrap{background:radial-gradient(120% 90% at 50% 100%,color-mix(in srgb,var(--ok) 8%,var(--card2)),var(--card2) 70%)}
+@media (max-width:560px){ .bt-wrap{height:min(62vh,520px);min-height:340px} }
+/* #5: History CSV link next to reload */
+.hx-csv{min-height:44px;display:inline-flex;align-items:center}

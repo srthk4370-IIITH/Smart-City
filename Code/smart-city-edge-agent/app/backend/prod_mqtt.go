@@ -75,15 +75,16 @@ type mqttBridge struct {
 	cfg mqttConfig
 	eng *Engine
 
-	mu         sync.Mutex
-	connected  bool
-	reconnects int
-	lastErr    string
-	lastMsg    time.Time
-	messages   int
-	results    map[string]int
-	firmware   map[string]string // sensor key -> last firmware
-	replacedAt map[string]int64  // sensor key -> last "replaced" value acted on
+	mu           sync.Mutex
+	connected    bool
+	offlineSince time.Time // night sweep 2026-11-27 #108: first failure of the current outage (zero = connected)
+	reconnects   int
+	lastErr      string
+	lastMsg      time.Time
+	messages     int
+	results      map[string]int
+	firmware     map[string]string // sensor key -> last firmware
+	replacedAt   map[string]int64  // sensor key -> last "replaced" value acted on
 }
 
 func newMQTTBridge(c mqttConfig, e *Engine) *mqttBridge {
@@ -98,7 +99,10 @@ func (b *mqttBridge) Stats() map[string]any {
 		res[k] = v
 	}
 	out := map[string]any{"connected": b.connected, "reconnects": b.reconnects, "messages": b.messages, "results": res,
-		"last_error": b.lastErr, "topics": b.cfg.Topics}
+		"last_error": b.lastErr, "topics": b.cfg.Topics, "offline_since_unix": int64(0)}
+	if !b.offlineSince.IsZero() {
+		out["offline_since_unix"] = b.offlineSince.Unix()
+	}
 	if !b.lastMsg.IsZero() {
 		out["last_message_age_s"] = int(time.Since(b.lastMsg).Seconds())
 	}
@@ -109,6 +113,15 @@ func (b *mqttBridge) count(res string) {
 	b.mu.Lock()
 	b.results[res]++
 	b.mu.Unlock()
+}
+
+// mqttBackoffCap: retries stay at most 1 min apart for the first 10 min of an outage, then 5 min (night sweep
+// 2026-11-27 #108: a broker that is not running cost a dial + log line every minute for days).
+func mqttBackoffCap(down time.Duration) time.Duration {
+	if down > 10*time.Minute {
+		return 5 * time.Minute
+	}
+	return time.Minute
 }
 
 // Run connects, subscribes and ingests until stop is closed, reconnecting with exponential backoff (1 s .. 60 s,
@@ -123,6 +136,10 @@ func (b *mqttBridge) Run(stop <-chan struct{}) {
 		if err != nil {
 			b.lastErr = err.Error()
 		}
+		if b.offlineSince.IsZero() {
+			b.offlineSince = nowTime()
+		}
+		since := b.offlineSince
 		b.mu.Unlock()
 		select {
 		case <-stop:
@@ -133,14 +150,14 @@ func (b *mqttBridge) Run(stop <-chan struct{}) {
 			backoff = time.Second
 		}
 		wait := backoff/2 + time.Duration(rand.Int63n(int64(backoff/2)+1))
-		logQuiet("mqtt-dial", "mqtt: %v; reconnecting in %v", err, wait.Round(time.Millisecond))
+		logQuiet("mqtt-dial", "mqtt: %v; offline since %s, reconnecting in %v", err, since.Format(time.RFC3339), wait.Round(time.Millisecond))
 		select {
 		case <-stop:
 			return
 		case <-time.After(wait):
 		}
-		if backoff *= 2; backoff > time.Minute {
-			backoff = time.Minute
+		if backoff *= 2; backoff > mqttBackoffCap(nowTime().Sub(since)) {
+			backoff = mqttBackoffCap(nowTime().Sub(since))
 		}
 		b.mu.Lock()
 		b.reconnects++
@@ -203,7 +220,7 @@ func (b *mqttBridge) session(stop <-chan struct{}) error {
 		return err
 	}
 	b.mu.Lock()
-	b.connected, b.lastErr = true, ""
+	b.connected, b.lastErr, b.offlineSince = true, "", time.Time{}
 	b.mu.Unlock()
 	logQuietReset("mqtt-dial")
 	log.Printf("mqtt: connected to %s", redactURL(b.cfg.URL))

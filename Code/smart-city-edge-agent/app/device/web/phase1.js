@@ -15,21 +15,50 @@
   async function netTick() {
     let st;
     try { st = await api('/api/campus/status'); } catch (e) { return; } // backend itself down: app.js shows that
-    const box = $id('nonet'); if (!box || !st.campus_enabled) { if (box) box.hidden = true; return; }
-    if (!st.offline) { P.nonetHidden = false; box.hidden = true; document.body.classList.remove('p1-offline'); return; }
+    const box = $id('nonet'); if (!box || !st.campus_enabled) { if (box) box.hidden = true; netBanner(''); return; }
+    if (!st.offline) { P.nonetHidden = false; P.nonetOpen = false; box.hidden = true; netBanner(''); document.body.classList.remove('p1-offline'); return; }
     document.body.classList.add('p1-offline');
     const c = st.campus || {};
     $id('nonet-age').textContent = c.last_data_age_s != null ? 'Last data ' + ageTxt(c.last_data_age_s) + ' ago' + (c.last_data_utc ? ' (' + new Date(c.last_data_utc).toLocaleString() + ')' : '') : 'No data received yet.';
     const tt = $id('nonet-t'); if (tt) tt.textContent = 'No data available';
     $id('nonet-why').textContent = 'The campus sensor API' + (st.mqtt ? ' and the MQTT broker' : '') + ' cannot be reached, so no new readings are arriving. Option 1: Wi-Fi - connect this device to the campus Wi-Fi (direct link, preferred). Option 2: USB cable - plug the data cable into the laptop that relays the API (adb reverse); the app switches over by itself, and back to Wi-Fi when it returns.' + (c.last_error ? ' (' + (/unreachable|no route/i.test(c.last_error) ? 'network unreachable' : /refused/i.test(c.last_error) ? 'connection refused' : /timeout|deadline/i.test(c.last_error) ? 'timed out' : 'link error') + ')' : '');
+    // night sweep 2026-11-27 #120: once data has ever arrived, a banner over the normal dashboard (incidents stay
+    // usable); the full-screen page only when no reading ever arrived, or when the operator opens it from the banner
+    // 2026-11-28: readings that came through /api/ingest (no campus link) count too: the engine has a sensor time
+    // 2026-11-28: readings that arrived through /api/ingest count too. The engine forgets per-sensor reading times on a
+    // restart, so this device remembers (server time) when it last saw fresh data.
+    let lastUnix = 0, nowU = 0;
+    try {
+      const [s2, dh] = await Promise.all([api('/api/status'), api('/api/health/data')]);
+      nowU = s2.now_unix || 0;
+      const ages = ((dh && dh.sensors) || []).map((x) => x.age_s).filter((x) => x != null && x >= 0);
+      if (ages.length && nowU) { lastUnix = nowU - Math.min(...ages); try { localStorage.setItem('sce_last_data_unix', String(lastUnix)); } catch (e) { /* storage off */ } }
+    } catch (e) { /* keep the stored value */ }
+    if (!lastUnix) { try { lastUnix = +localStorage.getItem('sce_last_data_unix') || 0; } catch (e) { lastUnix = 0; } }
+    const hadData = c.last_data_age_s != null || lastUnix > 0;
+    const age = c.last_data_age_s != null ? c.last_data_age_s : (lastUnix && nowU ? Math.max(0, nowU - lastUnix) : null);
+    netBanner(hadData ? 'No new readings: the campus sensor API' + (st.mqtt ? ' and the MQTT broker' : '') + ' cannot be reached. Last data ' + ageTxt(age) + ' ago; the values shown are from then.' : '');
+    if (hadData) { if (!P.nonetOpen) box.hidden = true; return; }
     let hideUntil = 0; try { hideUntil = +localStorage.getItem('sce_nonet_hide') || 0; } catch (e) { /* storage off */ }
     box.hidden = P.nonetHidden || Date.now() < hideUntil;
+  }
+  function netBanner(text) {
+    let b = $id('nonet-ban');
+    if (!text) { if (b) b.remove(); return; }
+    if (!b) {
+      b = h('div', { id: 'nonet-ban', class: 'pban warn', role: 'status' }, h('span', { class: 'pt' }),
+        h('button', { type: 'button', class: 'btn sm', onclick: () => { if (window.SCE && window.SCE.wifi) window.SCE.wifi(); else toast('Open Settings > Network > Wi-Fi on the device', true); } }, 'Wi-Fi'),
+        h('button', { type: 'button', class: 'btn sm', onclick: () => { P.nonetOpen = true; const x = $id('nonet'); if (x) x.hidden = false; } }, 'Details'));
+      const host = $id('main'), first = $id('pbanners');
+      if (host) host.insertBefore(b, first || host.firstChild);
+    }
+    const t = b.querySelector('.pt'); if (t.textContent !== text) t.textContent = text;
   }
   function netInit() {
     const w = $id('nonet-wifi'), x = $id('nonet-hide');
     if (w) w.onclick = () => { if (window.SCE && window.SCE.wifi) window.SCE.wifi(); else toast('Open Settings > Network > Wi-Fi on the device', true); };
     // "Show the last data" is remembered for 1 h: the page used to come back on every app resume (sweep 2026-11-27)
-    if (x) x.onclick = () => { P.nonetHidden = true; $id('nonet').hidden = true; try { localStorage.setItem('sce_nonet_hide', String(Date.now() + 3600000)); } catch (e) { /* storage off */ } };
+    if (x) x.onclick = () => { P.nonetHidden = true; P.nonetOpen = false; $id('nonet').hidden = true; try { localStorage.setItem('sce_nonet_hide', String(Date.now() + 3600000)); } catch (e) { /* storage off */ } };
     netTick(); setInterval(netTick, 10000);
   }
 
@@ -223,6 +252,11 @@
   };
   const hsh = (s) => { let x = 0; for (let i = 0; i < s.length; i++) x = (x * 31 + s.charCodeAt(i)) | 0; return ((x >>> 0) % 1000) / 1000; };
   const LEAFD = 'M0 0C5 -6 15 -6 20 0C15 6 5 6 0 0Z';
+  // night sweep 2026-11-27 #29: readable sensor names for leaf labels and the sensor search
+  const MN = { co2: 'CO2', pm25: 'PM2.5', pm10: 'PM10', temp: 'Temperature', rh: 'Humidity', level: 'Tank level', flow: 'Water flow', tds: 'Water TDS',
+    ph: 'Water pH', power_kw: 'Power', pf: 'Power factor', wind: 'Wind', occ: 'Occupancy', ac_units_on: 'AC units on', room_temp: 'Room temp', setpoint: 'AC setpoint', ac_on: 'AC running' };
+  const leafName = (n) => MN[n.metric] || n.name || nice(n.metric);
+  const pathName = (n) => { const m = byId(), out = []; let x = m.get(n.parent); while (x && x.kind !== 'campus') { out.unshift(nm(x)); x = m.get(x.parent); } return out.join(' › '); };
   function renderTree(box) {
     const M = buildTreeModel(); if (!M) { box.append(h('div', { class: 'card p1-card' }, h('p', { class: 'muted', text: 'The site has no campus node yet.' }))); return; }
     const svg = sv('svg', { class: 'bt-svg', role: 'img', 'aria-label': 'Campus tree: the trunk is the campus, boughs are buildings, branches are floors and rooms, leaves are sensors. The same tree is listed below.', preserveAspectRatio: 'xMidYMid meet' });
@@ -267,7 +301,7 @@
         sway.append(rot);
         if (l.st !== 'normal') { const c = 10 * Math.cos(ang * Math.PI / 180), s = 10 * Math.sin(ang * Math.PI / 180); sway.append(sv('text', { class: 'bt-gl', x: c.toFixed(1), y: s.toFixed(1), 'text-anchor': 'middle', dy: '.35em' }, SG[l.st])); }
         g.append(sway, sv('title', {}, (l.n.name || nice(l.n.metric)) + ' - ' + LEGEND[l.st]));
-        const lt = sv('text', { class: 'bt-lt', x: 24, dy: '.35em' }, nice(l.n.metric)); g.append(lt); l.lt = lt;
+        const lt = sv('text', { class: 'bt-lt', x: 24, dy: '.35em' }, leafName(l.n)); g.append(lt); l.lt = lt;
       }
       g.addEventListener('click', pick(l.n.id));
       gL.append(g); l.g = g;
@@ -333,9 +367,28 @@
     const tb = (label, txt, fn) => h('button', { type: 'button', class: 'btn sm bt-btn', 'aria-label': label, title: label, onclick: fn }, txt);
     const legend = h('div', { class: 'bt-legend', 'aria-label': 'What the leaves mean' }, h('span', { text: 'Each leaf is a sensor:' }),
       ['normal', 'warning', 'critical', 'data_issue'].map((s) => h('span', { class: 'bt-key bt-' + s }, h('i', { 'aria-hidden': 'true', text: s === 'normal' ? '●' : SG[s] }), LEGEND[s])));
+    // #29: find a sensor by name, metric or place; the tree zooms to its leaf (names show once zoomed in)
+    const found = h('div', { class: 'bt-found', role: 'list' });
+    const q = h('input', { class: 'note-in bt-q', type: 'search', placeholder: 'Find a sensor', 'aria-label': 'Find a sensor by name or place', autocomplete: 'off' });
+    const goTo = (n) => {
+      selectNode(n.id);
+      const p = P.treePos.get(n.id) || P.treePos.get(n.parent);
+      if (p) { view.cx = p[0]; view.cy = p[1]; view.w = 520; apply(); }
+      found.replaceChildren(); q.value = '';
+      try { wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) { /* ignore */ }
+    };
+    q.addEventListener('input', () => {
+      const t = q.value.trim().toLowerCase();
+      if (t.length < 2) { found.replaceChildren(); return; }
+      const hits = P.site.nodes.filter((n) => n.kind === 'sensor').filter((n) => [leafName(n), n.metric, n.device, n.name, pathName(n)].join(' ').toLowerCase().includes(t)).slice(0, 8);
+      found.replaceChildren(...(hits.length ? hits.map((n) => h('button', { type: 'button', class: 'bt-hit-row', role: 'listitem', onclick: () => goTo(n) },
+        h('span', { class: 'bt-key bt-' + normSt((((P.status || {}).sensors) || {})[n.id]) }, h('i', { 'aria-hidden': 'true', text: SG[normSt((((P.status || {}).sensors) || {})[n.id])] })),
+        h('b', { text: leafName(n) }), h('span', { class: 'muted', text: pathName(n) }))) : [h('p', { class: 'muted', text: 'No sensor matches.' })]));
+    });
     box.append(h('div', { class: 'card p1-card bt-card' },
-      h('div', { class: 'bt-hd' }, h('h3', { text: 'Campus tree' }), h('div', { class: 'bt-tools' }, tb('Zoom in', '+', () => zoom(1.35)), tb('Zoom out', '-', () => zoom(1 / 1.35)), tb('Fit the whole tree', 'Fit', fit))), legend, wrap,
-      h('p', { class: 'muted', text: 'Trunk = campus, boughs = buildings, branches = floors and rooms. Tap a branch or leaf to open it; drag to move, pinch or scroll to zoom.' })));
+      h('div', { class: 'bt-hd' }, h('h3', { text: 'Campus tree' }), h('div', { class: 'bt-tools' }, tb('Zoom in', '+', () => zoom(1.35)), tb('Zoom out', '-', () => zoom(1 / 1.35)), tb('Fit the whole tree', 'Fit', fit))),
+      q, found, legend, wrap,
+      h('p', { class: 'muted', text: 'Trunk = campus, boughs = buildings, branches = floors and rooms, leaves = sensors (names show when you zoom in). Tap a branch or leaf to open it; drag to move, pinch or scroll to zoom.' })));
     P.treeApply = { fit, apply, view };
     requestAnimationFrame(() => { if (P.vb) { view.cx = P.vb.cx; view.cy = P.vb.cy; view.w = P.vb.w; apply(); } else fit(); markSel(); });
     if (typeof ResizeObserver !== 'undefined') { const ro = new ResizeObserver(() => apply()); ro.observe(wrap); }

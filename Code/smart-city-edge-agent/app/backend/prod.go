@@ -171,6 +171,10 @@ func prodStatus(s *Server) map[string]any {
 	if campus != nil {
 		st := campus.Status()
 		out["campus_link"], out["campus_link_label"] = st["link"], st["link_label"]
+		// night sweep 2026-11-27 #108: when the campus API went away (0 = online)
+		out["campus_offline_since_unix"] = st["offline_since_unix"]
+		out["campus"] = map[string]any{"link": st["link"], "online": st["online"], "offline_since_unix": st["offline_since_unix"],
+			"last_error": st["last_error"]}
 	}
 	if prod.mqtt != nil {
 		out["mqtt"] = prod.mqtt.Stats()
@@ -179,8 +183,12 @@ func prodStatus(s *Server) map[string]any {
 		out["alerts"] = prod.alert.Stats()
 	}
 	if prod.fog != nil {
-		out["fog_upload"] = prod.fog.Stats()
+		fs := prod.fog.Stats()
+		out["fog_upload"] = fs
+		out["fog"] = fs // #10: contract name (offline_since_unix, last_ok_unix, last_error)
 	}
+	// night sweep 2026-11-27 #11: is the reports sync reaching Supabase? {queued, sent, last_ok_unix, last_error}
+	out["supabase"] = supaStats()
 	if prod.warm != nil {
 		out["warm"] = prod.warm.Stats()
 	}

@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -148,4 +150,79 @@ func retitle(inc *Incident) {
 	}
 	inc.Title = cleanTitleRefs(reasonerTitle(inc))
 	consistentTitle(inc)
+}
+
+// ---------------------------------------------------------------- limit titles (night sweep 2026-11-27 #39)
+
+// crossedLimit: the card limit the reading is beyond (critical first, then warning), as printed on the card, and
+// the side ("above" / "below"). ok=false inside the limits or without limits.
+func crossedLimit(m Metric, x float64) (lim, side string, ok bool) {
+	if !m.HasLimits || math.IsNaN(x) {
+		return "", "", false
+	}
+	hi := m.Dir == "high" || m.Dir == "both"
+	str := func(s string, v float64) string {
+		if s != "" {
+			return s
+		}
+		return numStr(v)
+	}
+	switch {
+	case m.HasLoSide && x < m.CritLo:
+		return numStr(m.CritLo), "below", true
+	case hi && x >= m.Crit:
+		return str(m.CritS, m.Crit), "above", true
+	case m.Dir == "low" && x < m.Crit:
+		return str(m.CritS, m.Crit), "below", true
+	case m.HasLoSide && x < m.WarnLo:
+		return numStr(m.WarnLo), "below", true
+	case hi && x >= m.Warn:
+		return str(m.WarnS, m.Warn), "above", true
+	case m.Dir == "low" && x < m.Warn:
+		return str(m.WarnS, m.Warn), "below", true
+	}
+	return "", "", false
+}
+
+// valStr: a reading at the card's decimals, trailing zeros trimmed (9.61, 134.7, 0.81).
+func valStr(m Metric, x float64) string {
+	s := strconv.FormatFloat(x, 'f', m.Dec, 64)
+	if strings.Contains(s, ".") {
+		s = strings.TrimRight(strings.TrimRight(s, "0"), ".")
+	}
+	return s
+}
+
+// unitSfx: " C", " ppm", "" for pH (the value already says pH).
+func unitSfx(m Metric) string {
+	if m.Unit == "" || strings.EqualFold(m.Unit, "ph") {
+		return ""
+	}
+	return " " + m.Unit
+}
+
+// limitTitle: "Water pH 9.61, above the 9.0 limit" for a sensor whose latest reading is beyond a card limit; the
+// rules' pattern name ("pH exponential increase") is not what the operator needs (night sweep 2026-11-27 #39).
+func limitTitle(s SensorRef) (string, bool) {
+	if len(s.Xs) == 0 {
+		return "", false
+	}
+	m, ok := effectiveMetricOK(s.Role, s.Metric, s.Node)
+	if !ok {
+		return "", false
+	}
+	last := s.Xs[len(s.Xs)-1]
+	lim, side, ok := crossedLimit(m, last)
+	if !ok {
+		return "", false
+	}
+	name := nice[s.Metric]
+	if name == "" {
+		name = metricWord(s.Metric)
+	}
+	if s.Metric == "ph" && s.Role == "water" {
+		name = "Water pH"
+	}
+	u := unitSfx(m)
+	return fmt.Sprintf("%s %s%s, %s the %s%s limit", name, valStr(m, last), u, side, lim, u), true
 }

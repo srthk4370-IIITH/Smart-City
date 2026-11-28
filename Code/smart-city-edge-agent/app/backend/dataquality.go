@@ -485,9 +485,12 @@ func (e *Engine) setQuality(k string, st *SensorState, ok bool) {
 	case !ok:
 		why := e.gapReason(k, e.sim)
 		st.Quality, st.QualityWhy = "bad", why
-		if _, newest := windowCoverage(e.series[k], e.sim, Window); newest == 0 || e.sim-newest > 3*bucketSec {
+		if _, newest := windowCoverage(e.series[k], e.sim, Window); sensorStale(newest, e.sim) { // #105
 			st.Quality = "stale"
 		}
+	case func() bool { _, newest := windowCoverage(e.series[k], e.sim, Window); return sensorStale(newest, e.sim) }():
+		// #105: the window is still usable (the live edge is forward-filled) but 3 readings are missing
+		st.Quality, st.QualityWhy = "stale", fmt.Sprintf("no new reading for %d readings", staleMissed)
 	case fs != nil && fs.glitchAt != 0 && e.sim-fs.glitchAt < int64(Window)*bucketSec:
 		st.Quality, st.QualityWhy = "uncertain", "one-reading glitch at "+timeOf(fs.glitchAt)+" ignored by the alarm gate"
 	case Window-have >= dqUncertainFilled: // 2026-11-20 board: 1-5 interpolated of 48 is a normal campus feed, not "uncertain"
@@ -497,6 +500,16 @@ func (e *Engine) setQuality(k string, st *SensorState, ok bool) {
 	case e.bank[k] != nil && e.bank[k].Source == "api" && e.bank[k].clamped:
 		st.Quality, st.QualityWhy = "uncertain", "the last device value was outside the sensor range and was clamped"
 	}
+}
+
+// staleMissed: night sweep 2026-11-27 #105, ONE staleness rule for health, data health, chat and the domain counts: a
+// sensor is stale (counted as no data) after this many missed readings. There were three (10 min, 15 min, 30 min).
+const staleMissed = 3
+
+// sensorStale: the newest reading at lastUnix is 3 reading intervals (5 min) or more older than nowUnix; no reading at
+// all (lastUnix <= 0) is stale too. Both sensor time or both wall time.
+func sensorStale(lastUnix, nowUnix int64) bool {
+	return lastUnix <= 0 || nowUnix-lastUnix >= staleMissed*bucketSec
 }
 
 func timeOf(b int64) string { return time.Unix(b, 0).In(IST).Format("15:04") }
